@@ -1,0 +1,779 @@
+import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate } from './types';
+
+export const USERS: User[] = [
+  { 
+    id: 'u1', name: 'Alex Sterling', role: UserRole.GENERAL_MANAGER, department: Department.MANAGEMENT, avatar: 'https://picsum.photos/id/1005/100/100',
+    passwordHash: '', forcePasswordChange: false,
+    jobTitle: 'General Manager', employeeCode: 'IRIS-001', email: 'alex@iris.com', phone: '555-0001', status: 'active', dateJoined: '2020-01-01', location: 'New York' 
+  },
+  { 
+    id: 'u2', name: 'Sarah Chen', role: UserRole.CREATIVE_DIRECTOR, department: Department.CREATIVE, avatar: 'https://picsum.photos/id/1011/100/100',
+    passwordHash: '', forcePasswordChange: false,
+    jobTitle: 'Creative Director', employeeCode: 'IRIS-005', email: 'sarah@iris.com', phone: '555-0005', status: 'active', dateJoined: '2020-06-15', location: 'Los Angeles'
+  },
+  { 
+    id: 'u3', name: 'Mike Ross', role: UserRole.ART_DIRECTOR, department: Department.CREATIVE, avatar: 'https://picsum.photos/id/1012/100/100',
+    passwordHash: '', forcePasswordChange: false,
+    jobTitle: 'Art Director', employeeCode: 'IRIS-012', email: 'mike@iris.com', phone: '555-0012', status: 'active', dateJoined: '2021-03-01', location: 'New York'
+  },
+  { 
+    id: 'u4', name: 'Jessica Pearson', role: UserRole.ACCOUNT_MANAGER, department: Department.ACCOUNTS, avatar: 'https://picsum.photos/id/1027/100/100',
+    passwordHash: '', forcePasswordChange: false,
+    jobTitle: 'Senior Account Manager', employeeCode: 'IRIS-008', email: 'jessica@iris.com', phone: '555-0008', status: 'active', dateJoined: '2020-09-01', location: 'New York'
+  },
+  { 
+    id: 'u5', name: 'Louis Litt', role: UserRole.PRODUCER, department: Department.PRODUCTION, avatar: 'https://picsum.photos/id/1025/100/100',
+    passwordHash: '', forcePasswordChange: false,
+    jobTitle: 'Production Manager', employeeCode: 'IRIS-015', email: 'louis@iris.com', phone: '555-0015', status: 'on_leave', dateJoined: '2021-06-01', location: 'Los Angeles'
+  },
+];
+
+export const LEAVE_REQUESTS: LeaveRequest[] = [
+  { id: 'lr1', userId: 'u3', startDate: '2024-06-10', endDate: '2024-06-15', type: 'annual', reason: 'Summer Vacation', status: 'pending', createdAt: '2024-05-20' },
+  { id: 'lr2', userId: 'u5', startDate: '2024-05-20', endDate: '2024-05-25', type: 'sick', reason: 'Flu', status: 'approved', approverId: 'u1', createdAt: '2024-05-19' }
+];
+
+export const ATTENDANCE_RECORDS: AttendanceRecord[] = [
+  { id: 'ar1', userId: 'u1', date: '2024-05-22', status: 'present', checkInTime: '09:00', checkOutTime: '18:00' },
+  { id: 'ar2', userId: 'u2', date: '2024-05-22', status: 'present', checkInTime: '09:15', checkOutTime: '18:15' },
+  { id: 'ar3', userId: 'u3', date: '2024-05-22', status: 'remote', checkInTime: '08:45', checkOutTime: '17:45' },
+  { id: 'ar4', userId: 'u4', date: '2024-05-22', status: 'present', checkInTime: '09:30', checkOutTime: '18:30' },
+  { id: 'ar5', userId: 'u5', date: '2024-05-22', status: 'on_leave' }
+];
+
+export const CLIENTS: Client[] = [
+  {
+    id: 'c1',
+    name: 'Le Bon Designs',
+    industry: 'Fashion',
+    email: 'contact@lebon.com',
+    phone: '+1 (555) 123-4567',
+    address: '123 Fashion Ave, New York, NY',
+    website: 'www.lebondesigns.com',
+    notes: 'Premium fashion brand focusing on sustainable materials.',
+    status: 'active',
+    createdAt: '2023-01-15',
+    updatedAt: '2024-05-10',
+    accountManagerId: 'u4',
+    contacts: [
+      { id: 'cc1', clientId: 'c1', name: 'Marie Le Bon', role: 'CEO', email: 'marie@lebon.com', phone: '555-0101', isPrimary: true },
+      { id: 'cc2', clientId: 'c1', name: 'Jean Pierre', role: 'Marketing Head', email: 'jp@lebon.com', phone: '555-0102', isPrimary: false }
+    ]
+  },
+  {
+    id: 'c2',
+    name: 'Shisha Kartel',
+    industry: 'Lifestyle',
+    email: 'hello@kartel.com',
+    phone: '+1 (555) 987-6543',
+    address: '45 Sunset Blvd, Los Angeles, CA',
+    website: 'www.shishakartel.com',
+    notes: 'High-energy lifestyle brand. Prefers bold, edgy visuals.',
+    status: 'active',
+    createdAt: '2023-06-20',
+    updatedAt: '2024-04-22',
+    accountManagerId: 'u1',
+    contacts: [
+      { id: 'cc3', clientId: 'c2', name: 'Dante Russo', role: 'Director', email: 'dante@kartel.com', phone: '555-0201', isPrimary: true }
+    ]
+  },
+  {
+    id: 'c3',
+    name: 'Box Café',
+    industry: 'Hospitality',
+    email: 'info@boxcafe.com',
+    phone: '+1 (555) 321-7654',
+    address: '88 Coffee Lane, Seattle, WA',
+    website: 'www.boxcafe.com',
+    notes: 'Franchise coffee shop looking for rebrand.',
+    status: 'active',
+    createdAt: '2024-02-10',
+    updatedAt: '2024-05-01',
+    accountManagerId: 'u4',
+    contacts: [
+      { id: 'cc4', clientId: 'c3', name: 'Sarah Connor', role: 'Owner', email: 'sarah@boxcafe.com', phone: '555-0301', isPrimary: true }
+    ]
+  },
+  {
+    id: 'c4',
+    name: 'Magic Stick',
+    industry: 'Entertainment',
+    email: 'bookings@magicstick.com',
+    phone: '+1 (555) 111-2222',
+    address: 'Detroit, MI',
+    website: 'www.magicstick.com',
+    notes: 'Historic music venue.',
+    status: 'lead',
+    createdAt: '2024-05-01',
+    updatedAt: '2024-05-01',
+    accountManagerId: 'u1',
+    contacts: []
+  }
+];
+
+export const PROJECTS: Project[] = [
+  { 
+    id: 'p1', 
+    clientId: 'c1',
+    name: 'Summer Campaign 2024', 
+    client: 'Le Bon Designs',
+    code: 'LBD-SUM-24',
+    type: 'campaign',
+    status: 'active', 
+    budget: 50000, 
+    spent: 12000, 
+    currency: 'USD',
+    deadline: '2024-06-30',
+    startDate: '2024-04-01',
+    endDate: '2024-06-30',
+    brief: 'Launch the sustainable swimwear line.',
+    objectives: '- Increase brand awareness by 20%\n- Drive 5000 pre-orders',
+    notes: '',
+    accountManagerId: 'u4',
+    projectManagerId: 'u2',
+    thumbnail: 'https://picsum.photos/id/20/400/300',
+    createdAt: '2024-03-15',
+    updatedAt: '2024-05-15'
+  },
+  { 
+    id: 'p2', 
+    clientId: 'c2',
+    name: 'Product Launch', 
+    client: 'Shisha Kartel', 
+    code: 'SK-LNCH-01',
+    type: 'campaign',
+    status: 'active', 
+    budget: 75000, 
+    spent: 45000, 
+    currency: 'USD',
+    deadline: '2024-05-15', 
+    startDate: '2024-02-01',
+    endDate: '2024-05-15',
+    brief: 'High energy launch event and social takeover.',
+    objectives: '- Viral social traction\n- 100 Influencer kits sent',
+    notes: '',
+    accountManagerId: 'u1',
+    thumbnail: 'https://picsum.photos/id/30/400/300',
+    createdAt: '2024-01-20',
+    updatedAt: '2024-05-01'
+  },
+  { 
+    id: 'p3', 
+    clientId: 'c3',
+    name: 'Rebranding', 
+    client: 'Box Café', 
+    code: 'BOX-REB-24',
+    type: 'one_time',
+    status: 'on_hold', 
+    budget: 30000, 
+    spent: 5000, 
+    currency: 'USD',
+    deadline: '2024-08-01', 
+    startDate: '2024-03-01',
+    endDate: '2024-08-01',
+    brief: 'Complete visual overhaul of the franchise.',
+    objectives: '- New Logo\n- Store interior guidelines',
+    notes: 'Client pausing due to real estate issues.',
+    accountManagerId: 'u4',
+    thumbnail: 'https://picsum.photos/id/42/400/300',
+    createdAt: '2024-02-28',
+    updatedAt: '2024-04-10'
+  },
+  { 
+    id: 'p4', 
+    clientId: 'c4',
+    name: 'Social Media Q2', 
+    client: 'Magic Stick', 
+    code: 'MS-SOC-Q2',
+    type: 'retainer',
+    status: 'active', 
+    budget: 15000, 
+    spent: 7500, 
+    currency: 'USD',
+    deadline: '2024-06-01', 
+    startDate: '2024-04-01',
+    endDate: '2024-06-30',
+    brief: 'Daily social content management.',
+    objectives: '- 3 posts per week\n- Community management',
+    notes: '',
+    accountManagerId: 'u1',
+    thumbnail: 'https://picsum.photos/id/56/400/300',
+    createdAt: '2024-03-25',
+    updatedAt: '2024-05-12'
+  },
+];
+
+export const PROJECT_MEMBERS: ProjectMember[] = [
+  { id: 'pm1', projectId: 'p1', userId: 'u4', roleInProject: 'Account Manager', isExternal: false },
+  { id: 'pm2', projectId: 'p1', userId: 'u2', roleInProject: 'Creative Director', isExternal: false },
+  { id: 'pm3', projectId: 'p2', userId: 'u1', roleInProject: 'Project Lead', isExternal: false },
+  { id: 'pm4', projectId: 'p2', userId: 'u5', roleInProject: 'Producer', isExternal: false },
+];
+
+export const PROJECT_MILESTONES: ProjectMilestone[] = [
+  { id: 'm1', projectId: 'p1', name: 'Concept Approval', description: 'Client signs off on moodboards', dueDate: '2024-04-15', status: 'completed', progressPercent: 100, order: 1 },
+  { id: 'm2', projectId: 'p1', name: 'Shoot Day', description: 'Main photography session', dueDate: '2024-05-20', status: 'in_progress', progressPercent: 50, order: 2 },
+  { id: 'm3', projectId: 'p2', name: 'Venue Booking', description: 'Secure launch location', dueDate: '2024-03-01', status: 'completed', progressPercent: 100, order: 1 },
+];
+
+export const PROJECT_ACTIVITY_LOGS: ProjectActivityLog[] = [
+  { id: 'log1', projectId: 'p1', userId: 'u4', type: 'status_change', message: 'Project created', createdAt: '2024-03-15T09:00:00Z' },
+  { id: 'log2', projectId: 'p1', userId: 'u2', type: 'milestone_completed', message: 'Concept Approval marked as completed', createdAt: '2024-04-16T14:30:00Z' },
+  { id: 'log3', projectId: 'p2', userId: 'u1', type: 'comment', message: 'Budget increased by $5k due to venue change', createdAt: '2024-03-10T11:00:00Z' },
+];
+
+export const TASKS: Task[] = [
+  { 
+    id: 't1', 
+    projectId: 'p1',
+    title: 'Concept Sketches', 
+    description: 'Initial sketches for the summer collection vibe.', 
+    status: TaskStatus.IN_PROGRESS, 
+    priority: Priority.HIGH, 
+    taskType: 'design',
+    assigneeIds: ['u3', 'u2'], 
+    startDate: '2024-04-05',
+    dueDate: '2024-05-20', 
+    department: Department.CREATIVE,
+    createdBy: 'u4',
+    approvalPath: ['u3', 'u2', 'u4'], // AD -> CD -> AM
+    currentApprovalLevel: 0,
+    isClientApprovalRequired: true,
+    isArchived: false,
+    attachments: [],
+    client: 'Le Bon Designs',
+    createdAt: '2024-04-01T10:00:00Z',
+    updatedAt: '2024-04-05T14:00:00Z'
+  },
+  { 
+    id: 't2', 
+    projectId: 'p2',
+    title: 'Location Scouting', 
+    description: 'Find urban rooftops for the hero video shoot.', 
+    status: TaskStatus.AWAITING_REVIEW, 
+    priority: Priority.MEDIUM, 
+    taskType: 'production',
+    assigneeIds: ['u5'],
+    startDate: '2024-03-01',
+    dueDate: '2024-03-15', 
+    department: Department.PRODUCTION,
+    createdBy: 'u1',
+    approvalPath: ['u5', 'u2'], // Producer -> CD
+    currentApprovalLevel: 0,
+    isClientApprovalRequired: false,
+    isArchived: false,
+    attachments: [],
+    client: 'Shisha Kartel',
+    createdAt: '2024-02-28T09:00:00Z',
+    updatedAt: '2024-03-14T16:00:00Z'
+  },
+  { 
+    id: 't3', 
+    projectId: 'p3',
+    title: 'Copywriting - Social', 
+    description: 'Draft captions for the teaser campaign.', 
+    status: TaskStatus.NEW, 
+    priority: Priority.LOW, 
+    taskType: 'copywriting',
+    assigneeIds: ['u2'],
+    startDate: '2024-05-01',
+    dueDate: '2024-05-25', 
+    department: Department.MARKETING,
+    createdBy: 'u4',
+    approvalPath: ['u4'],
+    currentApprovalLevel: 0,
+    isClientApprovalRequired: true,
+    isArchived: false,
+    attachments: [],
+    client: 'Box Café',
+    createdAt: '2024-04-20T11:00:00Z',
+    updatedAt: '2024-04-20T11:00:00Z'
+  },
+  { 
+    id: 't4', 
+    projectId: 'p2',
+    title: 'Final Cut Review', 
+    description: 'Review the 30s spot edits.', 
+    status: TaskStatus.APPROVED, 
+    priority: Priority.HIGH, 
+    taskType: 'post_production',
+    assigneeIds: ['u2', 'u5'],
+    startDate: '2024-05-10',
+    dueDate: '2024-05-19', 
+    department: Department.CREATIVE,
+    createdBy: 'u1',
+    approvalPath: ['u2', 'u1'],
+    currentApprovalLevel: 2, // Fully approved internally
+    isClientApprovalRequired: false,
+    isArchived: false,
+    attachments: [],
+    client: 'Shisha Kartel',
+    createdAt: '2024-05-01T10:00:00Z',
+    updatedAt: '2024-05-18T15:00:00Z'
+  },
+  { 
+    id: 't5', 
+    projectId: 'p4',
+    title: 'Budget Approval', 
+    description: 'Sign off on Q2 media spend.', 
+    status: TaskStatus.CLIENT_REVIEW, 
+    priority: Priority.HIGH, 
+    taskType: 'meeting',
+    assigneeIds: ['u1', 'u4'],
+    startDate: '2024-04-01',
+    dueDate: '2024-04-05', 
+    department: Department.ACCOUNTS,
+    createdBy: 'u4',
+    approvalPath: ['u1'],
+    currentApprovalLevel: 1,
+    isClientApprovalRequired: true,
+    isArchived: false,
+    attachments: [],
+    client: 'Magic Stick',
+    createdAt: '2024-03-25T09:00:00Z',
+    updatedAt: '2024-04-02T11:00:00Z'
+  }
+];
+
+export const APPROVAL_STEPS: ApprovalStep[] = [
+  // Steps for t2 (Location Scouting) - Currently pending first approver (u5)
+  { id: 'as1', taskId: 't2', approverId: 'u5', level: 0, status: 'pending', milestoneId: null, createdAt: '2024-03-01T09:00:00Z' },
+  { id: 'as2', taskId: 't2', approverId: 'u2', level: 1, status: 'waiting', milestoneId: null, createdAt: '2024-03-01T09:00:00Z' },
+  
+  // Steps for t4 (Final Cut Review) - Fully Approved
+  { id: 'as3', taskId: 't4', approverId: 'u2', level: 0, status: 'approved', reviewedAt: '2024-05-15T10:00:00Z', comment: 'Looks great!', milestoneId: null, createdAt: '2024-05-01T10:00:00Z' },
+  { id: 'as4', taskId: 't4', approverId: 'u1', level: 1, status: 'approved', reviewedAt: '2024-05-18T14:00:00Z', comment: 'Good to go.', milestoneId: null, createdAt: '2024-05-01T10:00:00Z' },
+
+  // Steps for t5 (Budget Approval) - Internal Approved, Waiting Client
+  { id: 'as5', taskId: 't5', approverId: 'u1', level: 0, status: 'approved', reviewedAt: '2024-03-30T09:00:00Z', milestoneId: null, createdAt: '2024-03-25T09:00:00Z' }
+];
+
+export const CLIENT_APPROVALS: ClientApproval[] = [
+  // Client approval for t5
+  { id: 'ca1', taskId: 't5', clientId: 'c4', status: 'pending' }
+];
+
+export const TASK_COMMENTS: TaskComment[] = [
+  { id: 'tc1', taskId: 't1', userId: 'u2', message: 'I like the second concept, but lets make it bolder.', createdAt: '2024-04-06T10:00:00Z' },
+  { id: 'tc2', taskId: 't2', userId: 'u1', message: 'Is the permit secured for the rooftop?', createdAt: '2024-03-10T14:00:00Z' }
+];
+
+export const TASK_TIME_LOGS: TaskTimeLog[] = [
+  { id: 'tl1', taskId: 't1', userId: 'u3', hours: 4.5, logDate: '2024-04-05', note: 'Initial sketching' },
+  { id: 'tl2', taskId: 't1', userId: 'u3', hours: 2.0, logDate: '2024-04-06', note: 'Revisions based on feedback' }
+];
+
+export const TASK_DEPENDENCIES: TaskDependency[] = [
+  { id: 'td1', taskId: 't4', dependsOnTaskId: 't2' } // Final Cut depends on Location Scouting (abstractly)
+];
+
+export const TASK_ACTIVITY_LOGS: TaskActivityLog[] = [
+  { id: 'tal1', taskId: 't1', userId: 'u4', type: 'status_change', message: 'Created task', createdAt: '2024-04-01T10:00:00Z' },
+  { id: 'tal2', taskId: 't1', userId: 'u2', type: 'comment', message: 'Commented on task', createdAt: '2024-04-06T10:00:00Z' }
+];
+
+// --- FILES MOCK DATA ---
+
+export const FOLDERS: FileFolder[] = [
+  { id: 'f1', projectId: 'p1', parentId: null, name: 'Creative Assets', isArchiveRoot: false, isTaskArchiveFolder: false },
+  { id: 'f2', projectId: 'p1', parentId: null, name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false },
+  { id: 'f3', projectId: 'p1', parentId: 'f1', name: 'Raw Footage', isArchiveRoot: false, isTaskArchiveFolder: false },
+  { id: 'f4', projectId: 'p2', parentId: null, name: 'Launch Event', isArchiveRoot: false, isTaskArchiveFolder: false },
+];
+
+export const FILES: AgencyFile[] = [
+  { 
+    id: 'file1', projectId: 'p1', taskId: 't1', folderId: 'f1', uploaderId: 'u3', 
+    name: 'Concept_Sketch_v1.jpg', type: 'image/jpeg', size: 2400000, 
+    url: 'https://picsum.photos/id/10/800/600', version: 1, isDeliverable: false, 
+    isArchived: false,
+    tags: ['sketch', 'concept'], createdAt: '2024-04-02T10:00:00Z' 
+  },
+  { 
+    id: 'file2', projectId: 'p1', taskId: 't1', folderId: 'f1', uploaderId: 'u3', 
+    name: 'Concept_Sketch_v2.jpg', type: 'image/jpeg', size: 2600000, 
+    url: 'https://picsum.photos/id/11/800/600', version: 2, isDeliverable: true, 
+    isArchived: false,
+    tags: ['sketch', 'final'], createdAt: '2024-04-05T15:00:00Z' 
+  },
+  { 
+    id: 'file3', projectId: 'p1', taskId: null, folderId: 'f2', uploaderId: 'u4', 
+    name: 'Project_Brief.pdf', type: 'application/pdf', size: 500000, 
+    url: '#', version: 1, isDeliverable: false, 
+    isArchived: false,
+    tags: ['brief'], createdAt: '2024-03-15T09:00:00Z' 
+  },
+  { 
+    id: 'file4', projectId: 'p2', taskId: 't4', folderId: 'f4', uploaderId: 'u5', 
+    name: 'Launch_Teaser_Edit_01.mp4', type: 'video/mp4', size: 45000000, 
+    url: '#', version: 1, isDeliverable: false, 
+    isArchived: false,
+    tags: ['video', 'draft'], createdAt: '2024-05-12T14:00:00Z' 
+  },
+  { 
+    id: 'file5', projectId: 'p2', taskId: 't2', folderId: null, uploaderId: 'u5', 
+    name: 'Rooftop_Location_Scout.jpg', type: 'image/jpeg', size: 3100000, 
+    url: 'https://picsum.photos/id/40/800/600', version: 1, isDeliverable: false, 
+    isArchived: false,
+    tags: ['location', 'photo'], createdAt: '2024-03-05T11:00:00Z' 
+  }
+];
+
+// --- PRODUCTION MOCK DATA ---
+
+export const AGENCY_LOCATIONS: AgencyLocation[] = [
+  { id: 'loc1', projectId: 'p2', name: 'Downtown Rooftop', address: '450 S Broadway, Los Angeles, CA', contactPerson: 'Mike Owner', phone: '555-9090', notes: 'Best at sunset. Windy.', permitsRequired: true, mapUrl: 'https://picsum.photos/id/122/400/300' },
+  { id: 'loc2', projectId: 'p1', name: 'Malibu Beach Zone 3', address: 'PCH Hwy, Malibu, CA', contactPerson: 'Parks Dept', phone: '555-1111', notes: 'Golden hour restricted.', permitsRequired: true, mapUrl: 'https://picsum.photos/id/133/400/300' }
+];
+
+export const AGENCY_EQUIPMENT: AgencyEquipment[] = [
+  { id: 'eq1', name: 'Sony A7SIII Body A', category: 'Camera', serialNumber: 'SN-998877', status: 'available', nextMaintenance: '2024-08-01' },
+  { id: 'eq2', name: 'Sony A7SIII Body B', category: 'Camera', serialNumber: 'SN-998878', status: 'checked_out', checkedOutBy: 'u5', checkedOutAt: '2024-05-10T09:00:00Z', nextMaintenance: '2024-08-01' },
+  { id: 'eq3', name: 'G Master 24-70mm', category: 'Lens', serialNumber: 'LN-112233', status: 'available', nextMaintenance: '2024-07-15' },
+  { id: 'eq4', name: 'Aputure 600d Pro', category: 'Lighting', serialNumber: 'LT-445566', status: 'available', nextMaintenance: '2024-09-01' },
+  { id: 'eq5', name: 'Ronin RS3 Pro', category: 'Grip', serialNumber: 'GP-778899', status: 'maintenance', nextMaintenance: '2024-05-20' },
+];
+
+export const SHOT_LISTS: ShotList[] = [
+  { 
+    id: 'sl1', projectId: 'p2', taskId: 't2', name: 'Rooftop Sequence', description: 'Hero shots for launch video', createdBy: 'u2', date: '2024-05-12', locationId: 'loc1', createdAt: '2024-05-01',
+    shots: [
+      { id: 's1', shotListId: 'sl1', shotNumber: 1, description: 'Establish shot of skyline', cameraMovement: 'Static', framing: 'Wide', duration: '5s', equipment: ['eq1', 'eq3'], notes: 'Golden hour' },
+      { id: 's2', shotListId: 'sl1', shotNumber: 2, description: 'Model enters frame left', cameraMovement: 'Pan Right', framing: 'Mid', duration: '8s', equipment: ['eq1', 'eq3'], notes: '' }
+    ]
+  }
+];
+
+export const CALL_SHEETS: CallSheet[] = [
+  { 
+    id: 'cs1', projectId: 'p2', date: '2024-05-12', callTime: '06:00 AM', locationId: 'loc1', productionNotes: 'Parking in rear alley only.', status: 'Published', createdBy: 'u5', createdAt: '2024-05-10', equipmentList: ['eq1', 'eq3', 'eq4'],
+    crew: [
+      { id: 'crew1', callSheetId: 'cs1', userId: 'u5', role: 'Producer', phone: '555-0100', callTime: '06:00 AM' },
+      { id: 'crew2', callSheetId: 'cs1', userId: 'u2', role: 'Director', phone: '555-0101', callTime: '06:30 AM' },
+      { id: 'crew3', callSheetId: 'cs1', userId: null, role: 'Makeup Artist (Freelance)', phone: '555-0999', callTime: '05:30 AM' }
+    ]
+  }
+];
+
+// Legacy support for production assets
+export const PRODUCTION_ASSETS: ProductionAsset[] = [
+  { id: 'pa1', name: 'Day 1 Call Sheet', type: 'Call Sheet', status: 'Approved', date: '2024-05-10' },
+  { id: 'pa2', name: 'Downtown Rooftop', type: 'Location', status: 'Pending', date: '2024-05-12' },
+];
+
+// --- FINANCE MOCK DATA ---
+
+export const QUOTATIONS: Quotation[] = [
+  {
+    id: 'q1', projectId: 'p1', clientId: 'c1', quotationNumber: 'QUO-2024-001', date: '2024-03-01',
+    items: [
+      { id: 'qi1', description: 'Creative Direction', quantity: 1, unitPrice: 5000, total: 5000 },
+      { id: 'qi2', description: 'Photography Day Rate', quantity: 2, unitPrice: 3500, total: 7000 },
+      { id: 'qi3', description: 'Retouching (per image)', quantity: 20, unitPrice: 150, total: 3000 }
+    ],
+    subtotal: 15000, discount: 0, tax: 1500, total: 16500,
+    notes: 'Includes 3 rounds of revisions.', status: 'approved', createdBy: 'u4', createdAt: '2024-03-01'
+  },
+  {
+    id: 'q2', projectId: 'p2', clientId: 'c2', quotationNumber: 'QUO-2024-012', date: '2024-01-15',
+    items: [
+      { id: 'qi4', description: 'Event Production Fee', quantity: 1, unitPrice: 20000, total: 20000 },
+      { id: 'qi5', description: 'Influencer Kits', quantity: 100, unitPrice: 150, total: 15000 }
+    ],
+    subtotal: 35000, discount: 2000, tax: 3300, total: 36300,
+    notes: 'Discount applied for early payment.', status: 'approved', createdBy: 'u1', createdAt: '2024-01-15'
+  }
+];
+
+export const INVOICES: Invoice[] = [
+  { 
+    id: 'inv1', projectId: 'p1', clientId: 'c1', invoiceNumber: 'INV-2024-001', date: '2024-04-01', dueDate: '2024-04-15',
+    items: [
+       { id: 'ii1', description: 'Advance Payment (50%) - Summer Campaign', quantity: 1, unitPrice: 8250, total: 8250 }
+    ],
+    subtotal: 8250, discount: 0, tax: 0, total: 8250, paid: 8250, balance: 0,
+    status: 'paid', notes: '', createdBy: 'u4', createdAt: '2024-04-01',
+    client: 'Le Bon Designs', amount: 8250
+  },
+  { 
+    id: 'inv2', projectId: 'p2', clientId: 'c2', invoiceNumber: 'INV-2024-005', date: '2024-05-01', dueDate: '2024-05-15',
+    items: [
+       { id: 'ii2', description: 'Event Production Services', quantity: 1, unitPrice: 36300, total: 36300 }
+    ],
+    subtotal: 36300, discount: 0, tax: 0, total: 36300, paid: 15000, balance: 21300,
+    status: 'partially_paid', notes: '', createdBy: 'u1', createdAt: '2024-05-01',
+    client: 'Shisha Kartel', amount: 36300
+  },
+  { 
+    id: 'inv3', projectId: 'p3', clientId: 'c3', invoiceNumber: 'INV-2024-009', date: '2024-04-10', dueDate: '2024-04-24',
+    items: [
+       { id: 'ii3', description: 'Rebranding Strategy - Phase 1', quantity: 1, unitPrice: 4500, total: 4500 }
+    ],
+    subtotal: 4500, discount: 0, tax: 0, total: 4500, paid: 0, balance: 4500,
+    status: 'overdue', notes: 'Client requested delay.', createdBy: 'u4', createdAt: '2024-04-10',
+    client: 'Box Café', amount: 4500
+  },
+];
+
+export const PAYMENTS: Payment[] = [
+  { id: 'pay1', clientId: 'c1', projectId: 'p1', invoiceId: 'inv1', paymentNumber: 'PAY-001', amount: 8250, date: '2024-04-05', method: 'bank_transfer', reference: 'TRX-998811', note: '', createdBy: 'u4' },
+  { id: 'pay2', clientId: 'c2', projectId: 'p2', invoiceId: 'inv2', paymentNumber: 'PAY-002', amount: 15000, date: '2024-05-10', method: 'cheque', reference: 'CHQ-554433', note: 'Partial payment', createdBy: 'u1' }
+];
+
+export const EXPENSES: Expense[] = [
+  { id: 'exp1', projectId: 'p2', vendor: 'Downtown Studios', amount: 2500, date: '2024-05-12', category: 'location_fee', description: 'Rooftop rental deposit', createdBy: 'u5' },
+  { id: 'exp2', projectId: 'p2', vendor: 'Adorama Rental', amount: 1200, date: '2024-05-11', category: 'equipment_rent', description: 'Additional lighting kit', createdBy: 'u5' },
+  { id: 'exp3', projectId: 'p1', vendor: 'Uber', amount: 45.50, date: '2024-04-15', category: 'transport', description: 'Ride to client meeting', createdBy: 'u4' }
+];
+
+// --- VENDORS & FREELANCERS MOCK DATA ---
+
+export const VENDORS: Vendor[] = [
+  { id: 'v1', name: 'Baghdad Camera Rental', type: 'rental', contactName: 'Ahmed K.', email: 'rentals@bcr.com', phone: '555-1010', address: '14th July St, Baghdad', taxNumber: 'IQ-8877', paymentTerms: 'Net 30', notes: 'Preferred vendor for Arri Alexa', createdAt: '2023-01-01', updatedAt: '2023-01-01' },
+  { id: 'v2', name: 'PrintFast Solutions', type: 'printing', contactName: 'Sara L.', email: 'orders@printfast.com', phone: '555-2020', address: 'Downtown, NY', paymentTerms: 'Immediate', notes: 'Great for rush jobs', createdAt: '2023-05-10', updatedAt: '2023-05-10' },
+  { id: 'v3', name: 'Downtown Studios', type: 'location', contactName: 'Mike Studio', email: 'booking@dtstudios.com', phone: '555-9090', address: 'SoHo, NY', paymentTerms: '50% Advance', notes: 'Includes lighting grip', createdAt: '2023-02-15', updatedAt: '2023-02-15' }
+];
+
+export const FREELANCERS: Freelancer[] = [
+  { id: 'fl1', name: 'John Doe', specialization: 'Video Editor', email: 'john.editor@gmail.com', phone: '555-3344', location: 'Remote', portfolioUrl: 'vimeo.com/johndoe', rateType: 'daily', defaultRate: 350, notes: 'Fast turnaround, uses Premiere', active: true, createdAt: '2023-03-01', updatedAt: '2023-03-01' },
+  { id: 'fl2', name: 'Jane Smith', specialization: 'Colorist', email: 'jane.colors@gmail.com', phone: '555-4455', location: 'Los Angeles', rateType: 'hourly', defaultRate: 85, notes: 'Davinci Resolve expert', active: true, createdAt: '2023-04-20', updatedAt: '2023-04-20' },
+  { id: 'fl3', name: 'Ali Basim', specialization: 'DOP', email: 'ali.dop@gmail.com', phone: '555-6677', location: 'Dubai', portfolioUrl: 'ali-cam.com', rateType: 'daily', defaultRate: 600, notes: 'Great with natural light', active: true, createdAt: '2023-06-01', updatedAt: '2023-06-01' }
+];
+
+export const FREELANCER_ASSIGNMENTS: FreelancerAssignment[] = [
+  { id: 'fa1', freelancerId: 'fl1', projectId: 'p2', taskId: 't4', role: 'Editor', startDate: '2024-05-10', endDate: '2024-05-15', agreedRateType: 'daily', agreedRate: 350, currency: 'USD', notes: 'Editing the launch video', status: 'confirmed' },
+  { id: 'fa2', freelancerId: 'fl3', projectId: 'p2', taskId: null, role: 'Camera Operator', startDate: '2024-05-12', endDate: '2024-05-12', agreedRateType: 'daily', agreedRate: 600, currency: 'USD', notes: 'Shoot day', status: 'completed' }
+];
+
+export const VENDOR_SERVICE_ORDERS: VendorServiceOrder[] = [
+  { id: 'vso1', projectId: 'p2', vendorId: 'v1', orderNumber: 'VSO-2024-001', date: '2024-05-05', serviceDescription: 'Camera Package Rental (Alexa Mini)', amount: 4500, currency: 'USD', status: 'confirmed', notes: 'Pick up at 8 AM', createdBy: 'u5' },
+  { id: 'vso2', projectId: 'p2', vendorId: 'v3', orderNumber: 'VSO-2024-002', date: '2024-05-12', serviceDescription: 'Studio Rental - Stage A', amount: 2500, currency: 'USD', status: 'completed', notes: '', createdBy: 'u5' }
+];
+
+// --- NOTIFICATIONS MOCK DATA ---
+
+export const NOTIFICATIONS: Notification[] = [
+  { id: 'n1', userId: 'u1', type: 'task_assigned', title: 'New Task Assigned', message: 'You have been assigned to "Concept Sketches" for Le Bon Designs.', link: 'tasks', entityType: 'Task', entityId: 't1', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() }, // 30 mins ago
+  { id: 'n2', userId: 'u1', type: 'approval_request', title: 'Approval Required', message: 'Task "Budget Approval" is awaiting your review.', link: 'tasks', entityType: 'Task', entityId: 't5', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() }, // 2 hours ago
+  { id: 'n3', userId: 'u1', type: 'comment_mention', title: 'Mentioned in Comment', message: 'Mike Ross mentioned you in "Location Scouting".', link: 'tasks', entityType: 'Task', entityId: 't2', isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() }, // 1 day ago
+  { id: 'n4', userId: 'u1', type: 'invoice_overdue', title: 'Invoice Overdue', message: 'Invoice #INV-2024-009 for Box Café is overdue.', link: 'finance', entityType: 'Invoice', entityId: 'inv3', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() }, // 2 days ago
+];
+
+export const DEFAULT_PREFERENCES: NotificationPreference = {
+  userId: 'u1',
+  taskAssigned: true,
+  taskStatusChanged: true,
+  approvalRequests: true,
+  commentsMentions: true,
+  financeUpdates: true,
+  productionUpdates: true,
+  emailEnabled: true,
+  inAppEnabled: true
+};
+
+// --- ADMIN & MOCK DATA ---
+
+export const DEFAULT_BRANDING: AppBranding = {
+  id: 'branding-1',
+  appName: 'IRIS Agency OS',
+  logoLightUrl: null,
+  logoDarkUrl: null,
+  primaryColor: '#4f46e5', // indigo-600
+  secondaryColor: '#f43f5e', // rose-500
+  sidebarColor: '#0f172a', // slate-900
+  backgroundColor: '#f8fafc', // slate-50
+  textColor: '#0f172a' // slate-900
+};
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  id: 'settings-1',
+  timezone: 'UTC',
+  defaultCurrency: 'USD',
+  taxRateDefault: 10,
+  security: {
+    requireStrongPassword: true,
+    sessionTimeoutMinutes: 120,
+    enable2FA: false
+  }
+};
+
+export const PERMISSIONS_LIST: Permission[] = [
+  // Tasks
+  { code: 'tasks.view_all', module: 'Tasks', name: 'View All Tasks', description: 'Can view all tasks in the system' },
+  { code: 'tasks.view_own', module: 'Tasks', name: 'View Own Tasks', description: 'Can only view assigned tasks' },
+  { code: 'tasks.create', module: 'Tasks', name: 'Create Tasks', description: 'Can create new tasks' },
+  { code: 'tasks.edit_all', module: 'Tasks', name: 'Edit All Tasks', description: 'Can edit any task regardless of assignment' },
+  { code: 'tasks.edit_own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
+  { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can delete tasks (soft delete)' },
+  { code: 'tasks.approve', module: 'Tasks', name: 'Approve Tasks', description: 'Can approve tasks' },
+  { code: 'workflows.override_task_workflow', module: 'Tasks', name: 'Override Task Workflow', description: 'Can manually select a workflow for a task' },
+
+  // Projects
+  { code: 'projects.view_all', module: 'Projects', name: 'View All Projects', description: 'Can view all projects' },
+  { code: 'projects.view_own', module: 'Projects', name: 'View Own Projects', description: 'Can view only assigned projects' },
+  { code: 'projects.create', module: 'Projects', name: 'Create Projects', description: 'Can create new projects' },
+  { code: 'projects.edit_all', module: 'Projects', name: 'Edit All Projects', description: 'Can edit any project' },
+  { code: 'projects.edit_own', module: 'Projects', name: 'Edit Own Projects', description: 'Can edit only assigned projects' },
+
+  // Admin
+  { code: 'admin.view_console', module: 'Admin', name: 'View Admin Console', description: 'Access to admin dashboard' },
+  { code: 'admin.manage_users', module: 'Admin', name: 'Manage Users', description: 'Can add/edit/delete users' },
+  { code: 'admin.manage_roles', module: 'Admin', name: 'Manage Roles', description: 'Can add/edit/delete roles' },
+  { code: 'admin.manage_settings', module: 'Admin', name: 'Manage Settings', description: 'Can change system settings' },
+
+  // Finance
+  { code: 'finance.view', module: 'Finance', name: 'View Financials', description: 'Can view invoices and budgets' },
+  { code: 'finance.manage', module: 'Finance', name: 'Manage Financials', description: 'Can create/edit invoices and payments' },
+
+  // Production
+  { code: 'production.view', module: 'Production', name: 'View Production', description: 'Can view production assets' },
+  { code: 'production.manage', module: 'Production', name: 'Manage Production', description: 'Can manage production assets' },
+
+  // Files
+  { code: 'files.view_all', module: 'Files', name: 'View All Files', description: 'Can view all files' },
+  { code: 'files.view_own', module: 'Files', name: 'View Own Files', description: 'Can view only assigned files' },
+  { code: 'files.upload', module: 'Files', name: 'Upload Files', description: 'Can upload new files' },
+  { code: 'files.delete', module: 'Files', name: 'Delete Files', description: 'Can delete files' },
+
+  // Analytics
+  { code: 'analytics.view', module: 'Analytics', name: 'View Analytics', description: 'Can view analytics dashboard' }
+];
+
+export const DEFAULT_ROLES: RoleDefinition[] = [
+  { 
+    id: 'r1', 
+    name: UserRole.GENERAL_MANAGER, 
+    description: 'Full system access', 
+    permissions: PERMISSIONS_LIST.map(p => p.code), 
+    isAdmin: true 
+  },
+  { 
+    id: 'r2', 
+    name: UserRole.ACCOUNT_MANAGER, 
+    description: 'Client and Project management', 
+    permissions: [
+      'projects.view_all', 'projects.create', 'projects.edit_all',
+      'tasks.view_all', 'tasks.create', 'tasks.edit_all',
+      'files.view_all', 'files.upload',
+      'finance.view'
+    ], 
+    isAdmin: false 
+  },
+  { 
+    id: 'r3', 
+    name: UserRole.CREATIVE_DIRECTOR, 
+    description: 'Creative oversight', 
+    permissions: [
+      'projects.view_all', 
+      'tasks.view_all', 'tasks.edit_all', 'tasks.approve',
+      'files.view_all', 'files.upload',
+      'production.view'
+    ], 
+    isAdmin: false 
+  },
+  { 
+    id: 'r5', 
+    name: UserRole.DESIGNER, 
+    description: 'Task execution', 
+    permissions: [
+      'projects.view_own', 
+      'tasks.view_own', 'tasks.edit_own',
+      'files.view_own', 'files.upload'
+    ], 
+    isAdmin: false 
+  },
+  { 
+    id: 'r9', 
+    name: 'Videographer', 
+    description: 'Video production staff', 
+    permissions: [
+      'tasks.view_own', 'tasks.edit_own',
+      'files.view_own', 'files.upload',
+      'production.view'
+    ], 
+    isAdmin: false 
+  },
+  { 
+    id: 'r10', 
+    name: 'Freelancer', 
+    description: 'External contractor', 
+    permissions: [
+      'tasks.view_own', 'tasks.edit_own',
+      'files.view_own', 'files.upload'
+    ], 
+    isAdmin: false 
+  }
+];
+
+
+
+export const AUDIT_LOGS: AuditLog[] = [
+  { id: 'log1', userId: 'u1', action: 'update_branding', entityType: 'AppBranding', entityId: 'branding-1', description: 'Updated primary color to #4f46e5', createdAt: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'log2', userId: 'u1', action: 'create_user', entityType: 'User', entityId: 'u5', description: 'Created user Louis Litt', createdAt: new Date(Date.now() - 172800000).toISOString() }
+];
+
+export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
+  {
+    id: 'wf1',
+    name: 'Standard Creative Flow',
+    description: 'General approval for design tasks',
+    departmentId: 'Creative',
+    taskType: 'design',
+    status: 'active',
+    isDefault: true,
+    requiresClientApproval: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    steps: [
+      { id: 's1', workflowTemplateId: 'wf1', order: 0, label: 'Art Director Review', roleId: 'r3', projectRoleKey: null, useDepartmentHead: false }, // r3 is Art Director in DEFAULT_ROLES
+      { id: 's2', workflowTemplateId: 'wf1', order: 1, label: 'Creative Director Approval', roleId: 'r2', projectRoleKey: null, useDepartmentHead: false }, // r2 is Creative Director
+      { id: 's3', workflowTemplateId: 'wf1', order: 2, label: 'Account Manager Check', roleId: 'r4', projectRoleKey: 'Account Manager', useDepartmentHead: false } // r4 is Account Manager
+    ]
+  },
+  {
+    id: 'wf2',
+    name: 'Video Production Approval',
+    description: 'Strict flow for video content',
+    departmentId: 'Production',
+    taskType: 'video',
+    status: 'active',
+    isDefault: true,
+    requiresClientApproval: true,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    steps: [
+      { id: 's4', workflowTemplateId: 'wf2', order: 0, label: 'Producer Review', roleId: 'r5', projectRoleKey: null, useDepartmentHead: false }, // r5 is Producer
+      { id: 's5', workflowTemplateId: 'wf2', order: 1, label: 'Creative Director Review', roleId: 'r2', projectRoleKey: null, useDepartmentHead: false }
+    ]
+  },
+  {
+    id: 'wf3',
+    name: 'Simple Review',
+    description: 'Quick check for minor tasks',
+    departmentId: null,
+    taskType: 'other',
+    status: 'available',
+    isDefault: false,
+    requiresClientApproval: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    steps: [
+      { id: 's6', workflowTemplateId: 'wf3', order: 0, label: 'Account Manager', roleId: 'r4', projectRoleKey: 'Account Manager', useDepartmentHead: false }
+    ]
+  },
+  {
+    id: 'wf_fallback',
+    name: 'System Fallback',
+    description: 'Emergency fallback workflow',
+    departmentId: null,
+    taskType: null,
+    status: 'system_protected',
+    isDefault: false,
+    requiresClientApproval: false,
+    createdAt: '2024-01-01T00:00:00Z',
+    updatedAt: '2024-01-01T00:00:00Z',
+    steps: [
+      { id: 's_fallback', workflowTemplateId: 'wf_fallback', order: 0, label: 'Manager Review', roleId: 'r1', projectRoleKey: null, useDepartmentHead: false }
+    ]
+  }
+];
