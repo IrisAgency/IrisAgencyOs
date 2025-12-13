@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep } from '../types';
-import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset } from '../types';
+import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import FilesHub from './FilesHub';
+import ProjectCalendar from './ProjectCalendar';
 
 interface ProjectsHubProps {
   projects: Project[];
@@ -10,31 +12,39 @@ interface ProjectsHubProps {
   members: ProjectMember[];
   milestones: ProjectMilestone[];
   activityLogs: ProjectActivityLog[];
+  marketingAssets: ProjectMarketingAsset[]; // New
   files: AgencyFile[];
   folders: FileFolder[];
   freelancers: Freelancer[];
   assignments: FreelancerAssignment[];
-  tasks: Task[]; // New
-  approvalSteps: ApprovalStep[]; // New
+  tasks: Task[]; 
+  approvalSteps: ApprovalStep[]; 
   onAddProject: (project: Project) => void;
   onUpdateProject: (project: Project) => void;
+  onDeleteProject: (projectId: string) => void;
   onAddMember: (member: ProjectMember) => void;
   onAddMilestone: (milestone: ProjectMilestone) => void;
   onUpdateMilestone: (milestone: ProjectMilestone) => void;
-  onUploadFile: (file: AgencyFile) => void;
+  onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>; // New
+  onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>; // New
+  onDeleteMarketingAsset: (assetId: string) => Promise<void>; // New
+  onUploadFile: (file: AgencyFile) => Promise<void>;
   onCreateFolder: (folder: FileFolder) => void;
   onAddFreelancerAssignment: (assignment: FreelancerAssignment) => void;
   onRemoveMember: (memberId: string) => void;
   onRemoveFreelancerAssignment: (assignmentId: string) => void;
+  initialSelectedProjectId?: string | null;
+  checkPermission?: (permission: string) => boolean;
+  onNavigateToTask?: (taskId: string) => void;
 }
 
 const ProjectsHub: React.FC<ProjectsHubProps> = ({ 
-  projects, clients, users, members, milestones, activityLogs, files, folders, freelancers, assignments, tasks, approvalSteps,
-  onAddProject, onUpdateProject, onAddMember, onAddMilestone, onUpdateMilestone, onUploadFile, onCreateFolder, onAddFreelancerAssignment,
-  onRemoveMember, onRemoveFreelancerAssignment
+  projects, clients, users, members, milestones, activityLogs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps,
+  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, onAddFreelancerAssignment,
+  onRemoveMember, onRemoveFreelancerAssignment, initialSelectedProjectId, checkPermission = () => true, onNavigateToTask
 }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>(initialSelectedProjectId ? 'detail' : 'list');
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId || null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // List Filters
@@ -299,22 +309,29 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       members={members.filter(m => m.projectId === selectedProject.id)}
       milestones={milestones.filter(m => m.projectId === selectedProject.id)}
       logs={activityLogs.filter(l => l.projectId === selectedProject.id)}
+      marketingAssets={marketingAssets.filter(a => a.projectId === selectedProject.id)} // Filter here
       files={files}
       folders={folders}
       freelancers={freelancers}
       assignments={assignments.filter(a => a.projectId === selectedProject.id)}
-      tasks={tasks.filter(t => t.projectId === selectedProject.id)}
+      tasks={tasks.filter(t => t && t.projectId === selectedProject.id)}
       approvalSteps={approvalSteps}
       onUpdateProject={onUpdateProject}
+      onDeleteProject={onDeleteProject}
       onAddMember={onAddMember}
       onAddFreelancerAssignment={onAddFreelancerAssignment}
       onRemoveMember={onRemoveMember}
       onRemoveFreelancerAssignment={onRemoveFreelancerAssignment}
       onAddMilestone={onAddMilestone}
       onUpdateMilestone={onUpdateMilestone}
+      onAddMarketingAsset={onAddMarketingAsset}
+      onUpdateMarketingAsset={onUpdateMarketingAsset}
+      onDeleteMarketingAsset={onDeleteMarketingAsset}
       onUploadFile={onUploadFile}
       onCreateFolder={onCreateFolder}
       getStatusColor={getStatusColor}
+      checkPermission={checkPermission}
+      onNavigateToTask={onNavigateToTask}
     />
   );
 };
@@ -327,6 +344,7 @@ interface ProjectDetailProps {
   members: ProjectMember[];
   milestones: ProjectMilestone[];
   logs: ProjectActivityLog[];
+  marketingAssets: ProjectMarketingAsset[];
   files: AgencyFile[];
   folders: FileFolder[];
   freelancers: Freelancer[];
@@ -335,22 +353,28 @@ interface ProjectDetailProps {
   approvalSteps: ApprovalStep[];
   onBack: () => void;
   onUpdateProject: (p: Project) => void;
+  onDeleteProject: (projectId: string) => void;
   onAddMember: (m: ProjectMember) => void;
   onAddFreelancerAssignment: (a: FreelancerAssignment) => void;
   onRemoveMember: (memberId: string) => void;
   onRemoveFreelancerAssignment: (assignmentId: string) => void;
   onAddMilestone: (m: ProjectMilestone) => void;
   onUpdateMilestone: (m: ProjectMilestone) => void;
-  onUploadFile: (f: AgencyFile) => void;
+  onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>;
+  onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>;
+  onDeleteMarketingAsset: (assetId: string) => Promise<void>;
+  onUploadFile: (f: AgencyFile) => Promise<void>;
   onCreateFolder: (f: FileFolder) => void;
   getStatusColor: (s: string) => string;
+  checkPermission: (permission: string) => boolean;
+  onNavigateToTask?: (taskId: string) => void;
 }
 
 const ProjectDetailView: React.FC<ProjectDetailProps> = ({ 
-  project, users, members, milestones, logs, files, folders, freelancers, assignments, tasks, approvalSteps, onBack, 
-  onUpdateProject, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment, onAddMilestone, onUpdateMilestone, onUploadFile, onCreateFolder, getStatusColor 
+  project, users, members, milestones, logs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps, onBack, 
+  onUpdateProject, onDeleteProject, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, getStatusColor, checkPermission, onNavigateToTask
 }) => {
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Team' | 'Milestones' | 'Files' | 'Activity'>('Overview');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Team' | 'Milestones' | 'Calendar' | 'Files' | 'Activity'>('Overview');
   
   // Status Change Handler
   const handleStatusChange = (newStatus: string) => {
@@ -392,6 +416,13 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
              <button className="p-2.5 text-slate-400 hover:bg-slate-50 hover:text-indigo-600 rounded-lg transition-colors">
                <Settings className="w-5 h-5" />
              </button>
+             <button 
+               onClick={() => { onDeleteProject(project.id); onBack(); }}
+               className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+               title="Delete Project"
+             >
+               <Trash2 className="w-5 h-5" />
+             </button>
           </div>
         </div>
       </div>
@@ -399,7 +430,7 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
       {/* Tabs */}
       <div className="border-b border-slate-200">
         <nav className="-mb-px flex space-x-8">
-          {['Overview', 'Team', 'Milestones', 'Files', 'Activity'].map((tab) => (
+          {['Overview', 'Team', 'Milestones', 'Calendar', 'Files', 'Activity'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
@@ -418,9 +449,34 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
 
       {/* Tab Content */}
       <div className="min-h-[400px]">
-        {activeTab === 'Overview' && <OverviewTab project={project} />}
+        {activeTab === 'Overview' && (
+            <OverviewTab 
+                project={project} 
+                milestones={milestones} 
+                tasks={tasks} 
+                members={members} 
+                users={users} 
+                marketingAssets={marketingAssets}
+                files={files}
+                onAddMarketingAsset={onAddMarketingAsset}
+                onUpdateMarketingAsset={onUpdateMarketingAsset}
+                onDeleteMarketingAsset={onDeleteMarketingAsset}
+                onUploadFile={onUploadFile}
+                checkPermission={checkPermission}
+            />
+        )}
         {activeTab === 'Team' && <TeamTab project={project} members={members} users={users} freelancers={freelancers} assignments={assignments} onAddMember={onAddMember} onAddFreelancerAssignment={onAddFreelancerAssignment} onRemoveMember={onRemoveMember} onRemoveFreelancerAssignment={onRemoveFreelancerAssignment} />}
-        {activeTab === 'Milestones' && <MilestonesTab project={project} milestones={milestones} users={users} tasks={tasks} approvalSteps={approvalSteps} onAdd={onAddMilestone} onUpdate={onUpdateMilestone} />}
+        {activeTab === 'Milestones' && <MilestonesTab project={project} milestones={milestones} users={users} tasks={tasks} approvalSteps={approvalSteps} onAdd={onAddMilestone} onUpdate={onUpdateMilestone} checkPermission={checkPermission} />}
+        {activeTab === 'Calendar' && (
+            <div className="h-[800px]">
+                <ProjectCalendar 
+                    project={project} 
+                    tasks={tasks} 
+                    users={users} 
+                    onTaskClick={(taskId) => onNavigateToTask && onNavigateToTask(taskId)} 
+                />
+            </div>
+        )}
         {activeTab === 'Files' && (
             <div className="h-[600px]">
                 <FilesHub 
@@ -444,29 +500,380 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
 
 // --- Tabs Components ---
 
-const OverviewTab = ({ project }: { project: Project }) => (
+const OverviewTab = ({ project, milestones, tasks, members, users, marketingAssets, files, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, checkPermission }: { project: Project, milestones: ProjectMilestone[], tasks: Task[], members: ProjectMember[], users: User[], marketingAssets: ProjectMarketingAsset[], files: AgencyFile[], onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onDeleteMarketingAsset: (assetId: string) => Promise<void>, onUploadFile: (f: AgencyFile) => Promise<void>, checkPermission: (p: string) => boolean }) => {
+  
+  // Asset Modal State
+  const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<ProjectMarketingAsset | null>(null);
+  const [assetName, setAssetName] = useState('');
+  const [assetCategory, setAssetCategory] = useState<ProjectMarketingAsset['category']>('strategy_doc');
+  const [assetType, setAssetType] = useState<'file' | 'link'>('link');
+  const [assetUrl, setAssetUrl] = useState('');
+  const [assetFileId, setAssetFileId] = useState('');
+  
+  // New File Upload State
+  const [uploadMode, setUploadMode] = useState<'select' | 'upload'>('upload');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const resetAssetForm = () => {
+      setAssetName('');
+      setAssetCategory('strategy_doc');
+      setAssetType('link');
+      setAssetUrl('');
+      setAssetFileId('');
+      setEditingAsset(null);
+      setUploadMode('upload');
+      setSelectedFile(null);
+  };
+
+  const handleSaveAsset = async (e: React.FormEvent) => {
+      e.preventDefault();
+      
+      let finalFileId = assetFileId;
+
+      // Handle File Upload if needed
+      if (assetType === 'file' && uploadMode === 'upload' && selectedFile) {
+          const newFileId = `f${Date.now()}`;
+          const newFile: AgencyFile = {
+              id: newFileId,
+              projectId: project.id,
+              uploaderId: 'current-user-id', // Should be passed from context
+              name: selectedFile.name,
+              type: selectedFile.type,
+              size: selectedFile.size,
+              url: '', // Empty initially, will be filled by App.tsx
+              version: 1,
+              isDeliverable: false,
+              isArchived: false,
+              tags: ['marketing_asset'],
+              createdAt: new Date().toISOString()
+          };
+          
+          // Attach the raw file for the uploader to use
+          (newFile as any).file = selectedFile;
+          
+          // Upload the file
+          await onUploadFile(newFile);
+          finalFileId = newFileId;
+      }
+
+      const asset: ProjectMarketingAsset = {
+          id: editingAsset ? editingAsset.id : `pma${Date.now()}`,
+          projectId: project.id,
+          name: assetName,
+          category: assetCategory,
+          type: assetType,
+          url: assetType === 'link' ? assetUrl : null,
+          fileId: assetType === 'file' ? finalFileId : null,
+          description: '',
+          createdAt: editingAsset ? editingAsset.createdAt : new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: editingAsset ? editingAsset.createdBy : 'current-user-id'
+      };
+
+      if (editingAsset) {
+          await onUpdateMarketingAsset(asset);
+      } else {
+          await onAddMarketingAsset(asset);
+      }
+      setIsAssetModalOpen(false);
+      resetAssetForm();
+  };
+
+  const openAssetModal = (asset?: ProjectMarketingAsset) => {
+      if (asset) {
+          setEditingAsset(asset);
+          setAssetName(asset.name);
+          setAssetCategory(asset.category);
+          setAssetType(asset.type);
+          setAssetUrl(asset.url || '');
+          setAssetFileId(asset.fileId || '');
+          setUploadMode('select'); // Default to select for existing assets
+      } else {
+          resetAssetForm();
+      }
+      setIsAssetModalOpen(true);
+  };
+
+  // 1. Milestones Graph Data
+  const currentMonthMilestones = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return milestones.filter(m => {
+        if (!m || m.projectId !== project.id) return false;
+        const d = new Date(m.endDate || m.dueDate);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    }).map(m => {
+        const mTasks = tasks.filter(t => t && t.milestoneId === m.id && !t.isDeleted);
+        const completedCount = mTasks.filter(t => {
+            if (!t || !t.status) return false;
+            return ['completed', 'approved', 'client_approved'].includes(t.status);
+        }).length;
+        const totalCount = mTasks.length;
+        
+        // Determine "Total" based on Target or Actual
+        let displayTotal = totalCount;
+        let displayCompleted = completedCount;
+
+        if (m.targetTaskCount && m.targetTaskCount > 0) {
+             displayTotal = m.targetTaskCount;
+             displayCompleted = Math.min(completedCount, m.targetTaskCount);
+        }
+        
+        return {
+            name: m.name,
+            completed: displayCompleted,
+            remaining: Math.max(0, displayTotal - displayCompleted),
+            total: displayTotal,
+            actualTotal: totalCount,
+            actualCompleted: completedCount
+        };
+    });
+  }, [milestones, tasks, project.id]);
+
+  // 2. Team Progress Data
+  const teamProgress = useMemo(() => {
+    const projectMembers = members.filter(m => m && m.projectId === project.id);
+    
+    return projectMembers.map(member => {
+        const user = users.find(u => u.id === member.userId);
+        const userTasks = tasks.filter(t => {
+            if (!t) return false;
+            if (t.projectId !== project.id) return false;
+            if (t.isDeleted) return false;
+            
+            // Safe check for assigneeIds
+            const assignees = t.assigneeIds;
+            if (!Array.isArray(assignees)) return false;
+            
+            return assignees.includes(member.userId);
+        });
+        
+        const total = userTasks.length;
+        const completed = userTasks.filter(t => {
+            if (!t || !t.status) return false;
+            return ['completed', 'approved', 'client_approved'].includes(t.status);
+        }).length;
+        
+        const awaiting = userTasks.filter(t => t.status === 'awaiting_review').length;
+        const revisions = userTasks.filter(t => t.status === 'revisions_required').length;
+        const clientReview = userTasks.filter(t => t.status === 'client_review').length;
+        
+        return {
+            memberId: member.id,
+            user: user,
+            role: member.roleInProject,
+            total,
+            completed,
+            progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+            approvals: { awaiting, revisions, clientReview }
+        };
+    });
+  }, [members, users, tasks, project.id]);
+
+  return (
   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
     <div className="md:col-span-2 space-y-6">
+       {/* Milestones Graph */}
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+             <h3 className="font-bold text-slate-900 flex items-center gap-2">
+               <BarChart3 className="w-4 h-4 text-slate-400"/> 
+               This Month’s Milestones – Task Progress
+             </h3>
+             <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+               {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+             </span>
+          </div>
+          <div className="p-6">
+             {currentMonthMilestones.length > 0 ? (
+               <div className="h-[250px] w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                   <BarChart
+                     layout="vertical"
+                     data={currentMonthMilestones}
+                     margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
+                   >
+                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                     <XAxis type="number" />
+                     <YAxis dataKey="name" type="category" width={150} tick={{fontSize: 12}} />
+                     <Tooltip 
+                        formatter={(value: number, name: string, props: any) => {
+                            if (name === 'Completed') return [value, 'Completed Tasks'];
+                            if (name === 'Remaining') return [value, 'Remaining Tasks'];
+                            return [value, name];
+                        }}
+                     />
+                     <Legend />
+                     <Bar dataKey="completed" name="Completed" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                     <Bar dataKey="remaining" name="Remaining" stackId="a" fill="#cbd5e1" radius={[0, 4, 4, 0]} />
+                   </BarChart>
+                 </ResponsiveContainer>
+               </div>
+             ) : (
+               <div className="text-center py-8 text-slate-400">
+                 No milestones scheduled for this month.
+               </div>
+             )}
+          </div>
+       </div>
+
+       {/* Team Progress Table */}
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-slate-100">
+             <h3 className="font-bold text-slate-900 flex items-center gap-2">
+               <Users className="w-4 h-4 text-slate-400"/> 
+               Team Progress & Approvals
+             </h3>
+          </div>
+          <div className="overflow-x-auto">
+             <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                   <tr>
+                      <th className="px-6 py-3">Team Member</th>
+                      <th className="px-6 py-3">Role</th>
+                      <th className="px-6 py-3">Tasks</th>
+                      <th className="px-6 py-3 w-1/4">Progress</th>
+                      <th className="px-6 py-3">Approvals Status</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                   {teamProgress.map((tp) => (
+                      <tr key={tp.memberId} className="hover:bg-slate-50">
+                         <td className="px-6 py-4">
+                            <div className="flex items-center space-x-3">
+                               {tp.user ? (
+                                 <img src={tp.user.avatar} alt="" className="w-8 h-8 rounded-full" />
+                               ) : (
+                                 <div className="w-8 h-8 rounded-full bg-slate-200"></div>
+                               )}
+                               <span className="font-medium text-slate-900">{tp.user?.name || 'Unknown'}</span>
+                            </div>
+                         </td>
+                         <td className="px-6 py-4 text-slate-600">{tp.role}</td>
+                         <td className="px-6 py-4 text-slate-600 font-mono text-xs">
+                            {tp.completed} / {tp.total}
+                         </td>
+                         <td className="px-6 py-4">
+                            <div className="flex items-center gap-2">
+                               <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                                  <div 
+                                    className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500" 
+                                    style={{ width: `${tp.progress}%` }}
+                                  ></div>
+                               </div>
+                               <span className="text-xs text-slate-500 w-8 text-right">{tp.progress}%</span>
+                            </div>
+                         </td>
+                         <td className="px-6 py-4">
+                            {tp.approvals.awaiting === 0 && tp.approvals.revisions === 0 && tp.approvals.clientReview === 0 ? (
+                               <span className="text-slate-400 text-xs">-</span>
+                            ) : (
+                               <div className="flex flex-col gap-1 text-xs">
+                                  {tp.approvals.awaiting > 0 && (
+                                     <span className="text-amber-600 font-medium">{tp.approvals.awaiting} awaiting review</span>
+                                  )}
+                                  {tp.approvals.revisions > 0 && (
+                                     <span className="text-rose-600 font-medium">{tp.approvals.revisions} in revisions</span>
+                                  )}
+                                  {tp.approvals.clientReview > 0 && (
+                                     <span className="text-indigo-600 font-medium">{tp.approvals.clientReview} in client review</span>
+                                  )}
+                               </div>
+                            )}
+                         </td>
+                      </tr>
+                   ))}
+                   {teamProgress.length === 0 && (
+                      <tr><td colSpan={5} className="p-6 text-center text-slate-400">No team members assigned.</td></tr>
+                   )}
+                </tbody>
+             </table>
+          </div>
+       </div>
+
        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
           <h3 className="font-bold text-slate-900 mb-4">Project Brief</h3>
           <p className="text-slate-600 leading-relaxed whitespace-pre-line">{project.brief || "No brief provided."}</p>
        </div>
-       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-bold text-slate-900 mb-4">Objectives</h3>
-          <p className="text-slate-600 leading-relaxed whitespace-pre-line">{project.objectives || "No objectives listed."}</p>
-       </div>
     </div>
     <div className="space-y-6">
+       {/* Marketing Strategies Card */}
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-slate-400"/>
+                    Marketing Strategies
+                </h3>
+                {checkPermission('projects.marketing_assets_manage') && (
+                    <button onClick={() => openAssetModal()} className="text-indigo-600 hover:bg-indigo-50 p-1 rounded transition-colors">
+                        <Plus className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+            <div className="divide-y divide-slate-100">
+                {marketingAssets.length > 0 ? (
+                    marketingAssets.map(asset => (
+                        <div key={asset.id} className="p-4 hover:bg-slate-50 transition-colors group">
+                            <div className="flex justify-between items-start">
+                                <div className="flex items-start space-x-3">
+                                    <div className="mt-1 p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
+                                        {asset.type === 'link' ? <LinkIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-medium text-slate-900">{asset.name}</h4>
+                                        <span className="text-xs text-slate-500 capitalize bg-slate-100 px-1.5 py-0.5 rounded mt-1 inline-block">
+                                            {asset.category.replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {asset.type === 'link' && asset.url && (
+                                        <a href={asset.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 rounded">
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                        </a>
+                                    )}
+                                    {asset.type === 'file' && asset.fileId && (() => {
+                                        const file = files.find(f => f.id === asset.fileId);
+                                        if (file && file.url) {
+                                            return (
+                                                <a href={file.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 rounded" title="View File">
+                                                    <ExternalLink className="w-3.5 h-3.5" />
+                                                </a>
+                                            );
+                                        }
+                                        return (
+                                            <button className="p-1.5 text-slate-400 hover:text-indigo-600 rounded opacity-50 cursor-not-allowed" title="File not found">
+                                                <ExternalLink className="w-3.5 h-3.5" />
+                                            </button>
+                                        );
+                                    })()}
+                                    {checkPermission('projects.marketing_assets_manage') && (
+                                        <>
+                                            <button onClick={() => openAssetModal(asset)} className="p-1.5 text-slate-400 hover:text-indigo-600 rounded">
+                                                <Settings className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button onClick={() => onDeleteMarketingAsset(asset.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded">
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="p-6 text-center text-slate-400 text-sm">
+                        No strategy assets added yet.
+                    </div>
+                )}
+            </div>
+       </div>
+
        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
           <h3 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Key Info</h3>
-          <div>
-            <p className="text-xs text-slate-500 uppercase">Budget</p>
-            <p className="font-medium text-slate-900">{project.currency} {project.budget.toLocaleString()}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 uppercase">Spent</p>
-            <p className="font-medium text-slate-900">{project.currency} {project.spent.toLocaleString()}</p>
-          </div>
           <div>
             <p className="text-xs text-slate-500 uppercase">Start Date</p>
             <p className="font-medium text-slate-900">{new Date(project.startDate).toLocaleDateString()}</p>
@@ -477,16 +884,115 @@ const OverviewTab = ({ project }: { project: Project }) => (
           </div>
        </div>
     </div>
+
+    {/* Asset Modal */}
+    {isAssetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+                    <h3 className="font-bold text-slate-900">{editingAsset ? 'Edit Asset' : 'Add Strategy Asset'}</h3>
+                    <button onClick={() => setIsAssetModalOpen(false)}><XCircle className="w-5 h-5 text-slate-400 hover:text-slate-600" /></button>
+                </div>
+                <form onSubmit={handleSaveAsset} className="p-4 space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
+                        <input required type="text" value={assetName} onChange={e => setAssetName(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="e.g. Q3 Media Plan" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
+                        <select value={assetCategory} onChange={e => setAssetCategory(e.target.value as any)} className="w-full p-2 border rounded-lg text-sm">
+                            <option value="strategy_doc">Strategy Document</option>
+                            <option value="media_plan">Media Plan</option>
+                            <option value="content_calendar">Content Calendar</option>
+                            <option value="presentation">Presentation</option>
+                            <option value="report">Report</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+                        <div className="flex space-x-4">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="assetType" value="link" checked={assetType === 'link'} onChange={() => setAssetType('link')} className="text-indigo-600" />
+                                <span className="text-sm text-slate-700">External Link</span>
+                            </label>
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                                <input type="radio" name="assetType" value="file" checked={assetType === 'file'} onChange={() => setAssetType('file')} className="text-indigo-600" />
+                                <span className="text-sm text-slate-700">File</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    {assetType === 'link' ? (
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">URL</label>
+                            <input required type="url" value={assetUrl} onChange={e => setAssetUrl(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="https://..." />
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            <div className="flex space-x-4 border-b border-slate-100 pb-2">
+                                <button 
+                                    type="button"
+                                    onClick={() => setUploadMode('upload')}
+                                    className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'upload' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Upload New
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setUploadMode('select')}
+                                    className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'select' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Select Existing
+                                </button>
+                            </div>
+
+                            {uploadMode === 'select' ? (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select File</label>
+                                    <select required={uploadMode === 'select'} value={assetFileId} onChange={e => setAssetFileId(e.target.value)} className="w-full p-2 border rounded-lg text-sm">
+                                        <option value="">Select a file...</option>
+                                        {files.filter(f => f.projectId === project.id).map(f => (
+                                            <option key={f.id} value={f.id}>{f.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-400 mt-1">Only showing files linked to this project.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Upload File</label>
+                                    <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="file" 
+                                            required={uploadMode === 'upload'}
+                                            onChange={e => setSelectedFile(e.target.files ? e.target.files[0] : null)} 
+                                            className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+                                        />
+                                        <p className="text-xs text-slate-400 mt-2">Max size 10MB.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div className="pt-2">
+                        <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-lg font-medium hover:bg-indigo-700">Save Asset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    )}
   </div>
-);
+  );
+};
 
 const TeamTab = ({ project, members, users, freelancers, assignments, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment }: { 
     project: Project, members: ProjectMember[], users: User[], 
     freelancers: Freelancer[], assignments: FreelancerAssignment[], 
     onAddMember: (m: ProjectMember) => void,
     onAddFreelancerAssignment: (a: FreelancerAssignment) => void,
-    onRemoveMember: (memberId: string) => void, // New
-    onRemoveFreelancerAssignment: (assignmentId: string) => void // New
+    onRemoveMember: (memberId: string) => void,
+    onRemoveFreelancerAssignment: (assignmentId: string) => void
 }) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
@@ -703,7 +1209,7 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
   );
 };
 
-const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd, onUpdate }: { project: Project, milestones: ProjectMilestone[], users: User[], tasks: Task[], approvalSteps: ApprovalStep[], onAdd: any, onUpdate: any }) => {
+const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd, onUpdate, checkPermission }: { project: Project, milestones: ProjectMilestone[], users: User[], tasks: Task[], approvalSteps: ApprovalStep[], onAdd: any, onUpdate: any, checkPermission: (p: string) => boolean }) => {
   const [view, setView] = useState<'list' | 'timeline'>('list');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -715,14 +1221,22 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
   const [endDate, setEndDate] = useState('');
   const [ownerId, setOwnerId] = useState('');
   const [status, setStatus] = useState<ProjectMilestone['status']>('not_started');
+  
+  // New Fields
+  const [targetTaskCount, setTargetTaskCount] = useState<string>('');
+  const [autoCompleteOnTarget, setAutoCompleteOnTarget] = useState(false);
 
   const resetForm = () => {
-      setName(''); setDescription(''); setStartDate(''); setEndDate(''); setOwnerId(''); setStatus('not_started'); setEditingId(null);
+      setName(''); setDescription(''); setStartDate(''); setEndDate(''); setOwnerId(''); setStatus('not_started'); 
+      setTargetTaskCount(''); setAutoCompleteOnTarget(false);
+      setEditingId(null);
   };
 
   const handleSave = () => {
       if (!name || !startDate || !endDate) return;
       
+      const targetCount = targetTaskCount ? parseInt(targetTaskCount) : null;
+
       const milestone: ProjectMilestone = {
           id: editingId || `ms${Date.now()}`,
           projectId: project.id,
@@ -734,7 +1248,9 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
           ownerId: ownerId || undefined,
           status,
           progressPercent: editingId ? milestones.find(m => m.id === editingId)?.progressPercent || 0 : 0,
-          order: editingId ? milestones.find(m => m.id === editingId)?.order || 0 : milestones.length + 1
+          order: editingId ? milestones.find(m => m.id === editingId)?.order || 0 : milestones.length + 1,
+          targetTaskCount: targetCount,
+          autoCompleteOnTarget
       };
 
       if (editingId) {
@@ -754,8 +1270,32 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
       setEndDate(m.endDate || m.dueDate);
       setOwnerId(m.ownerId || '');
       setStatus(m.status);
+      setTargetTaskCount(m.targetTaskCount ? m.targetTaskCount.toString() : '');
+      setAutoCompleteOnTarget(m.autoCompleteOnTarget || false);
       setIsAddOpen(true);
   };
+
+  // Auto-complete Effect
+  useEffect(() => {
+    milestones.forEach(m => {
+      if (m.autoCompleteOnTarget && m.targetTaskCount && m.status !== 'completed') {
+        const mTasks = tasks.filter(t => t.milestoneId === m.id && !t.isDeleted);
+        const completedCount = mTasks.filter(t => ['completed', 'approved', 'client_approved'].includes(t.status)).length;
+        
+        if (completedCount >= m.targetTaskCount) {
+           // Avoid infinite loop by checking if it's already completed (handled by if condition above)
+           // But we need to be careful about onUpdate triggering this again.
+           // Ideally, we should only call onUpdate if we are sure.
+           onUpdate({
+             ...m,
+             status: 'completed',
+             completedAt: new Date().toISOString(),
+             progressPercent: 100
+           });
+        }
+      }
+    });
+  }, [milestones, tasks, onUpdate]);
 
   // Timeline Helper
   const getTimelineStyles = (m: ProjectMilestone) => {
@@ -828,6 +1368,38 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
                             <option value="blocked">Blocked</option>
                         </select>
                     </div>
+                    
+                    {/* Target Tasks Configuration */}
+                    {checkPermission('milestones.manage') && (
+                    <div className="md:col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">Progress Tracking</h4>
+                        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+                            <div className="flex-1">
+                                <label className="block text-xs text-slate-500 mb-1">Target Task Count (Optional)</label>
+                                <input 
+                                    type="number" 
+                                    value={targetTaskCount} 
+                                    onChange={e => setTargetTaskCount(e.target.value)} 
+                                    className="w-full p-2 border rounded-lg text-sm" 
+                                    placeholder="e.g. 5 tasks to complete"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-1">Leave empty to calculate progress based on all linked tasks.</p>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-4">
+                                <input 
+                                    type="checkbox" 
+                                    id="autoComplete"
+                                    checked={autoCompleteOnTarget}
+                                    onChange={e => setAutoCompleteOnTarget(e.target.checked)}
+                                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <label htmlFor="autoComplete" className="text-sm text-slate-700 cursor-pointer">
+                                    Auto-complete when target reached
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    )}
                 </div>
                 <div className="flex justify-end space-x-3 pt-2">
                     <button onClick={() => setIsAddOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm">Cancel</button>
@@ -841,7 +1413,25 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
             <div className="grid grid-cols-1 gap-4">
                 {milestones.map(m => {
                     const owner = users.find(u => u.id === m.ownerId);
-                    const milestoneTasks = tasks.filter(t => t.milestoneId === m.id);
+                    const milestoneTasks = tasks.filter(t => t.milestoneId === m.id && !t.isDeleted);
+                    
+                    // Calculate Progress
+                    const completedTasksCount = milestoneTasks.filter(t => ['completed', 'approved', 'client_approved'].includes(t.status)).length;
+                    let progress = 0;
+                    let progressText = '';
+
+                    if (m.targetTaskCount && m.targetTaskCount > 0) {
+                        const ratio = Math.min(1, completedTasksCount / m.targetTaskCount);
+                        progress = Math.round(ratio * 100);
+                        progressText = `${completedTasksCount} / ${m.targetTaskCount} tasks`;
+                    } else {
+                        const total = milestoneTasks.length;
+                        progress = total > 0 ? Math.round((completedTasksCount / total) * 100) : 0;
+                        progressText = `${progress}%`;
+                    }
+                    
+                    // Override if status is completed manually
+                    if (m.status === 'completed') progress = 100;
                     
                     return (
                         <div key={m.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
@@ -875,10 +1465,10 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
                                     <div className="flex-1">
                                         <div className="flex justify-between text-xs mb-1">
                                             <span className="font-medium text-slate-700">Progress</span>
-                                            <span className="text-slate-500">{m.progressPercent || 0}%</span>
+                                            <span className="text-slate-500">{progressText}</span>
                                         </div>
                                         <div className="w-full bg-slate-100 rounded-full h-2">
-                                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${m.progressPercent || 0}%` }}></div>
+                                            <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                                         </div>
                                     </div>
                                     <button onClick={() => startEdit(m)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">

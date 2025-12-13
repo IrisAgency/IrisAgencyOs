@@ -1,63 +1,179 @@
-import React, { useState } from 'react';
-import { AgencyFile, FileFolder, Project, User } from '../types';
+import React, { useState, useMemo } from 'react';
+import { AgencyFile, FileFolder, Project, User, Client } from '../types';
 import { 
   Folder, File as FileIcon, Upload, Grid, List, Search, 
   MoreVertical, Download, Eye, Trash2, Image, FileText, 
-  Video, Music, Archive, Move, Clock, ChevronRight, CornerUpLeft, X 
+  Video, Music, Archive, Move, Clock, ChevronRight, CornerUpLeft, X,
+  FolderOpen, Building2, Briefcase, Film, Camera, FileCode, Presentation
 } from 'lucide-react';
 
 interface FilesHubProps {
   files: AgencyFile[];
   folders: FileFolder[];
   projects: Project[];
+  clients: Client[];
   users: User[];
   currentProjectId?: string; // Optional: restrict to one project
   onUpload: (file: AgencyFile) => void;
   onDelete: (fileId: string) => void;
   onMove: (fileId: string, folderId: string) => void;
   onCreateFolder: (folder: FileFolder) => void;
+  onDeleteFolder: (folderId: string) => void;
 }
 
 const FilesHub: React.FC<FilesHubProps> = ({ 
-  files, folders, projects, users, currentProjectId,
-  onUpload, onDelete, onMove, onCreateFolder 
+  files, folders, projects, clients, users, currentProjectId,
+  onUpload, onDelete, onMove, onCreateFolder, onDeleteFolder 
 }) => {
   // State
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string>(currentProjectId || 'all');
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchTerm, setSearchTerm] = useState('');
   const [previewFile, setPreviewFile] = useState<AgencyFile | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'videos' | 'photos' | 'documents' | 'strategies'>('all');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Filter Logic
+  // Build breadcrumb trail
+  const breadcrumbs = useMemo(() => {
+    const trail: { id: string | null, name: string, type: 'root' | 'client' | 'folder' }[] = [
+      { id: null, name: 'All Files', type: 'root' }
+    ];
+    
+    if (selectedClientId) {
+      const client = clients.find(c => c.id === selectedClientId);
+      if (client) {
+        trail.push({ id: `client_${selectedClientId}`, name: client.name, type: 'client' });
+      }
+    }
+    
+    if (currentFolderId) {
+      const folder = folders.find(f => f.id === currentFolderId);
+      if (folder) {
+        // Build parent path
+        const parents: FileFolder[] = [];
+        let current = folder;
+        while (current) {
+          parents.unshift(current);
+          current = folders.find(f => f.id === current.parentId)!;
+        }
+        
+        parents.forEach(p => {
+          trail.push({ id: p.id, name: p.name, type: 'folder' });
+        });
+      }
+    }
+    
+    return trail;
+  }, [selectedClientId, currentFolderId, clients, folders]);
+
+  // Filter Logic - Client-first hierarchy
   const filteredFolders = folders.filter(f => {
-    const matchProject = selectedProjectId === 'all' || f.projectId === selectedProjectId;
+    // If viewing a specific client
+    if (selectedClientId) {
+      const matchClient = f.clientId === selectedClientId;
+      const matchParent = f.parentId === currentFolderId;
+      return matchClient && matchParent;
+    }
+    
+    // If at root, show client root folders only
+    if (!currentFolderId) {
+      return f.folderType === 'client_root' && !f.parentId;
+    }
+    
     const matchParent = f.parentId === currentFolderId;
-    return matchProject && matchParent;
+    return matchParent;
   });
 
-  const filteredFiles = files.filter(f => {
-    const matchProject = selectedProjectId === 'all' || f.projectId === selectedProjectId;
-    const matchFolder = f.folderId === (currentFolderId || null) || (!currentFolderId && !f.folderId && selectedProjectId !== 'all');
-    // If viewing 'All' projects and at root, showing all root files might be messy, but acceptable for now.
-    // Better logic: If 'all' projects selected, maybe show recent files or require project selection.
-    // For simplicity: Show files matching search
-    const matchSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchProject && (currentFolderId ? f.folderId === currentFolderId : true) && matchSearch;
-  });
+  const filteredFiles = useMemo(() => {
+    let result = files.filter(f => {
+      // Search filter
+      const matchSearch = f.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         f.tags?.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
+      
+      if (!matchSearch) return false;
+      
+      // Type filter
+      if (filterType !== 'all') {
+        const category = f.category || 'other';
+        if (filterType === 'videos' && category !== 'video') return false;
+        if (filterType === 'photos' && category !== 'image') return false;
+        if (filterType === 'documents' && !['document', 'design'].includes(category)) return false;
+        if (filterType === 'strategies' && category !== 'presentation') return false;
+      }
+      
+      // Client filter
+      if (selectedClientId && f.clientId !== selectedClientId) return false;
+      
+      // Folder filter
+      if (currentFolderId) {
+        return f.folderId === currentFolderId;
+      }
+      
+      // At root with client selected - show unfiled client files
+      if (selectedClientId && !currentFolderId) {
+        return f.clientId === selectedClientId && !f.folderId;
+      }
+      
+      return true;
+    });
+    
+    return result;
+  }, [files, selectedClientId, currentFolderId, searchTerm, filterType]);
+
+  // Memoized file counts per folder for live updates (includes files in subfolders)
+  const folderFileCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    
+    // Helper function to get all descendant folder IDs
+    const getDescendantFolderIds = (folderId: string): string[] => {
+      const descendants = [folderId];
+      const children = folders.filter(f => f.parentId === folderId);
+      children.forEach(child => {
+        descendants.push(...getDescendantFolderIds(child.id));
+      });
+      return descendants;
+    };
+    
+    // Count files for each folder (including subfolders)
+    folders.forEach(folder => {
+      const allFolderIds = getDescendantFolderIds(folder.id);
+      const fileCount = files.filter(file => 
+        file.folderId && allFolderIds.includes(file.folderId)
+      ).length;
+      counts[folder.id] = fileCount;
+    });
+    
+    return counts;
+  }, [files, folders]);
 
   const currentFolder = folders.find(f => f.id === currentFolderId);
-  const parentFolder = folders.find(f => f.id === currentFolder?.parentId);
   
   // Check if current view is read-only (Archived)
-  const isReadOnly = currentFolder?.isArchiveRoot || currentFolder?.name === 'Archive'; // Simple check for now
-  const getFileIcon = (type: string) => {
-    if (type.startsWith('image/')) return <Image className="w-5 h-5 text-purple-500" />;
-    if (type.startsWith('video/')) return <Video className="w-5 h-5 text-rose-500" />;
+  const isReadOnly = currentFolder?.isArchiveRoot || currentFolder?.folderType === 'archive';
+  
+  const getFileIcon = (type: string, category?: string) => {
+    const cat = category || type.split('/')[0];
+    if (cat === 'image' || type.startsWith('image/')) return <Image className="w-5 h-5 text-purple-500" />;
+    if (cat === 'video' || type.startsWith('video/')) return <Video className="w-5 h-5 text-rose-500" />;
+    if (cat === 'presentation') return <Presentation className="w-5 h-5 text-blue-500" />;
+    if (cat === 'design') return <FileCode className="w-5 h-5 text-pink-500" />;
     if (type === 'application/pdf') return <FileText className="w-5 h-5 text-orange-500" />;
     return <FileIcon className="w-5 h-5 text-slate-400" />;
+  };
+
+  const getFolderIcon = (folder: FileFolder) => {
+    const type = folder.folderType;
+    if (type === 'archive') return <Archive className="w-8 h-8 text-slate-400" />;
+    if (type === 'videos') return <Film className="w-8 h-8 text-rose-400" />;
+    if (type === 'photos') return <Camera className="w-8 h-8 text-purple-400" />;
+    if (type === 'client_root') return <Building2 className="w-8 h-8 text-indigo-400" />;
+    if (type === 'project') return <Briefcase className="w-8 h-8 text-blue-400" />;
+    if (type === 'task') return <FileIcon className="w-8 h-8 text-amber-400" />;
+    if (type === 'strategy') return <Presentation className="w-8 h-8 text-emerald-400" />;
+    return <Folder className="w-8 h-8 text-indigo-300" />;
   };
 
   const formatSize = (bytes: number) => {
@@ -69,6 +185,27 @@ const FilesHub: React.FC<FilesHubProps> = ({
   };
 
   // Handlers
+  const handleBreadcrumbClick = (crumb: typeof breadcrumbs[0]) => {
+    if (crumb.type === 'root') {
+      setSelectedClientId(null);
+      setCurrentFolderId(null);
+    } else if (crumb.type === 'client') {
+      setCurrentFolderId(null);
+    } else if (crumb.type === 'folder') {
+      setCurrentFolderId(crumb.id);
+    }
+  };
+
+  const handleFolderClick = (folder: FileFolder) => {
+    // If clicking a client root folder, set client and navigate into it
+    if (folder.folderType === 'client_root') {
+      setSelectedClientId(folder.linkedEntityId || folder.clientId || null);
+      setCurrentFolderId(folder.id);
+    } else {
+      setCurrentFolderId(folder.id);
+    }
+  };
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -76,20 +213,47 @@ const FilesHub: React.FC<FilesHubProps> = ({
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
        const file = e.target.files[0];
-       const project = projects.find(p => p.id === selectedProjectId) || projects[0];
-       if (!project) return alert("Select a project first");
+       
+       // Determine context
+       let projectId = selectedProjectId;
+       let clientId = selectedClientId;
+       
+       // If in a folder, get its project/client
+       if (currentFolderId) {
+         const folder = folders.find(f => f.id === currentFolderId);
+         if (folder) {
+           projectId = folder.projectId || projectId;
+           clientId = folder.clientId || clientId || null;
+         }
+       }
+       
+       // If no project, try to infer from client
+       if (!projectId || projectId === 'all') {
+         if (clientId) {
+           const clientProjects = projects.filter(p => p.clientId === clientId);
+           if (clientProjects.length > 0) {
+             projectId = clientProjects[0].id;
+           }
+         }
+       }
+       
+       if (!projectId || projectId === 'all') {
+         return alert("Please navigate to a client or project folder before uploading.");
+       }
 
        const newFile: AgencyFile & { file?: File } = {
           id: `file${Date.now()}`,
-          projectId: project.id,
+          projectId: projectId,
+          clientId: clientId,
           folderId: currentFolderId,
-          uploaderId: 'u1', // This will be overwritten by App.tsx likely or should be passed
+          uploaderId: users[0]?.id || 'u1',
           name: file.name,
           type: file.type,
           size: file.size,
-          url: '', // Placeholder
+          url: '',
           version: 1,
           isDeliverable: false,
+          isArchived: false,
           tags: ['upload'],
           createdAt: new Date().toISOString(),
           file: file
@@ -99,100 +263,177 @@ const FilesHub: React.FC<FilesHubProps> = ({
   };
 
   const handleCreateNewFolder = () => {
-      const project = projects.find(p => p.id === selectedProjectId);
-      if (!project && selectedProjectId === 'all') return alert("Please select a project to create a folder.");
+      if (!selectedClientId && !currentFolderId) {
+        return alert("Please select a client first to create folders.");
+      }
       
       const name = prompt("Folder Name:");
       if (name) {
+          const folder = folders.find(f => f.id === currentFolderId);
           onCreateFolder({
               id: `f${Date.now()}`,
-              projectId: project!.id,
+              projectId: folder?.projectId || null,
+              clientId: selectedClientId,
               parentId: currentFolderId,
-              name
+              name,
+              isArchiveRoot: false,
+              isTaskArchiveFolder: false
           });
       }
+  };
+
+  const handleDeleteFile = (file: AgencyFile) => {
+    if (isReadOnly) {
+      alert('Cannot delete files from archived folders.');
+      return;
+    }
+    
+    const confirmMessage = file.isDeliverable 
+      ? `⚠️ Warning: "${file.name}" is marked as a FINAL deliverable.\n\nAre you sure you want to delete it? This action cannot be undone.`
+      : `Are you sure you want to delete "${file.name}"?\n\nThis action cannot be undone.`;
+    
+    if (window.confirm(confirmMessage)) {
+      onDelete(file.id);
+    }
+  };
+
+  const handleDeleteFolder = (folder: FileFolder, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent folder from opening
+    
+    if (isReadOnly || folder.folderType === 'archive' || folder.isArchiveRoot) {
+      alert('Cannot delete archived folders or root folders.');
+      return;
+    }
+    
+    onDeleteFolder(folder.id);
   };
 
   return (
     <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Toolbar */}
-      <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-        <div className="flex items-center space-x-4">
-          {!currentProjectId && (
-            <select 
-              value={selectedProjectId} 
-              onChange={e => { setSelectedProjectId(e.target.value); setCurrentFolderId(null); }}
-              className="bg-white border border-slate-200 text-sm rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
-            >
-              <option value="all">All Projects</option>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          )}
-          
-          <div className="flex items-center text-sm text-slate-500">
-             <button 
-                onClick={() => setCurrentFolderId(null)}
-                className={`hover:text-indigo-600 ${!currentFolderId ? 'font-bold text-slate-800' : ''}`}
-             >
-                 Root
-             </button>
-             {currentFolder && (
-                 <>
-                    <ChevronRight className="w-4 h-4 mx-1" />
-                    {parentFolder && (
-                        <>
-                           <span className="truncate max-w-[100px]">{parentFolder.name}</span>
-                           <ChevronRight className="w-4 h-4 mx-1" />
-                        </>
-                    )}
-                    <span className="font-bold text-slate-800">{currentFolder.name}</span>
-                 </>
-             )}
-          </div>
+      <div className="p-4 border-b border-slate-200 bg-slate-50">
+        {/* Breadcrumbs */}
+        <div className="flex items-center space-x-2 mb-3 text-sm">
+          {breadcrumbs.map((crumb, idx) => (
+            <React.Fragment key={crumb.id || 'root'}>
+              {idx > 0 && <ChevronRight className="w-4 h-4 text-slate-300" />}
+              <button
+                onClick={() => handleBreadcrumbClick(crumb)}
+                className={`hover:text-indigo-600 transition-colors ${
+                  idx === breadcrumbs.length - 1 
+                    ? 'font-bold text-slate-800' 
+                    : 'text-slate-500'
+                }`}
+              >
+                {crumb.name}
+              </button>
+            </React.Fragment>
+          ))}
         </div>
 
-        <div className="flex items-center space-x-2">
-           <div className="relative">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-             <input 
-               type="text" 
-               placeholder="Search files..."
-               value={searchTerm}
-               onChange={e => setSearchTerm(e.target.value)}
-               className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none w-48"
-             />
-           </div>
-           <div className="h-8 w-px bg-slate-300 mx-2"></div>
-           <button 
-             onClick={() => setViewMode('grid')}
-             className={`p-2 rounded hover:bg-slate-200 ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-           >
-             <Grid className="w-4 h-4" />
-           </button>
-           <button 
-             onClick={() => setViewMode('list')}
-             className={`p-2 rounded hover:bg-slate-200 ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-           >
-             <List className="w-4 h-4" />
-           </button>
-           <button 
-             onClick={handleUploadClick}
-             disabled={isReadOnly}
-             className={`ml-2 flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                 isReadOnly 
-                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                 : 'bg-indigo-600 text-white hover:bg-indigo-700'
-             }`}
-           >
-             <Upload className="w-4 h-4" />
-             <span>Upload</span>
-           </button>
-           <input 
-             type="file" 
-             ref={fileInputRef} 
-             className="hidden" 
-             onChange={handleFileSelected} 
-           />
+        {/* Actions Row */}
+        <div className="flex items-center justify-between">
+          {/* File Type Filter */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setFilterType('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                filterType === 'all'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              All Files
+            </button>
+            <button
+              onClick={() => setFilterType('videos')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                filterType === 'videos'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Film className="w-3.5 h-3.5" />
+              Videos
+            </button>
+            <button
+              onClick={() => setFilterType('photos')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                filterType === 'photos'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Camera className="w-3.5 h-3.5" />
+              Photos
+            </button>
+            <button
+              onClick={() => setFilterType('documents')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                filterType === 'documents'
+                  ? 'bg-orange-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Documents
+            </button>
+            <button
+              onClick={() => setFilterType('strategies')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+                filterType === 'strategies'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              <Presentation className="w-3.5 h-3.5" />
+              Strategies
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="Search files..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none w-48"
+              />
+            </div>
+            <div className="h-8 w-px bg-slate-300 mx-2"></div>
+            <button 
+              onClick={() => setViewMode('grid')}
+              className={`p-2 rounded hover:bg-slate-200 ${viewMode === 'grid' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+            >
+              <Grid className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded hover:bg-slate-200 ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+            >
+              <List className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={handleUploadClick}
+              disabled={isReadOnly}
+              className={`ml-2 flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  isReadOnly 
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
+            >
+              <Upload className="w-4 h-4" />
+              <span>Upload</span>
+            </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleFileSelected} 
+            />
+          </div>
         </div>
       </div>
 
@@ -220,20 +461,33 @@ const FilesHub: React.FC<FilesHubProps> = ({
                  {filteredFolders.map(folder => (
                     <div 
                       key={folder.id}
-                      onClick={() => setCurrentFolderId(folder.id)}
-                      className={`p-4 border rounded-xl cursor-pointer transition-all group ${
-                          folder.isArchiveRoot 
+                      onClick={() => handleFolderClick(folder)}
+                      className={`relative p-4 border rounded-xl cursor-pointer transition-all group ${
+                          folder.folderType === 'archive' || folder.isArchiveRoot
                           ? 'bg-slate-100 border-slate-200 hover:bg-slate-200 hover:border-slate-300' 
                           : 'bg-slate-50 border-slate-100 hover:bg-indigo-50 hover:border-indigo-200'
                       }`}
                     >
-                       {folder.isArchiveRoot ? (
-                           <Archive className="w-8 h-8 text-slate-400 group-hover:text-slate-600 mb-2" />
-                       ) : (
-                           <Folder className="w-8 h-8 text-indigo-300 group-hover:text-indigo-500 mb-2" />
+                       {/* Delete Button (only for non-archive folders) */}
+                       {!isReadOnly && folder.folderType !== 'archive' && !folder.isArchiveRoot && (
+                         <button
+                           onClick={(e) => handleDeleteFolder(folder, e)}
+                           className="absolute top-2 right-2 p-1.5 bg-red-500/80 text-white rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-600 transition-all shadow-sm"
+                           title="Delete folder"
+                         >
+                           <Trash2 className="w-3 h-3" />
+                         </button>
                        )}
+                       <div className="mb-2">
+                         {getFolderIcon(folder)}
+                       </div>
                        <p className="text-sm font-medium text-slate-700 truncate">{folder.name}</p>
-                       <p className="text-xs text-slate-400">{files.filter(f => f.folderId === folder.id).length} files</p>
+                       <p className="text-xs text-slate-400">{folderFileCounts[folder.id] || 0} files</p>
+                       {folder.folderType && (
+                         <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded">
+                           {folder.folderType}
+                         </span>
+                       )}
                     </div>
                  ))}
               </div>
@@ -252,23 +506,34 @@ const FilesHub: React.FC<FilesHubProps> = ({
                  {filteredFiles.map(file => (
                     <div key={file.id} className="group relative bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-all">
                        <div className="aspect-square bg-slate-100 relative overflow-hidden flex items-center justify-center">
-                          {file.type.startsWith('image/') ? (
+                          {file.type.startsWith('image/') || file.category === 'image' ? (
                               <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                           ) : (
-                              getFileIcon(file.type)
+                              getFileIcon(file.type, file.category)
                           )}
                           
                           {/* Overlay Actions */}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2">
                              <button onClick={() => setPreviewFile(file)} className="p-2 bg-white/20 text-white rounded-full hover:bg-white/40 backdrop-blur-sm"><Eye className="w-4 h-4" /></button>
                              <button className="p-2 bg-white/20 text-white rounded-full hover:bg-white/40 backdrop-blur-sm"><Download className="w-4 h-4" /></button>
+                             {!isReadOnly && (
+                               <button onClick={(e) => { e.stopPropagation(); handleDeleteFile(file); }} className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600 backdrop-blur-sm"><Trash2 className="w-4 h-4" /></button>
+                             )}
                           </div>
                           
-                          {file.isDeliverable && (
-                              <div className="absolute top-2 right-2 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                          {/* Badges */}
+                          <div className="absolute top-2 right-2 flex flex-col gap-1">
+                            {file.isDeliverable && (
+                              <div className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full shadow-sm">
                                   FINAL
                               </div>
-                          )}
+                            )}
+                            {file.category && (
+                              <div className="px-2 py-0.5 bg-indigo-500 text-white text-[10px] font-bold rounded-full shadow-sm uppercase">
+                                  {file.category}
+                              </div>
+                            )}
+                          </div>
                           {file.isArchived && (
                               <div className="absolute top-2 left-2 px-2 py-0.5 bg-slate-600 text-white text-[10px] font-bold rounded-full shadow-sm flex items-center gap-1">
                                   <Archive className="w-3 h-3" /> ARCHIVED
@@ -309,12 +574,20 @@ const FilesHub: React.FC<FilesHubProps> = ({
                           return (
                              <tr key={file.id} className="hover:bg-slate-50 group">
                                 <td className="px-4 py-3 flex items-center space-x-3">
-                                   {getFileIcon(file.type)}
-                                   <span className="font-medium text-slate-700">{file.name}</span>
+                                   {getFileIcon(file.type, file.category)}
+                                   <div className="flex flex-col">
+                                     <span className="font-medium text-slate-700">{file.name}</span>
+                                     {file.originalName && file.originalName !== file.name && (
+                                       <span className="text-xs text-slate-400">Original: {file.originalName}</span>
+                                     )}
+                                   </div>
                                    {file.isDeliverable && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Final</span>}
+                                   {file.category && (
+                                     <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase">{file.category}</span>
+                                   )}
                                 </td>
                                 <td className="px-4 py-3 text-slate-500">{formatSize(file.size)}</td>
-                                <td className="px-4 py-3 text-slate-500 capitalize">{file.type.split('/')[1]}</td>
+                                <td className="px-4 py-3 text-slate-500 capitalize">{file.type.split('/')[1] || file.category || 'unknown'}</td>
                                 <td className="px-4 py-3">
                                    <div className="flex items-center space-x-2">
                                       {uploader && <img src={uploader.avatar} className="w-5 h-5 rounded-full" />}
@@ -326,7 +599,9 @@ const FilesHub: React.FC<FilesHubProps> = ({
                                    <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                       <button onClick={() => setPreviewFile(file)} className="text-slate-400 hover:text-indigo-600"><Eye className="w-4 h-4"/></button>
                                       <button className="text-slate-400 hover:text-indigo-600"><Download className="w-4 h-4"/></button>
-                                      <button onClick={() => onDelete(file.id)} className="text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4"/></button>
+                                      {!isReadOnly && (
+                                        <button onClick={() => handleDeleteFile(file)} className="text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4"/></button>
+                                      )}
                                    </div>
                                 </td>
                              </tr>

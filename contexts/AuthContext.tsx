@@ -11,7 +11,7 @@ import {
   updatePassword,
   getAuth
 } from 'firebase/auth';
-import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
 import bcrypt from 'bcryptjs';
 import { auth, db, firebaseConfig } from '../lib/firebase';
 import { User, UserRole, Department, RoleDefinition } from '../types';
@@ -77,28 +77,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    const fetchRoles = async () => {
-      try {
-        const rolesSnapshot = await getDocs(collection(db, 'roles'));
-        if (rolesSnapshot.empty) {
-          const batch = writeBatch(db);
-          DEFAULT_ROLES.forEach(role => {
-            const roleRef = doc(db, 'roles', role.id);
-            batch.set(roleRef, role);
-          });
-          await batch.commit();
-          setRoles(DEFAULT_ROLES);
-        } else {
-          setRoles(rolesSnapshot.docs.map(d => d.data() as RoleDefinition));
-        }
-      } catch (error) {
-        console.error('Error fetching roles:', error);
-        setRoles(DEFAULT_ROLES); // Fallback
+    const unsubscribeRoles = onSnapshot(collection(db, 'roles'), (snapshot) => {
+      if (snapshot.empty) {
+        const batch = writeBatch(db);
+        DEFAULT_ROLES.forEach(role => {
+          const roleRef = doc(db, 'roles', role.id);
+          batch.set(roleRef, role);
+        });
+        batch.commit().catch(console.error);
+        setRoles(DEFAULT_ROLES);
+      } else {
+        setRoles(snapshot.docs.map(d => d.data() as RoleDefinition));
       }
-    };
+    }, (error) => {
+      console.error('Error fetching roles:', error);
+      setRoles(DEFAULT_ROLES);
+    });
 
     checkExistingUsers();
-    fetchRoles();
+    // fetchRoles(); // Replaced by onSnapshot
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -161,7 +158,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      unsubscribeRoles();
+    };
   }, []);
 
   const login = async (email: string, password: string) => {

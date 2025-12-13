@@ -61,7 +61,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
   };
 
   const getActiveTaskCount = (userId: string) => {
-    return tasks.filter(t => t.assigneeIds.includes(userId) && t.status !== 'completed' && t.status !== 'archived').length;
+    return tasks.filter(t => (t.assigneeIds || []).includes(userId) && t.status !== 'completed' && t.status !== 'archived').length;
   };
 
     const handleCreateUser = async (e: React.FormEvent) => {
@@ -233,7 +233,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
       // Calculate workload stats
       const workloadData = users.map(u => {
           const active = getActiveTaskCount(u.id);
-          const completed = tasks.filter(t => t.assigneeIds.includes(u.id) && t.status === 'completed').length;
+          const completed = tasks.filter(t => (t.assigneeIds || []).includes(u.id) && t.status === 'completed').length;
           return { user: u, active, completed };
       }).sort((a, b) => b.active - a.active);
 
@@ -276,8 +276,8 @@ const TeamHub: React.FC<TeamHubProps> = ({
   const PerformanceView = () => {
       // Mock performance calculation
       const performanceData = users.map(u => {
-           const totalAssigned = tasks.filter(t => t.assigneeIds.includes(u.id)).length;
-           const completed = tasks.filter(t => t.assigneeIds.includes(u.id) && t.status === 'completed').length;
+           const totalAssigned = tasks.filter(t => (t.assigneeIds || []).includes(u.id)).length;
+           const completed = tasks.filter(t => (t.assigneeIds || []).includes(u.id) && t.status === 'completed').length;
            const completionRate = totalAssigned > 0 ? Math.round((completed / totalAssigned) * 100) : 0;
            // Mock on-time rate based on user ID for variety
            const onTimeRate = 70 + (parseInt(u.id.replace('u','')) * 5) % 30; 

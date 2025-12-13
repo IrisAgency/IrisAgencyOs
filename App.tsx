@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, NOTIFICATIONS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES } from './constants';
-import { Task, Project, Invoice, ProductionAsset, TaskStatus, User, Client, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate } from './types';
+import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, NOTIFICATIONS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS } from './constants';
+import { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -16,13 +16,24 @@ import FilesHub from './components/FilesHub';
 import VendorsHub from './components/VendorsHub'; 
 import NotificationsHub from './components/NotificationsHub';
 import AdminHub from './components/AdminHub';
+import PostingHub from './components/PostingHub';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import { useAuth } from './contexts/AuthContext';
 import { X, Bell } from 'lucide-react';
 import { useFirestoreCollection } from './hooks/useFirestore';
 import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
-import { db } from './lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from './lib/firebase';
+import { archiveTask } from './utils/archiveUtils';
+import { 
+  createClientFolderStructure, 
+  createProjectFolder, 
+  createTaskFolder, 
+  categorizeFileType, 
+  generateFileName, 
+  getDestinationFolder 
+} from './utils/folderUtils';
 
 // Helper hook for LocalStorage persistence
 function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -40,15 +51,23 @@ function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<Rea
 
 const App: React.FC = () => {
   const [activeView, setActiveView] = useState('dashboard');
+  const [targetProjectId, setTargetProjectId] = useState<string | null>(null);
+  const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
   const [isAIOpen, setIsAIOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{title: string, message: string} | null>(null);
   
   // -- Application State (Persisted) --
   const { currentUser: user, loading, logout, checkPermission } = useAuth();
   const [tasks] = useFirestoreCollection<Task>('tasks', TASKS); 
+  const activeTasks = tasks.filter(t => !t.isDeleted);
   const [projects] = useFirestoreCollection<Project>('projects', PROJECTS);
   const [users] = useFirestoreCollection<User>('users', USERS);
   const [clients] = useFirestoreCollection<Client>('clients', CLIENTS);
+  const [clientSocialLinks] = useFirestoreCollection<ClientSocialLink>('client_social_links', CLIENT_SOCIAL_LINKS);
+  const [clientNotes] = useFirestoreCollection<ClientNote>('client_notes', CLIENT_NOTES);
+  const [clientMeetings] = useFirestoreCollection<ClientMeeting>('client_meetings', CLIENT_MEETINGS);
+  const [clientBrandAssets] = useFirestoreCollection<ClientBrandAsset>('client_brand_assets', CLIENT_BRAND_ASSETS);
   
   // Finance State
   const [invoices] = useFirestoreCollection<Invoice>('invoices', INVOICES);
@@ -60,6 +79,10 @@ const App: React.FC = () => {
   const [projectMembers] = useFirestoreCollection<ProjectMember>('project_members', PROJECT_MEMBERS);
   const [projectMilestones] = useFirestoreCollection<ProjectMilestone>('project_milestones', PROJECT_MILESTONES);
   const [projectLogs] = useFirestoreCollection<ProjectActivityLog>('project_activity_logs', PROJECT_ACTIVITY_LOGS);
+  const [projectMarketingAssets] = useFirestoreCollection<ProjectMarketingAsset>('project_marketing_assets', PROJECT_MARKETING_ASSETS);
+
+  // Social Media State
+  const [socialPosts] = useFirestoreCollection<SocialPost>('social_posts', SOCIAL_POSTS);
 
   // Task Related State
   const [taskComments] = useFirestoreCollection<TaskComment>('task_comments', TASK_COMMENTS);
@@ -102,6 +125,7 @@ const App: React.FC = () => {
   const [systemRoles] = useFirestoreCollection<RoleDefinition>('roles', DEFAULT_ROLES);
   const [auditLogs] = useFirestoreCollection<AuditLog>('audit_logs', AUDIT_LOGS);
   const [workflowTemplates] = useFirestoreCollection<WorkflowTemplate>('workflow_templates', WORKFLOW_TEMPLATES);
+  const [departments] = useFirestoreCollection<DepartmentDefinition>('departments', []);
   
   const [appBranding] = useState<AppBranding>(DEFAULT_BRANDING);
   const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -135,6 +159,11 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleNavigateToTask = (taskId: string) => {
+    setTargetTaskId(taskId);
+    setActiveView('tasks');
   };
 
   // Notification Logic
@@ -180,6 +209,22 @@ const App: React.FC = () => {
   // -- Task Handlers --
   const handleAddTask = async (newTask: Task) => {
     await setDoc(doc(db, 'tasks', newTask.id), newTask);
+    
+    // Auto-create task folder
+    try {
+      const project = projects.find(p => p.id === newTask.projectId);
+      if (project) {
+        await createTaskFolder(
+          newTask.id,
+          newTask.title,
+          newTask.projectId,
+          project.clientId
+        );
+      }
+    } catch (error) {
+      console.error('Error creating task folder:', error);
+    }
+    
     const log: TaskActivityLog = {
        id: `tal${Date.now()}`, taskId: newTask.id, userId: user!.id, type: 'status_change', message: 'Task created', createdAt: new Date().toISOString()
     };
@@ -286,18 +331,208 @@ const App: React.FC = () => {
       await setDoc(doc(db, 'client_approvals', newCA.id), newCA);
   };  // -- File Handlers --
   const handleUploadFile = async (file: AgencyFile) => {
-      // Mock upload for now since Storage is disabled
-      let fileUrl = file.url || 'https://picsum.photos/800/600';
-      
-      const fileToSave = { ...file, url: fileUrl };
-      delete (fileToSave as any).file;
+      try {
+          // Show upload starting toast
+          setToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+          
+          let fileUrl = file.url;
+          
+          // Check if we have a raw file object to upload
+          const rawFile = (file as any).file;
 
-      await setDoc(doc(db, 'files', file.id), fileToSave);
-      handleNotify('system', 'File Uploaded', `${file.name} was uploaded successfully (Mock).`);
+          if (rawFile) {
+              // Find associated entities for organized storage
+              const project = projects.find(p => p.id === file.projectId);
+              const client = project ? clients.find(c => c.id === project.clientId) : null;
+              
+              // Build organized storage path: clients/{clientId}/projects/{projectId}/assets/{fileName}
+              const clientId = client?.id || 'unknown-client';
+              const projectId = file.projectId || 'unknown-project';
+              const storagePath = `clients/${clientId}/projects/${projectId}/assets/${file.id}_${rawFile.name}`;
+              
+              console.log('Uploading file to:', storagePath);
+              
+              const storageRef = ref(storage, storagePath);
+              const snapshot = await uploadBytes(storageRef, rawFile);
+              fileUrl = await getDownloadURL(snapshot.ref);
+              
+              console.log('File uploaded successfully, URL:', fileUrl);
+          } else if (!fileUrl) {
+               // Fallback if no file and no URL
+               fileUrl = 'https://picsum.photos/800/600';
+          }
+          
+          // Categorize file type
+          const category = categorizeFileType(file.name, file.type);
+          
+          // Find associated entities
+          const project = projects.find(p => p.id === file.projectId);
+          const task = file.taskId ? activeTasks.find(t => t.id === file.taskId) : null;
+          const client = project ? clients.find(c => c.id === project.clientId) : null;
+          
+          // Generate standardized file name if we have context
+          let finalFileName = file.name;
+          if (client && task) {
+            const clientCode = client.name.substring(0, 3).toUpperCase();
+            finalFileName = generateFileName(file.name, clientCode, task.title, file.version);
+          }
+          
+          // Determine destination folder intelligently
+          let destinationFolder = file.folderId;
+          if (!destinationFolder && client) {
+            destinationFolder = await getDestinationFolder(
+              category,
+              file.taskId || undefined,
+              file.projectId,
+              client.id
+            );
+          }
+          
+          const fileToSave = { 
+            ...file, 
+            url: fileUrl,
+            category,
+            originalName: file.name,
+            name: finalFileName,
+            folderId: destinationFolder,
+            clientId: client?.id || null
+          };
+          
+          // Remove the raw file object before saving to Firestore
+          delete (fileToSave as any).file;
+
+          console.log('Saving file to Firestore:', fileToSave);
+          
+          await setDoc(doc(db, 'files', file.id), fileToSave);
+          
+          setToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+          handleNotify('system', 'File Uploaded', `${file.name} was uploaded successfully to ${task ? task.title : 'project'}.`);
+      } catch (error: any) {
+          console.error("Error uploading file:", error);
+          console.error("Error details:", error.message, error.code);
+          setToast({ 
+            title: 'Upload Failed', 
+            message: error.message || 'Failed to upload file to storage. Please check permissions.' 
+          });
+      }
   };
   
   const handleCreateFolder = async (folder: FileFolder) => {
       await setDoc(doc(db, 'folders', folder.id), folder);
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+      try {
+          const folder = folders.find(f => f.id === folderId);
+          if (!folder) {
+              setToast({ title: 'Error', message: 'Folder not found.' });
+              return;
+          }
+
+          // Check if folder has subfolders
+          const hasSubfolders = folders.some(f => f.parentId === folderId);
+          // Check if folder has files
+          const folderFiles = files.filter(f => f.folderId === folderId);
+          const hasFiles = folderFiles.length > 0;
+
+          // Build confirmation message
+          let confirmMessage = `Are you sure you want to delete the folder "${folder.name}"?\n\n`;
+          
+          if (hasSubfolders || hasFiles) {
+              confirmMessage += '⚠️ Warning: This folder contains:\n';
+              if (hasSubfolders) confirmMessage += '• Subfolders\n';
+              if (hasFiles) confirmMessage += `• ${folderFiles.length} file(s)\n`;
+              confirmMessage += '\nAll contents will be permanently deleted!\n\n';
+          }
+          
+          confirmMessage += 'This action CANNOT be undone.';
+
+          if (!window.confirm(confirmMessage)) {
+              return;
+          }
+
+          const batch = writeBatch(db);
+
+          // Delete all files in this folder
+          const filesQuery = query(collection(db, 'files'), where('folderId', '==', folderId));
+          const filesSnapshot = await getDocs(filesQuery);
+          filesSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // Delete all subfolders recursively
+          const deleteSubfolders = async (parentId: string, batchRef: any) => {
+              const subfoldersQuery = query(collection(db, 'folders'), where('parentId', '==', parentId));
+              const subfoldersSnapshot = await getDocs(subfoldersQuery);
+              
+              for (const subfolderDoc of subfoldersSnapshot.docs) {
+                  // Recursively delete children
+                  await deleteSubfolders(subfolderDoc.id, batchRef);
+                  
+                  // Delete files in subfolder
+                  const subFilesQuery = query(collection(db, 'files'), where('folderId', '==', subfolderDoc.id));
+                  const subFilesSnapshot = await getDocs(subFilesQuery);
+                  subFilesSnapshot.docs.forEach(fileDoc => {
+                      batchRef.delete(fileDoc.ref);
+                  });
+                  
+                  // Delete the subfolder itself
+                  batchRef.delete(subfolderDoc.ref);
+              }
+          };
+
+          await deleteSubfolders(folderId, batch);
+
+          // Delete the folder itself
+          batch.delete(doc(db, 'folders', folderId));
+
+          await batch.commit();
+
+          addAuditLog('delete', 'Folder', folderId, 
+              `Deleted folder "${folder.name}" and all its contents (${folderFiles.length} files)`);
+          setToast({ 
+              title: 'Success', 
+              message: `Folder "${folder.name}" and all contents deleted successfully.` 
+          });
+      } catch (error) {
+          console.error("Error deleting folder:", error);
+          setToast({ title: 'Error', message: 'Failed to delete folder.' });
+      }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+      try {
+          const file = files.find(f => f.id === fileId);
+          if (!file) {
+              setToast({ title: 'Error', message: 'File not found.' });
+              return;
+          }
+
+          // Delete from Firestore
+          await deleteDoc(doc(db, 'files', fileId));
+
+          // Optionally: Delete from Firebase Storage (if using real storage)
+          // const storageRef = ref(storage, file.url);
+          // await deleteObject(storageRef);
+
+          // Log activity
+          if (file.projectId && user) {
+              const log: ProjectActivityLog = {
+                  id: `log${Date.now()}`,
+                  projectId: file.projectId,
+                  userId: user.id,
+                  type: 'file_upload',
+                  message: `Deleted file: ${file.name}`,
+                  createdAt: new Date().toISOString()
+              };
+              await setDoc(doc(db, 'project_activity_logs', log.id), log);
+          }
+
+          handleNotify('system', 'File Deleted', `${file.name} has been deleted.`);
+      } catch (error) {
+          console.error("Error deleting file:", error);
+          setToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
+      }
   };
 
   // -- Production Handlers --
@@ -377,7 +612,21 @@ const App: React.FC = () => {
 
   const handleAddProject = async (newProject: Project) => {
     await setDoc(doc(db, 'projects', newProject.id), newProject);
+    
+    // Auto-create project folder structure
+    try {
+      await createProjectFolder(
+        newProject.id, 
+        newProject.name, 
+        newProject.clientId,
+        newProject.code
+      );
+    } catch (error) {
+      console.error('Error creating project folders:', error);
+    }
+    
     if(user) {
+        // 1. Log Activity
         const log: ProjectActivityLog = {
             id: `log${Date.now()}`,
             projectId: newProject.id,
@@ -387,6 +636,29 @@ const App: React.FC = () => {
             createdAt: new Date().toISOString()
         };
         await setDoc(doc(db, 'project_activity_logs', log.id), log);
+
+        // 2. Add Creator as Project Member (Project Lead)
+        const member: ProjectMember = {
+            id: `pm${Date.now()}`,
+            projectId: newProject.id,
+            userId: user.id,
+            roleInProject: 'Project Lead',
+            isExternal: false
+        };
+        await setDoc(doc(db, 'project_members', member.id), member);
+
+        // 3. Add Assigned Manager if different from creator
+        if (newProject.accountManagerId && newProject.accountManagerId !== user.id) {
+             const managerMember: ProjectMember = {
+                id: `pm${Date.now()}_mgr`,
+                projectId: newProject.id,
+                userId: newProject.accountManagerId,
+                roleInProject: 'Account Manager',
+                isExternal: false
+            };
+            await setDoc(doc(db, 'project_members', managerMember.id), managerMember);
+        }
+
         handleNotify('system', 'Project Created', `Project "${newProject.name}" is now active.`);
     }
   };
@@ -437,12 +709,234 @@ const App: React.FC = () => {
     }
   };
 
+  const handleAddProjectMarketingAsset = async (asset: ProjectMarketingAsset) => {
+      await setDoc(doc(db, 'project_marketing_assets', asset.id), asset);
+      handleNotify('system', 'Marketing Asset Added', `Added ${asset.name} to project strategy.`);
+  };
+
+  const handleUpdateProjectMarketingAsset = async (asset: ProjectMarketingAsset) => {
+      await updateDoc(doc(db, 'project_marketing_assets', asset.id), asset as any);
+  };
+
+  const handleDeleteProjectMarketingAsset = async (assetId: string) => {
+      await deleteDoc(doc(db, 'project_marketing_assets', assetId));
+  };
+
+  const handleDeleteProject = async (projectId: string) => {
+      try {
+          const project = projects.find(p => p.id === projectId);
+          if (!project) {
+              setToast({ title: 'Error', message: 'Project not found.' });
+              return;
+          }
+
+          const confirmMessage = `Are you sure you want to delete the project "${project.name}"?\n\n` +
+              `⚠️ Warning: This will permanently delete:\n` +
+              `• The project\n` +
+              `• All linked tasks\n` +
+              `• All project files and folders\n` +
+              `• All milestones and activity logs\n` +
+              `• All project members and assignments\n\n` +
+              `This action CANNOT be undone!`;
+
+          if (!window.confirm(confirmMessage)) {
+              return;
+          }
+
+          const batch = writeBatch(db);
+
+          // 1. Delete the project
+          batch.delete(doc(db, 'projects', projectId));
+
+          // 2. Delete all tasks linked to this project
+          const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
+          const tasksSnapshot = await getDocs(tasksQuery);
+          tasksSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 3. Delete all project folders
+          const foldersQuery = query(collection(db, 'folders'), where('projectId', '==', projectId));
+          const foldersSnapshot = await getDocs(foldersQuery);
+          foldersSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 4. Delete all project files
+          const filesQuery = query(collection(db, 'files'), where('projectId', '==', projectId));
+          const filesSnapshot = await getDocs(filesQuery);
+          filesSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 5. Delete project milestones
+          const milestonesQuery = query(collection(db, 'project_milestones'), where('projectId', '==', projectId));
+          const milestonesSnapshot = await getDocs(milestonesQuery);
+          milestonesSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 6. Delete project members
+          const membersQuery = query(collection(db, 'project_members'), where('projectId', '==', projectId));
+          const membersSnapshot = await getDocs(membersQuery);
+          membersSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 7. Delete project activity logs
+          const logsQuery = query(collection(db, 'project_activity_logs'), where('projectId', '==', projectId));
+          const logsSnapshot = await getDocs(logsQuery);
+          logsSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 8. Delete project marketing assets
+          const assetsQuery = query(collection(db, 'project_marketing_assets'), where('projectId', '==', projectId));
+          const assetsSnapshot = await getDocs(assetsQuery);
+          assetsSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          // 9. Delete freelancer assignments
+          const assignmentsQuery = query(collection(db, 'freelancer_assignments'), where('projectId', '==', projectId));
+          const assignmentsSnapshot = await getDocs(assignmentsQuery);
+          assignmentsSnapshot.docs.forEach(docSnap => {
+              batch.delete(docSnap.ref);
+          });
+
+          await batch.commit();
+
+          addAuditLog('delete', 'Project', projectId, 
+              `Deleted project "${project.name}" and all associated data (${tasksSnapshot.docs.length} tasks, ${filesSnapshot.docs.length} files)`);
+          setToast({ 
+              title: 'Success', 
+              message: `Project "${project.name}" and all related data deleted successfully.` 
+          });
+      } catch (error) {
+          console.error("Error deleting project:", error);
+          setToast({ title: 'Error', message: 'Failed to delete project.' });
+      }
+  };
+
+  // -- Social Media Handlers --
+  const handleAddSocialPost = async (post: SocialPost) => {
+      await setDoc(doc(db, 'social_posts', post.id), post);
+  };
+
+  const handleUpdateSocialPost = async (post: SocialPost) => {
+      await updateDoc(doc(db, 'social_posts', post.id), post as any);
+  };
+
+  const handleArchiveTask = async (task: Task) => {
+      if (!user) return;
+      await archiveTask(task, user.id);
+      handleNotify('system', 'Task Archived', `Task "${task.title}" has been archived.`);
+  };
+
   const handleAddClient = async (newClient: Client) => {
     await setDoc(doc(db, 'clients', newClient.id), newClient);
+    
+    // Auto-create client folder structure
+    try {
+      await createClientFolderStructure(newClient.id, newClient.name);
+      handleNotify('system', 'Client Added', `Client "${newClient.name}" created with folder structure.`);
+    } catch (error) {
+      console.error('Error creating client folders:', error);
+      handleNotify('system', 'Client Added', `Client created but folder setup failed.`);
+    }
   };
 
   const handleUpdateClient = async (updatedClient: Client) => {
     await updateDoc(doc(db, 'clients', updatedClient.id), updatedClient as any);
+  };
+
+  const handleAddSocialLink = async (link: ClientSocialLink) => {
+    await setDoc(doc(db, 'client_social_links', link.id), link);
+  };
+
+  const handleUpdateSocialLink = async (link: ClientSocialLink) => {
+    await updateDoc(doc(db, 'client_social_links', link.id), link as any);
+  };
+
+  const handleDeleteSocialLink = async (linkId: string) => {
+    await deleteDoc(doc(db, 'client_social_links', linkId));
+  };
+
+  const handleAddClientNote = async (note: ClientNote) => {
+    await setDoc(doc(db, 'client_notes', note.id), note);
+  };
+
+  const handleUpdateClientNote = async (note: ClientNote) => {
+    await updateDoc(doc(db, 'client_notes', note.id), note as any);
+  };
+
+  const handleDeleteClientNote = async (noteId: string) => {
+    await deleteDoc(doc(db, 'client_notes', noteId));
+  };
+
+  const handleAddClientMeeting = async (meeting: ClientMeeting) => {
+    // 1. Ensure Client Meetings Root Folder
+    let meetingsRoot = folders.find(f => f.clientId === meeting.clientId && f.name === 'Meetings' && f.isArchiveRoot === false);
+    
+    if (!meetingsRoot) {
+        const newRootId = `f_meetings_${meeting.clientId}`;
+        meetingsRoot = {
+            id: newRootId,
+            clientId: meeting.clientId,
+            projectId: null,
+            parentId: null,
+            name: 'Meetings',
+            isArchiveRoot: false,
+            isTaskArchiveFolder: false,
+            isProjectArchiveFolder: false,
+            isMeetingFolder: false,
+            meetingId: null
+        };
+        await setDoc(doc(db, 'folders', newRootId), meetingsRoot);
+    }
+
+    // 2. Create Folder for this Meeting
+    const meetingFolderId = `f_mtg_${meeting.id}`;
+    const meetingDate = new Date(meeting.date).toISOString().split('T')[0];
+    const meetingFolder: FileFolder = {
+        id: meetingFolderId,
+        clientId: meeting.clientId,
+        projectId: null,
+        parentId: meetingsRoot.id,
+        name: `${meetingDate} – ${meeting.title}`,
+        isArchiveRoot: false,
+        isTaskArchiveFolder: false,
+        isProjectArchiveFolder: false,
+        isMeetingFolder: true,
+        meetingId: meeting.id
+    };
+    await setDoc(doc(db, 'folders', meetingFolderId), meetingFolder);
+
+    // 3. Save Meeting with folderId
+    const meetingWithFolder = { ...meeting, meetingFolderId };
+    await setDoc(doc(db, 'client_meetings', meeting.id), meetingWithFolder);
+    
+    handleNotify('system', 'Meeting Scheduled', `Meeting "${meeting.title}" has been scheduled.`);
+  };
+
+  const handleUpdateClientMeeting = async (meeting: ClientMeeting) => {
+    await updateDoc(doc(db, 'client_meetings', meeting.id), meeting as any);
+  };
+
+  const handleDeleteClientMeeting = async (meetingId: string) => {
+    await deleteDoc(doc(db, 'client_meetings', meetingId));
+  };
+
+  const handleAddBrandAsset = async (asset: ClientBrandAsset) => {
+    await setDoc(doc(db, 'client_brand_assets', asset.id), asset);
+  };
+
+  const handleUpdateBrandAsset = async (asset: ClientBrandAsset) => {
+    await updateDoc(doc(db, 'client_brand_assets', asset.id), asset as any);
+  };
+
+  const handleDeleteBrandAsset = async (assetId: string) => {
+    await deleteDoc(doc(db, 'client_brand_assets', assetId));
   };
 
   const handleDeleteClient = async (clientId: string) => {
@@ -500,10 +994,81 @@ const App: React.FC = () => {
         batch.delete(doc.ref);
       });
 
+      // 7. Delete Social Links
+      const socialLinksQuery = query(collection(db, 'client_social_links'), where('clientId', '==', clientId));
+      const socialLinksSnapshot = await getDocs(socialLinksQuery);
+      socialLinksSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // 8. Delete Client Notes
+      const notesQuery = query(collection(db, 'client_notes'), where('clientId', '==', clientId));
+      const notesSnapshot = await getDocs(notesQuery);
+      notesSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
+      // 9. Delete Client Meetings
+      const meetingsQuery = query(collection(db, 'client_meetings'), where('clientId', '==', clientId));
+      const meetingsSnapshot = await getDocs(meetingsQuery);
+      meetingsSnapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+
       await batch.commit();
       
-      addAuditLog('delete', 'Client', clientId, `Deleted client and all associated data`);
-      setToast({ title: 'Success', message: 'Client and all associated data deleted successfully.' });
+      // Ask if user wants to delete client folders and files from Assets Management
+      const deleteAssets = window.confirm(
+        'Do you also want to delete all folders and files for this client from Assets Management?\n\n' +
+        '⚠️ This will permanently delete:\n' +
+        '• All client folders\n' +
+        '• All uploaded files (videos, photos, documents, etc.)\n' +
+        '• All project and task folders\n\n' +
+        'This action CANNOT be undone!\n\n' +
+        'Click OK to delete folders and files, or Cancel to keep them.'
+      );
+
+      if (deleteAssets) {
+        try {
+          const assetBatch = writeBatch(db);
+          let deletedFolders = 0;
+          let deletedFiles = 0;
+
+          // 10. Delete all folders associated with this client
+          const foldersQuery = query(collection(db, 'folders'), where('clientId', '==', clientId));
+          const foldersSnapshot = await getDocs(foldersQuery);
+          foldersSnapshot.docs.forEach((doc) => {
+            assetBatch.delete(doc.ref);
+            deletedFolders++;
+          });
+
+          // 11. Delete all files associated with this client
+          const filesQuery = query(collection(db, 'files'), where('clientId', '==', clientId));
+          const filesSnapshot = await getDocs(filesQuery);
+          filesSnapshot.docs.forEach((doc) => {
+            assetBatch.delete(doc.ref);
+            deletedFiles++;
+          });
+
+          await assetBatch.commit();
+          
+          addAuditLog('delete', 'Client Assets', clientId, 
+            `Deleted client and all associated data including ${deletedFolders} folders and ${deletedFiles} files from Assets Management`);
+          setToast({ 
+            title: 'Success', 
+            message: `Client deleted successfully. Removed ${deletedFolders} folders and ${deletedFiles} files from Assets Management.` 
+          });
+        } catch (assetError) {
+          console.error("Error deleting client assets:", assetError);
+          setToast({ 
+            title: 'Warning', 
+            message: 'Client data deleted, but some assets may remain. Please check Assets Management.' 
+          });
+        }
+      } else {
+        addAuditLog('delete', 'Client', clientId, `Deleted client and all associated data (kept assets)`);
+        setToast({ title: 'Success', message: 'Client deleted successfully. Assets Management files were kept.' });
+      }
 
     } catch (error) {
       console.error("Error deleting client:", error);
@@ -511,7 +1076,6 @@ const App: React.FC = () => {
     }
   };
 
-  // -- Admin Handlers --
   const addAuditLog = async (action: string, entityType: string, entityId: string | null, description: string) => {
      if (!user) return;
      const newLog: AuditLog = {
@@ -552,68 +1116,275 @@ const App: React.FC = () => {
   };
 
   const handleUpdateWorkflow = async (wf: WorkflowTemplate) => {
+    try {
       await updateDoc(doc(db, 'workflow_templates', wf.id), wf as any);
-      await addAuditLog('update_workflow', 'WorkflowTemplate', wf.id, `Updated workflow ${wf.name}`);
+      setToast({ title: 'Success', message: 'Workflow updated successfully' });
+    } catch (error) {
+      console.error("Error updating workflow:", error);
+      setToast({ title: 'Error', message: 'Failed to update workflow' });
+    }
   };
 
   const handleAddWorkflow = async (wf: WorkflowTemplate) => {
       await setDoc(doc(db, 'workflow_templates', wf.id), wf);
-      await addAuditLog('create_workflow', 'WorkflowTemplate', wf.id, `Created workflow ${wf.name}`);
+      setToast({ title: 'Success', message: 'Workflow created successfully' });
   };
 
   const handleDeleteWorkflow = async (wfId: string) => {
       await deleteDoc(doc(db, 'workflow_templates', wfId));
-      await addAuditLog('delete_workflow', 'WorkflowTemplate', wfId, `Deleted workflow ${wfId}`);
+      setToast({ title: 'Success', message: 'Workflow deleted successfully' });
   };
 
-  // -- Permission-Based Data Scoping --
+    // -- Department Handlers --
+    const handleAddDepartment = async (dept: DepartmentDefinition) => {
+      await setDoc(doc(db, 'departments', dept.id), dept);
+      await addAuditLog('create_department', 'Department', dept.id, `Created department ${dept.name}`);
+      setToast({ title: 'Success', message: `Department "${dept.name}" created.` });
+    };
+
+    const handleUpdateDepartment = async (dept: DepartmentDefinition) => {
+      await updateDoc(doc(db, 'departments', dept.id), dept as any);
+      await addAuditLog('update_department', 'Department', dept.id, `Updated department ${dept.name}`);
+      setToast({ title: 'Success', message: `Department "${dept.name}" updated.` });
+    };
+
+    const handleDeleteDepartment = async (deptId: string) => {
+      await deleteDoc(doc(db, 'departments', deptId));
+      await addAuditLog('delete_department', 'Department', deptId, `Deleted department ${deptId}`);
+      setToast({ title: 'Success', message: 'Department deleted.' });
+    };
+
   const getVisibleTasks = () => {
-      if (!user) return [];
-      // Filter out soft-deleted tasks
-      const activeTasks = tasks.filter(t => !t.isDeleted);
-      
       if (checkPermission('tasks.view_all')) return activeTasks;
-      if (checkPermission('tasks.view_own')) {
-          return activeTasks.filter(t => t.assigneeIds.includes(user.id) || t.createdBy === user.id);
-      }
-      return [];
+      return activeTasks.filter(t => {
+          if (!t) return false;
+          const assignees = t.assigneeIds;
+          const isAssigned = Array.isArray(assignees) && assignees.includes(user?.id || '');
+          const isCreator = t.createdBy === user?.id;
+          return isAssigned || isCreator;
+      });
   };
 
   const getVisibleProjects = () => {
-      if (!user) return [];
       if (checkPermission('projects.view_all')) return projects;
-      if (checkPermission('projects.view_own')) {
-          return projects.filter(p => 
-              p.accountManagerId === user.id || 
-              projectMembers.some(pm => pm.projectId === p.id && pm.userId === user.id)
-          );
-      }
-      return [];
+      
+      // Get projects where user is a member, manager, or has assigned tasks
+      return projects.filter(p => 
+          projectMembers.some(m => m.projectId === p.id && m.userId === user?.id) ||
+          p.accountManagerId === user?.id ||
+          p.projectManagerId === user?.id ||
+          activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(user?.id || ''))
+      );
   };
 
   const getVisibleFiles = () => {
-      if (!user) return [];
-      if (checkPermission('files.view_all')) return files;
-      if (checkPermission('files.view_own')) {
-          return files.filter(f => f.uploaderId === user.id);
+      return files; 
+  };
+
+  const handleSyncRoles = async () => {
+    try {
+      const batch = writeBatch(db);
+      for (const defaultRole of DEFAULT_ROLES) {
+        const roleRef = doc(db, 'roles', defaultRole.id);
+        batch.set(roleRef, defaultRole, { merge: true });
       }
-      return [];
+      await batch.commit();
+      setToast({ title: 'Success', message: 'System roles synchronized successfully.' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      console.error("Error syncing roles:", error);
+      setToast({ title: 'Error', message: 'Failed to sync roles.' });
+    }
+  };
+
+  const handleOpenProject = (projectId: string) => {
+      setTargetProjectId(projectId);
+      setActiveView('projects');
+  };
+
+  const handleArchiveProject = async (projectId: string) => {
+    if (!user) return;
+    if (!checkPermission('projects.archive')) {
+       setToast({ title: 'Access Denied', message: 'You do not have permission to archive projects.' });
+       return;
+    }
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project || project.isArchived) return;
+
+    if (!confirm(`Are you sure you want to archive project "${project.name}"?`)) return;
+
+    try {
+        // 1. Mark project as archived
+        const updatedProject = {
+            ...project,
+            isArchived: true,
+            archivedAt: new Date().toISOString(),
+            archivedBy: user.id,
+            status: 'Completed' as const
+        };
+        await updateDoc(doc(db, 'projects', projectId), updatedProject as any);
+
+        // 2. Ensure Archive Root Folder for Client
+        let archiveRoot = folders.find(f => f.clientId === project.clientId && f.isArchiveRoot);
+        if (!archiveRoot) {
+            const newRootId = `f_archive_${project.clientId}`;
+            archiveRoot = {
+                id: newRootId,
+                clientId: project.clientId,
+                projectId: null,
+                parentId: null,
+                name: 'Archive',
+                isArchiveRoot: true,
+                isTaskArchiveFolder: false,
+                isProjectArchiveFolder: false
+            };
+            await setDoc(doc(db, 'folders', newRootId), archiveRoot);
+        }
+
+        // 3. Create Project Archive Folder
+        const projectArchiveFolderId = `f_proj_arch_${projectId}`;
+        const projectArchiveFolder: FileFolder = {
+            id: projectArchiveFolderId,
+            clientId: project.clientId,
+            projectId: projectId,
+            parentId: archiveRoot.id,
+            name: `[Archived] ${project.name}`,
+            isArchiveRoot: false,
+            isTaskArchiveFolder: false,
+            isProjectArchiveFolder: true
+        };
+        await setDoc(doc(db, 'folders', projectArchiveFolderId), projectArchiveFolder);
+
+        // 4. Move Project Files
+        const projectFiles = files.filter(f => f.projectId === projectId);
+        const batch = writeBatch(db);
+        
+        projectFiles.forEach(file => {
+            const fileRef = doc(db, 'files', file.id);
+            batch.update(fileRef, {
+                folderId: projectArchiveFolderId,
+                isArchived: true,
+                archivedAt: new Date().toISOString(),
+                archivedBy: user.id
+            });
+        });
+        
+        await batch.commit();
+
+        setToast({ title: 'Project Archived', message: `${project.name} has been archived successfully.` });
+
+    } catch (error) {
+        console.error("Error archiving project:", error);
+        setToast({ title: 'Error', message: 'Failed to archive project.' });
+    }
+  };
+
+  const handleUnarchiveProject = async (projectId: string) => {
+    if (!user) return;
+    if (!checkPermission('projects.archive')) {
+       setToast({ title: 'Access Denied', message: 'You do not have permission to unarchive projects.' });
+       return;
+    }
+
+    const project = projects.find(p => p.id === projectId);
+    if (!project || !project.isArchived) return;
+
+    if (!confirm(`Are you sure you want to unarchive project "${project.name}"?`)) return;
+
+    try {
+        // 1. Mark project as unarchived
+        const updatedProject = {
+            ...project,
+            isArchived: false,
+            archivedAt: null,
+            archivedBy: null,
+            status: 'active' as const // Reset to active
+        };
+        await updateDoc(doc(db, 'projects', projectId), updatedProject as any);
+
+        // 2. Find Project Archive Folder and Rename (remove [Archived])
+        const projectArchiveFolder = folders.find(f => f.projectId === projectId && f.isProjectArchiveFolder);
+        if (projectArchiveFolder) {
+            const newName = projectArchiveFolder.name.replace('[Archived] ', '');
+            await updateDoc(doc(db, 'folders', projectArchiveFolder.id), { name: newName });
+        }
+
+        // 3. Mark Files as Unarchived
+        const projectFiles = files.filter(f => f.projectId === projectId && f.isArchived);
+        const batch = writeBatch(db);
+        
+        projectFiles.forEach(file => {
+            const fileRef = doc(db, 'files', file.id);
+            batch.update(fileRef, {
+                isArchived: false,
+                archivedAt: null,
+                archivedBy: null
+            });
+        });
+        
+        await batch.commit();
+
+        setToast({ title: 'Project Unarchived', message: `${project.name} has been restored to active projects.` });
+
+    } catch (error) {
+        console.error("Error unarchiving project:", error);
+        setToast({ title: 'Error', message: 'Failed to unarchive project.' });
+    }
   };
 
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard tasks={getVisibleTasks()} projects={getVisibleProjects()} />;
+        return (
+          <Dashboard 
+            tasks={getVisibleTasks()} 
+            projects={getVisibleProjects()} 
+            users={activeUsers}
+            clients={clients}
+            socialPosts={socialPosts}
+            timeLogs={taskTimeLogs}
+            currentUser={user}
+            meetings={clientMeetings}
+          />
+        );
       case 'clients':
         return (
           <ClientsHub 
             clients={clients} 
             projects={getVisibleProjects()} 
+            tasks={activeTasks}
+            milestones={projectMilestones}
             invoices={invoices}
+            socialLinks={clientSocialLinks}
+            notes={clientNotes}
+            meetings={clientMeetings}
+            brandAssets={clientBrandAssets}
+            files={getVisibleFiles()}
+            folders={folders}
+            users={activeUsers}
             accountManagers={activeUsers.filter(u => u.department === 'Accounts' || u.department === 'Management')}
             onAddClient={handleAddClient}
             onUpdateClient={handleUpdateClient}
             onDeleteClient={handleDeleteClient}
+            onArchiveProject={handleArchiveProject}
+            onUnarchiveProject={handleUnarchiveProject}
+            onOpenProject={handleOpenProject}
+            onAddSocialLink={handleAddSocialLink}
+            onUpdateSocialLink={handleUpdateSocialLink}
+            onDeleteSocialLink={handleDeleteSocialLink}
+            onAddNote={handleAddClientNote}
+            onUpdateNote={handleUpdateClientNote}
+            onDeleteNote={handleDeleteClientNote}
+            onAddMeeting={handleAddClientMeeting}
+            onUpdateMeeting={handleUpdateClientMeeting}
+            onDeleteMeeting={handleDeleteClientMeeting}
+            onAddBrandAsset={handleAddBrandAsset}
+            onUpdateBrandAsset={handleUpdateBrandAsset}
+            onDeleteBrandAsset={handleDeleteBrandAsset}
+            onUploadFile={handleUploadFile}
+            checkPermission={checkPermission}
+            currentUser={user}
           />
         );
       case 'projects':
@@ -625,22 +1396,30 @@ const App: React.FC = () => {
             members={projectMembers}
             milestones={projectMilestones}
             activityLogs={projectLogs}
+            marketingAssets={projectMarketingAssets}
             files={getVisibleFiles()}
             folders={folders}
             freelancers={freelancers}
             assignments={assignments}
-            tasks={tasks}
+            tasks={activeTasks}
             approvalSteps={approvalSteps}
             onAddProject={handleAddProject}
             onUpdateProject={handleUpdateProject}
+            onDeleteProject={handleDeleteProject}
             onAddMember={handleAddProjectMember}
             onAddFreelancerAssignment={handleAddFreelancerAssignment}
             onRemoveMember={handleRemoveProjectMember}
             onRemoveFreelancerAssignment={handleRemoveFreelancerAssignment}
             onAddMilestone={handleAddProjectMilestone}
             onUpdateMilestone={handleUpdateProjectMilestone}
+            onAddMarketingAsset={handleAddProjectMarketingAsset}
+            onUpdateMarketingAsset={handleUpdateProjectMarketingAsset}
+            onDeleteMarketingAsset={handleDeleteProjectMarketingAsset}
             onUploadFile={handleUploadFile}
             onCreateFolder={handleCreateFolder}
+            initialSelectedProjectId={targetProjectId}
+            checkPermission={checkPermission}
+            onNavigateToTask={handleNavigateToTask}
           />
         );
       case 'tasks':
@@ -675,6 +1454,26 @@ const App: React.FC = () => {
             onNotify={handleNotify}
             checkPermission={checkPermission}
             onDeleteTask={handleDeleteTask}
+            initialSelectedTaskId={targetTaskId}
+            onAddSocialPost={handleAddSocialPost}
+          />
+        );
+      case 'posting':
+        if (!checkPermission('social_posts.view') && user.role !== UserRole.SOCIAL_MANAGER && user.role !== UserRole.GENERAL_MANAGER) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
+        return (
+          <PostingHub 
+            socialPosts={socialPosts}
+            tasks={activeTasks}
+            projects={projects}
+            clients={clients}
+            users={activeUsers}
+            currentUser={user}
+            checkPermission={checkPermission}
+            onUpdatePost={handleUpdateSocialPost}
+            onArchiveTask={handleArchiveTask}
+            onNotify={handleNotify}
+            files={files}
+            comments={taskComments}
           />
         );
       case 'assets':
@@ -683,11 +1482,13 @@ const App: React.FC = () => {
             files={getVisibleFiles()}
             folders={folders}
             projects={getVisibleProjects()}
+            clients={clients}
             users={activeUsers}
             onUpload={handleUploadFile}
-            onDelete={() => {}}
+            onDelete={handleDeleteFile}
             onMove={() => {}}
             onCreateFolder={handleCreateFolder}
+            onDeleteFolder={handleDeleteFolder}
           />
         );
       case 'production':
@@ -743,7 +1544,7 @@ const App: React.FC = () => {
         return (
           <TeamHub 
             users={users}
-            tasks={tasks}
+            tasks={activeTasks}
             leaveRequests={leaveRequests}
             attendanceRecords={attendanceRecords}
             roles={systemRoles}
@@ -756,7 +1557,7 @@ const App: React.FC = () => {
       case 'analytics':
         return (
           <AnalyticsHub 
-            tasks={tasks}
+            tasks={activeTasks}
             projects={projects}
             invoices={invoices}
             users={activeUsers}
@@ -787,6 +1588,7 @@ const App: React.FC = () => {
                roles={systemRoles}
                auditLogs={auditLogs}
                workflowTemplates={workflowTemplates}
+               departments={departments}
                onUpdateBranding={handleUpdateBranding}
                onUpdateSettings={handleUpdateSettings}
                onUpdateUser={handleUpdateUser}
@@ -797,6 +1599,10 @@ const App: React.FC = () => {
                onUpdateWorkflow={handleUpdateWorkflow}
                onAddWorkflow={handleAddWorkflow}
                onDeleteWorkflow={handleDeleteWorkflow}
+               onSyncRoles={handleSyncRoles}
+               onAddDepartment={handleAddDepartment}
+               onUpdateDepartment={handleUpdateDepartment}
+               onDeleteDepartment={handleDeleteDepartment}
             />
          );
       default:
@@ -814,9 +1620,26 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex font-sans" style={{ backgroundColor: appBranding.backgroundColor, color: appBranding.textColor }}>
-      <Sidebar activeView={activeView} setActiveView={setActiveView} currentUserRole={user.role} />
+      {/* Mobile overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <Sidebar 
+        activeView={activeView} 
+        setActiveView={(view) => {
+          setActiveView(view);
+          setIsSidebarOpen(false);
+        }} 
+        currentUserRole={user.role}
+        isSidebarOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+      
+      <div className="flex-1 ml-0 lg:ml-64 flex flex-col min-h-screen">
         <Header 
           currentUser={user} 
           notifications={notifications}
@@ -824,9 +1647,10 @@ const App: React.FC = () => {
           onLogout={handleLogout} 
           onMarkAsRead={handleMarkNotificationRead}
           onViewAllNotifications={() => setActiveView('notifications')}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
         />
         
-        <main className="flex-1 mt-16 p-8 overflow-y-auto relative">
+        <main className="flex-1 mt-16 p-4 sm:p-6 lg:p-8 overflow-y-auto relative">
           {renderContent()}
 
           {/* Toast Notification */}

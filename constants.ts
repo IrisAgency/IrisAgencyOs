@@ -1,4 +1,4 @@
-import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate } from './types';
+import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset } from './types';
 
 export const USERS: User[] = [
   { 
@@ -110,6 +110,82 @@ export const CLIENTS: Client[] = [
     contacts: []
   }
 ];
+
+export const CLIENT_SOCIAL_LINKS: ClientSocialLink[] = [
+  { id: 'csl1', clientId: 'c1', platform: 'instagram', url: 'https://instagram.com/lebon', username: '@lebon', label: null, createdBy: 'u4', createdAt: '2024-01-15T00:00:00Z', updatedAt: '2024-01-15T00:00:00Z' },
+  { id: 'csl2', clientId: 'c1', platform: 'website', url: 'https://lebon.com', username: null, label: null, createdBy: 'u4', createdAt: '2024-01-15T00:00:00Z', updatedAt: '2024-01-15T00:00:00Z' },
+  { id: 'csl3', clientId: 'c2', platform: 'tiktok', url: 'https://tiktok.com/@shishakartel', username: '@shishakartel', label: null, createdBy: 'u1', createdAt: '2024-06-20T00:00:00Z', updatedAt: '2024-06-20T00:00:00Z' }
+];
+
+export const CLIENT_NOTES: ClientNote[] = [
+  { id: 'cn1', clientId: 'c1', text: 'Client prefers communication via email over phone.', createdBy: 'u4', createdByName: 'Jessica Pearson', createdAt: '2024-02-10T09:00:00Z', updatedAt: null },
+  { id: 'cn2', clientId: 'c1', text: 'Meeting scheduled for next week to discuss Q3 budget.', createdBy: 'u4', createdByName: 'Jessica Pearson', createdAt: '2024-05-15T14:00:00Z', updatedAt: null },
+  { id: 'cn3', clientId: 'c2', text: 'Very particular about brand colors. Always double check hex codes.', createdBy: 'u1', createdByName: 'Alex Sterling', createdAt: '2024-03-01T11:30:00Z', updatedAt: null }
+];
+
+export const CLIENT_MEETINGS: any[] = [
+  {
+    id: 'cm1',
+    clientId: 'c1',
+    title: 'Monthly Performance Review',
+    description: 'Reviewing Q1 metrics and planning for Q2.',
+    date: '2024-05-14T10:00:00Z',
+    durationMinutes: 60,
+    status: 'scheduled',
+    locationType: 'online',
+    locationDetails: 'https://zoom.us/j/123456789',
+    organizerId: 'u4',
+    participantIds: ['u4', 'u2'],
+    clientParticipants: ['Marie Le Bon'],
+    meetingFolderId: null,
+    summary: null,
+    createdAt: '2024-05-01T09:00:00Z',
+    updatedAt: '2024-05-01T09:00:00Z',
+    completedAt: null
+  },
+  {
+    id: 'cm2',
+    clientId: 'c2',
+    title: 'New Campaign Brief',
+    description: 'Kickoff for the summer launch.',
+    date: '2024-06-01T15:00:00Z',
+    durationMinutes: 90,
+    status: 'scheduled',
+    locationType: 'client_office',
+    locationDetails: '45 Sunset Blvd, Los Angeles',
+    organizerId: 'u1',
+    participantIds: ['u1', 'u5'],
+    clientParticipants: ['Dante Russo'],
+    meetingFolderId: null,
+    summary: null,
+    createdAt: '2024-05-10T11:00:00Z',
+    updatedAt: '2024-05-10T11:00:00Z',
+    completedAt: null
+  },
+  {
+    id: 'cm3',
+    clientId: 'c1',
+    title: 'Q1 Strategy Kickoff',
+    description: 'Initial planning session.',
+    date: '2024-04-10T12:00:00Z',
+    durationMinutes: 60,
+    status: 'completed',
+    locationType: 'office',
+    locationDetails: 'Meeting Room A',
+    organizerId: 'u4',
+    participantIds: ['u4', 'u2', 'u3'],
+    clientParticipants: ['Marie Le Bon', 'Jean Pierre'],
+    meetingFolderId: null,
+    summary: 'Agreed on the new direction for the summer line. Budget approved.',
+    createdAt: '2024-04-01T09:00:00Z',
+    updatedAt: '2024-04-10T13:00:00Z',
+    completedAt: '2024-04-10T13:00:00Z'
+  }
+];
+
+export const CLIENT_BRAND_ASSETS: ClientBrandAsset[] = [];
+
+export const PROJECT_MARKETING_ASSETS: ProjectMarketingAsset[] = [];
 
 export const PROJECTS: Project[] = [
   { 
@@ -375,47 +451,78 @@ export const TASK_ACTIVITY_LOGS: TaskActivityLog[] = [
 // --- FILES MOCK DATA ---
 
 export const FOLDERS: FileFolder[] = [
-  { id: 'f1', projectId: 'p1', parentId: null, name: 'Creative Assets', isArchiveRoot: false, isTaskArchiveFolder: false },
-  { id: 'f2', projectId: 'p1', parentId: null, name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false },
-  { id: 'f3', projectId: 'p1', parentId: 'f1', name: 'Raw Footage', isArchiveRoot: false, isTaskArchiveFolder: false },
-  { id: 'f4', projectId: 'p2', parentId: null, name: 'Launch Event', isArchiveRoot: false, isTaskArchiveFolder: false },
+  // Client Root Folders
+  { id: 'client_c1', clientId: 'c1', projectId: null, parentId: null, name: 'Le Bon Designs', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'client_root', linkedEntityType: 'client', linkedEntityId: 'c1' },
+  { id: 'client_c1_projects', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Projects', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project' },
+  { id: 'client_c1_videos', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Videos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'videos' },
+  { id: 'client_c1_photos', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Photos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'photos' },
+  { id: 'client_c1_documents', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'documents' },
+  { id: 'client_c1_strategies', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Strategies', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'strategy' },
+  { id: 'client_c1_archive', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Archive', isArchiveRoot: true, isTaskArchiveFolder: false, folderType: 'archive' },
+  
+  // Project Folders within Client
+  { id: 'proj_p1', clientId: 'c1', projectId: 'p1', parentId: 'client_c1_projects', name: 'LBD-SUM-24 - Summer Campaign 2024', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project', linkedEntityType: 'project', linkedEntityId: 'p1' },
+  { id: 'proj_p1_tasks', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Tasks', isArchiveRoot: false, isTaskArchiveFolder: false },
+  { id: 'proj_p1_videos', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Videos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'videos' },
+  { id: 'proj_p1_photos', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Photos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'photos' },
+  { id: 'proj_p1_deliverables', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Deliverables', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'deliverables' },
+  
+  // Task Folders
+  { id: 'task_t1', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1_tasks', name: 'Concept Sketches', isArchiveRoot: false, isTaskArchiveFolder: true, taskId: 't1', folderType: 'task', linkedEntityType: 'task', linkedEntityId: 't1' },
+  
+  // Client 2 Folders
+  { id: 'client_c2', clientId: 'c2', projectId: null, parentId: null, name: 'Shisha Kartel', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'client_root', linkedEntityType: 'client', linkedEntityId: 'c2' },
+  { id: 'client_c2_projects', clientId: 'c2', projectId: null, parentId: 'client_c2', name: 'Projects', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project' },
+  { id: 'proj_p2', clientId: 'c2', projectId: 'p2', parentId: 'client_c2_projects', name: 'SK-LNCH-01 - Product Launch', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project', linkedEntityType: 'project', linkedEntityId: 'p2' },
+  { id: 'proj_p2_tasks', clientId: 'c2', projectId: 'p2', parentId: 'proj_p2', name: 'Tasks', isArchiveRoot: false, isTaskArchiveFolder: false },
+  
+  // Legacy folders for backward compatibility
+  { id: 'f1', projectId: 'p1', clientId: 'c1', parentId: null, name: 'Creative Assets', isArchiveRoot: false, isTaskArchiveFolder: false },
+  { id: 'f2', projectId: 'p1', clientId: 'c1', parentId: null, name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'documents' },
+  { id: 'f3', projectId: 'p1', clientId: 'c1', parentId: 'f1', name: 'Raw Footage', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'videos' },
+  { id: 'f4', projectId: 'p2', clientId: 'c2', parentId: null, name: 'Launch Event', isArchiveRoot: false, isTaskArchiveFolder: false },
 ];
 
 export const FILES: AgencyFile[] = [
   { 
-    id: 'file1', projectId: 'p1', taskId: 't1', folderId: 'f1', uploaderId: 'u3', 
-    name: 'Concept_Sketch_v1.jpg', type: 'image/jpeg', size: 2400000, 
+    id: 'file1', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3', 
+    name: 'LBD-ConceptSketches-v1-Sketch.jpg', originalName: 'Concept_Sketch_v1.jpg',
+    type: 'image/jpeg', category: 'image', size: 2400000, 
     url: 'https://picsum.photos/id/10/800/600', version: 1, isDeliverable: false, 
     isArchived: false,
     tags: ['sketch', 'concept'], createdAt: '2024-04-02T10:00:00Z' 
   },
   { 
-    id: 'file2', projectId: 'p1', taskId: 't1', folderId: 'f1', uploaderId: 'u3', 
-    name: 'Concept_Sketch_v2.jpg', type: 'image/jpeg', size: 2600000, 
+    id: 'file2', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3', 
+    name: 'LBD-ConceptSketches-v2-Final.jpg', originalName: 'Concept_Sketch_v2.jpg',
+    type: 'image/jpeg', category: 'image', size: 2600000, 
     url: 'https://picsum.photos/id/11/800/600', version: 2, isDeliverable: true, 
     isArchived: false,
-    tags: ['sketch', 'final'], createdAt: '2024-04-05T15:00:00Z' 
+    tags: ['sketch', 'final', 'approved'], createdAt: '2024-04-05T15:00:00Z' 
   },
   { 
-    id: 'file3', projectId: 'p1', taskId: null, folderId: 'f2', uploaderId: 'u4', 
-    name: 'Project_Brief.pdf', type: 'application/pdf', size: 500000, 
+    id: 'file3', projectId: 'p1', clientId: 'c1', taskId: null, folderId: 'client_c1_documents', uploaderId: 'u4', 
+    name: 'LBD-SummerCampaign-Brief.pdf', originalName: 'Project_Brief.pdf',
+    type: 'application/pdf', category: 'document', size: 500000, 
     url: '#', version: 1, isDeliverable: false, 
     isArchived: false,
-    tags: ['brief'], createdAt: '2024-03-15T09:00:00Z' 
+    tags: ['brief', 'strategy'], createdAt: '2024-03-15T09:00:00Z' 
   },
   { 
-    id: 'file4', projectId: 'p2', taskId: 't4', folderId: 'f4', uploaderId: 'u5', 
-    name: 'Launch_Teaser_Edit_01.mp4', type: 'video/mp4', size: 45000000, 
+    id: 'file4', projectId: 'p2', clientId: 'c2', taskId: 't4', folderId: 'proj_p2_tasks', uploaderId: 'u5', 
+    name: 'SK-LaunchTeaser-v1-Edit.mp4', originalName: 'Launch_Teaser_Edit_01.mp4',
+    type: 'video/mp4', category: 'video', size: 45000000, 
     url: '#', version: 1, isDeliverable: false, 
     isArchived: false,
-    tags: ['video', 'draft'], createdAt: '2024-05-12T14:00:00Z' 
+    tags: ['video', 'draft', 'edit'], createdAt: '2024-05-12T14:00:00Z' 
   },
   { 
-    id: 'file5', projectId: 'p2', taskId: 't2', folderId: null, uploaderId: 'u5', 
-    name: 'Rooftop_Location_Scout.jpg', type: 'image/jpeg', size: 3100000, 
+    id: 'file5', projectId: 'p2', clientId: 'c2', taskId: 't2', folderId: 'proj_p2_tasks', uploaderId: 'u5', 
+    name: 'SK-LocationScout-Rooftop.jpg', originalName: 'Rooftop_Location_Scout.jpg',
+    type: 'image/jpeg', category: 'image', size: 3100000, 
     url: 'https://picsum.photos/id/40/800/600', version: 1, isDeliverable: false, 
     isArchived: false,
-    tags: ['location', 'photo'], createdAt: '2024-03-05T11:00:00Z' 
+    tags: ['location', 'photo', 'scout'], createdAt: '2024-03-05T11:00:00Z' 
   }
 ];
 
@@ -606,6 +713,8 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'tasks.edit_own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
   { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can delete tasks (soft delete)' },
   { code: 'tasks.approve', module: 'Tasks', name: 'Approve Tasks', description: 'Can approve tasks' },
+  { code: 'tasks.manage_assignees', module: 'Tasks', name: 'Manage Assignees', description: 'Can assign or reassign people on a task' },
+  { code: 'tasks.manage_publishing', module: 'Tasks', name: 'Manage Publishing', description: 'Can assign social managers and publishing notes' },
   { code: 'workflows.override_task_workflow', module: 'Tasks', name: 'Override Task Workflow', description: 'Can manually select a workflow for a task' },
 
   // Projects
@@ -614,6 +723,8 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'projects.create', module: 'Projects', name: 'Create Projects', description: 'Can create new projects' },
   { code: 'projects.edit_all', module: 'Projects', name: 'Edit All Projects', description: 'Can edit any project' },
   { code: 'projects.edit_own', module: 'Projects', name: 'Edit Own Projects', description: 'Can edit only assigned projects' },
+  { code: 'projects.archive', module: 'Projects', name: 'Archive Projects', description: 'Can archive projects' },
+  { code: 'projects.marketing_assets_manage', module: 'Projects', name: 'Manage Marketing Assets', description: 'Can add/edit/delete project marketing assets' },
 
   // Admin
   { code: 'admin.view_console', module: 'Admin', name: 'View Admin Console', description: 'Access to admin dashboard' },
@@ -636,7 +747,29 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'files.delete', module: 'Files', name: 'Delete Files', description: 'Can delete files' },
 
   // Analytics
-  { code: 'analytics.view', module: 'Analytics', name: 'View Analytics', description: 'Can view analytics dashboard' }
+  { code: 'analytics.view', module: 'Analytics', name: 'View Analytics', description: 'Can view analytics dashboard' },
+  // Social
+  { code: 'social_posts.view', module: 'Social', name: 'View Social Posts', description: 'Can view the Posting Hub' },
+  { code: 'social_posts.manage', module: 'Social', name: 'Manage Social Posts', description: 'Can create, edit, and publish social posts' },
+  { code: 'social.manage', module: 'Social', name: 'Manage Social Posts', description: 'Can create, edit, and publish social posts' },
+
+  // Departments
+  { code: 'departments.view', module: 'Admin', name: 'View Departments', description: 'Can view department list' },
+  { code: 'departments.manage', module: 'Admin', name: 'Manage Departments', description: 'Can create/edit/delete departments' },
+
+  // Clients
+  { code: 'clients.view', module: 'Clients', name: 'View Clients', description: 'Can view client profiles' },
+  { code: 'clients.manage', module: 'Clients', name: 'Manage Clients', description: 'Can create/edit/delete clients' },
+  { code: 'clients.manage_strategies', module: 'Clients', name: 'Manage Strategies', description: 'Can add/edit/delete marketing strategies' },
+  { code: 'clients.manage_links', module: 'Clients', name: 'Manage Social Links', description: 'Can add/edit/delete social media links' },
+  { code: 'clients.notes_view', module: 'Clients', name: 'View Notes', description: 'Can view client notes' },
+  { code: 'clients.notes_create', module: 'Clients', name: 'Create Notes', description: 'Can create new client notes' },
+  { code: 'clients.notes_manage', module: 'Clients', name: 'Manage Notes', description: 'Can edit/delete any client note' },
+  { code: 'clients.meetings_view', module: 'Clients', name: 'View Meetings', description: 'Can view client meetings' },
+  { code: 'clients.meetings_create', module: 'Clients', name: 'Create Meetings', description: 'Can schedule new meetings' },
+  { code: 'clients.meetings_manage', module: 'Clients', name: 'Manage Meetings', description: 'Can edit/delete meetings' },
+  { code: 'clients.brand_view', module: 'Clients', name: 'View Brand Assets', description: 'Can view brand guidelines and assets' },
+  { code: 'clients.brand_manage', module: 'Clients', name: 'Manage Brand Assets', description: 'Can add/edit/delete brand assets' }
 ];
 
 export const DEFAULT_ROLES: RoleDefinition[] = [
@@ -652,10 +785,15 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     name: UserRole.ACCOUNT_MANAGER, 
     description: 'Client and Project management', 
     permissions: [
-      'projects.view_all', 'projects.create', 'projects.edit_all',
-      'tasks.view_all', 'tasks.create', 'tasks.edit_all',
+      'projects.view_all', 'projects.create', 'projects.edit_all', 'projects.archive', 'projects.marketing_assets_manage',
+      'tasks.view_all', 'tasks.create', 'tasks.edit_all', 'tasks.manage_assignees', 'tasks.manage_publishing',
       'files.view_all', 'files.upload',
-      'finance.view'
+      'finance.view',
+      'social_posts.view',
+      'clients.view', 'clients.manage', 'clients.manage_strategies', 'clients.manage_links',
+      'clients.notes_view', 'clients.notes_create', 'clients.notes_manage',
+      'clients.meetings_view', 'clients.meetings_create', 'clients.meetings_manage',
+      'clients.brand_view', 'clients.brand_manage'
     ], 
     isAdmin: false 
   },
@@ -664,12 +802,28 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     name: UserRole.CREATIVE_DIRECTOR, 
     description: 'Creative oversight', 
     permissions: [
-      'projects.view_all', 
-      'tasks.view_all', 'tasks.edit_all', 'tasks.approve',
+      'projects.view_all', 'projects.marketing_assets_manage',
+      'tasks.view_all', 'tasks.edit_all', 'tasks.approve', 'tasks.manage_assignees', 'tasks.manage_publishing',
       'files.view_all', 'files.upload',
-      'production.view'
+      'production.view',
+      'social_posts.view',
+      'clients.view', 'clients.notes_view', 'clients.notes_create',
+      'clients.meetings_view', 'clients.meetings_create',
+      'clients.brand_view', 'clients.brand_manage'
     ], 
     isAdmin: false 
+  },
+  {
+    id: 'r_social',
+    name: UserRole.SOCIAL_MANAGER,
+    description: 'Social Media Management',
+    permissions: [
+      'social_posts.view', 'social_posts.manage',
+      'tasks.view_all', 'tasks.edit_own',
+      'files.view_all', 'files.upload',
+      'clients.view', 'clients.brand_view'
+    ],
+    isAdmin: false
   },
   { 
     id: 'r5', 
@@ -678,7 +832,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     permissions: [
       'projects.view_own', 
       'tasks.view_own', 'tasks.edit_own',
-      'files.view_own', 'files.upload'
+      'files.view_own', 'files.upload',
+      'clients.view', 'clients.notes_view',
+      'clients.meetings_view',
+      'clients.brand_view'
     ], 
     isAdmin: false 
   },
@@ -689,7 +846,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     permissions: [
       'tasks.view_own', 'tasks.edit_own',
       'files.view_own', 'files.upload',
-      'production.view'
+      'production.view',
+      'clients.brand_view'
     ], 
     isAdmin: false 
   },
@@ -775,5 +933,27 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     steps: [
       { id: 's_fallback', workflowTemplateId: 'wf_fallback', order: 0, label: 'Manager Review', roleId: 'r1', projectRoleKey: null, useDepartmentHead: false }
     ]
+  }
+];
+
+// --- SOCIAL POSTS MOCK DATA ---
+
+export const SOCIAL_POSTS: any[] = [
+  {
+    id: 'sp1',
+    sourceTaskId: 't3',
+    projectId: 'p3',
+    clientId: 'c3',
+    title: 'Copywriting - Social',
+    status: 'writing',
+    platforms: ['instagram', 'facebook'],
+    caption: 'Get ready for the summer vibes! ☀️☕️ #BoxCafe #Summer',
+    publishAt: null,
+    timezone: 'Asia/Baghdad',
+    socialManagerId: 'u2',
+    notesFromTask: 'Focus on the summer vibes.',
+    createdBy: 'u4',
+    createdAt: '2024-05-01T10:00:00Z',
+    updatedAt: '2024-05-02T11:00:00Z'
   }
 ];

@@ -1,13 +1,13 @@
-
-
 import React, { useState } from 'react';
-import { AppBranding, AppSettings, User, RoleDefinition, Permission, AuditLog, UserRole, Department, WorkflowTemplate, WorkflowStepTemplate, TaskType } from '../types';
+import { AppBranding, AppSettings, User, RoleDefinition, Permission, AuditLog, UserRole, Department, WorkflowTemplate, WorkflowStepTemplate, TaskType, DepartmentDefinition } from '../types';
 import { USERS, PERMISSIONS_LIST } from '../constants';
 import { 
   Shield, Palette, Users, Settings, Activity, Save, RotateCcw, 
   CheckCircle, Lock, Globe, Database, UserPlus, Edit2, Trash2, 
-  Search, X, GitBranch, Plus, ArrowUp, ArrowDown
+  Search, X, GitBranch, Plus, ArrowUp, ArrowDown, Building, Grid3x3
 } from 'lucide-react';
+import RolesManager from './RolesManager';
+import PermissionMatrix from './PermissionMatrix';
 
 interface AdminHubProps {
   branding: AppBranding;
@@ -16,6 +16,7 @@ interface AdminHubProps {
   roles: RoleDefinition[];
   auditLogs: AuditLog[];
   workflowTemplates: WorkflowTemplate[];
+  departments: DepartmentDefinition[];
   onUpdateBranding: (branding: AppBranding) => void;
   onUpdateSettings: (settings: AppSettings) => void;
   onUpdateUser: (user: User) => void;
@@ -26,20 +27,25 @@ interface AdminHubProps {
   onUpdateWorkflow: (wf: WorkflowTemplate) => void;
   onAddWorkflow: (wf: WorkflowTemplate) => void;
   onDeleteWorkflow: (wfId: string) => void;
+  onSyncRoles: () => void;
+  onAddDepartment: (dept: DepartmentDefinition) => void;
+  onUpdateDepartment: (dept: DepartmentDefinition) => void;
+  onDeleteDepartment: (deptId: string) => void;
 }
 
 const AdminHub: React.FC<AdminHubProps> = ({ 
-  branding, settings, users, roles, auditLogs, workflowTemplates,
-  onUpdateBranding, onUpdateSettings, onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow
+  branding, settings, users, roles, auditLogs, workflowTemplates, departments,
+  onUpdateBranding, onUpdateSettings, onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow, onSyncRoles,
+  onAddDepartment, onUpdateDepartment, onDeleteDepartment
 }) => {
-  const [activeTab, setActiveTab] = useState<'Overview' | 'Branding' | 'Users' | 'Roles' | 'Workflows' | 'Settings' | 'Audit'>('Overview');
+  const [activeTab, setActiveTab] = useState<'Overview' | 'Branding' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Settings' | 'Audit'>('Overview');
   const [searchTerm, setSearchTerm] = useState('');
   
   // -- Sub-Components --
 
   const Overview = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
              <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-slate-700">Active Users</h3>
@@ -47,6 +53,14 @@ const AdminHub: React.FC<AdminHubProps> = ({
              </div>
              <p className="text-3xl font-bold text-slate-900">{users.filter(u => u.status === 'active').length}</p>
              <p className="text-xs text-slate-500 mt-1">Total {users.length} registered</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+             <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-slate-700">Departments</h3>
+                <Building className="w-5 h-5 text-blue-500" />
+             </div>
+             <p className="text-3xl font-bold text-slate-900">{departments.length}</p>
+             <p className="text-xs text-slate-500 mt-1">Operational Units</p>
           </div>
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
              <div className="flex items-center justify-between mb-2">
@@ -66,7 +80,23 @@ const AdminHub: React.FC<AdminHubProps> = ({
           </div>
        </div>
 
-       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+       <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mt-6">
+          <div className="flex items-center justify-between">
+             <div>
+                <h3 className="font-bold text-slate-900">System Maintenance</h3>
+                <p className="text-sm text-slate-500">Perform system-wide maintenance tasks.</p>
+             </div>
+             <button 
+                onClick={onSyncRoles}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+             >
+                <RotateCcw className="w-4 h-4" />
+                Sync Default Roles
+             </button>
+          </div>
+       </div>
+
+       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mt-6">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
              <h3 className="font-bold text-slate-900">Recent Audit Activity</h3>
           </div>
@@ -85,8 +115,6 @@ const AdminHub: React.FC<AdminHubProps> = ({
     </div>
   );
 
-  // ... BrandingEditor, UsersManager, RolesManager (Same as before, omitted for brevity in diff but included in XML return) ...
-  
   const BrandingEditor = () => {
      const [localBranding, setLocalBranding] = useState(branding);
      const handleSave = () => { onUpdateBranding(localBranding); };
@@ -192,10 +220,42 @@ const AdminHub: React.FC<AdminHubProps> = ({
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
                         <h3 className="font-bold text-slate-900 mb-4">{editingUser.id ? 'Edit User' : 'Create User'}</h3>
                         <div className="space-y-4">
-                            <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} placeholder="Name" />
-                            <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} placeholder="Email" />
-                            <button onClick={handleSaveUser} className="w-full bg-indigo-600 text-white py-2 rounded-lg">Save</button>
-                            <button onClick={() => setIsEditOpen(false)} className="w-full text-slate-500 py-2">Cancel</button>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                                <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.name || ''} onChange={e => setEditingUser({...editingUser, name: e.target.value})} placeholder="Name" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                                <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.email || ''} onChange={e => setEditingUser({...editingUser, email: e.target.value})} placeholder="Email" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                                <select 
+                                    className="w-full px-3 py-2 border rounded-lg" 
+                                    value={editingUser.role || ''} 
+                                    onChange={e => setEditingUser({...editingUser, role: e.target.value as UserRole})}
+                                >
+                                    <option value="">Select Role</option>
+                                    {Object.values(UserRole).map(role => (
+                                        <option key={role} value={role}>{role}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                                <select 
+                                    className="w-full px-3 py-2 border rounded-lg" 
+                                    value={editingUser.department || ''} 
+                                    onChange={e => setEditingUser({...editingUser, department: e.target.value as Department})}
+                                >
+                                    <option value="">Select Department</option>
+                                    {Object.values(Department).map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <button onClick={handleSaveUser} className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">Save User</button>
+                            <button onClick={() => setIsEditOpen(false)} className="w-full text-slate-500 py-2 hover:text-slate-700">Cancel</button>
                         </div>
                     </div>
                  </div>
@@ -204,145 +264,7 @@ const AdminHub: React.FC<AdminHubProps> = ({
      );
   };
 
-  const RolesManager = () => {
-      const [selectedRole, setSelectedRole] = useState<RoleDefinition | undefined>(roles[0]);
-      const [isCreateOpen, setIsCreateOpen] = useState(false);
-      const [newRoleName, setNewRoleName] = useState('');
-      const [newRoleDesc, setNewRoleDesc] = useState('');
-      
-      React.useEffect(() => {
-          if (roles.length > 0 && !selectedRole) {
-              setSelectedRole(roles[0]);
-          }
-      }, [roles]);
 
-      const handleCreateRole = () => {
-          if (!newRoleName) return;
-          const newRole: RoleDefinition = {
-              id: `role_${Date.now()}`,
-              name: newRoleName,
-              description: newRoleDesc,
-              permissions: [],
-              isAdmin: false
-          };
-          onAddRole(newRole);
-          setIsCreateOpen(false);
-          setNewRoleName('');
-          setNewRoleDesc('');
-          setSelectedRole(newRole);
-      };
-
-      const handleDeleteRole = (roleId: string) => {
-          if (confirm('Are you sure you want to delete this role?')) {
-              onDeleteRole(roleId);
-              if (selectedRole?.id === roleId) {
-                  setSelectedRole(roles.find(r => r.id !== roleId));
-              }
-          }
-      };
-
-      if (!selectedRole && roles.length === 0) return (
-          <div className="p-8 text-center text-slate-400">
-              <p className="mb-4">No roles defined.</p>
-              <button onClick={() => setIsCreateOpen(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg">Create First Role</button>
-              {isCreateOpen && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-                          <h3 className="font-bold text-lg mb-4">Create New Role</h3>
-                          <input className="w-full p-2 border rounded mb-3" placeholder="Role Name" value={newRoleName} onChange={e => setNewRoleName(e.target.value)} />
-                          <input className="w-full p-2 border rounded mb-4" placeholder="Description" value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} />
-                          <div className="flex justify-end gap-2">
-                              <button onClick={() => setIsCreateOpen(false)} className="px-4 py-2 text-slate-600">Cancel</button>
-                              <button onClick={handleCreateRole} className="px-4 py-2 bg-indigo-600 text-white rounded">Create</button>
-                          </div>
-                      </div>
-                  </div>
-              )}
-          </div>
-      );
-
-      const togglePermission = (code: string) => {
-          if (!selectedRole) return;
-          const hasPerm = selectedRole.permissions.includes(code);
-          const newPerms = hasPerm ? selectedRole.permissions.filter(p => p !== code) : [...selectedRole.permissions, code];
-          const updatedRole = { ...selectedRole, permissions: newPerms };
-          setSelectedRole(updatedRole); onUpdateRole(updatedRole);
-      };
-
-      return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-300">
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
-                  <div className="p-4 bg-slate-50 border-b font-bold text-slate-700 flex justify-between items-center">
-                      <span>Roles</span>
-                      <button onClick={() => setIsCreateOpen(true)} className="p-1 hover:bg-slate-200 rounded"><Plus className="w-4 h-4" /></button>
-                  </div>
-                  <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
-                      {roles.map(role => (
-                          <div key={role.id} onClick={() => setSelectedRole(role)} className={`p-4 cursor-pointer hover:bg-slate-50 flex justify-between items-center group ${selectedRole?.id === role.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
-                              <span className="font-medium">{role.name}</span>
-                              <button onClick={(e) => { e.stopPropagation(); handleDeleteRole(role.id); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4" /></button>
-                          </div>
-                      ))}
-                  </div>
-              </div>
-              
-              {selectedRole && (
-                  <div className="md:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-6 h-[600px] overflow-y-auto">
-                      <div className="flex justify-between items-start mb-6">
-                          <div>
-                              <h3 className="font-bold text-lg text-slate-900">{selectedRole.name} Permissions</h3>
-                              <p className="text-sm text-slate-500">{selectedRole.description}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-500">ID: {selectedRole.id}</span>
-                          </div>
-                      </div>
-                      
-                      <div className="space-y-6">
-                          {Array.from(new Set(PERMISSIONS_LIST.map(p => p.module))).map(module => (
-                              <div key={module} className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                  <h4 className="font-bold text-slate-700 mb-3">{module}</h4>
-                                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                                      {PERMISSIONS_LIST.filter(p => p.module === module).map(perm => (
-                                          <label key={perm.code} className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors bg-white ${selectedRole.permissions.includes(perm.code) ? 'ring-2 ring-indigo-500 border-transparent' : 'hover:border-indigo-300'}`}>
-                                              <input type="checkbox" checked={selectedRole.permissions.includes(perm.code)} onChange={() => togglePermission(perm.code)} className="rounded text-indigo-600 w-4 h-4" />
-                                              <div>
-                                                  <p className="text-sm font-medium text-slate-900">{perm.name}</p>
-                                                  <p className="text-xs text-slate-500">{perm.description}</p>
-                                              </div>
-                                          </label>
-                                      ))}
-                                  </div>
-                              </div>
-                          ))}
-                      </div>
-                  </div>
-              )}
-
-              {isCreateOpen && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in duration-200">
-                          <h3 className="font-bold text-lg mb-4 text-slate-900">Create New Role</h3>
-                          <div className="space-y-4">
-                              <div>
-                                  <label className="block text-sm font-medium text-slate-700 mb-1">Role Name</label>
-                                  <input className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Senior Editor" value={newRoleName} onChange={e => setNewRoleName(e.target.value)} />
-                              </div>
-                              <div>
-                                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                                  <input className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Role description..." value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} />
-                              </div>
-                              <div className="flex justify-end gap-2 pt-2">
-                                  <button onClick={() => setIsCreateOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                                  <button onClick={handleCreateRole} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Create Role</button>
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-              )}
-          </div>
-      );
-  };
 
   const WorkflowsManager = () => {
       const [isEditOpen, setIsEditOpen] = useState(false);
@@ -362,7 +284,7 @@ const AdminHub: React.FC<AdminHubProps> = ({
               departmentId: null,
               taskType: null,
               status: 'available',
-              requiresClientApproval: true,
+              requiresClientApproval: false,
               steps: [],
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
@@ -627,6 +549,186 @@ const AdminHub: React.FC<AdminHubProps> = ({
       );
   };
 
+  const DepartmentsManager = () => {
+      const [isEditOpen, setIsEditOpen] = useState(false);
+      const [editingDept, setEditingDept] = useState<DepartmentDefinition | null>(null);
+
+      const handleEdit = (dept: DepartmentDefinition) => {
+          setEditingDept({ ...dept });
+          setIsEditOpen(true);
+      };
+
+      const handleCreate = () => {
+          const now = new Date().toISOString();
+          setEditingDept({
+              id: `dept_${Date.now()}`,
+              name: '',
+              code: '',
+              description: '',
+              isActive: true,
+              memberIds: [],
+              defaultRoles: [],
+              createdBy: 'u1',
+              createdAt: now,
+              updatedAt: now
+          });
+          setIsEditOpen(true);
+      };
+
+      const handleSave = () => {
+          if (!editingDept) return;
+          if (!editingDept.name || !editingDept.code) {
+              alert("Name and Code are required.");
+              return;
+          }
+          
+          if (departments.find(d => d.id === editingDept.id)) {
+              onUpdateDepartment(editingDept);
+          } else {
+              onAddDepartment(editingDept);
+          }
+          setIsEditOpen(false);
+          setEditingDept(null);
+      };
+
+      const handleDelete = (deptId: string) => {
+          if (confirm('Are you sure you want to delete this department?')) {
+              onDeleteDepartment(deptId);
+          }
+      };
+
+      const handleSeedDefaults = () => {
+          const now = new Date().toISOString();
+          const defaults: DepartmentDefinition[] = [
+              {
+                  id: 'dept_posting',
+                  name: 'Posting',
+                  code: 'POST',
+                  description: 'Social Media and Content Posting Department',
+                  isActive: true,
+                  memberIds: [],
+                  defaultRoles: [],
+                  createdBy: 'system',
+                  createdAt: now,
+                  updatedAt: now
+              },
+              {
+                  id: 'dept_creative',
+                  name: 'Creative',
+                  code: 'CRE',
+                  description: 'Design, Video, and Copywriting',
+                  isActive: true,
+                  memberIds: [],
+                  defaultRoles: [],
+                  createdBy: 'system',
+                  createdAt: now,
+                  updatedAt: now
+              },
+              {
+                  id: 'dept_accounts',
+                  name: 'Accounts',
+                  code: 'ACC',
+                  description: 'Client Management and Sales',
+                  isActive: true,
+                  memberIds: [],
+                  defaultRoles: [],
+                  createdBy: 'system',
+                  createdAt: now,
+                  updatedAt: now
+              }
+          ];
+          
+          defaults.forEach(d => {
+              if (!departments.find(existing => existing.id === d.id)) {
+                  onAddDepartment(d);
+              }
+          });
+      };
+
+      return (
+          <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-slate-900">Departments</h3>
+                  <div className="flex gap-2">
+                      {departments.length === 0 && (
+                          <button onClick={handleSeedDefaults} className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-2">
+                              <Database className="w-4 h-4"/> Seed Defaults
+                          </button>
+                      )}
+                      <button onClick={handleCreate} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2"><Plus className="w-4 h-4"/> Add Department</button>
+                  </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {departments.map(dept => (
+                      <div key={dept.id} className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group relative">
+                          <div className="flex justify-between items-start mb-2">
+                              <div className="flex items-center gap-2">
+                                  <h4 className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">{dept.name}</h4>
+                                  <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-mono text-slate-500">{dept.code}</span>
+                                  {!dept.isActive && <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full border border-slate-200 font-bold">INACTIVE</span>}
+                              </div>
+                              <div className="flex gap-1">
+                                  <button onClick={() => handleEdit(dept)} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded"><Edit2 className="w-4 h-4"/></button>
+                                  <button onClick={() => handleDelete(dept.id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                              </div>
+                          </div>
+                          
+                          <p className="text-sm text-slate-500 mb-4 min-h-[40px]">{dept.description || 'No description provided.'}</p>
+                          
+                          <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-xs text-slate-400">
+                              <span className="flex items-center gap-1"><Users className="w-3 h-3"/> {dept.memberIds.length} Members</span>
+                              <span className="flex items-center gap-1"><Shield className="w-3 h-3"/> {dept.defaultRoles.length} Roles</span>
+                          </div>
+                      </div>
+                  ))}
+                  {departments.length === 0 && (
+                      <div className="col-span-full p-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400">
+                          <Building className="w-12 h-12 mx-auto mb-4 opacity-50"/>
+                          <p>No departments defined yet.</p>
+                          <button onClick={handleCreate} className="mt-4 text-indigo-600 font-bold hover:underline">Create First Department</button>
+                      </div>
+                  )}
+              </div>
+
+              {isEditOpen && editingDept && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 animate-in zoom-in duration-200">
+                          <h3 className="font-bold text-lg mb-4 text-slate-900">{departments.find(d => d.id === editingDept.id) ? 'Edit Department' : 'Create Department'}</h3>
+                          <div className="space-y-4">
+                              <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-1">Department Name</label>
+                                  <input className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="e.g. Creative" value={editingDept.name} onChange={e => setEditingDept({...editingDept, name: e.target.value})} />
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                      <label className="block text-sm font-medium text-slate-700 mb-1">Code</label>
+                                      <input className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none uppercase" placeholder="e.g. CRE" value={editingDept.code} onChange={e => setEditingDept({...editingDept, code: e.target.value.toUpperCase()})} />
+                                  </div>
+                                  <div className="flex items-end pb-3">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                          <input type="checkbox" checked={editingDept.isActive} onChange={e => setEditingDept({...editingDept, isActive: e.target.checked})} className="rounded text-indigo-600 w-4 h-4" />
+                                          <span className="text-sm text-slate-700">Active?</span>
+                                      </label>
+                                  </div>
+                              </div>
+                              <div>
+                                  <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                                  <textarea className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none h-24 resize-none" placeholder="Department description..." value={editingDept.description} onChange={e => setEditingDept({...editingDept, description: e.target.value})} />
+                              </div>
+                              
+                              <div className="flex justify-end gap-2 pt-2">
+                                  <button onClick={() => setIsEditOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                                  <button onClick={handleSave} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save Department</button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              )}
+          </div>
+      );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -637,16 +739,18 @@ const AdminHub: React.FC<AdminHubProps> = ({
       </div>
 
       <div className="border-b border-slate-200">
-        <nav className="flex space-x-6">
-          {['Overview', 'Branding', 'Users', 'Roles', 'Workflows', 'Settings', 'Audit'].map(tab => (
+        <nav className="flex space-x-6 overflow-x-auto pb-1">
+          {['Overview', 'Branding', 'Users', 'Roles', 'Matrix', 'Departments', 'Workflows', 'Settings', 'Audit'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                 activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab === 'Workflows' && <GitBranch className="w-4 h-4" />}
+              {tab === 'Departments' && <Building className="w-4 h-4" />}
+              {tab === 'Matrix' && <Grid3x3 className="w-4 h-4" />}
               {tab}
             </button>
           ))}
@@ -657,8 +761,11 @@ const AdminHub: React.FC<AdminHubProps> = ({
          {activeTab === 'Overview' && <Overview />}
          {activeTab === 'Branding' && <BrandingEditor />}
          {activeTab === 'Users' && <UsersManager />}
-         {activeTab === 'Roles' && <RolesManager />}
+         {activeTab === 'Roles' && <RolesManager roles={roles} onAddRole={onAddRole} onUpdateRole={onUpdateRole} onDeleteRole={onDeleteRole} />}
+         {activeTab === 'Matrix' && <PermissionMatrix roles={roles} permissions={PERMISSIONS_LIST} onUpdateRole={onUpdateRole} onSyncRoles={onSyncRoles} />}
+         {activeTab === 'Departments' && <DepartmentsManager />}
          {activeTab === 'Workflows' && <WorkflowsManager />}
+         {activeTab === 'Departments' && <DepartmentsManager />}
          {/* SettingsEditor component omitted for brevity but implied present */}
          {activeTab === 'Audit' && (
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Task, Project, User, TaskStatus, Priority, Department, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember, RoleDefinition, ProjectMilestone } from '../types';
+import { Task, Project, User, TaskStatus, Priority, Department, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember, RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost } from '../types';
 import { 
   Plus, Search, Filter, Calendar, Clock, CheckCircle, 
   MessageSquare, FileText, Link, Paperclip, MoreVertical, 
   Play, Pause, AlertCircle, ChevronRight, User as UserIcon, Send,
   ThumbsUp, ThumbsDown, ShieldCheck, CornerUpLeft, Upload, Download,
-  X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2
+  X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2, Share2
 } from 'lucide-react';
 import { archiveTask } from '../utils/archiveUtils';
+import { deleteField } from 'firebase/firestore';
 
 interface TasksHubProps {
   tasks: Task[];
@@ -38,19 +39,29 @@ interface TasksHubProps {
   onNotify: (type: string, title: string, message: string) => void;
   checkPermission: (code: string) => boolean;
   onDeleteTask: (task: Task) => void;
+  initialSelectedTaskId?: string | null;
+  onAddSocialPost: (post: SocialPost) => void;
 }
 
 const TasksHub: React.FC<TasksHubProps> = ({ 
-  tasks, projects, users, comments, timeLogs, dependencies, activityLogs, 
-  approvalSteps, clientApprovals, files, workflowTemplates, projectMembers, roles, milestones, currentUser,
+  tasks = [], projects = [], users = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [], 
+  approvalSteps = [], clientApprovals = [], files = [], workflowTemplates = [], projectMembers = [], roles = [], milestones = [], currentUser,
   onAddTask, onUpdateTask, onAddComment, onAddTimeLog, onAddDependency,
-  onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, checkPermission, onDeleteTask
+  onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, checkPermission, onDeleteTask,
+  initialSelectedTaskId, onAddSocialPost
 }) => {
   // State
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialSelectedTaskId || null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
+  // Effect to handle external navigation to a specific task
+  React.useEffect(() => {
+    if (initialSelectedTaskId) {
+      setSelectedTaskId(initialSelectedTaskId);
+    }
+  }, [initialSelectedTaskId]);
 
   // Filters State
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -58,6 +69,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
   const [filterType, setFilterType] = useState<string>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
+  const [filterProject, setFilterProject] = useState<string>('all');
+  const [filterDepartment, setFilterDepartment] = useState<string>('all');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'my_approvals'>('all'); // Replaced onlyMyApprovals with viewMode
   const [showArchived, setShowArchived] = useState(false);
 
@@ -77,6 +91,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
   const [newTaskMilestone, setNewTaskMilestone] = useState('');
   const [newTaskWorkflow, setNewTaskWorkflow] = useState<string>('');
   const [newTaskAssignees, setNewTaskAssignees] = useState<string[]>([]);
+  const [newTaskRequiresSocial, setNewTaskRequiresSocial] = useState(false);
+  const [newTaskSocialPlatforms, setNewTaskSocialPlatforms] = useState<SocialPlatform[]>([]);
+  const [newTaskSocialManagerId, setNewTaskSocialManagerId] = useState<string>('');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId);
@@ -84,6 +101,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
   // Derive unique lists for dropdowns
   const uniqueClients = Array.from(new Set(projects.map(p => p.client))).sort();
   const taskTypes: TaskType[] = ['design', 'video', 'photo', 'motion', 'post_production', 'copywriting', 'meeting', 'production', 'social_content', 'other'];
+  const socialPlatforms: SocialPlatform[] = ['instagram', 'facebook', 'linkedin', 'tiktok', 'youtube', 'website', 'twitter', 'other'];
 
   // Auto-select workflow when dept/type changes
   React.useEffect(() => {
@@ -103,7 +121,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
       setNewTaskDue(task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '');
       setNewTaskMilestone(task.milestoneId || '');
       setNewTaskWorkflow(task.workflowTemplateId || '');
-      setNewTaskAssignees(task.assigneeIds || []);
+      setNewTaskRequiresSocial(task.requiresSocialPost || false);
+      setNewTaskSocialPlatforms(task.socialPlatforms || []);
+      setNewTaskSocialManagerId(task.socialManagerId || '');
       setIsCreateModalOpen(true);
   };
 
@@ -152,6 +172,8 @@ const TasksHub: React.FC<TasksHubProps> = ({
       setFilterType('all');
       setFilterClient('all');
       setFilterAssignee('all');
+      setFilterProject('all');
+      setFilterDepartment('all');
       setStartDateFrom('');
       setStartDateTo('');
       setDueDateFrom('');
@@ -221,18 +243,38 @@ const TasksHub: React.FC<TasksHubProps> = ({
     if (!newTaskTitle || !newTaskProject) return;
 
     if (editingTask) {
+        // --- PERMISSION ENFORCEMENT ---
+        const canEditAll = checkPermission('tasks.edit_all');
+        const canEditOwn = checkPermission('tasks.edit_own');
+        const isAssigneeOrCreator = (editingTask.assigneeIds || []).includes(currentUser.id) || editingTask.createdBy === currentUser.id;
+
+        if (!canEditAll && !(canEditOwn && isAssigneeOrCreator)) {
+             onNotify('error', 'Permission Denied', 'You are not allowed to edit this task.');
+             return;
+        }
+
         // Update existing
         const updatedTask: Task = {
             ...editingTask,
             title: newTaskTitle,
-            projectId: newTaskProject,
-            department: newTaskDept,
+            // Restricted fields: Only 'edit_all' can change Project, Dept, Type
+            projectId: canEditAll ? newTaskProject : editingTask.projectId,
+            department: canEditAll ? newTaskDept : editingTask.department,
+            taskType: canEditAll ? newTaskType : editingTask.taskType,
+            
             priority: newTaskPriority,
-            taskType: newTaskType,
             dueDate: newTaskDue ? new Date(newTaskDue).toISOString() : editingTask.dueDate,
             milestoneId: newTaskMilestone || undefined,
-            workflowTemplateId: newTaskWorkflow || editingTask.workflowTemplateId,
-            assigneeIds: newTaskAssignees,
+            
+            // Workflow: Only if permission
+            workflowTemplateId: checkPermission('workflows.override_task_workflow') ? (newTaskWorkflow || editingTask.workflowTemplateId) : editingTask.workflowTemplateId,
+            
+            // Only update assignees if user has permission
+            // Social Handover
+            requiresSocialPost: newTaskRequiresSocial,
+            socialPlatforms: newTaskRequiresSocial ? newTaskSocialPlatforms : [],
+            socialManagerId: newTaskRequiresSocial ? newTaskSocialManagerId : null,
+
             updatedAt: new Date().toISOString()
         };
         onUpdateTask(updatedTask);
@@ -249,6 +291,15 @@ const TasksHub: React.FC<TasksHubProps> = ({
         }
         const workflow = workflowTemplates.find(w => w.id === workflowId);
 
+        // Determine assignees based on permission
+        const finalAssignees = checkPermission('tasks.manage_assignees') 
+            ? newTaskAssignees 
+            : [currentUser.id]; // Default to self-assign if no permission
+
+        // Start with IN_PROGRESS if workflow exists (assignee can work immediately)
+        // Otherwise start with ASSIGNED (traditional flow)
+        const initialStatus = workflowId ? TaskStatus.IN_PROGRESS : TaskStatus.ASSIGNED;
+
         const newTask: Task = {
         id: `t${Date.now()}`,
         projectId: newTaskProject,
@@ -257,19 +308,24 @@ const TasksHub: React.FC<TasksHubProps> = ({
         department: newTaskDept,
         priority: newTaskPriority,
         taskType: newTaskType,
-        status: TaskStatus.NEW,
+        status: initialStatus,
         startDate: new Date().toISOString(),
         dueDate: newTaskDue ? new Date(newTaskDue).toISOString() : new Date().toISOString(),
         milestoneId: newTaskMilestone || undefined,
-        assigneeIds: newTaskAssignees,
+        assigneeIds: finalAssignees,
         createdBy: currentUser.id,
         approvalPath: [], // Deprecated in favor of dynamic flow, kept for fallback
         workflowTemplateId: workflowId,
         currentApprovalLevel: 0,
-        isClientApprovalRequired: workflow ? workflow.requiresClientApproval : true,
+        isClientApprovalRequired: workflow ? workflow.requiresClientApproval : false,
         attachments: [],
         client: project?.client,
         isArchived: false,
+        // Social Handover
+        requiresSocialPost: newTaskRequiresSocial,
+        socialPlatforms: newTaskRequiresSocial ? newTaskSocialPlatforms : [],
+        socialManagerId: newTaskRequiresSocial ? newTaskSocialManagerId : null,
+        
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
         };
@@ -282,9 +338,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
     setEditingTask(null);
     setNewTaskTitle('');
     setNewTaskProject('');
-    setNewTaskDue('');
-    setNewTaskMilestone('');
-    setNewTaskAssignees([]);
+    setNewTaskRequiresSocial(false);
+    setNewTaskSocialPlatforms([]);
+    setNewTaskSocialManagerId('');
   };
 
   // Filter Logic
@@ -294,13 +350,15 @@ const TasksHub: React.FC<TasksHubProps> = ({
     const matchPriority = filterPriority === 'all' || t.priority === filterPriority;
     const matchType = filterType === 'all' || t.taskType === filterType;
     const matchClient = filterClient === 'all' || t.client === filterClient;
+    const matchProject = filterProject === 'all' || t.projectId === filterProject;
+    const matchDepartment = filterDepartment === 'all' || t.department === filterDepartment;
     
     // Search
     const matchSearch = t.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         (t.client?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     
     // Assignee
-    const matchAssignee = filterAssignee === 'all' || t.assigneeIds.includes(filterAssignee);
+    const matchAssignee = filterAssignee === 'all' || (t.assigneeIds || []).includes(filterAssignee);
 
     // Date Range Logic
     const taskStart = new Date(t.startDate).getTime();
@@ -326,16 +384,19 @@ const TasksHub: React.FC<TasksHubProps> = ({
         matchApproval = !!myPendingStep;
     }
 
-    return matchStatus && matchPriority && matchType && matchClient && matchAssignee && 
+    return matchStatus && matchPriority && matchType && matchClient && matchAssignee && matchProject && matchDepartment &&
            matchSearch && matchApproval && matchStartFrom && matchStartTo && matchDueFrom && matchDueTo && matchArchived;
   });
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] -m-8">
+    <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] -m-4 sm:-m-6 lg:-m-8">
       {/* --- LEFT PANEL: LIST --- */}
-      <div className="w-1/3 bg-white border-r border-slate-200 flex flex-col min-w-[350px]">
+      <div className={`
+        w-full lg:w-1/3 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col
+        ${selectedTaskId ? 'hidden lg:flex' : 'flex'}
+      `}>
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 bg-white z-20">
+        <div className="p-3 sm:p-4 border-b border-slate-200 bg-white z-20">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-slate-900">Tasks</h2>
             <div className="flex items-center space-x-2">
@@ -370,55 +431,98 @@ const TasksHub: React.FC<TasksHubProps> = ({
 
           {/* Advanced Filter Panel */}
           {isFilterPanelOpen && (
-              <div className="mt-4 p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-inner space-y-4 text-sm animate-in slide-in-from-top-2 duration-200">
-                  <div className="grid grid-cols-2 gap-3">
+              <div className="mt-4 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-inner space-y-4 text-sm animate-in slide-in-from-top-2 duration-200">
+                  {/* Basic Filters Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       <div>
                           <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
-                          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2 border rounded-lg text-xs">
+                          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                               <option value="all">All Statuses</option>
                               {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
                           </select>
                       </div>
                       <div>
                           <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 border rounded-lg text-xs">
+                          <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                               <option value="all">All Types</option>
                               {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
                           </select>
                       </div>
                       <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Client</label>
-                          <select value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full p-2 border rounded-lg text-xs">
-                              <option value="all">All Clients</option>
-                              {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
-                          </select>
-                      </div>
-                      <div>
                           <label className="block text-xs font-medium text-slate-500 mb-1">Assigned To</label>
-                          <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 border rounded-lg text-xs">
+                          <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                               <option value="all">Anyone</option>
-                              {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                              {/* Filter users based on permission: manage_assignees sees all, others see only project members */}
+                              {(checkPermission('tasks.manage_assignees') 
+                                  ? users 
+                                  : users.filter(u => projectMembers.some(pm => pm.userId === u.id && projects.some(p => p.id === pm.projectId)))
+                              ).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                          </select>
+                      </div>
+                      <div>
+                          <label className="block text-xs font-medium text-slate-500 mb-1">Priority</label>
+                          <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                              <option value="all">All Priorities</option>
+                              {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
                           </select>
                       </div>
                   </div>
-                  
-                  {/* Date Ranges */}
-                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
-                      <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Start Date (From/To)</label>
-                          <div className="flex gap-1">
-                              <input type="date" value={startDateFrom} onChange={e => setStartDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs" />
-                              <input type="date" value={startDateTo} onChange={e => setStartDateTo(e.target.value)} className="w-full p-1 border rounded text-xs" />
-                          </div>
-                      </div>
-                      <div>
-                          <label className="block text-xs font-medium text-slate-500 mb-1">Due Date (From/To)</label>
-                          <div className="flex gap-1">
-                              <input type="date" value={dueDateFrom} onChange={e => setDueDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs" />
-                              <input type="date" value={dueDateTo} onChange={e => setDueDateTo(e.target.value)} className="w-full p-1 border rounded text-xs" />
-                          </div>
-                      </div>
-                  </div>
+
+                  {/* More Filters Toggle */}
+                  <button 
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                  >
+                    {showAdvancedFilters ? <ChevronDown className="w-3 h-3 rotate-180" /> : <ChevronDown className="w-3 h-3" />}
+                    {showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
+                  </button>
+
+                  {/* Advanced Filters Section */}
+                  {showAdvancedFilters && (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200 pt-2 border-t border-slate-200">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Client</label>
+                                <select value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="all">All Clients</option>
+                                    {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Project</label>
+                                <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="all">All Projects</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Department</label>
+                                <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                    <option value="all">All Departments</option>
+                                    {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Date Ranges */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Start Date (From/To)</label>
+                                <div className="flex flex-col sm:flex-row gap-1">
+                                    <input type="date" value={startDateFrom} onChange={e => setStartDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                    <input type="date" value={startDateTo} onChange={e => setStartDateTo(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1">Due Date (From/To)</label>
+                                <div className="flex flex-col sm:flex-row gap-1">
+                                    <input type="date" value={dueDateFrom} onChange={e => setDueDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                    <input type="date" value={dueDateTo} onChange={e => setDueDateTo(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center pt-2">
                       <div className="flex gap-2">
@@ -504,9 +608,22 @@ const TasksHub: React.FC<TasksHubProps> = ({
       </div>
 
       {/* --- RIGHT PANEL: DETAILS --- */}
-      <div className="flex-1 bg-slate-50 flex flex-col h-full overflow-hidden">
+      <div className={`
+        flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative
+        ${!selectedTaskId ? 'hidden lg:flex' : 'flex'}
+      `}>
         {selectedTask ? (
-          <TaskDetailView 
+          <>
+            {/* Mobile back button */}
+            <button
+              onClick={() => setSelectedTaskId(null)}
+              className="lg:hidden flex items-center gap-2 p-4 bg-white border-b border-slate-200 text-slate-600 hover:text-slate-900"
+            >
+              <ChevronRight className="w-5 h-5 rotate-180" />
+              <span className="font-medium">Back to Tasks</span>
+            </button>
+            
+            <TaskDetailView 
             task={selectedTask}
             project={projects.find(p => p.id === selectedTask.projectId)}
             users={users}
@@ -522,6 +639,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
             workflowTemplates={workflowTemplates}
             milestones={milestones}
             onUpdateTask={onUpdateTask}
+            onAddTask={onAddTask}
             onAddComment={onAddComment}
             onAddTimeLog={onAddTimeLog}
             onAddDependency={onAddDependency}
@@ -537,9 +655,11 @@ const TasksHub: React.FC<TasksHubProps> = ({
             checkPermission={checkPermission}
             getStatusColor={getStatusColor}
             resolveApprover={resolveApprover}
+            onAddSocialPost={onAddSocialPost}
           />
+          </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
             <CheckCircle className="w-16 h-16 mb-4 opacity-20" />
             <p className="text-lg font-medium">Select a task to view details</p>
           </div>
@@ -548,20 +668,26 @@ const TasksHub: React.FC<TasksHubProps> = ({
 
       {/* Create Task Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white rounded-none sm:rounded-xl shadow-2xl w-full h-full sm:h-auto sm:max-w-lg max-h-screen overflow-y-auto animate-in fade-in zoom-in duration-200">
+            <div className="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h2 className="text-lg font-bold text-slate-900">{editingTask ? 'Edit Task' : 'Create New Task'}</h2>
               <button onClick={() => { setIsCreateModalOpen(false); setEditingTask(null); }} className="text-slate-400 hover:text-slate-600"><Plus className="w-5 h-5 rotate-45"/></button>
             </div>
-            <form onSubmit={handleSaveTask} className="p-6 space-y-4">
+            <form onSubmit={handleSaveTask} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Task Title *</label>
                 <input required value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Design Homepage" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Project *</label>
-                <select required value={newTaskProject} onChange={e => setNewTaskProject(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                <select 
+                  required 
+                  value={newTaskProject} 
+                  onChange={e => setNewTaskProject(e.target.value)} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                  disabled={!!editingTask && !checkPermission('tasks.edit_all')}
+                >
                   <option value="">Select Project</option>
                   {projects.filter(p => p.status === 'active' || p.status === 'planning').map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.client})</option>
@@ -570,17 +696,27 @@ const TasksHub: React.FC<TasksHubProps> = ({
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Milestone (Optional)</label>
-                <select value={newTaskMilestone} onChange={e => setNewTaskMilestone(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" disabled={!newTaskProject}>
+                <select 
+                  value={newTaskMilestone} 
+                  onChange={e => setNewTaskMilestone(e.target.value)} 
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500" 
+                  disabled={!newTaskProject || (!!editingTask && !checkPermission('tasks.edit_all'))}
+                >
                   <option value="">Select Milestone</option>
                   {milestones.filter(m => m.projectId === newTaskProject).map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                   <select value={newTaskType} onChange={e => setNewTaskType(e.target.value as TaskType)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                   <select 
+                     value={newTaskType} 
+                     onChange={e => setNewTaskType(e.target.value as TaskType)} 
+                     className="w-full px-3 py-2 border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500"
+                     disabled={!!editingTask && !checkPermission('tasks.edit_all')}
+                   >
                       {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ').toUpperCase()}</option>)}
                    </select>
                 </div>
@@ -594,7 +730,12 @@ const TasksHub: React.FC<TasksHubProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
-                   <select value={newTaskDept} onChange={e => setNewTaskDept(e.target.value as Department)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                   <select 
+                     value={newTaskDept} 
+                     onChange={e => setNewTaskDept(e.target.value as Department)} 
+                     className="w-full px-3 py-2 border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500"
+                     disabled={!!editingTask && !checkPermission('tasks.edit_all')}
+                   >
                       {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
                    </select>
                 </div>
@@ -605,6 +746,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
               </div>
 
               {/* Assignees Selection */}
+              {checkPermission('tasks.manage_assignees') && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Assign Team Members</label>
                 <div className="border border-slate-300 rounded-lg p-2 max-h-32 overflow-y-auto space-y-1 custom-scrollbar">
@@ -631,6 +773,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
                     {newTaskAssignees.length === 0 ? 'No members assigned' : `${newTaskAssignees.length} member(s) assigned`}
                 </p>
               </div>
+              )}
 
               {/* Workflow Selection */}
               <div>
@@ -654,6 +797,58 @@ const TasksHub: React.FC<TasksHubProps> = ({
                           : `Default: ${getActiveWorkflow(newTaskDept, newTaskType)?.name || 'None'}`
                       }
                   </p>
+              </div>
+
+              {/* Social Handover Options */}
+              <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                  <label className="flex items-center space-x-2 cursor-pointer mb-2">
+                      <input 
+                          type="checkbox" 
+                          checked={newTaskRequiresSocial} 
+                          onChange={e => setNewTaskRequiresSocial(e.target.checked)}
+                          className="rounded text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="text-sm font-bold text-indigo-900">Requires Social Media Post?</span>
+                  </label>
+                  
+                  {newTaskRequiresSocial && (
+                      <div className="pl-6 animate-in fade-in slide-in-from-top-1">
+                          <div className="mb-3">
+                              <label className="block text-xs font-medium text-indigo-800 mb-1">Social Manager</label>
+                              <select 
+                                  value={newTaskSocialManagerId} 
+                                  onChange={e => setNewTaskSocialManagerId(e.target.value)} 
+                                  className="w-full px-2 py-1.5 border border-indigo-200 rounded text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                              >
+                                  <option value="">Select Manager</option>
+                                  {users.filter(u => u.role === 'Social Manager' || u.department === 'Marketing').map(u => (
+                                      <option key={u.id} value={u.id}>{u.name}</option>
+                                  ))}
+                              </select>
+                          </div>
+
+                          <label className="block text-xs font-medium text-indigo-800 mb-1">Select Platforms</label>
+                          <div className="grid grid-cols-2 gap-2">
+                              {socialPlatforms.map(platform => (
+                                  <label key={platform} className="flex items-center space-x-2 cursor-pointer">
+                                      <input 
+                                          type="checkbox" 
+                                          checked={newTaskSocialPlatforms.includes(platform)}
+                                          onChange={(e) => {
+                                              if (e.target.checked) {
+                                                  setNewTaskSocialPlatforms([...newTaskSocialPlatforms, platform]);
+                                              } else {
+                                                  setNewTaskSocialPlatforms(newTaskSocialPlatforms.filter(p => p !== platform));
+                                              }
+                                          }}
+                                          className="rounded text-indigo-600 focus:ring-indigo-500"
+                                      />
+                                      <span className="text-xs text-indigo-700 capitalize">{platform}</span>
+                                  </label>
+                              ))}
+                          </div>
+                      </div>
+                  )}
               </div>
 
               <div className="pt-4 flex justify-end space-x-2">
@@ -688,6 +883,7 @@ interface DetailViewProps {
   workflowTemplates: WorkflowTemplate[];
   milestones: ProjectMilestone[];
   onUpdateTask: (t: Task) => void;
+  onAddTask: (t: Task) => void; // Added for social task creation
   onAddComment: (c: TaskComment) => void;
   onAddTimeLog: (l: TaskTimeLog) => void;
   onAddDependency: (d: TaskDependency) => void;
@@ -703,20 +899,45 @@ interface DetailViewProps {
   checkPermission: (code: string) => boolean;
   getStatusColor: (s: TaskStatus) => string;
   resolveApprover: (step: WorkflowStepTemplate, task: Task) => string | null;
+  onAddSocialPost: (post: SocialPost) => void;
 }
 
 const TaskDetailView: React.FC<DetailViewProps> = ({ 
   task, project, users, comments, timeLogs, dependencies, activityLogs, taskSteps, clientApproval,
   taskFiles, allTasks, currentUser, workflowTemplates, milestones,
-  onUpdateTask, onAddComment, onAddTimeLog, onAddDependency, 
+  onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency, 
   onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, onArchiveTask, onDeleteTask, onEditTask, checkPermission,
-  getStatusColor, resolveApprover 
+  getStatusColor, resolveApprover, onAddSocialPost
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [newComment, setNewComment] = useState('');
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const usedTemplate = workflowTemplates.find(w => w.id === task.workflowTemplateId);
+  
+  // Helper: Auto-track task lifecycle events
+  const trackTimeEvent = (
+    eventType: 'task_accepted' | 'task_started' | 'task_submitted' | 'task_approved' | 'task_rejected' | 'status_change' | 'assignment_changed',
+    fromStatus?: TaskStatus,
+    toStatus?: TaskStatus,
+    note?: string
+  ) => {
+    const timeLog: TaskTimeLog = {
+      id: `tl${Date.now()}_${currentUser.id}`,
+      taskId: task.id,
+      userId: currentUser.id,
+      hours: 0, // Automatic events don't count as work hours
+      logDate: new Date().toISOString(),
+      note: note || `${eventType.replace(/_/g, ' ')}`,
+      eventType,
+      fromStatus,
+      toStatus,
+      isAutomatic: true,
+      timestamp: new Date().toISOString()
+    };
+    onAddTimeLog(timeLog);
+  };
   
   // Determine label for next step
   let nextStepLabel = '';
@@ -734,13 +955,14 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
       return false;
     }
 
-    // For IN_PROGRESS or REVISIONS_REQUIRED: Only assigned users can submit
-    if (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) {
-      return task.assigneeIds.includes(currentUser.id);
+    // Allow ASSIGNED, IN_PROGRESS, or REVISIONS_REQUIRED to be advanced (submitted for approval/completion)
+    // And only by assigned users
+    if (task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) {
+      return (task.assigneeIds || []).includes(currentUser.id);
     }
 
-    // For other statuses (NEW, ASSIGNED): Any authorized user can advance
-    return true;
+    // No other statuses can be advanced via this button
+    return false;
   };
   
   const handleAdvanceStatus = () => {
@@ -751,35 +973,112 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
       return;
     }
 
-    // Basic transitions
-    if (task.status === TaskStatus.NEW) {
-         onUpdateTask({ ...task, status: TaskStatus.ASSIGNED, updatedAt: new Date().toISOString() });
-    } else if (task.status === TaskStatus.ASSIGNED) {
-         onUpdateTask({ ...task, status: TaskStatus.IN_PROGRESS, updatedAt: new Date().toISOString() });
-    } else if (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) {
-         // Moving to Review: Generate Steps Dynamically
-         if (taskSteps.length === 0 && task.workflowTemplateId) {
-             const template = workflowTemplates.find(w => w.id === task.workflowTemplateId);
-             if (template && template.steps.length > 0) {
-                 const newSteps: ApprovalStep[] = template.steps.map((step, index) => {
-                     const approverId = resolveApprover(step, task);
-                     return {
-                         id: `as${Date.now()}_${index}`,
-                         taskId: task.id,
-                         milestoneId: task.milestoneId || null, // Link to milestone
-                         approverId: approverId || 'unassigned', // Fallback needs handling
-                         level: step.order,
-                         status: index === 0 ? 'pending' : 'waiting',
-                         createdAt: new Date().toISOString()
-                     };
+    const oldStatus = task.status;
+
+    // Submit for approval from ASSIGNED, IN_PROGRESS or REVISIONS_REQUIRED
+    if (task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) {
+         // Check if workflow exists
+         if (task.workflowTemplateId) {
+             // If resubmitting after revisions, reset the approval step that requested revisions
+             if (task.status === TaskStatus.REVISIONS_REQUIRED && taskSteps.length > 0) {
+                 // Find the step(s) that have revision_requested or rejected status
+                 const stepsToReset = taskSteps.filter(s => 
+                     s.status === 'revision_requested' || s.status === 'rejected'
+                 );
+                 
+                 // Reset each step back to pending so the approver can act again
+                 stepsToReset.forEach(step => {
+                     onUpdateApprovalStep({ 
+                         ...step, 
+                         status: 'pending',
+                         reviewedAt: '',
+                         comment: ''
+                     });
                  });
-                 onAddApprovalSteps(newSteps);
-                 onNotify('system', 'Workflow Started', `Approval workflow "${template.name}" initiated.`);
+                 
+                 // Also set any previous steps that were set to 'pending' during revision to 'approved'
+                 // This ensures the workflow continues from where it was
+                 const currentLevel = task.currentApprovalLevel || 0;
+                 const previousPendingSteps = taskSteps.filter(s => 
+                     s.level < currentLevel && s.status === 'pending'
+                 );
+                 
+                 previousPendingSteps.forEach(step => {
+                     onUpdateApprovalStep({ 
+                         ...step, 
+                         status: 'approved',
+                         reviewedAt: new Date().toISOString()
+                     });
+                 });
+                 
+                 // Track resubmission event
+                 trackTimeEvent('task_submitted', oldStatus, TaskStatus.AWAITING_REVIEW, `Resubmitted task after revisions`);
+                 
+                 // Clear revision data and move back to review
+                 onUpdateTask({ 
+                     ...task, 
+                     status: TaskStatus.AWAITING_REVIEW,
+                     revisionAssignedTo: deleteField() as any,
+                     revisionComment: deleteField() as any,
+                     updatedAt: new Date().toISOString() 
+                 });
+                 onNotify('approval_request', 'Resubmitted for Review', `Task "${task.title}" has been resubmitted for approval.`);
+                 return;
+             }
+             
+             // Moving to Review: Generate Steps Dynamically (first time submission)
+             if (taskSteps.length === 0) {
+                 const template = workflowTemplates.find(w => w.id === task.workflowTemplateId);
+                 if (template && template.steps.length > 0) {
+                     const newSteps: ApprovalStep[] = template.steps.map((step, index) => {
+                         const approverId = resolveApprover(step, task);
+                         return {
+                             id: `as${Date.now()}_${index}`,
+                             taskId: task.id,
+                             milestoneId: task.milestoneId || null, // Link to milestone
+                             approverId: approverId || 'unassigned', // Fallback needs handling
+                             level: step.order,
+                             status: index === 0 ? 'pending' : 'waiting',
+                             createdAt: new Date().toISOString()
+                         };
+                     });
+                     onAddApprovalSteps(newSteps);
+                     onNotify('system', 'Workflow Started', `Approval workflow "${template.name}" initiated.`);
+                 }
+             }
+             
+             // Track submission event
+             trackTimeEvent('task_submitted', oldStatus, TaskStatus.AWAITING_REVIEW, `Submitted task for review`);
+             
+             onUpdateTask({ ...task, status: TaskStatus.AWAITING_REVIEW, updatedAt: new Date().toISOString() });
+             onNotify('approval_request', 'Approval Requested', `Task "${task.title}" is now awaiting review.`);
+         } else {
+             // No workflow - direct completion
+             trackTimeEvent('task_submitted', oldStatus, TaskStatus.COMPLETED, `Completed task (no workflow)`);
+             
+             // Check for Social Handover
+             if (task.requiresSocialPost && !task.socialPostId) {
+                 const socialPost = createSocialPostFromTask(task);
+                 
+                 // Update Task with social post link
+                 onUpdateTask({ 
+                     ...task, 
+                     status: TaskStatus.COMPLETED, 
+                     socialPostId: socialPost.id,
+                     completedAt: new Date().toISOString(),
+                     updatedAt: new Date().toISOString() 
+                 });
+             } else {
+                 // Normal Completion
+                 onUpdateTask({ 
+                     ...task, 
+                     status: TaskStatus.COMPLETED, 
+                     completedAt: new Date().toISOString(),
+                     updatedAt: new Date().toISOString() 
+                 });
+                 onNotify('task_completed', 'Task Completed', `Task "${task.title}" has been completed.`);
              }
          }
-         
-         onUpdateTask({ ...task, status: TaskStatus.AWAITING_REVIEW, updatedAt: new Date().toISOString() });
-         onNotify('approval_request', 'Approval Requested', `Task "${task.title}" is now awaiting review.`);
     }
   };
 
@@ -796,23 +1095,104 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
   };
 
   const handleFileUpload = () => {
-    if (!project) return;
-    const newFile: AgencyFile = {
-        id: `file${Date.now()}`,
-        projectId: project.id,
-        taskId: task.id,
-        uploaderId: currentUser.id,
-        name: `Upload_from_Task_${Date.now()}.jpg`,
-        type: 'image/jpeg',
-        size: 1500000,
-        url: 'https://picsum.photos/800/600',
-        version: 1,
-        isDeliverable: false,
-        tags: ['task-attachment'],
-        isArchived: false,
-        createdAt: new Date().toISOString()
-    };
-    onUploadFile(newFile);
+    try {
+      console.log('Upload button clicked');
+      console.log('Current user:', currentUser.name, currentUser.role);
+      console.log('File input ref:', fileInputRef.current);
+      console.log('Project:', project?.name, project?.id);
+      console.log('Task:', task.title, task.id);
+      
+      if (!fileInputRef.current) {
+        console.error('File input ref is null!');
+        return;
+      }
+      
+      fileInputRef.current.click();
+      console.log('File input clicked successfully');
+    } catch (error) {
+      console.error('Error in handleFileUpload:', error);
+    }
+  };
+
+  const handleFileSelected = (event: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      console.log('handleFileSelected called');
+      
+      const selectedFile = event.target.files?.[0];
+      if (!selectedFile) {
+        console.log('No file selected');
+        return;
+      }
+      
+      if (!project) {
+        console.error('No project found!');
+        alert('Error: No project associated with this task');
+        return;
+      }
+      
+      console.log('File selected:', selectedFile.name, selectedFile.type, selectedFile.size);
+      console.log('Project:', project.name, project.id);
+      console.log('Current user:', currentUser.name, currentUser.id, currentUser.role);
+      
+      const newFile: AgencyFile = {
+          id: `file${Date.now()}`,
+          projectId: project.id,
+          taskId: task.id,
+          uploaderId: currentUser.id,
+          name: selectedFile.name,
+          type: selectedFile.type,
+          size: selectedFile.size,
+          url: '', // Will be set after upload
+          version: 1,
+          isDeliverable: false,
+          tags: ['task-attachment'],
+          isArchived: false,
+          createdAt: new Date().toISOString()
+      };
+      
+      console.log('Created file object:', newFile);
+      
+      // Attach the raw file for upload processing
+      (newFile as any).file = selectedFile;
+      
+      console.log('Calling onUploadFile with file:', newFile.name);
+      console.log('onUploadFile function:', typeof onUploadFile);
+      
+      onUploadFile(newFile);
+      
+      console.log('onUploadFile called successfully');
+      
+      // Reset file input
+      if (event.target) event.target.value = '';
+    } catch (error) {
+      console.error('Error in handleFileSelected:', error);
+      alert('Error selecting file: ' + (error as Error).message);
+    }
+  };
+
+  // Helper to create social post
+  const createSocialPostFromTask = (originalTask: Task) => {
+      const newPost: SocialPost = {
+          id: `sp${Date.now()}`,
+          sourceTaskId: originalTask.id,
+          projectId: originalTask.projectId,
+          clientId: project?.clientId || '',
+          title: originalTask.title,
+          platforms: originalTask.socialPlatforms || [],
+          caption: '', // To be filled by Social Manager
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          createdBy: currentUser.id,
+          timezone: 'UTC', // Default, can be changed
+          socialManagerId: originalTask.socialManagerId || null,
+          notesFromTask: originalTask.publishingNotes || null,
+          publishAt: null
+      };
+      
+      onAddSocialPost(newPost);
+      onNotify('system', 'Social Handover', `Social post created in Posting Hub.`);
+      return newPost;
   };
 
   // Approval Actions
@@ -826,6 +1206,9 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
       }
 
       if (action === 'approve') {
+          // Track approval event
+          trackTimeEvent('task_approved', task.status, TaskStatus.AWAITING_REVIEW, `Approved by ${currentUser.name}`);
+          
           // 1. Mark current step approved
           onUpdateApprovalStep({ ...currentStep, status: 'approved', reviewedAt: new Date().toISOString(), comment: 'Approved' });
           
@@ -851,12 +1234,31 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
                   }
                   onNotify('task_status_changed', 'Ready for Client', `"${task.title}" moved to Client Review.`);
               } else {
-                  onUpdateTask({ ...task, status: TaskStatus.APPROVED, updatedAt: new Date().toISOString() });
-                  onNotify('task_status_changed', 'Approved', `"${task.title}" fully approved internally.`);
+                  // --- FINAL APPROVAL LOGIC ---
+                  
+                  // Check for Social Handover
+                  if (task.requiresSocialPost && !task.socialPostId) {
+                      const socialPost = createSocialPostFromTask(task);
+                      
+                      // Update Original Task
+                      onUpdateTask({ 
+                          ...task, 
+                          status: TaskStatus.APPROVED, 
+                          socialPostId: socialPost.id,
+                          updatedAt: new Date().toISOString() 
+                      });
+                  } else {
+                      // Normal Completion
+                      onUpdateTask({ ...task, status: TaskStatus.APPROVED, updatedAt: new Date().toISOString() });
+                      onNotify('task_status_changed', 'Approved', `"${task.title}" fully approved internally.`);
+                  }
               }
           }
       } else {
           // Reject / Revise
+          // Track rejection event
+          trackTimeEvent('task_rejected', task.status, TaskStatus.REVISIONS_REQUIRED, `Revisions requested by ${currentUser.name}: ${comment || 'No comment'}`);
+          
           // 1. Mark current step as revision requested
           onUpdateApprovalStep({ 
               ...currentStep, 
@@ -872,7 +1274,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
           if (previousLevel >= 0) {
               // Return to previous approver
               const previousStep = taskSteps.find(s => s.level === previousLevel);
-              previousUserId = previousStep?.approverId || task.assigneeIds[0];
+              previousUserId = previousStep?.approverId || (task.assigneeIds || [])[0];
               
               // Re-open previous step
               if (previousStep) {
@@ -880,7 +1282,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
               }
           } else {
               // Return to original assignee (Level 0 -> Assignee)
-              previousUserId = task.assigneeIds[0];
+              previousUserId = (task.assigneeIds || [])[0];
           }
 
           // 3. Update Task with Revision Info
@@ -913,8 +1315,22 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
       if (!clientApproval) return;
       if (action === 'approve') {
           onUpdateClientApproval({ ...clientApproval, status: 'approved', reviewedAt: new Date().toISOString() });
-          onUpdateTask({ ...task, status: TaskStatus.CLIENT_APPROVED, updatedAt: new Date().toISOString() });
-          onNotify('task_status_changed', 'Client Approved', `"${task.title}" approved by client.`);
+          
+          // Check for Social Handover (Client Approved)
+          if (task.requiresSocialPost && !task.socialPostId) {
+               const socialPost = createSocialPostFromTask(task);
+              
+              onUpdateTask({ 
+                  ...task, 
+                  status: TaskStatus.CLIENT_APPROVED, 
+                  socialPostId: socialPost.id,
+                  updatedAt: new Date().toISOString() 
+              });
+          } else {
+              onUpdateTask({ ...task, status: TaskStatus.CLIENT_APPROVED, updatedAt: new Date().toISOString() });
+              onNotify('task_status_changed', 'Client Approved', `"${task.title}" approved by client.`);
+          }
+
       } else {
           onUpdateClientApproval({ ...clientApproval, status: 'rejected', reviewedAt: new Date().toISOString() });
           onUpdateTask({ ...task, status: TaskStatus.REVISIONS_REQUIRED, updatedAt: new Date().toISOString() });
@@ -943,6 +1359,15 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-white">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelected}
+        accept="*/*"
+      />
+      
       {/* Header */}
       <div className="p-6 border-b border-slate-200">
         <div className="flex justify-between items-start mb-4">
@@ -962,7 +1387,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
            </div>
            
            <div className="flex items-center space-x-2">
-              {(checkPermission('tasks.edit_all') || (checkPermission('tasks.edit_own') && task.assigneeIds.includes(currentUser.id))) && (
+              {(checkPermission('tasks.edit_all') || (checkPermission('tasks.edit_own') && ((task.assigneeIds || []).includes(currentUser.id) || task.createdBy === currentUser.id))) && (
                   <button 
                     onClick={() => onEditTask(task)}
                     className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600"
@@ -981,21 +1406,23 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
         </div>
         
         {/* Quick Actions Bar */}
-        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
+        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100 flex-wrap gap-2">
            <div className="flex items-center space-x-4">
               <div className="flex -space-x-2">
-                 {task.assigneeIds.length > 0 ? (
-                   task.assigneeIds.map(uid => {
+                 {(task.assigneeIds || []).length > 0 ? (
+                   (task.assigneeIds || []).map(uid => {
                      const u = users.find(user => user.id === uid);
                      return u ? <img key={uid} src={u.avatar} className="w-8 h-8 rounded-full border-2 border-white" title={u.name} /> : null;
                    })
                  ) : <span className="text-xs text-slate-400 italic px-2">Unassigned</span>}
+                 {checkPermission('tasks.manage_assignees') && (
                  <button 
                    onClick={() => setShowAssignModal(true)}
                    className="w-8 h-8 rounded-full bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300"
                  >
                     <Plus className="w-4 h-4" />
                  </button>
+                 )}
               </div>
               <div className="h-8 w-px bg-slate-200"></div>
               <div className="flex items-center text-sm text-slate-600 space-x-2">
@@ -1020,7 +1447,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
            )}
 
            {/* Show message if user cannot advance */}
-           {!canAdvance() && (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) && !task.assigneeIds.includes(currentUser.id) && (
+           {!canAdvance() && (task.status === TaskStatus.IN_PROGRESS || task.status === TaskStatus.REVISIONS_REQUIRED) && !(task.assigneeIds || []).includes(currentUser.id) && (
              <div className="flex items-center space-x-2 text-slate-400 text-xs italic">
                <AlertCircle className="w-4 h-4" />
                <span>Only assigned users can submit</span>
@@ -1082,6 +1509,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
           <div className="space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="md:col-span-2 space-y-4">
+                   
                    <div>
                      <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
                      <textarea 
@@ -1123,6 +1551,52 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
                          )}
                       </div>
                    </div>
+
+                   {/* Social Publishing Assignment */}
+                   {task.requiresSocialPost && (
+                       <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                           <h3 className="font-bold text-indigo-900 text-sm mb-3 flex items-center gap-2">
+                               <Share2 className="w-4 h-4"/> Social Publishing
+                           </h3>
+                           
+                           <div className="space-y-3">
+                               <div>
+                                   <label className="block text-xs font-bold text-indigo-800 mb-1">Social Manager</label>
+                                   <select 
+                                       className="w-full p-2 border border-indigo-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500"
+                                       value={task.socialManagerId || ''}
+                                       onChange={e => onUpdateTask({ ...task, socialManagerId: e.target.value || null })}
+                                       disabled={!checkPermission('tasks.manage_publishing')}
+                                   >
+                                       <option value="">Select Manager</option>
+                                       {users.filter(u => u.role === 'Social Manager' || u.department === 'Marketing').map(u => (
+                                           <option key={u.id} value={u.id}>{u.name}</option>
+                                       ))}
+                                   </select>
+                               </div>
+                               
+                               <div>
+                                   <label className="block text-xs font-bold text-indigo-800 mb-1">Publishing Notes</label>
+                                   <textarea 
+                                       className="w-full p-2 border border-indigo-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500 min-h-[80px]"
+                                       placeholder="Instructions for the social team..."
+                                       value={task.publishingNotes || ''}
+                                       onChange={e => onUpdateTask({ ...task, publishingNotes: e.target.value })}
+                                       disabled={!checkPermission('tasks.manage_publishing')}
+                                   />
+                               </div>
+
+                               {task.socialPostId && (
+                                   <div className="pt-2 border-t border-indigo-200">
+                                       <p className="text-xs text-indigo-600 flex items-center gap-1">
+                                           <CheckCircle className="w-3 h-3" />
+                                           <span>Handover Complete</span>
+                                       </p>
+                                   </div>
+                               )}
+                           </div>
+                       </div>
+                   )}
                 </div>
              </div>
           </div>
@@ -1191,8 +1665,13 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
                         const isRejected = step.status === 'rejected' || step.status === 'revision_requested';
                         // const isWaiting = step.status === 'waiting';
 
-                        // Should show controls?
-                        const showControls = isPending && currentUser.id === step.approverId;
+                        // Should show controls? Only if:
+                        // 1. Step is pending
+                        // 2. Current user is the approver
+                        // 3. Task is awaiting review (not in revisions, completed, etc.)
+                        const showControls = isPending && 
+                                           currentUser.id === step.approverId && 
+                                           task.status === TaskStatus.AWAITING_REVIEW;
 
                         return (
                             <div key={index} className="flex items-start space-x-4">
@@ -1228,7 +1707,7 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
 
                                     {/* Action Buttons for Approver */}
                                     {showControls && (
-                                        <div className="mt-3 flex space-x-2 animate-in fade-in slide-in-from-top-2">
+                                        <div className="mt-3 flex space-x-2 animate-in fade-in slide-in-from-top-2 relative z-10">
                                             <button 
                                                 onClick={() => handleApprovalAction('approve')}
                                                 className="text-xs flex items-center gap-1 bg-emerald-600 text-white px-3 py-1.5 rounded-md font-bold hover:bg-emerald-700 shadow-sm"
@@ -1355,42 +1834,109 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
 
         {activeTab === 'time_logs' && (
            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                 <h3 className="text-sm font-bold text-slate-900">Logged Hours</h3>
-                 <button className="text-indigo-600 text-xs font-medium hover:underline">+ Log Time</button>
-              </div>
-              <table className="w-full text-sm text-left">
-                 <thead className="bg-slate-50 text-slate-500">
-                    <tr>
-                       <th className="px-3 py-2">User</th>
-                       <th className="px-3 py-2">Date</th>
-                       <th className="px-3 py-2">Hours</th>
-                       <th className="px-3 py-2">Note</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-100">
-                    {timeLogs.map(log => {
-                       const u = users.find(user => user.id === log.userId);
-                       return (
-                          <tr key={log.id}>
-                             <td className="px-3 py-2 flex items-center space-x-2">
-                                <img src={u?.avatar} className="w-5 h-5 rounded-full" />
-                                <span>{u?.name}</span>
-                             </td>
-                             <td className="px-3 py-2">{new Date(log.logDate).toLocaleDateString()}</td>
-                             <td className="px-3 py-2 font-mono font-medium">{log.hours}</td>
-                             <td className="px-3 py-2 text-slate-500 truncate max-w-[150px]">{log.note}</td>
-                          </tr>
-                       );
-                    })}
-                 </tbody>
-              </table>
-              {timeLogs.length > 0 && (
-                <div className="bg-indigo-50 p-3 rounded-lg flex justify-between items-center text-sm font-bold text-indigo-900">
-                   <span>Total Hours</span>
-                   <span>{timeLogs.reduce((acc, curr) => acc + curr.hours, 0)} hrs</span>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-slate-900">Task Timeline & Duration</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">Auto-tracked events</span>
                 </div>
-              )}
+              </div>
+              
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200">
+                      <div className="text-xs text-blue-600 font-medium mb-1">Total Duration</div>
+                      <div className="text-xl font-bold text-blue-900">
+                          {(() => {
+                              const sortedEvents = [...timeLogs].filter(l => l.isAutomatic).sort((a, b) => 
+                                  new Date(a.timestamp || a.logDate).getTime() - new Date(b.timestamp || b.logDate).getTime()
+                              );
+                              if (sortedEvents.length < 2) return '—';
+                              const start = new Date(sortedEvents[0].timestamp || sortedEvents[0].logDate);
+                              const end = new Date(sortedEvents[sortedEvents.length - 1].timestamp || sortedEvents[sortedEvents.length - 1].logDate);
+                              const hours = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+                              const days = Math.floor(hours / 24);
+                              return days > 0 ? `${days}d ${hours % 24}h` : `${hours}h`;
+                          })()}
+                      </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-emerald-50 to-green-50 p-3 rounded-lg border border-emerald-200">
+                      <div className="text-xs text-emerald-600 font-medium mb-1">Manual Hours Logged</div>
+                      <div className="text-xl font-bold text-emerald-900">
+                          {timeLogs.filter(l => !l.isAutomatic).reduce((acc, curr) => acc + curr.hours, 0)} hrs
+                      </div>
+                  </div>
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-3 rounded-lg border border-amber-200">
+                      <div className="text-xs text-amber-600 font-medium mb-1">Events Tracked</div>
+                      <div className="text-xl font-bold text-amber-900">
+                          {timeLogs.filter(l => l.isAutomatic).length}
+                      </div>
+                  </div>
+              </div>
+
+              {/* Timeline Events */}
+              <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-700">Timeline</h4>
+                  </div>
+                  <div className="divide-y divide-slate-100 max-h-96 overflow-y-auto">
+                      {[...timeLogs]
+                          .sort((a, b) => new Date(b.timestamp || b.logDate).getTime() - new Date(a.timestamp || a.logDate).getTime())
+                          .map(log => {
+                              const user = users.find(u => u.id === log.userId);
+                              const isAuto = log.isAutomatic;
+                              
+                              return (
+                                  <div key={log.id} className={`p-3 flex gap-3 ${isAuto ? 'bg-blue-50/30' : ''}`}>
+                                      <div className="flex-shrink-0">
+                                          <img src={user?.avatar} alt={user?.name} className="w-8 h-8 rounded-full" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 mb-1">
+                                              <span className="text-sm font-medium text-slate-900">{user?.name}</span>
+                                              {isAuto && (
+                                                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded uppercase">
+                                                      Auto
+                                                  </span>
+                                              )}
+                                              {!isAuto && log.hours > 0 && (
+                                                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">
+                                                      {log.hours}h
+                                                  </span>
+                                              )}
+                                          </div>
+                                          <p className="text-sm text-slate-700 mb-1">{log.note}</p>
+                                          {log.fromStatus && log.toStatus && (
+                                              <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                  <span className="px-2 py-0.5 bg-slate-100 rounded">{log.fromStatus}</span>
+                                                  <span>→</span>
+                                                  <span className="px-2 py-0.5 bg-slate-100 rounded">{log.toStatus}</span>
+                                              </div>
+                                          )}
+                                          <div className="text-xs text-slate-400 mt-1">
+                                              {new Date(log.timestamp || log.logDate).toLocaleString()}
+                                          </div>
+                                      </div>
+                                  </div>
+                              );
+                          })}
+                      {timeLogs.length === 0 && (
+                          <div className="p-8 text-center text-slate-400 text-sm italic">
+                              No timeline events yet
+                          </div>
+                      )}
+                  </div>
+              </div>
+
+              {/* Manual Time Entry (Legacy) */}
+              <details className="bg-slate-50 border border-slate-200 rounded-lg">
+                  <summary className="px-4 py-2 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-100">
+                      + Add Manual Time Entry
+                  </summary>
+                  <div className="p-4 border-t border-slate-200">
+                      <p className="text-xs text-slate-500 mb-3">For manual hour logging (optional)</p>
+                      {/* Could add manual form here if needed */}
+                  </div>
+              </details>
            </div>
         )}
 
@@ -1426,51 +1972,27 @@ const TaskDetailView: React.FC<DetailViewProps> = ({
       {/* Assignment Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900">Assign Team Members</h2>
-              <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5"/>
-              </button>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="font-bold text-slate-900">Manage Assignees</h3>
+              <button onClick={() => setShowAssignModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
             </div>
-            <div className="p-6 max-h-96 overflow-y-auto">
-              <div className="space-y-2">
-                {users.map(user => {
-                                   const isAssigned = task.assigneeIds?.includes(user.id);
-                  return (
-                    <button
-                      key={user.id}
-                      onClick={() => handleAssignUser(user.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
-                        isAssigned 
-                          ? 'border-indigo-500 bg-indigo-50' 
-                          : 'border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <img src={user.avatar} className="w-10 h-10 rounded-full" alt={user.name} />
-                        <div className="text-left">
-                          <p className="font-medium text-slate-900">{user.name}</p>
-                          <p className="text-xs text-slate-500">{user.role || 'No Role'}</p>
-                        </div>
+            <div className="p-4 max-h-80 overflow-y-auto custom-scrollbar space-y-1">
+              {users.map(user => {
+                const isAssigned = (task.assigneeIds || []).includes(user.id);
+                return (
+                  <div key={user.id} className="flex items-center justify-between p-2 hover:bg-slate-50 rounded-lg cursor-pointer" onClick={() => handleAssignUser(user.id)}>
+                    <div className="flex items-center space-x-3">
+                      <img src={user.avatar} className="w-8 h-8 rounded-full" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{user.name}</p>
+                        <p className="text-xs text-slate-500">{user.role}</p>
                       </div>
-                      {isAssigned && (
-                        <div className="w-6 h-6 rounded-full bg-indigo-600 flex items-center justify-center">
-                          <Check className="w-4 h-4 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100">
-              <button 
-                onClick={() => setShowAssignModal(false)}
-                className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700"
-              >
-                Done
-              </button>
+                    </div>
+                    {isAssigned && <CheckCircle className="w-5 h-5 text-indigo-600" />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

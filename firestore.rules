@@ -1,6 +1,23 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Helper function to check permissions
+    function hasPermission(permission) {
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Assuming roles are stored in 'roles' collection and have a 'permissions' array
+      // This also assumes the user document has a 'role' field matching a document ID in 'roles'
+      // For simple string roles in user doc, we might need a different approach or map them here.
+      // Since the app uses a 'roles' collection, we can fetch it.
+      let roleData = get(/databases/$(database)/documents/roles/$(user.role)).data;
+      return roleData.isAdmin == true || permission in roleData.permissions;
+    }
+
+    match /client_strategies/{strategy} {
+      allow read: if hasPermission('clients.view');
+      allow write: if hasPermission('clients.manage') || hasPermission('clients.manage_strategies');
+    }
+
     match /{document=**} {
       allow read, write: if true;
     }

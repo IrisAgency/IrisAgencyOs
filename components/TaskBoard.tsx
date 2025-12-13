@@ -160,7 +160,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
                        </div>
                        
                        <div className="flex -space-x-2">
-                          {task.assigneeIds.map(uid => (
+                          {(task.assigneeIds || []).map(uid => (
                             <div key={uid} className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold text-indigo-600" title={uid}>
                               {uid.substring(0, 2).toUpperCase()}
                             </div>
