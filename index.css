@@ -1,3 +1,328 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+
+  /* Layout CSS Variables */
+  :root {
+    --sidebar-w: 256px;
+    /* Sidebar width (w-64 = 16rem = 256px) */
+    --header-h: 64px;
+    /* Header height (h-16 = 4rem = 64px) */
+    --page-max-width: 1280px;
+    /* Max content width */
+    --page-padding-desktop: 24px;
+    /* Desktop padding */
+    --page-padding-mobile: 16px;
+    /* Mobile padding */
+    --section-gap: 24px;
+    /* Gap between sections */
+
+    /* Aliases for responsive usage */
+    --page-pad: var(--page-padding-desktop);
+    --page-max: var(--page-max-width);
+
+    /* Brand CSS Variables (defaults, overridden by BrandingContext) */
+    --brand-primary: #e11d48;
+    /* Primary brand color (rose-600) */
+    --brand-primary-hover: #be123c;
+    /* Primary brand color hover state (darker) */
+    --brand-secondary: #0f172a;
+    /* Secondary brand color (slate-900) */
+    --brand-accent: #f59e0b;
+    /* Accent color (amber-500) */
+    --brand-bg: #f8fafc;
+    /* Background color (slate-50) */
+    --brand-text: #1e293b;
+    /* Text color (slate-800) */
+    --brand-sidebar: #0f172a;
+    /* Sidebar background (slate-900) */
+    --brand-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    /* Font family */
+  }
+
+  /* Global Resets */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+  
+  /* PWA Support - iOS Safe Areas */
+  body {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@layer components {
+
+  /* AppShell Layout System */
+  .app-shell {
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    z-index: 40;
+  }
+
+  .header {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-w);
+    right: 0;
+    height: var(--header-h);
+    z-index: 10;
+  }
+
+  .main {
+    margin-left: var(--sidebar-w);
+    padding-top: var(--header-h);
+    min-height: 100vh;
+  }
+
+  .page {
+    max-width: var(--page-max);
+    margin: 0 auto;
+    padding: var(--page-pad);
+  }
+
+  /* Header Internal Layout */
+  .header-inner {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 0 var(--page-pad);
+    max-width: calc(var(--page-max) + (var(--page-pad) * 2));
+    margin: 0 auto;
+  }
+
+  .header-left {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .header-search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  /* Form Utilities */
+  .input-base {
+    @apply w-full min-w-0 px-3 py-2 border border-slate-300 rounded-lg;
+  }
+
+  .select-base {
+    @apply w-full min-w-0 px-3 py-2 border border-slate-300 rounded-lg;
+  }
+
+  /* Layout Utilities */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .rowWrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  /* Text Utilities */
+  .truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .wrapAnywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    min-width: 0;
+  }
+
+  /* Card System */
+  .card {
+    background: white;
+    border: 1px solid rgb(226, 232, 240);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    min-width: 0;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .card-footer {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  /* Page Layout Components */
+  .page-container {
+    max-width: var(--page-max-width);
+    width: 100%;
+    margin: 0 auto;
+    padding: var(--page-padding-desktop);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap);
+  }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .page-header-text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgb(15, 23, 42);
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: rgb(100, 116, 139);
+    margin: 4px 0 0 0;
+  }
+
+  .page-header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .page-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .page-content {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 1024px) {
+    :root {
+      --sidebar-w: 0px;
+      --page-pad: var(--page-padding-mobile);
+    }
+
+    .header {
+      left: 0;
+    }
+
+    .main {
+      margin-left: 0;
+    }
+
+    .page {
+      padding: var(--page-padding-mobile);
+    }
+
+    .page-container {
+      padding: var(--page-padding-mobile);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .grid2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* PWA Install Prompt Animation */
+  @keyframes slide-up {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.3s ease-out;
+  }
+}

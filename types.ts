@@ -28,7 +28,7 @@ export interface User {
   avatar: string;
   passwordHash: string;
   forcePasswordChange: boolean;
-  
+
   // HR Extended Fields
   jobTitle?: string;
   employeeCode?: string;
@@ -180,8 +180,8 @@ export interface Project {
   client: string;          // Denormalized name for display/compatibility
   code?: string;            // optional, e.g. "LB-RAM-26"
   type: ProjectType;
-  status: ProjectStatus | 'Active' | 'Completed' | 'On Hold'; 
-  
+  status: ProjectStatus | 'Active' | 'Completed' | 'On Hold';
+
   brief: string;           // main description / objectives
   objectives: string;      // bullet-style text
   notes: string;           // internal notes
@@ -197,7 +197,7 @@ export interface Project {
 
   accountManagerId: string; // User id
   projectManagerId?: string; // optional, could be same as account manager
-  
+
   thumbnail?: string; // For visual flair
 
   // Archive Fields
@@ -230,7 +230,7 @@ export interface ProjectMilestone {
   completedAt?: string;
   progressPercent: number;
   order: number;
-  
+
   // Target-based Progress
   targetTaskCount?: number | null;   // e.g. 5; null = no target
   autoCompleteOnTarget?: boolean;    // if true, mark completed when target reached
@@ -256,7 +256,7 @@ export interface Task {
   department: Department;
   priority: Priority;
   taskType: TaskType;      // New field
-  
+
   status: TaskStatus;
 
   startDate: string;
@@ -265,7 +265,7 @@ export interface Task {
 
   assigneeIds: string[]; // userIds
   createdBy: string;
-  
+
   approvalPath: string[]; // array of userIds (legacy/fallback)
   workflowTemplateId?: string | null; // Dynamic workflow reference
   currentApprovalLevel: number; // index in approvalPath or workflow steps
@@ -281,14 +281,28 @@ export interface Task {
   publishingNotes?: string | null; // Notes for the Social Manager
 
   // Revision Logic
+  revisionContext?: {
+    active: boolean;
+    requestedByUserId: string;
+    requestedByStepId: string;
+    assignedToUserId: string;
+    requestedAt: string; // ISO Date
+    message: string;
+    cycle: number;
+  } | null;
+  
+  // Legacy Revision Fields (Deprecated but kept for compatibility if needed)
   revisionAssignedTo?: string | null;
   revisionComment?: string | null;
+  
   revisionHistory?: {
+    cycle: number;
     stepLevel: number;
     requestedBy: string;
     assignedTo: string;
     comment: string;
     date: string;
+    resolvedAt?: string;
   }[];
 
   // Archival Fields
@@ -299,12 +313,15 @@ export interface Task {
   isDeleted?: boolean;
   deletedAt?: string | null;
   deletedBy?: string | null;
+
+  attachments: AgencyFile[]; // Legacy attachments
   
-  attachments: string[]; // references to File ids (mocked for now)
-  
-  // Legacy/Compatibility fields
-  client?: string; // Denormalized for dashboard
-  
+  // References
+  referenceLinks?: ReferenceLink[];
+  referenceImages?: ReferenceImage[];
+
+  client?: string; // Denormalized client name
+
   createdAt: string;
   updatedAt: string;
 }
@@ -354,10 +371,11 @@ export interface WorkflowStepTemplate {
   workflowTemplateId: string;
   order: number;               // 0, 1, 2...
   label: string;               // e.g. "Art Director Review"
-  
+
   // Approver Logic (One must be set)
   roleId: string | null;       // System Role ID (e.g. 'r3' for Creative Director)
   projectRoleKey: string | null; // Project Role String (e.g. "Account Manager")
+  specificUserId?: string | null; // Specific User ID (e.g. 'u123')
   useDepartmentHead: boolean;  // Not fully implemented yet
 }
 
@@ -365,11 +383,11 @@ export interface WorkflowTemplate {
   id: string;
   name: string;                 // e.g. "Standard Creative Flow"
   description: string;
-  
+
   // Auto-assignment rules
   departmentId: string | null;  // Matches Department enum values (as string)
   taskType: TaskType | null;
-  
+
   status: 'active' | 'available' | 'system_protected';
   isDefault: boolean; // Deprecated
 
@@ -382,7 +400,7 @@ export interface WorkflowTemplate {
 
 // --- APPROVAL WORKFLOW ENTITIES ---
 
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested' | 'waiting';
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested' | 'revision_submitted' | 'waiting';
 
 export interface ApprovalStep {
   id: string;
@@ -416,28 +434,28 @@ export interface AgencyFile {
   taskId?: string | null;     // optional
   folderId?: string | null;   // optional
   uploaderId: string;         // User who uploaded
-  name: string;               
+  name: string;
   type: string;               // MIME type: image/jpeg, video/mp4, etc.
   size: number;               // in bytes
   url: string;                // storage path URL (mocked)
   thumbnailUrl?: string;      // optional thumbnail
   version: number;            // file version
   isDeliverable: boolean;     // true if final to client
-  
+
   // Enhanced Categorization
   category?: FileCategory;    // computed category based on type
   originalName?: string;      // preserve original upload name
-  
+
   // Archival Fields
   isArchived: boolean;
   archivedAt?: string | null;
   archivedBy?: string | null;
 
-  tags: string[];             
+  tags: string[];
   createdAt: string;
 }
 
-export type FolderType = 
+export type FolderType =
   | 'client_root'
   | 'project'
   | 'task'
@@ -455,7 +473,7 @@ export interface FileFolder {
   clientId?: string | null; // Added for Client archives
   parentId: string | null;
   name: string;
-  
+
   // Archival Fields
   isArchiveRoot: boolean;
   isTaskArchiveFolder: boolean;
@@ -463,7 +481,7 @@ export interface FileFolder {
   isMeetingFolder?: boolean; // Added
   meetingId?: string | null; // Added
   taskId?: string | null;
-  
+
   // Enhanced Hierarchy Fields
   folderType?: FolderType;
   linkedEntityType?: 'client' | 'project' | 'task' | 'meeting';
@@ -732,9 +750,9 @@ export interface Invoice {
   notes: string;
   createdBy: string;
   createdAt: string;
-  
+
   // Legacy/Denormalized fields for backward compatibility with old mocks
-  client?: string; 
+  client?: string;
   amount?: number; // mapped to total
 }
 
@@ -769,14 +787,68 @@ export interface Expense {
 
 // --- NOTIFICATIONS & REAL-TIME ---
 
-export type NotificationType = 
-  | 'task_assigned' 
-  | 'task_status_changed' 
-  | 'approval_request' 
-  | 'comment_mention' 
-  | 'invoice_overdue' 
-  | 'production_update' 
+export type NotificationType =
+  // Tasks & Workflow
+  | 'TASK_ASSIGNED'
+  | 'TASK_UNASSIGNED'
+  | 'TASK_DUE_SOON'
+  | 'TASK_OVERDUE'
+  | 'TASK_STATUS_CHANGED'
+  | 'TASK_SUBMITTED_FOR_REVIEW'
+  | 'TASK_REVISION_REQUESTED'
+  | 'TASK_APPROVED_STEP'
+  | 'TASK_REJECTED_STEP'
+  | 'TASK_APPROVED_FINAL'
+  | 'TASK_ARCHIVED'
+  | 'TASK_COMMENT_MENTION'
+  | 'TASK_COMMENT_REPLY'
+  // Approvals
+  | 'APPROVAL_REQUESTED'
+  | 'APPROVAL_REMINDER'
+  | 'APPROVAL_ESCALATION'
+  // Posting & Captions
+  | 'POST_CREATED_FROM_TASK'
+  | 'POST_ASSIGNED'
+  | 'POST_CAPTION_SUBMITTED'
+  | 'POST_REVISION_REQUESTED'
+  | 'POST_APPROVED'
+  | 'POST_SCHEDULED'
+  | 'POST_PUBLISHING_TODAY'
+  | 'POST_PUBLISHED'
+  // Clients & Projects
+  | 'NEW_CLIENT_CREATED'
+  | 'PROJECT_CREATED'
+  | 'PROJECT_ARCHIVED'
+  | 'MILESTONE_STARTED'
+  | 'MILESTONE_AT_RISK'
+  // Meetings
+  | 'MEETING_SCHEDULED'
+  | 'MEETING_REMINDER_24H'
+  | 'MEETING_REMINDER_1H'
+  | 'MINUTES_UPLOADED'
+  // Finance
+  | 'INVOICE_CREATED'
+  | 'INVOICE_DUE_SOON'
+  | 'PAYMENT_RECORDED'
+  | 'BUDGET_EXCEEDED'
+  // Legacy
+  | 'task_assigned'
+  | 'task_status_changed'
+  | 'approval_request'
+  | 'comment_mention'
+  | 'invoice_overdue'
+  | 'production_update'
   | 'system';
+
+export type NotificationSeverity = 'info' | 'warning' | 'urgent';
+export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'system';
+export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone';
+
+export interface NotificationAction {
+  label: string;
+  action: string;
+  variant?: 'primary' | 'secondary' | 'danger';
+}
 
 export interface Notification {
   id: string;
@@ -784,38 +856,94 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
-  link?: string;
-  entityType?: string; // "Task" | "Project" | "Invoice"
+  
+  severity: NotificationSeverity;
+  category: NotificationCategory;
+  
+  entityType?: NotificationEntityType;
   entityId?: string;
+  
+  actionUrl?: string;
+  actions?: NotificationAction[];
+  
   isRead: boolean;
-  createdAt: string;
   readAt?: string;
+  createdAt: string;
+  
+  // Grouping & deduplication
+  groupKey?: string;
+  dedupeKey?: string;
+  
+  // Legacy support
+  link?: string;
 }
 
 export interface NotificationPreference {
   userId: string;
-  taskAssigned: boolean;
-  taskStatusChanged: boolean;
-  approvalRequests: boolean;
-  commentsMentions: boolean;
-  financeUpdates: boolean;
-  productionUpdates: boolean;
-  emailEnabled: boolean;
+  
+  // Muting options
+  mutedCategories: NotificationCategory[];
+  mutedProjects: string[];
+  severityThreshold: NotificationSeverity;
+  
+  // Delivery channels
   inAppEnabled: boolean;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  
+  // Legacy fields
+  taskAssigned?: boolean;
+  taskStatusChanged?: boolean;
+  approvalRequests?: boolean;
+  commentsMentions?: boolean;
+  financeUpdates?: boolean;
+  productionUpdates?: boolean;
 }
 
 // --- ADMIN & MANAGEMENT ---
 
+export interface FileRef {
+  url: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+}
+
 export interface AppBranding {
   id: string;
   appName: string;
-  logoLightUrl: string | null;
-  logoDarkUrl: string | null;
-  primaryColor: string;      // HEX
+  tagline?: string;
+
+  // Colors
+  primaryColor: string;
   secondaryColor: string;
-  sidebarColor: string;
+  accentColor: string;
   backgroundColor: string;
   textColor: string;
+  sidebarColor: string;
+
+  // Typography
+  fontFamily: string;
+
+  // Assets
+  logoLight?: FileRef | null;
+  logoDark?: FileRef | null;
+  favicon?: FileRef | null;
+  sidebarIcon?: FileRef | null;
+  loginBackground?: FileRef | null;
+
+  // Legacy fields (for backward compatibility)
+  logoLightUrl?: string | null;
+  logoDarkUrl?: string | null;
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+
+  // Metadata
+  updatedBy: string;
+  updatedAt: string;
 }
 
 export interface Permission {
@@ -861,13 +989,38 @@ export interface SocialPost {
   projectId: string;
   clientId: string;
   title: string;               // derived from task title
-  status: "pending" | "writing" | "review" | "scheduled" | "published" | "cancelled";
+  status: "PENDING" | "READY" | "SCHEDULED" | "PUBLISHED" | "REVISION_REQUESTED";
   platforms: SocialPlatform[];         // ["instagram", "facebook", "tiktok", etc.]
   caption: string | null;
   publishAt: string | null;    // ISO Date string
   timezone: string | null;
   socialManagerId: string | null;      // Social Manager / Copywriter
   notesFromTask: string | null; // Notes passed from the task
+  
+  // Revision System
+  revisionContext?: {
+    active: boolean;
+    requestedByUserId: string;
+    assignedToUserId: string;
+    requestedAt: string;
+    message: string;
+    cycle: number;
+  } | null;
+
+  revisionHistory?: {
+    cycle: number;
+    requestedBy: string;
+    assignedTo: string;
+    comment: string;
+    date: string;
+    resolvedAt?: string;
+  }[];
+
+  // Archival Fields
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -884,4 +1037,37 @@ export interface DepartmentDefinition {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Note {
+  id: string;
+  title: string;
+  content: string;
+  linkedEntityId?: string; // ID of client, project, or task
+  linkedEntityType?: 'client' | 'project' | 'task';
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReferenceLink {
+  id: string;
+  title: string;
+  url: string;
+  note?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ReferenceImage {
+  id: string;
+  title?: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  storageProvider: "firebase";
+  storagePath: string;
+  downloadUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
 }

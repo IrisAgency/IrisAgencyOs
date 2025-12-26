@@ -25,7 +25,7 @@ const ASSET_CATEGORIES = [
 
 const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
   clientId,
-  assets,
+  assets = [],
   onAddAsset,
   onUpdateAsset,
   onDeleteAsset,
@@ -38,8 +38,17 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
   const [editingAsset, setEditingAsset] = useState<ClientBrandAsset | null>(null);
   const [previewAsset, setPreviewAsset] = useState<ClientBrandAsset | null>(null);
 
-  const clientAssets = assets.filter(a => a.clientId === clientId);
-  const canManage = checkPermission('clients.brand_manage');
+  const clientAssets = (assets || []).filter(a => a.clientId === clientId);
+  const canManage = checkPermission('client.brand_assets.manage');
+  const canView = checkPermission('client.brand_assets.view');
+
+  if (!canView) {
+    return (
+      <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+        <p>You do not have permission to view brand assets.</p>
+      </div>
+    );
+  }
 
   const handleEdit = (asset: ClientBrandAsset) => {
     setEditingAsset(asset);
@@ -350,7 +359,7 @@ const AssetModal: React.FC<{
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
               <select

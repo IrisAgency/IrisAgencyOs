@@ -64,5 +64,6 @@ export interface DashboardData {
   focusTasks: DashboardTaskItem[];
   urgentTasks: DashboardTaskItem[];
   upcomingMeetings: DashboardMeetingItem[];
+  recentActivities: any[]; // Activity log items
   stats: DashboardStats;
 }

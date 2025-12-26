@@ -1,10 +1,14 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { Client, ClientContact, Project, Invoice, User, Task, ProjectMilestone, ClientSocialLink, SocialPlatform, ClientNote, ClientMeeting, FileFolder, ClientBrandAsset, AgencyFile } from '../types';
-import { Plus, Search, MapPin, Globe, Phone, Mail, FileText, ArrowLeft, MoreHorizontal, Building2, User as UserIcon, Archive, Edit2, Folder, DollarSign, Trash2, RotateCcw, BarChart3, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, Video, StickyNote, Palette, Upload, X } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+import { Plus, Search, MapPin, Globe, Phone, Mail, FileText, ArrowLeft, MoreHorizontal, Building2, User as UserIcon, Archive, Edit2, Folder, DollarSign, Trash2, RotateCcw, BarChart3, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, Video, StickyNote, Palette, Upload, X, ExternalLink, Download, ChevronDown } from 'lucide-react';
+import PageContainer from './layout/PageContainer';
+import PageHeader from './layout/PageHeader';
+import PageControls from './layout/PageControls';
+import PageContent from './layout/PageContent';
 import ClientMarketingStrategies from './ClientMarketingStrategies';
 import ClientMeetings from './ClientMeetings';
 import ClientBrandAssets from './ClientBrandAssets';
+import DropdownMenu from './common/DropdownMenu';
 
 interface ClientsHubProps {
   clients: Client[];
@@ -43,32 +47,32 @@ interface ClientsHubProps {
   currentUser?: User | null;
 }
 
-const ClientsHub: React.FC<ClientsHubProps> = ({ 
-  clients = [], 
-  projects = [], 
-  tasks = [], 
-  milestones = [], 
-  invoices = [], 
-  socialLinks = [], 
-  notes = [], 
+const ClientsHub: React.FC<ClientsHubProps> = ({
+  clients = [],
+  projects = [],
+  tasks = [],
+  milestones = [],
+  invoices = [],
+  socialLinks = [],
+  notes = [],
   meetings = [],
   brandAssets = [],
   files = [],
   folders = [],
   users = [],
-  accountManagers = [], 
-  onAddClient, 
-  onUpdateClient, 
-  onDeleteClient, 
-  onArchiveProject, 
-  onUnarchiveProject, 
-  onOpenProject, 
-  onAddSocialLink, 
-  onUpdateSocialLink, 
-  onDeleteSocialLink, 
-  onAddNote, 
-  onUpdateNote, 
-  onDeleteNote, 
+  accountManagers = [],
+  onAddClient,
+  onUpdateClient,
+  onDeleteClient,
+  onArchiveProject,
+  onUnarchiveProject,
+  onOpenProject,
+  onAddSocialLink,
+  onUpdateSocialLink,
+  onDeleteSocialLink,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
   onAddMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
@@ -76,46 +80,76 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   onUpdateBrandAsset,
   onDeleteBrandAsset,
   onUploadFile,
-  checkPermission = (p: string) => false, 
-  currentUser 
+  checkPermission = (p: string) => false,
+  currentUser
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'meetings' | 'brand' | 'strategies'>('overview');
-  const [projectTab, setProjectTab] = useState<'active' | 'archived'>('active');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'meetings' | 'brand' | 'strategies' | 'notes'>('overview');
   
-  // Social Media State
-  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
-  const [editingSocialLink, setEditingSocialLink] = useState<ClientSocialLink | null>(null);
-  const [socialForm, setSocialForm] = useState<Partial<ClientSocialLink>>({
-    platform: 'instagram', url: '', label: '', username: ''
-  });
-
-  // Notes State
-  const [newNoteText, setNewNoteText] = useState('');
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editingNoteText, setEditingNoteText] = useState('');
-
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'name' | 'ltv' | 'projects'>('newest');
 
-  // Form State (Client)
+  // Modals
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [clientForm, setClientForm] = useState<Partial<Client>>({
     name: '', industry: '', email: '', phone: '', address: '', website: '', notes: '', status: 'active', accountManagerId: '', logo: ''
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form State (Contact)
-  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [contactForm, setContactForm] = useState<Partial<ClientContact>>({
-    name: '', role: '', email: '', phone: '', isPrimary: false
-  });
+  // Notes State
+  const [newNoteText, setNewNoteText] = useState('');
 
-  // --- Handlers ---
+  // Helper Functions
+  const getActiveProjectsCount = (client: Client) => {
+    return projects.filter(p => p.clientId === client.id && !p.archived).length;
+  };
 
+  const getLifetimeValue = (client: Client) => {
+    return invoices
+      .filter(inv => inv.clientId === client.id && inv.status === 'paid')
+      .reduce((sum, inv) => sum + inv.amount, 0);
+  };
+
+  const getAccountManager = (client: Client) => {
+    return accountManagers.find(u => u.id === client.accountManagerId);
+  };
+
+  // Filtered and Sorted Clients
+  const filteredClients = useMemo(() => {
+    let filtered = clients.filter(client => {
+      const matchesSearch = 
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.industry.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.address.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || client.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'ltv':
+          return getLifetimeValue(b) - getLifetimeValue(a);
+        case 'projects':
+          return getActiveProjectsCount(b) - getActiveProjectsCount(a);
+        case 'newest':
+        default:
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      }
+    });
+
+    return filtered;
+  }, [clients, searchTerm, statusFilter, sortBy, projects, invoices]);
+
+  // Client CRUD Handlers
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -131,7 +165,6 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     e.preventDefault();
     if (!clientForm.name || !clientForm.email) return;
 
-    // Check email uniqueness
     if (clients.some(c => c.email === clientForm.email)) {
       alert("A client with this email already exists.");
       return;
@@ -155,7 +188,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     };
 
     onAddClient(newClient);
-    setIsModalOpen(false);
+    setIsClientModalOpen(false);
     setClientForm({ name: '', industry: '', email: '', phone: '', address: '', website: '', notes: '', status: 'active', accountManagerId: '', logo: '' });
   };
 
@@ -163,7 +196,6 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     e.preventDefault();
     if (!selectedClient || !clientForm.name || !clientForm.email) return;
 
-    // Check email uniqueness (exclude current client)
     if (clients.some(c => c.email === clientForm.email && c.id !== selectedClient.id)) {
       alert("A client with this email already exists.");
       return;
@@ -186,95 +218,27 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
     onUpdateClient(updatedClient);
     setSelectedClient(updatedClient);
-    setIsModalOpen(false);
+    setIsClientModalOpen(false);
     setIsEditing(false);
     setClientForm({ name: '', industry: '', email: '', phone: '', address: '', website: '', notes: '', status: 'active', accountManagerId: '', logo: '' });
   };
 
-  const handleAddContact = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClient || !contactForm.name) return;
-
-    const newContact: ClientContact = {
-      id: `cc${Date.now()}`,
-      clientId: selectedClient.id,
-      name: contactForm.name!,
-      role: contactForm.role || '',
-      email: contactForm.email || '',
-      phone: contactForm.phone || '',
-      isPrimary: contactForm.isPrimary || false
-    };
-
-    // If new contact is primary, unmark others
-    const updatedContacts = [...selectedClient.contacts];
-    if (newContact.isPrimary) {
-      updatedContacts.forEach(c => c.isPrimary = false);
+  const handleDeleteClient = (clientId: string) => {
+    if (window.confirm('Are you sure you want to delete this client? This action cannot be undone.')) {
+      onDeleteClient(clientId);
+      setViewMode('list');
+      setSelectedClient(null);
     }
-    updatedContacts.push(newContact);
-
-    const updatedClient = { ...selectedClient, contacts: updatedContacts, updatedAt: new Date().toISOString() };
-    onUpdateClient(updatedClient);
-    setSelectedClient(updatedClient);
-    setIsContactModalOpen(false);
-    setContactForm({ name: '', role: '', email: '', phone: '', isPrimary: false });
   };
 
-  const handleSaveSocialLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedClient || !socialForm.platform || !socialForm.url) return;
-    if (!onAddSocialLink || !onUpdateSocialLink) return;
-
-    // Basic Validation
-    if (!socialForm.url.startsWith('http://') && !socialForm.url.startsWith('https://')) {
-        alert('URL must start with http:// or https://');
-        return;
-    }
-
-    // Auto-extract username if empty
-    let extractedUsername = socialForm.username;
-    if (!extractedUsername && socialForm.url) {
-        try {
-            const urlObj = new URL(socialForm.url);
-            const pathSegments = urlObj.pathname.split('/').filter(Boolean);
-            if (pathSegments.length > 0) {
-                extractedUsername = '@' + pathSegments[pathSegments.length - 1];
-            }
-        } catch (e) {
-            // ignore invalid url for extraction
-        }
-    }
-
-    if (editingSocialLink) {
-        const updated: ClientSocialLink = {
-            ...editingSocialLink,
-            platform: socialForm.platform as SocialPlatform,
-            url: socialForm.url,
-            label: socialForm.platform === 'other' ? socialForm.label || 'Link' : null,
-            username: extractedUsername || null,
-            updatedAt: new Date().toISOString()
-        };
-        onUpdateSocialLink(updated);
-    } else {
-        const newLink: ClientSocialLink = {
-            id: `csl${Date.now()}`,
-            clientId: selectedClient.id,
-            platform: socialForm.platform as SocialPlatform,
-            url: socialForm.url,
-            label: socialForm.platform === 'other' ? socialForm.label || 'Link' : null,
-            username: extractedUsername || null,
-            createdBy: 'current-user', // In real app, this comes from auth context
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        onAddSocialLink(newLink);
-    }
-
-    setIsSocialModalOpen(false);
-    setEditingSocialLink(null);
-    setSocialForm({ platform: 'instagram', url: '', label: '', username: '' });
+  const handleArchiveClient = () => {
+    if (!selectedClient) return;
+    const updated = { ...selectedClient, status: 'inactive' as any, updatedAt: new Date().toISOString() };
+    onUpdateClient(updated);
+    setSelectedClient(updated);
   };
 
-  const handleAddNoteHandler = (e: React.FormEvent) => {
+  const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient || !newNoteText.trim() || !onAddNote || !currentUser) return;
 
@@ -292,1076 +256,748 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     setNewNoteText('');
   };
 
-  const handleUpdateNoteHandler = (note: ClientNote) => {
-    if (!onUpdateNote || !editingNoteText.trim()) return;
-    
-    const updatedNote: ClientNote = {
-      ...note,
-      text: editingNoteText.trim(),
-      updatedAt: new Date().toISOString()
-    };
-
-    onUpdateNote(updatedNote);
-    setEditingNoteId(null);
-    setEditingNoteText('');
-  };
-
-  const handleDeleteNoteHandler = (noteId: string) => {
-    if (confirm('Are you sure you want to delete this note?') && onDeleteNote) {
-      onDeleteNote(noteId);
-    }
-  };
-
-  const handleDeleteSocialLinkHandler = (linkId: string) => {
-      if (confirm('Are you sure you want to delete this link?') && onDeleteSocialLink) {
-          onDeleteSocialLink(linkId);
-      }
-  };
-
-  const getPlatformIcon = (platform: string) => {
-      switch (platform) {
-          case 'instagram': return <Instagram className="w-4 h-4 text-pink-600" />;
-          case 'facebook': return <Facebook className="w-4 h-4 text-blue-600" />;
-          case 'linkedin': return <Linkedin className="w-4 h-4 text-blue-700" />;
-          case 'tiktok': return <Video className="w-4 h-4 text-black" />; // Lucide doesn't have TikTok, using Video as placeholder or custom svg
-          case 'youtube': return <Youtube className="w-4 h-4 text-red-600" />;
-          case 'website': return <Globe className="w-4 h-4 text-slate-600" />;
-          default: return <LinkIcon className="w-4 h-4 text-slate-400" />;
-      }
-  };
-
-  const handleArchiveClient = () => {
-    if (selectedClient) {
-       // Check for active projects
-       const hasActiveProjects = projects.filter(p => 
-         (p.clientId === selectedClient.id || p.client === selectedClient.name) && 
-         (p.status === 'Active' || p.status === 'active')
-       ).length > 0;
-
-       if (hasActiveProjects) {
-         alert("Cannot archive a client with active projects. Please close all projects first.");
-         return;
-       }
-       if (confirm(`Are you sure you want to archive ${selectedClient.name}?`)) {
-         const updated = { ...selectedClient, status: 'inactive' as const, updatedAt: new Date().toISOString() };
-         onUpdateClient(updated);
-         setSelectedClient(updated);
-       }
-    }
-  };
-
-  const handleDelete = () => {
-    if (selectedClient) {
-      if (confirm(`Are you sure you want to DELETE ${selectedClient.name}? This will permanently remove ALL associated data (projects, invoices, etc.) and cannot be undone.`)) {
-        onDeleteClient(selectedClient.id);
-        setSelectedClient(null);
-        setViewMode('list');
-      }
-    }
-  };
-
-  const filteredClients = clients.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.industry.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-
-  const getActiveProjectsCount = (client: Client) => {
-    return projects.filter(p => (p.clientId === client.id || p.client === client.name) && (p.status === 'Active' || p.status === 'active')).length;
-  };
-
+  // Render Client Modal
   const renderClientModal = () => {
-    if (!isModalOpen) return null;
+    if (!isClientModalOpen) return null;
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900">{isEditing ? 'Edit Client' : 'Create New Client'}</h2>
-              <button onClick={() => { setIsModalOpen(false); setIsEditing(false); }} className="text-slate-400 hover:text-slate-600"><Plus className="w-5 h-5 rotate-45"/></button>
-            </div>
-            <form onSubmit={isEditing ? handleUpdateClient : handleCreateClient} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-              {/* Logo Upload */}
-              <div className="flex justify-center mb-6">
-                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center overflow-hidden border-2 border-slate-200 group-hover:border-indigo-500 transition-colors">
-                    {clientForm.logo ? (
-                      <img src={clientForm.logo} alt="Logo preview" className="w-full h-full object-contain p-2" />
-                    ) : (
-                      <Upload className="w-8 h-8 text-slate-300 group-hover:text-indigo-400" />
-                    )}
-                  </div>
-                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-xs text-white font-medium">Change</span>
-                  </div>
-                  {clientForm.logo && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setClientForm(prev => ({ ...prev, logo: '' }));
-                      }}
-                      className="absolute -top-1 -right-1 bg-red-500 rounded-full p-1 hover:bg-red-600 transition-colors shadow-sm"
-                    >
-                      <X className="w-3 h-3 text-white" />
-                    </button>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsClientModalOpen(false)}>
+        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="p-6 border-b border-slate-200">
+            <h2 className="text-xl font-bold text-slate-900">{isEditing ? 'Edit Client' : 'New Client'}</h2>
+          </div>
+          
+          <form onSubmit={isEditing ? handleUpdateClient : handleCreateClient} className="p-6 space-y-4">
+            {/* Logo Upload */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Logo</label>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
+                  {clientForm.logo ? (
+                    <img src={clientForm.logo} alt="Logo" className="w-full h-full object-contain p-2" />
+                  ) : (
+                    <Building2 className="w-8 h-8 text-slate-400" />
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-medium"
+                >
+                  Upload Logo
+                </button>
                 <input
-                  type="file"
                   ref={fileInputRef}
-                  className="hidden"
+                  type="file"
                   accept="image/*"
                   onChange={handleLogoUpload}
+                  className="hidden"
                 />
               </div>
+            </div>
 
+            {/* Name & Industry */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Company Name *</label>
-                <input required value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Industry</label>
-                    <input value={clientForm.industry} onChange={e => setClientForm({...clientForm, industry: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select value={clientForm.status} onChange={e => setClientForm({...clientForm, status: e.target.value as any})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                      <option value="active">Active</option>
-                      <option value="lead">Lead</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
-                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                   <input required value={clientForm.email} onChange={e => setClientForm({...clientForm, email: e.target.value})} type="email" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                </div>
-                <div>
-                   <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                   <input value={clientForm.phone} onChange={e => setClientForm({...clientForm, phone: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-                </div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Client Name *</label>
+                <input
+                  type="text"
+                  value={clientForm.name || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Website</label>
-                <input value={clientForm.website} onChange={e => setClientForm({...clientForm, website: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="https://" />
+                <label className="block text-sm font-medium text-slate-700 mb-2">Industry</label>
+                <input
+                  type="text"
+                  value={clientForm.industry || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, industry: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
               </div>
-               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
-                <input value={clientForm.address} onChange={e => setClientForm({...clientForm, address: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+            </div>
+
+            {/* Email & Phone */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                <input
+                  type="email"
+                  value={clientForm.email || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
               </div>
               <div>
-                 <label className="block text-sm font-medium text-slate-700 mb-1">Account Manager *</label>
-                 <select value={clientForm.accountManagerId} onChange={e => setClientForm({...clientForm, accountManagerId: e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-                   <option value="">Select Manager...</option>
-                   {accountManagers.map(am => (
-                     <option key={am.id} value={am.id}>{am.name}</option>
-                   ))}
-                 </select>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Phone</label>
+                <input
+                  type="tel"
+                  value={clientForm.phone || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
               </div>
-              <div className="pt-2">
-                <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-                  {isEditing ? 'Save Changes' : 'Add Client'}
-                </button>
+            </div>
+
+            {/* Website & Address */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Website</label>
+                <input
+                  type="text"
+                  value={clientForm.website || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, website: e.target.value })}
+                  placeholder="example.com"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
               </div>
-            </form>
-          </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Address</label>
+                <input
+                  type="text"
+                  value={clientForm.address || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                />
+              </div>
+            </div>
+
+            {/* Account Manager & Status */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Account Manager</label>
+                <select
+                  value={clientForm.accountManagerId || ''}
+                  onChange={(e) => setClientForm({ ...clientForm, accountManagerId: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                >
+                  <option value="">Select Manager</option>
+                  {accountManagers.map(am => (
+                    <option key={am.id} value={am.id}>{am.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                <select
+                  value={clientForm.status || 'active'}
+                  onChange={(e) => setClientForm({ ...clientForm, status: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                >
+                  <option value="active">Active</option>
+                  <option value="lead">Lead</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+              <textarea
+                value={clientForm.notes || ''}
+                onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
+                rows={3}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4">
+              <button
+                type="button"
+                onClick={() => setIsClientModalOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-iris-red text-white rounded-lg hover:bg-rose-700"
+              >
+                {isEditing ? 'Update Client' : 'Create Client'}
+              </button>
+            </div>
+          </form>
         </div>
+      </div>
     );
   };
 
-  // --- Derived State (Moved for Hook Safety) ---
-  const clientProjects = useMemo(() => selectedClient ? projects.filter(p => p.clientId === selectedClient.id || p.client === selectedClient.name) : [], [selectedClient, projects]);
-  const clientInvoices = useMemo(() => selectedClient ? invoices.filter(i => i.clientId === selectedClient.id || i.client === selectedClient.name) : [], [selectedClient, invoices]);
-  const activeProjects = useMemo(() => clientProjects.filter(p => p.status === 'Active' || p.status === 'active'), [clientProjects]);
-  const completedProjects = useMemo(() => clientProjects.filter(p => p.status === 'Completed' || p.status === 'completed'), [clientProjects]);
-  const am = useMemo(() => selectedClient ? accountManagers.find(u => u.id === selectedClient.accountManagerId) : undefined, [selectedClient, accountManagers]);
-  const clientSocialLinks = useMemo(() => selectedClient ? socialLinks.filter(l => l.clientId === selectedClient.id) : [], [selectedClient, socialLinks]);
-  const clientNotes = useMemo(() => selectedClient ? notes.filter(n => n.clientId === selectedClient.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) : [], [selectedClient, notes]);
-  const clientMeetings = useMemo(() => selectedClient ? meetings.filter(m => m.clientId === selectedClient.id) : [], [selectedClient, meetings]);
-
-  // Analytics Logic
-  const currentMonthMilestones = useMemo(() => {
-    if (!selectedClient) return [];
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
-    // Filter milestones for this client (via projects) and current month
-    const clientProjectIds = clientProjects.map(p => p.id);
-
-    const relevantMilestones = milestones.filter(m => {
-        if (!clientProjectIds.includes(m.projectId)) return false;
-        if (!m.dueDate) return false;
-        const d = new Date(m.dueDate);
-        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-    });
-
-    return relevantMilestones.map(m => {
-        const milestoneTasks = tasks.filter(t => t.milestoneId === m.id && !t.isDeleted);
-        const completed = milestoneTasks.filter(t => ['completed', 'approved', 'client_approved'].includes(t.status)).length;
-        const total = milestoneTasks.length;
-        const remaining = total - completed;
-        
-        return {
-            name: m.name,
-            completed,
-            remaining,
-            total
-        };
-    });
-  }, [selectedClient, clientProjects, milestones, tasks]);
-
-  const totalMonthTasks = currentMonthMilestones.reduce((acc, m) => acc + m.total, 0);
-  const totalMonthCompleted = currentMonthMilestones.reduce((acc, m) => acc + m.completed, 0);
-  const totalMonthRemaining = currentMonthMilestones.reduce((acc, m) => acc + m.remaining, 0);
-
-  // --- Render Views ---
-
+  // === LIST VIEW ===
   if (viewMode === 'list') {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Clients</h1>
-            <p className="text-slate-500 mt-1">Manage relationships and company profiles.</p>
-          </div>
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Client</span>
-          </button>
-        </div>
+      <PageContainer>
+        {/* Page Header */}
+        <PageHeader
+          title="Clients"
+          subtitle="Manage relationships and company profiles."
+          actions={
+            checkPermission('clients.create') && (
+              <button
+                onClick={() => {
+                  setIsEditing(false);
+                  setClientForm({ name: '', industry: '', email: '', phone: '', address: '', website: '', notes: '', status: 'active', accountManagerId: '', logo: '' });
+                  setIsClientModalOpen(true);
+                }}
+                className="flex items-center gap-2 bg-iris-red text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>New Client</span>
+              </button>
+            )
+          }
+        />
 
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row md:items-center space-y-3 md:space-y-0 md:space-x-4">
-          <div className="relative flex-1 max-w-md">
+        <PageControls>
+          {/* Search Field */}
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search clients by name or industry..." 
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Search by name, industry, city..."
+              className="w-full pl-10 pr-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
             />
           </div>
-          <select 
+
+          {/* Status Filter */}
+          <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
           >
-            <option value="all">All Statuses</option>
+            <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="lead">Lead</option>
             <option value="inactive">Inactive</option>
+            <option value="archived">Archived</option>
           </select>
-        </div>
 
-        {/* Clients Table */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-500 font-medium">
-              <tr>
-                <th className="px-6 py-4">Client Name</th>
-                <th className="px-6 py-4">Industry</th>
-                <th className="px-6 py-4">Account Manager</th>
-                <th className="px-6 py-4">Active Projects</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredClients.map((client) => {
-                const am = accountManagers.find(u => u.id === client.accountManagerId);
-                return (
-                  <tr 
-                    key={client.id} 
-                    onClick={() => { setSelectedClient(client); setViewMode('detail'); }}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer group"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-indigo-100 flex-shrink-0">
+          {/* Sort */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+          >
+            <option value="newest">Newest</option>
+            <option value="name">Name A-Z</option>
+            <option value="ltv">LTV High</option>
+            <option value="projects">Projects</option>
+          </select>
+        </PageControls>
+
+        <PageContent>
+          {/* Client Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredClients.map((client) => {
+              const am = getAccountManager(client);
+              const activeProjectsCount = getActiveProjectsCount(client);
+              const ltv = getLifetimeValue(client);
+
+              return (
+                <div
+                  key={client.id}
+                  className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  {/* Card Content with consistent 16px padding and 12px gaps */}
+                  <div className="p-4 flex flex-col gap-3 overflow-hidden">
+                    {/* Header Row: Logo + Name/Industry + Status Badge */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex gap-3 flex-1 min-w-0">
+                        <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-iris-red/20 flex-shrink-0">
                           {client.logo ? (
                             <img src={client.logo} alt="" className="w-full h-full object-contain p-1" />
                           ) : (
-                            <Building2 className="w-5 h-5 text-indigo-600" />
+                            <Building2 className="w-6 h-6 text-iris-red" />
                           )}
                         </div>
-                        <div>
-                          <div className="font-semibold text-slate-900">{client.name}</div>
-                          <div className="text-xs text-slate-500">{client.address.split(',')[0]}</div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold text-lg leading-tight text-slate-900 truncate">{client.name}</h3>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">{client.industry}</p>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{client.industry}</td>
-                    <td className="px-6 py-4">
-                      {am ? (
-                        <div className="flex items-center space-x-2">
-                           <img src={am.avatar} alt={am.name} className="w-6 h-6 rounded-full" />
-                           <span className="text-slate-600">{am.name}</span>
-                        </div>
-                      ) : <span className="text-slate-400">Unassigned</span>}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
-                        {getActiveProjectsCount(client)} Projects
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
-                        client.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 
-                        client.status === 'inactive' ? 'bg-slate-100 text-slate-600' : 
-                        'bg-amber-100 text-amber-800'
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border capitalize flex-shrink-0 leading-none ${
+                        client.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        client.status === 'lead' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                        'bg-slate-50 text-slate-600 border-slate-200'
                       }`}>
                         {client.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button className="text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <MoreHorizontal className="w-5 h-5" />
+                    </div>
+
+                    {/* Stats Row: 2-column grid */}
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">LTV</p>
+                        <p className="font-semibold text-slate-900">${ltv.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">Projects</p>
+                        <p className="font-semibold text-slate-900">{activeProjectsCount}</p>
+                      </div>
+                    </div>
+
+                    {/* Account Manager */}
+                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                      {am ? (
+                        <>
+                          <img src={am.avatar} alt={am.name} className="w-6 h-6 rounded-full flex-shrink-0" />
+                          <span className="text-xs text-slate-600 truncate">{am.name}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-slate-400">No manager</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer Row: Open + Projects + Menu (consistent heights) */}
+                  <div className="border-t border-slate-200 p-3 bg-slate-50/50">
+                    <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-center">
+                      <button
+                        onClick={() => {
+                          setSelectedClient(client);
+                          setViewMode('detail');
+                        }}
+                        className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Open
                       </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <button
+                        onClick={() => {
+                          setSelectedClient(client);
+                          setViewMode('detail');
+                          setActiveTab('projects');
+                        }}
+                        className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Projects
+                      </button>
+                      <DropdownMenu
+                        trigger={
+                          <button className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                            <MoreHorizontal className="w-5 h-5 text-slate-400" />
+                          </button>
+                        }
+                        items={[
+                          ...(checkPermission('clients.edit') ? [{
+                            label: 'Edit',
+                            icon: <Edit2 className="w-4 h-4" />,
+                            onClick: () => {
+                              setSelectedClient(client);
+                              setClientForm({
+                                name: client.name,
+                                industry: client.industry,
+                                email: client.email,
+                                phone: client.phone,
+                                address: client.address,
+                                website: client.website,
+                                notes: client.notes,
+                                status: client.status,
+                                accountManagerId: client.accountManagerId,
+                                logo: client.logo
+                              });
+                              setIsEditing(true);
+                              setIsClientModalOpen(true);
+                            }
+                          }] : []),
+                          ...(checkPermission('clients.archive') ? [{
+                            label: 'Archive',
+                            icon: <Archive className="w-4 h-4" />,
+                            onClick: () => {
+                              const updated = { ...client, status: 'archived' as any, updatedAt: new Date().toISOString() };
+                              onUpdateClient(updated);
+                            }
+                          }] : []),
+                          ...(checkPermission('clients.delete') ? [{
+                            label: 'Delete',
+                            icon: <Trash2 className="w-4 h-4" />,
+                            onClick: () => handleDeleteClient(client.id),
+                            danger: true
+                          }] : [])
+                        ]}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {filteredClients.length === 0 && (
-            <div className="p-8 text-center text-slate-400">
-              No clients found matching your search.
+            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
+              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">No clients found matching your filters.</p>
             </div>
           )}
-        </div>
+        </PageContent>
 
-        {/* Create Client Modal */}
         {renderClientModal()}
-      </div>
+      </PageContainer>
     );
   }
 
-  // --- Detail View ---
-  
+  // === DETAIL VIEW ===
   if (!selectedClient) return null;
 
-
+  const clientProjects = projects.filter(p => p.clientId === selectedClient.id);
+  const activeProjects = clientProjects.filter(p => !p.archived);
+  const archivedProjects = clientProjects.filter(p => p.archived);
+  const clientNotes = notes.filter(n => n.clientId === selectedClient.id);
+  const clientSocialLinks = socialLinks.filter(sl => sl.clientId === selectedClient.id);
+  const clientMeetings = meetings.filter(m => m.clientId === selectedClient.id);
+  const clientBrandAssets = brandAssets.filter(ba => ba.clientId === selectedClient.id);
 
   return (
-    <div className="space-y-6">
-      {/* Detail Header */}
-      <div className="flex flex-col space-y-4">
-        <button onClick={() => setViewMode('list')} className="text-slate-500 hover:text-indigo-600 flex items-center space-x-2 w-fit">
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Clients</span>
-        </button>
-        
-        <div className="flex justify-between items-start bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex items-start space-x-4">
-             <div className="w-16 h-16 rounded-lg overflow-hidden bg-white flex items-center justify-center border border-indigo-100">
-                {selectedClient.logo ? (
-                  <img src={selectedClient.logo} alt={selectedClient.name} className="w-full h-full object-contain p-2" />
-                ) : (
-                  <Building2 className="w-8 h-8 text-indigo-600" />
+    <PageContainer>
+      {/* Back Button */}
+      <button
+        onClick={() => setViewMode('list')}
+        className="flex items-center gap-2 text-slate-600 hover:text-iris-red transition-colors"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span>Back to Clients</span>
+      </button>
+
+      {/* Client Header */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-white flex items-center justify-center border border-iris-red/20 flex-shrink-0">
+              {selectedClient.logo ? (
+                <img src={selectedClient.logo} alt={selectedClient.name} className="w-full h-full object-contain p-2" />
+              ) : (
+                <Building2 className="w-8 h-8 text-iris-red" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <h1 className="text-2xl font-bold text-slate-900">{selectedClient.name}</h1>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium border uppercase ${
+                  selectedClient.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                  selectedClient.status === 'inactive' ? 'bg-slate-50 text-slate-600 border-slate-200' :
+                  'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {selectedClient.status}
+                </span>
+              </div>
+              <p className="text-slate-600 mb-3">{selectedClient.industry}</p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+                {selectedClient.website && (
+                  <a
+                    href={selectedClient.website.startsWith('http') ? selectedClient.website : `https://${selectedClient.website}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 hover:text-iris-red"
+                  >
+                    <Globe className="w-4 h-4" />
+                    <span className="truncate">{selectedClient.website}</span>
+                  </a>
                 )}
-             </div>
-             <div>
-                <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-                  {selectedClient.name}
-                  <span className={`text-xs px-2.5 py-0.5 rounded-full border uppercase tracking-wide ${
-                     selectedClient.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
-                     selectedClient.status === 'inactive' ? 'bg-slate-50 text-slate-600 border-slate-100' :
-                     'bg-amber-50 text-amber-700 border-amber-100'
-                  }`}>
-                    {selectedClient.status}
-                  </span>
-                </h1>
-                <p className="text-slate-500 mt-1">{selectedClient.industry} • {selectedClient.address}</p>
-                <div className="flex items-center space-x-4 mt-3 text-sm text-slate-600">
-                  {selectedClient.website && (
-                    <a href={`https://${selectedClient.website}`} target="_blank" rel="noreferrer" className="flex items-center space-x-1 hover:text-indigo-600 hover:underline">
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>{selectedClient.website}</span>
-                    </a>
-                  )}
-                  <span className="flex items-center space-x-1">
-                    <Mail className="w-3.5 h-3.5" />
-                    <span>{selectedClient.email}</span>
-                  </span>
-                  <span className="flex items-center space-x-1">
-                    <Phone className="w-3.5 h-3.5" />
+                <span className="flex items-center gap-1">
+                  <Mail className="w-4 h-4" />
+                  <span className="truncate">{selectedClient.email}</span>
+                </span>
+                {selectedClient.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-4 h-4" />
                     <span>{selectedClient.phone}</span>
                   </span>
-                </div>
-             </div>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex space-x-2">
-             <button 
-               onClick={() => {
-                 setClientForm({
-                   name: selectedClient.name,
-                   industry: selectedClient.industry,
-                   email: selectedClient.email,
-                   phone: selectedClient.phone,
-                   address: selectedClient.address,
-                   website: selectedClient.website,
-                   notes: selectedClient.notes,
-                   status: selectedClient.status,
-                   accountManagerId: selectedClient.accountManagerId
-                 });
-                 setIsEditing(true);
-                 setIsModalOpen(true);
-               }}
-               className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium"
-             >
-               <Edit2 className="w-4 h-4" />
-               <span>Edit</span>
-             </button>
-             <button 
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            {checkPermission('clients.edit') && (
+              <button
+                onClick={() => {
+                  setClientForm({
+                    name: selectedClient.name,
+                    industry: selectedClient.industry,
+                    email: selectedClient.email,
+                    phone: selectedClient.phone,
+                    address: selectedClient.address,
+                    website: selectedClient.website,
+                    notes: selectedClient.notes,
+                    status: selectedClient.status,
+                    accountManagerId: selectedClient.accountManagerId,
+                    logo: selectedClient.logo
+                  });
+                  setIsEditing(true);
+                  setIsClientModalOpen(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+              >
+                <Edit2 className="w-4 h-4" />
+                <span>Edit</span>
+              </button>
+            )}
+            {checkPermission('clients.archive') && (
+              <button
                 onClick={handleArchiveClient}
-                className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 text-sm font-medium transition-colors"
-                title="Archive Client"
-             >
-               <Archive className="w-4 h-4" />
-             </button>
-             <button 
-                onClick={handleDelete}
-                className="flex items-center space-x-2 px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:text-red-600 hover:border-red-200 hover:bg-red-50 text-sm font-medium transition-colors"
-                title="Delete Client"
-             >
-               <Trash2 className="w-4 h-4" />
-             </button>
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+              >
+                <Archive className="w-4 h-4" />
+              </button>
+            )}
+            {checkPermission('clients.delete') && (
+              <button
+                onClick={() => handleDeleteClient(selectedClient.id)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-slate-200">
-        <nav className="-mb-px flex space-x-8 overflow-x-auto">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'overview'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('projects')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'projects'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            Projects
-          </button>
-          <button
-            onClick={() => setActiveTab('meetings')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'meetings'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            Meetings
-          </button>
-          {checkPermission('clients.brand_view') && (
-            <button
-              onClick={() => setActiveTab('brand')}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                activeTab === 'brand'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span>Brand Assets</span>
-              {selectedClient && brandAssets.filter(a => a.clientId === selectedClient.id).length > 0 && (
-                <span className={`px-2 py-0.5 rounded-full text-xs ${
-                  activeTab === 'brand' 
-                    ? 'bg-indigo-100 text-indigo-700' 
-                    : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {brandAssets.filter(a => a.clientId === selectedClient.id).length}
-                </span>
-              )}
-            </button>
-          )}
-          <button
-            onClick={() => setActiveTab('strategies')}
-            className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'strategies'
-                ? 'border-indigo-500 text-indigo-600'
-                : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            Strategies
-          </button>
-        </nav>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-         {/* Main Content Tabs */}
-         <div className="lg:col-span-2 space-y-6">
-            
-            {/* Overview / Stats */}
-            {activeTab === 'overview' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                   <p className="text-xs text-slate-500 uppercase font-semibold">Active Projects</p>
-                   <p className="text-2xl font-bold text-slate-900 mt-1">{activeProjects.length}</p>
+      {/* Tabs */}
+      <div className="client-tabs bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="border-b border-slate-200 overflow-x-auto">
+          <div className="flex min-w-max">
+            {[
+              { id: 'overview', label: 'Overview' },
+              { id: 'projects', label: 'Projects' },
+              { id: 'meetings', label: 'Meetings' },
+              { id: 'brand', label: 'Brand Assets' },
+              { id: 'strategies', label: 'Marketing' },
+              { id: 'notes', label: 'Notes' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-iris-red text-iris-red'
+                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="client-tab-content p-6 w-full min-w-0">
+          {activeTab === 'overview' && (
+            <div className="space-y-6">
+              {/* Stats Overview */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-sm text-slate-600 mb-1">Active Projects</p>
+                  <p className="text-2xl font-bold text-slate-900">{activeProjects.length}</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                   <p className="text-xs text-slate-500 uppercase font-semibold">Completed</p>
-                   <p className="text-2xl font-bold text-slate-900 mt-1">{completedProjects.length}</p>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-sm text-slate-600 mb-1">Lifetime Value</p>
+                  <p className="text-2xl font-bold text-slate-900">${getLifetimeValue(selectedClient).toLocaleString()}</p>
                 </div>
-              </div>
-            )}
-
-            {/* Monthly Milestones Analytics */}
-            {activeTab === 'overview' && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                 <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                      <BarChart3 className="w-4 h-4 text-slate-400"/> 
-                      This Month’s Milestones – Task Progress
-                    </h3>
-                    <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                      {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
-                    </span>
-                 </div>
-                 
-                 <div className="p-6">
-                   {currentMonthMilestones.length > 0 ? (
-                     <>
-                       <div className="h-[300px] w-full">
-                         <ResponsiveContainer width="100%" height="100%">
-                           <BarChart
-                             layout="vertical"
-                             data={currentMonthMilestones}
-                             margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                           >
-                             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                             <XAxis type="number" />
-                             <YAxis dataKey="name" type="category" width={150} tick={{fontSize: 12}} />
-                             <Tooltip />
-                             <Legend />
-                             <Bar dataKey="completed" name="Completed" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                             <Bar dataKey="remaining" name="Remaining" stackId="a" fill="#cbd5e1" radius={[0, 4, 4, 0]} />
-                           </BarChart>
-                         </ResponsiveContainer>
-                       </div>
-                       <div className="mt-4 flex justify-center gap-6 text-sm text-slate-600">
-                          <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full bg-slate-200"></span>
-                              <span>Total: <span className="font-bold text-slate-900">{totalMonthTasks}</span></span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
-                              <span>Completed: <span className="font-bold text-emerald-600">{totalMonthCompleted}</span></span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full bg-slate-300"></span>
-                              <span>Remaining: <span className="font-bold text-slate-600">{totalMonthRemaining}</span></span>
-                          </div>
-                       </div>
-                     </>
-                   ) : (
-                     <div className="text-center py-8 text-slate-400">
-                       <p>No milestones scheduled for this month.</p>
-                     </div>
-                   )}
-                 </div>
-              </div>
-            )}
-
-            {/* Projects Section */}
-            {activeTab === 'projects' && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                 <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <h3 className="font-bold text-slate-900 flex items-center gap-2"><Folder className="w-4 h-4 text-slate-400"/> Projects</h3>
-                      <div className="flex bg-slate-100 rounded-lg p-1">
-                          <button 
-                            onClick={() => setProjectTab('active')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${projectTab === 'active' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            Active
-                          </button>
-                          <button 
-                            onClick={() => setProjectTab('archived')}
-                            className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${projectTab === 'archived' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                          >
-                            Archived
-                          </button>
-                      </div>
-                    </div>
-                 </div>
-                 
-                 {(() => {
-                   const filteredProjects = clientProjects.filter(p => 
-                      projectTab === 'active' ? !p.isArchived : p.isArchived
-                   );
-
-                   if (filteredProjects.length > 0) {
-                     return (
-                       <div className="divide-y divide-slate-100">
-                          {filteredProjects.map(project => (
-                            <div 
-                              key={project.id} 
-                              className="p-4 flex items-center justify-between hover:bg-slate-50 group cursor-pointer"
-                              onClick={() => onOpenProject && onOpenProject(project.id)}
-                            >
-                               <div>
-                                  <p className="font-semibold text-slate-900 flex items-center gap-2">
-                                      {project.name}
-                                      {project.isArchived && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">Archived</span>}
-                                  </p>
-                                  <p className="text-xs text-slate-500">Deadline: {new Date(project.deadline).toLocaleDateString()}</p>
-                               </div>
-                               <div className="flex items-center space-x-4">
-                                  <span className={`text-xs px-2 py-1 rounded ${
-                                      project.status === 'Active' || project.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                                  }`}>
-                                      {project.status}
-                                  </span>
-                                  <span className="text-sm font-medium text-slate-700">${(project.budget || 0).toLocaleString()}</span>
-                                  
-                                  {!project.isArchived && onArchiveProject && (
-                                      <button 
-                                          onClick={(e) => {
-                                              e.stopPropagation();
-                                              onArchiveProject(project.id);
-                                          }}
-                                          className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                          title="Archive Project"
-                                      >
-                                          <Archive className="w-4 h-4" />
-                                      </button>
-                                  )}
-                                  {project.isArchived && onUnarchiveProject && (
-                                      <button 
-                                          onClick={(e) => {
-                                              e.stopPropagation();
-                                              onUnarchiveProject(project.id);
-                                          }}
-                                          className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors opacity-0 group-hover:opacity-100"
-                                          title="Unarchive Project"
-                                      >
-                                          <RotateCcw className="w-4 h-4" />
-                                      </button>
-                                  )}
-                               </div>
-                            </div>
-                          ))}
-                       </div>
-                     );
-                   } else {
-                     return (
-                       <div className="p-8 text-center text-slate-400">
-                          <p>{projectTab === 'active' ? 'No active projects.' : 'No archived projects.'}</p>
-                       </div>
-                     );
-                   }
-                 })()}
-              </div>
-            )}
-
-            {/* Client Meetings Section */}
-            {activeTab === 'meetings' && (
-              <ClientMeetings
-                clientId={selectedClient.id}
-                meetings={clientMeetings}
-                users={users.length > 0 ? users : accountManagers}
-                files={files}
-                folders={folders}
-                onAddMeeting={onAddMeeting}
-                onUpdateMeeting={onUpdateMeeting}
-                onDeleteMeeting={onDeleteMeeting}
-                onUploadFile={onUploadFile}
-                checkPermission={checkPermission}
-                currentUser={currentUser}
-              />
-            )}
-
-            {/* Social Media Profiles Section */}
-            {activeTab === 'overview' && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                 <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-900 flex items-center gap-2"><Globe className="w-4 h-4 text-slate-400"/> Social Media Profiles</h3>
-                    {checkPermission && (checkPermission('clients.manage') || checkPermission('clients.manage_links')) && (
-                        <button 
-                          onClick={() => {
-                              setEditingSocialLink(null);
-                              setSocialForm({ platform: 'instagram', url: '', label: '', username: '' });
-                              setIsSocialModalOpen(true);
-                          }}
-                          className="flex items-center space-x-2 text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Link</span>
-                        </button>
-                    )}
-                 </div>
-                 
-                 {clientSocialLinks.length > 0 ? (
-                   <div className="divide-y divide-slate-100">
-                      <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          <div className="col-span-3">Platform</div>
-                          <div className="col-span-5">URL</div>
-                          <div className="col-span-2">Username</div>
-                          <div className="col-span-2 text-right">Actions</div>
-                      </div>
-                      {clientSocialLinks.map(link => (
-                        <div key={link.id} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-slate-50 group">
-                           <div className="col-span-3 flex items-center gap-3">
-                              <div className="p-2 bg-slate-100 rounded-lg">
-                                  {getPlatformIcon(link.platform)}
-                              </div>
-                              <div>
-                                  <p className="font-medium text-slate-900 capitalize">{link.platform === 'other' ? link.label : link.platform}</p>
-                              </div>
-                           </div>
-                           <div className="col-span-5 truncate">
-                              <a href={link.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline text-sm truncate block">
-                                  {link.url}
-                              </a>
-                           </div>
-                           <div className="col-span-2">
-                              <span className="text-slate-600 text-sm">{link.username || '—'}</span>
-                           </div>
-                           <div className="col-span-2 text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {checkPermission && (checkPermission('clients.manage') || checkPermission('clients.manage_links')) && (
-                                  <>
-                                      <button 
-                                          onClick={() => {
-                                              setEditingSocialLink(link);
-                                              setSocialForm({ platform: link.platform, url: link.url, label: link.label || '', username: link.username || '' });
-                                              setIsSocialModalOpen(true);
-                                          }}
-                                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                                      >
-                                          <Edit2 className="w-3.5 h-3.5" />
-                                      </button>
-                                      <button 
-                                          onClick={() => handleDeleteSocialLinkHandler(link.id)}
-                                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
-                                      >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                  </>
-                              )}
-                           </div>
-                        </div>
-                      ))}
-                   </div>
-                 ) : (
-                   <div className="p-8 text-center text-slate-400">
-                      <p>No social media profiles linked.</p>
-                   </div>
-                 )}
-              </div>
-            )}
-
-            {activeTab === 'brand' && checkPermission('clients.brand_view') && (
-              <ClientBrandAssets
-                clientId={selectedClient.id}
-                assets={brandAssets}
-                files={files}
-                onAddAsset={onAddBrandAsset || (() => {})}
-                onUpdateAsset={onUpdateBrandAsset || (() => {})}
-                onDeleteAsset={onDeleteBrandAsset || (() => {})}
-                onUploadFile={onUploadFile || (async () => {})}
-                currentUser={currentUser}
-                checkPermission={checkPermission}
-              />
-            )}
-
-            {/* Marketing Strategies Section */}
-            {activeTab === 'strategies' && <ClientMarketingStrategies clientId={selectedClient.id} />}
-
-         </div>
-
-         {/* Sidebar Content (Contacts, Manager, Notes) */}
-         <div className="space-y-6">
-            {/* Account Manager */}
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Account Manager</h3>
-               {am ? (
-                 <div className="flex items-center space-x-3">
-                    <img src={am.avatar} alt={am.name} className="w-10 h-10 rounded-full object-cover" />
-                    <div>
-                       <p className="font-semibold text-slate-900">{am.name}</p>
-                       <p className="text-xs text-slate-500">{am.role}</p>
-                    </div>
-                 </div>
-               ) : (
-                 <p className="text-sm text-slate-500 italic">No manager assigned</p>
-               )}
-            </div>
-
-            {/* Contacts */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-               <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                  <h3 className="font-bold text-slate-900 text-sm">Contacts</h3>
-                  <button onClick={() => setIsContactModalOpen(true)} className="text-indigo-600 hover:bg-indigo-50 p-1 rounded transition-colors"><Plus className="w-4 h-4"/></button>
-               </div>
-               <div className="divide-y divide-slate-100">
-                  {selectedClient.contacts.map(contact => (
-                    <div key={contact.id} className="p-4 hover:bg-slate-50 group relative">
-                       <div className="flex justify-between items-start">
-                          <div>
-                             <p className="font-medium text-slate-900 text-sm flex items-center gap-2">
-                               {contact.name}
-                               {contact.isPrimary && <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">Primary</span>}
-                             </p>
-                             <p className="text-xs text-slate-500">{contact.role}</p>
-                          </div>
-                       </div>
-                       <div className="mt-2 space-y-1">
-                          <p className="text-xs text-slate-600 flex items-center gap-2"><Mail className="w-3 h-3 text-slate-400"/> {contact.email}</p>
-                          {contact.phone && <p className="text-xs text-slate-600 flex items-center gap-2"><Phone className="w-3 h-3 text-slate-400"/> {contact.phone}</p>}
-                       </div>
-                    </div>
-                  ))}
-                  {selectedClient.contacts.length === 0 && (
-                    <div className="p-4 text-center text-xs text-slate-400">No contacts added.</div>
-                  )}
-               </div>
-            </div>
-
-            {/* Client Notes Section */}
-            {checkPermission('clients.notes_view') && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                      <StickyNote className="w-4 h-4 text-slate-400"/> 
-                      Team Notes
-                    </h3>
-                 </div>
-                 
-                 <div className="p-4 space-y-4">
-                    {/* Add Note Form */}
-                    {checkPermission('clients.notes_create') && (
-                      <form onSubmit={handleAddNoteHandler} className="mb-4">
-                        <textarea
-                          value={newNoteText}
-                          onChange={(e) => setNewNoteText(e.target.value)}
-                          placeholder="Write an internal note about this client..."
-                          className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm min-h-[80px]"
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-sm text-slate-600 mb-1">Account Manager</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    {getAccountManager(selectedClient) ? (
+                      <>
+                        <img
+                          src={getAccountManager(selectedClient)!.avatar}
+                          alt=""
+                          className="w-6 h-6 rounded-full"
                         />
-                        <div className="flex justify-end mt-2">
-                          <button 
-                            type="submit" 
-                            disabled={!newNoteText.trim()}
-                            className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Add Note
-                          </button>
-                        </div>
-                      </form>
+                        <span className="text-sm font-medium text-slate-900 truncate">
+                          {getAccountManager(selectedClient)!.name}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-sm text-slate-400">Unassigned</span>
                     )}
-
-                    {/* Notes List */}
-                    <div className="space-y-4">
-                      {clientNotes.length > 0 ? (
-                        clientNotes.map(note => (
-                          <div key={note.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 group">
-                            {editingNoteId === note.id ? (
-                              <div className="space-y-2">
-                                <textarea
-                                  value={editingNoteText}
-                                  onChange={(e) => setEditingNoteText(e.target.value)}
-                                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm min-h-[60px]"
-                                />
-                                <div className="flex justify-end gap-2">
-                                  <button 
-                                    onClick={() => setEditingNoteId(null)}
-                                    className="text-xs text-slate-500 hover:text-slate-700"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button 
-                                    onClick={() => handleUpdateNoteHandler(note)}
-                                    className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700"
-                                  >
-                                    Save
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap">{note.text}</p>
-                                <div className="flex justify-between items-center mt-2">
-                                  <div className="text-xs text-slate-400 flex items-center gap-1">
-                                    <span className="font-medium text-slate-500">{note.createdByName}</span>
-                                    <span>•</span>
-                                    <span>{new Date(note.createdAt).toLocaleDateString()}</span>
-                                    {note.updatedAt && <span className="italic">(edited)</span>}
-                                  </div>
-                                  
-                                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {(checkPermission('clients.notes_manage') || (checkPermission('clients.notes_create') && note.createdBy === currentUser?.id)) && (
-                                      <button 
-                                        onClick={() => {
-                                          setEditingNoteId(note.id);
-                                          setEditingNoteText(note.text);
-                                        }}
-                                        className="text-slate-400 hover:text-indigo-600"
-                                        title="Edit Note"
-                                      >
-                                        <Edit2 className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                    {checkPermission('clients.notes_manage') && (
-                                      <button 
-                                        onClick={() => handleDeleteNoteHandler(note.id)}
-                                        className="text-slate-400 hover:text-rose-600"
-                                        title="Delete Note"
-                                      >
-                                        <Trash2 className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-center text-xs text-slate-400 py-2">No team notes yet.</p>
-                      )}
-                    </div>
-                 </div>
+                  </div>
+                </div>
               </div>
-            )}
-         </div>
-      </div>
 
-      {/* Edit Client Modal */}
-      {renderClientModal()}
-
-      {/* Social Link Modal */}
-      {isSocialModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900">{editingSocialLink ? 'Edit Social Link' : 'Add Social Link'}</h2>
-              <button onClick={() => setIsSocialModalOpen(false)} className="text-slate-400 hover:text-slate-600"><Plus className="w-5 h-5 rotate-45"/></button>
-            </div>
-            <form onSubmit={handleSaveSocialLink} className="p-6 space-y-4">
+              {/* Client Info */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Platform</label>
-                <select 
-                    value={socialForm.platform} 
-                    onChange={e => setSocialForm({...socialForm, platform: e.target.value as any})} 
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                >
-                    <option value="instagram">Instagram</option>
-                    <option value="facebook">Facebook</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="tiktok">TikTok</option>
-                    <option value="youtube">YouTube</option>
-                    <option value="website">Website</option>
-                    <option value="other">Other</option>
-                </select>
+                <h3 className="font-semibold text-slate-900 mb-3">Client Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-slate-500">Address</p>
+                    <p className="text-slate-900 wrap-anywhere">{selectedClient.address || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-500">Created</p>
+                    <p className="text-slate-900">{new Date(selectedClient.createdAt || '').toLocaleDateString()}</p>
+                  </div>
+                </div>
+                {selectedClient.notes && (
+                  <div className="mt-4">
+                    <p className="text-slate-500 mb-1">Notes</p>
+                    <p className="text-slate-900 wrap-anywhere">{selectedClient.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Social Links */}
+              {clientSocialLinks.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-slate-900 mb-3">Social Media</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {clientSocialLinks.map(link => (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 text-sm"
+                      >
+                        {link.platform === 'instagram' && <Instagram className="w-4 h-4 text-pink-600" />}
+                        {link.platform === 'facebook' && <Facebook className="w-4 h-4 text-blue-600" />}
+                        {link.platform === 'linkedin' && <Linkedin className="w-4 h-4 text-blue-700" />}
+                        {link.platform === 'youtube' && <Youtube className="w-4 h-4 text-red-600" />}
+                        {link.platform === 'tiktok' && <Video className="w-4 h-4" />}
+                        {link.platform === 'other' && <LinkIcon className="w-4 h-4" />}
+                        <span className="truncate">{link.username || link.label || link.platform}</span>
+                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'projects' && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-slate-900">Projects</h3>
               </div>
               
-              {socialForm.platform === 'other' && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Label</label>
-                    <input 
-                        required 
-                        value={socialForm.label || ''} 
-                        onChange={e => setSocialForm({...socialForm, label: e.target.value})} 
-                        type="text" 
-                        placeholder="e.g. Store Locator"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
-                    />
+              {/* Projects List as Cards */}
+              <div className="space-y-3">
+                {activeProjects.length === 0 ? (
+                  <p className="text-slate-500 text-center py-8">No active projects</p>
+                ) : (
+                  activeProjects.map(project => (
+                    <div key={project.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-slate-900 truncate">{project.name}</h4>
+                          <p className="text-sm text-slate-600 mt-1 truncate">{project.description}</p>
+                          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-500">
+                            <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
+                            {project.endDate && <span>End: {new Date(project.endDate).toLocaleDateString()}</span>}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => onOpenProject?.(project.id)}
+                          className="px-3 py-1.5 bg-white border border-slate-200 rounded text-sm hover:bg-slate-50 flex-shrink-0"
+                        >
+                          Open
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'meetings' && (
+            <ClientMeetings
+              clientId={selectedClient.id}
+              meetings={clientMeetings}
+              users={users}
+              files={files}
+              folders={folders}
+              onAddMeeting={onAddMeeting || (() => {})}
+              onUpdateMeeting={onUpdateMeeting || (() => {})}
+              onDeleteMeeting={onDeleteMeeting || (() => {})}
+              onUploadFile={onUploadFile || (async () => {})}
+              checkPermission={checkPermission}
+              currentUser={currentUser || null}
+            />
+          )}
+
+          {activeTab === 'brand' && (
+            <ClientBrandAssets
+              clientId={selectedClient.id}
+              assets={clientBrandAssets}
+              onAddAsset={onAddBrandAsset}
+              onUpdateAsset={onUpdateBrandAsset}
+              onDeleteAsset={onDeleteBrandAsset}
+              onUploadFile={onUploadFile}
+              files={files}
+              currentUser={currentUser}
+              checkPermission={checkPermission || (() => false)}
+            />
+          )}
+
+          {activeTab === 'strategies' && (
+            <ClientMarketingStrategies
+              clientId={selectedClient.id}
+              files={files}
+              folders={folders}
+              onUploadFile={onUploadFile}
+              checkPermission={checkPermission}
+            />
+          )}
+
+          {activeTab === 'notes' && (
+            <div className="space-y-4">
+              {checkPermission('client.notes.create') && (
+                <form onSubmit={handleAddNote} className="bg-slate-50 rounded-lg p-4">
+                  <textarea
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    placeholder="Add a note..."
+                    rows={3}
+                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red resize-none"
+                  />
+                  <div className="flex justify-end mt-2">
+                    <button
+                      type="submit"
+                      disabled={!newNoteText.trim()}
+                      className="px-4 py-2 bg-iris-red text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    >
+                      Add Note
+                    </button>
                   </div>
+                </form>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
-                <input 
-                    required 
-                    value={socialForm.url} 
-                    onChange={e => setSocialForm({...socialForm, url: e.target.value})} 
-                    type="url" 
-                    placeholder="https://..."
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
-                />
+              {/* Notes List */}
+              <div className="space-y-3">
+                {clientNotes.length === 0 ? (
+                  <p className="text-slate-500 text-center py-8">No notes yet</p>
+                ) : (
+                  clientNotes.map(note => (
+                    <div key={note.id} className="bg-white border border-slate-200 rounded-lg p-4">
+                      <p className="text-slate-900 wrap-anywhere">{note.text}</p>
+                      <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
+                        <span>{note.createdByName} • {new Date(note.createdAt).toLocaleDateString()}</span>
+                        {checkPermission('client.notes.delete') && (
+                          <button
+                            onClick={() => onDeleteNote?.(note.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Username (Optional)</label>
-                <input 
-                    value={socialForm.username || ''} 
-                    onChange={e => setSocialForm({...socialForm, username: e.target.value})} 
-                    type="text" 
-                    placeholder="@handle"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
-                />
-                <p className="text-xs text-slate-500 mt-1">Will be auto-extracted from URL if left blank.</p>
-              </div>
-
-              <div className="pt-2">
-                <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-                    {editingSocialLink ? 'Save Changes' : 'Add Link'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-       {/* Add Contact Modal */}
-       {isContactModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900">Add Contact</h2>
-              <button onClick={() => setIsContactModalOpen(false)} className="text-slate-400 hover:text-slate-600"><Plus className="w-5 h-5 rotate-45"/></button>
             </div>
-            <form onSubmit={handleAddContact} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                <input required value={contactForm.name} onChange={e => setContactForm({...contactForm, name: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                <input value={contactForm.role} onChange={e => setContactForm({...contactForm, role: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="e.g. Marketing Director" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                <input value={contactForm.email} onChange={e => setContactForm({...contactForm, email: e.target.value})} type="email" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                <input value={contactForm.phone} onChange={e => setContactForm({...contactForm, phone: e.target.value})} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
-              </div>
-              <div className="flex items-center space-x-2">
-                 <input 
-                   type="checkbox" 
-                   id="isPrimary"
-                   checked={contactForm.isPrimary} 
-                   onChange={e => setContactForm({...contactForm, isPrimary: e.target.checked})} 
-                   className="rounded text-indigo-600 focus:ring-indigo-500" 
-                 />
-                 <label htmlFor="isPrimary" className="text-sm text-slate-700">Set as Primary Contact</label>
-              </div>
-              <div className="pt-2">
-                <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Save Contact</button>
-              </div>
-            </form>
-          </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+
+      {renderClientModal()}
+    </PageContainer>
   );
 };
 

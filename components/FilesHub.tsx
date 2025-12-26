@@ -6,6 +6,7 @@ import {
   Video, Music, Archive, Move, Clock, ChevronRight, CornerUpLeft, X,
   FolderOpen, Building2, Briefcase, Film, Camera, FileCode, Presentation
 } from 'lucide-react';
+import PageContainer from './layout/PageContainer';
 
 interface FilesHubProps {
   files: AgencyFile[];
@@ -309,9 +310,10 @@ const FilesHub: React.FC<FilesHubProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Toolbar */}
-      <div className="p-4 border-b border-slate-200 bg-slate-50">
+    <PageContainer>
+      <div className="h-full flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        {/* Toolbar */}
+        <div className="p-4 border-b border-slate-200 bg-slate-50">
         {/* Breadcrumbs */}
         <div className="flex items-center space-x-2 mb-3 text-sm">
           {breadcrumbs.map((crumb, idx) => (
@@ -556,59 +558,59 @@ const FilesHub: React.FC<FilesHubProps> = ({
                  ))}
               </div>
            ) : (
-              <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-                 <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 font-medium">
-                       <tr>
-                          <th className="px-4 py-3">Name</th>
-                          <th className="px-4 py-3">Size</th>
-                          <th className="px-4 py-3">Type</th>
-                          <th className="px-4 py-3">Uploaded By</th>
-                          <th className="px-4 py-3">Date</th>
-                          <th className="px-4 py-3"></th>
-                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                       {filteredFiles.map(file => {
-                          const uploader = users.find(u => u.id === file.uploaderId);
-                          return (
-                             <tr key={file.id} className="hover:bg-slate-50 group">
-                                <td className="px-4 py-3 flex items-center space-x-3">
+              <div className="space-y-2">
+                 {filteredFiles.map(file => {
+                    const uploader = users.find(u => u.id === file.uploaderId);
+                    return (
+                       <div key={file.id} className="bg-white rounded-lg border border-slate-200 p-4 hover:bg-slate-50 group transition-colors">
+                          <div className="flex items-start justify-between gap-4">
+                             <div className="flex items-start gap-3 min-w-0 flex-1">
+                                <div className="flex-shrink-0 mt-1">
                                    {getFileIcon(file.type, file.category)}
-                                   <div className="flex flex-col">
-                                     <span className="font-medium text-slate-700">{file.name}</span>
-                                     {file.originalName && file.originalName !== file.name && (
-                                       <span className="text-xs text-slate-400">Original: {file.originalName}</span>
-                                     )}
-                                   </div>
-                                   {file.isDeliverable && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200">Final</span>}
-                                   {file.category && (
-                                     <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase">{file.category}</span>
-                                   )}
-                                </td>
-                                <td className="px-4 py-3 text-slate-500">{formatSize(file.size)}</td>
-                                <td className="px-4 py-3 text-slate-500 capitalize">{file.type.split('/')[1] || file.category || 'unknown'}</td>
-                                <td className="px-4 py-3">
-                                   <div className="flex items-center space-x-2">
-                                      {uploader && <img src={uploader.avatar} className="w-5 h-5 rounded-full" />}
-                                      <span className="text-slate-600">{uploader?.name}</span>
-                                   </div>
-                                </td>
-                                <td className="px-4 py-3 text-slate-500">{new Date(file.createdAt).toLocaleDateString()}</td>
-                                <td className="px-4 py-3 text-right">
-                                   <div className="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <button onClick={() => setPreviewFile(file)} className="text-slate-400 hover:text-indigo-600"><Eye className="w-4 h-4"/></button>
-                                      <button className="text-slate-400 hover:text-indigo-600"><Download className="w-4 h-4"/></button>
-                                      {!isReadOnly && (
-                                        <button onClick={() => handleDeleteFile(file)} className="text-slate-400 hover:text-rose-600"><Trash2 className="w-4 h-4"/></button>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                   <div className="flex items-center gap-2 flex-wrap mb-1">
+                                      <span className="font-semibold text-slate-900 truncate">{file.name}</span>
+                                      {file.isDeliverable && (
+                                         <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200 flex-shrink-0">Final</span>
+                                      )}
+                                      {file.category && (
+                                         <span className="text-[10px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-200 uppercase flex-shrink-0">{file.category}</span>
                                       )}
                                    </div>
-                                </td>
-                             </tr>
-                          );
-                       })}
-                    </tbody>
-                 </table>
+                                   {file.originalName && file.originalName !== file.name && (
+                                      <p className="text-xs text-slate-400 truncate mb-2">Original: {file.originalName}</p>
+                                   )}
+                                   <div className="flex items-center gap-4 text-xs text-slate-500">
+                                      <span>{formatSize(file.size)}</span>
+                                      <span className="capitalize">{file.type.split('/')[1] || file.category || 'unknown'}</span>
+                                      <span className="hidden sm:inline">{new Date(file.createdAt).toLocaleDateString()}</span>
+                                   </div>
+                                   {uploader && (
+                                      <div className="flex items-center gap-2 mt-2">
+                                         <img src={uploader.avatar} className="w-5 h-5 rounded-full" alt="" />
+                                         <span className="text-xs text-slate-600">{uploader.name}</span>
+                                      </div>
+                                   )}
+                                </div>
+                             </div>
+                             <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                <button onClick={() => setPreviewFile(file)} className="text-slate-400 hover:text-indigo-600 p-2">
+                                   <Eye className="w-4 h-4"/>
+                                </button>
+                                <button className="text-slate-400 hover:text-indigo-600 p-2">
+                                   <Download className="w-4 h-4"/>
+                                </button>
+                                {!isReadOnly && (
+                                   <button onClick={() => handleDeleteFile(file)} className="text-slate-400 hover:text-rose-600 p-2">
+                                      <Trash2 className="w-4 h-4"/>
+                                   </button>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                    );
+                 })}
               </div>
            )}
 
@@ -698,7 +700,8 @@ const FilesHub: React.FC<FilesHubProps> = ({
            </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageContainer>
   );
 };
 

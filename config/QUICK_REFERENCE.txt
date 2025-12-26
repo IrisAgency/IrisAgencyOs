@@ -1,0 +1,65 @@
+/**
+ * 🎨 QUICK BRANDING REFERENCE
+ * ===========================
+ * 
+ * TO CHANGE YOUR BRAND COLORS, LOGO, OR NAME:
+ * 
+ * 1. Open this file: config/branding.config.ts
+ * 2. Edit the values below
+ * 3. Build: npm run build
+ * 4. Deploy: firebase deploy --only hosting
+ * 
+ * OR use the Admin Interface:
+ * - Login → Admin → Branding Editor
+ * - Upload logos, change colors live
+ * - Click Save (no rebuild needed!)
+ */
+
+// 🏢 COMPANY INFO
+appName: 'IRIS Agency OS'
+tagline: 'Creative Production Management'
+
+// 🎨 COLORS (use hex codes)
+primary:    #e11d48  (Rose - buttons, links, active states)
+secondary:  #0f172a  (Slate - text, borders)
+accent:     #6366f1  (Indigo - highlights, CTAs)
+background: #ffffff  (White)
+text:       #0f172a  (Dark slate)
+sidebar:    #0f172a  (Dark slate)
+
+// ✍️ FONT
+fontFamily: 'Inter'
+
+// 🖼️ LOGOS
+Upload via: Admin → Branding → Logo Section
+- Light logo (for light backgrounds)
+- Dark logo (for dark backgrounds)
+- Favicon (browser tab icon)
+
+/**
+ * 📝 EXAMPLE CUSTOMIZATIONS:
+ * 
+ * Blue Theme:
+ * -----------
+ * primary: '#3b82f6'
+ * secondary: '#1e40af'
+ * sidebar: '#1e3a8a'
+ * 
+ * Green/Eco Theme:
+ * ---------------
+ * primary: '#10b981'
+ * secondary: '#065f46'
+ * sidebar: '#064e3b'
+ * 
+ * Purple Theme:
+ * ------------
+ * primary: '#8b5cf6'
+ * secondary: '#5b21b6'
+ * sidebar: '#4c1d95'
+ * 
+ * Dark Mode:
+ * ---------
+ * background: '#0f172a'
+ * text: '#f8fafc'
+ * sidebar: '#020617'
+ */

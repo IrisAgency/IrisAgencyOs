@@ -4,8 +4,9 @@ import { User, Department, TaskStatus } from '../../types';
 import { DashboardTimelineItem } from '../../types/dashboard';
 
 interface DashboardTimelineProps {
-  viewMode: 'today' | 'week';
+  viewMode: 'today' | 'week' | 'month';
   weekDates: Date[];
+  selectedDate?: Date;
   filteredItems: DashboardTimelineItem[];
   users: User[];
   taskTypeColors: Record<string, { bg: string; light: string; text: string; border?: string }>;
@@ -15,6 +16,7 @@ interface DashboardTimelineProps {
 const DashboardTimeline: React.FC<DashboardTimelineProps> = ({
   viewMode,
   weekDates,
+  selectedDate = new Date(),
   filteredItems,
   users,
   taskTypeColors,
@@ -46,6 +48,93 @@ const DashboardTimeline: React.FC<DashboardTimelineProps> = ({
   };
 
   const renderCalendarView = () => {
+    if (viewMode === 'month') {
+      const year = selectedDate.getFullYear();
+      const month = selectedDate.getMonth();
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const daysInMonth = lastDay.getDate();
+      const startingDay = firstDay.getDay(); // 0 = Sunday
+
+      const days = [];
+      // Padding for previous month
+      for (let i = 0; i < startingDay; i++) {
+        days.push(null);
+      }
+      // Days of current month
+      for (let i = 1; i <= daysInMonth; i++) {
+        days.push(new Date(year, month, i));
+      }
+
+      return (
+        <div className="flex-1 overflow-auto">
+          <div className="min-w-full">
+            {/* Week Header */}
+            <div className="grid grid-cols-7 gap-2 mb-2 sticky top-0 bg-iris-black z-10 pb-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                <div key={day} className="text-center text-iris-white/60 text-xs font-medium uppercase">
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            {/* Month Grid */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {days.map((date, idx) => {
+                if (!date) return <div key={idx} className="bg-transparent" />;
+
+                const isToday = date.toDateString() === new Date().toDateString();
+                const dayItems = filteredItems.filter((item) => {
+                  const itemDate = new Date(item.startTime);
+                  return (
+                    itemDate.getDate() === date.getDate() &&
+                    itemDate.getMonth() === date.getMonth() &&
+                    itemDate.getFullYear() === date.getFullYear()
+                  );
+                });
+
+                return (
+                  <div
+                    key={idx}
+                    className={`min-h-[80px] sm:min-h-[120px] rounded-lg p-1 sm:p-2 border transition-colors ${
+                      isToday
+                        ? 'bg-iris-red/10 border-iris-red'
+                        : 'bg-iris-white/5 border-iris-white/10 hover:bg-iris-white/10'
+                    }`}
+                  >
+                    <div className={`text-xs font-bold mb-1 ${isToday ? 'text-iris-red' : 'text-iris-white/60'}`}>
+                      {date.getDate()}
+                    </div>
+                    <div className="space-y-1 overflow-y-auto max-h-[60px] sm:max-h-[90px] custom-scrollbar">
+                      {dayItems.slice(0, 3).map((item) => (
+                        <div
+                          key={item.id}
+                          onClick={() => handleItemClick(item)}
+                          className="text-[10px] sm:text-xs p-1 rounded bg-iris-black/40 border border-iris-white/10 truncate cursor-pointer hover:bg-iris-white/20"
+                          title={item.title}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full inline-block mr-1 ${
+                             item.type === 'meeting' ? 'bg-purple-400' : 
+                             item.type === 'social' ? 'bg-green-400' : 'bg-blue-400'
+                          }`}></span>
+                          <span className="text-iris-white">{item.title}</span>
+                        </div>
+                      ))}
+                      {dayItems.length > 3 && (
+                        <div className="text-[10px] text-iris-white/40 pl-1">
+                          +{dayItems.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (viewMode === 'today') {
       const today = new Date();
       today.setHours(0, 0, 0, 0);

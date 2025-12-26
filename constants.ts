@@ -1,27 +1,27 @@
-import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset } from './types';
+import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, Note } from './types';
 
 export const USERS: User[] = [
-  { 
+  {
     id: 'u1', name: 'Alex Sterling', role: UserRole.GENERAL_MANAGER, department: Department.MANAGEMENT, avatar: 'https://picsum.photos/id/1005/100/100',
     passwordHash: '', forcePasswordChange: false,
-    jobTitle: 'General Manager', employeeCode: 'IRIS-001', email: 'alex@iris.com', phone: '555-0001', status: 'active', dateJoined: '2020-01-01', location: 'New York' 
+    jobTitle: 'General Manager', employeeCode: 'IRIS-001', email: 'alex@iris.com', phone: '555-0001', status: 'active', dateJoined: '2020-01-01', location: 'New York'
   },
-  { 
+  {
     id: 'u2', name: 'Sarah Chen', role: UserRole.CREATIVE_DIRECTOR, department: Department.CREATIVE, avatar: 'https://picsum.photos/id/1011/100/100',
     passwordHash: '', forcePasswordChange: false,
     jobTitle: 'Creative Director', employeeCode: 'IRIS-005', email: 'sarah@iris.com', phone: '555-0005', status: 'active', dateJoined: '2020-06-15', location: 'Los Angeles'
   },
-  { 
+  {
     id: 'u3', name: 'Mike Ross', role: UserRole.ART_DIRECTOR, department: Department.CREATIVE, avatar: 'https://picsum.photos/id/1012/100/100',
     passwordHash: '', forcePasswordChange: false,
     jobTitle: 'Art Director', employeeCode: 'IRIS-012', email: 'mike@iris.com', phone: '555-0012', status: 'active', dateJoined: '2021-03-01', location: 'New York'
   },
-  { 
+  {
     id: 'u4', name: 'Jessica Pearson', role: UserRole.ACCOUNT_MANAGER, department: Department.ACCOUNTS, avatar: 'https://picsum.photos/id/1027/100/100',
     passwordHash: '', forcePasswordChange: false,
     jobTitle: 'Senior Account Manager', employeeCode: 'IRIS-008', email: 'jessica@iris.com', phone: '555-0008', status: 'active', dateJoined: '2020-09-01', location: 'New York'
   },
-  { 
+  {
     id: 'u5', name: 'Louis Litt', role: UserRole.PRODUCER, department: Department.PRODUCTION, avatar: 'https://picsum.photos/id/1025/100/100',
     passwordHash: '', forcePasswordChange: false,
     jobTitle: 'Production Manager', employeeCode: 'IRIS-015', email: 'louis@iris.com', phone: '555-0015', status: 'on_leave', dateJoined: '2021-06-01', location: 'Los Angeles'
@@ -188,16 +188,16 @@ export const CLIENT_BRAND_ASSETS: ClientBrandAsset[] = [];
 export const PROJECT_MARKETING_ASSETS: ProjectMarketingAsset[] = [];
 
 export const PROJECTS: Project[] = [
-  { 
-    id: 'p1', 
+  {
+    id: 'p1',
     clientId: 'c1',
-    name: 'Summer Campaign 2024', 
+    name: 'Summer Campaign 2024',
     client: 'Le Bon Designs',
     code: 'LBD-SUM-24',
     type: 'campaign',
-    status: 'active', 
-    budget: 50000, 
-    spent: 12000, 
+    status: 'active',
+    budget: 50000,
+    spent: 12000,
     currency: 'USD',
     deadline: '2024-06-30',
     startDate: '2024-04-01',
@@ -211,18 +211,18 @@ export const PROJECTS: Project[] = [
     createdAt: '2024-03-15',
     updatedAt: '2024-05-15'
   },
-  { 
-    id: 'p2', 
+  {
+    id: 'p2',
     clientId: 'c2',
-    name: 'Product Launch', 
-    client: 'Shisha Kartel', 
+    name: 'Product Launch',
+    client: 'Shisha Kartel',
     code: 'SK-LNCH-01',
     type: 'campaign',
-    status: 'active', 
-    budget: 75000, 
-    spent: 45000, 
+    status: 'active',
+    budget: 75000,
+    spent: 45000,
     currency: 'USD',
-    deadline: '2024-05-15', 
+    deadline: '2024-05-15',
     startDate: '2024-02-01',
     endDate: '2024-05-15',
     brief: 'High energy launch event and social takeover.',
@@ -233,18 +233,18 @@ export const PROJECTS: Project[] = [
     createdAt: '2024-01-20',
     updatedAt: '2024-05-01'
   },
-  { 
-    id: 'p3', 
+  {
+    id: 'p3',
     clientId: 'c3',
-    name: 'Rebranding', 
-    client: 'Box Café', 
+    name: 'Rebranding',
+    client: 'Box Café',
     code: 'BOX-REB-24',
     type: 'one_time',
-    status: 'on_hold', 
-    budget: 30000, 
-    spent: 5000, 
+    status: 'on_hold',
+    budget: 30000,
+    spent: 5000,
     currency: 'USD',
-    deadline: '2024-08-01', 
+    deadline: '2024-08-01',
     startDate: '2024-03-01',
     endDate: '2024-08-01',
     brief: 'Complete visual overhaul of the franchise.',
@@ -255,18 +255,18 @@ export const PROJECTS: Project[] = [
     createdAt: '2024-02-28',
     updatedAt: '2024-04-10'
   },
-  { 
-    id: 'p4', 
+  {
+    id: 'p4',
     clientId: 'c4',
-    name: 'Social Media Q2', 
-    client: 'Magic Stick', 
+    name: 'Social Media Q2',
+    client: 'Magic Stick',
     code: 'MS-SOC-Q2',
     type: 'retainer',
-    status: 'active', 
-    budget: 15000, 
-    spent: 7500, 
+    status: 'active',
+    budget: 15000,
+    spent: 7500,
     currency: 'USD',
-    deadline: '2024-06-01', 
+    deadline: '2024-06-01',
     startDate: '2024-04-01',
     endDate: '2024-06-30',
     brief: 'Daily social content management.',
@@ -299,17 +299,17 @@ export const PROJECT_ACTIVITY_LOGS: ProjectActivityLog[] = [
 ];
 
 export const TASKS: Task[] = [
-  { 
-    id: 't1', 
+  {
+    id: 't1',
     projectId: 'p1',
-    title: 'Concept Sketches', 
-    description: 'Initial sketches for the summer collection vibe.', 
-    status: TaskStatus.IN_PROGRESS, 
-    priority: Priority.HIGH, 
+    title: 'Concept Sketches',
+    description: 'Initial sketches for the summer collection vibe.',
+    status: TaskStatus.IN_PROGRESS,
+    priority: Priority.HIGH,
     taskType: 'design',
-    assigneeIds: ['u3', 'u2'], 
+    assigneeIds: ['u3', 'u2'],
     startDate: '2024-04-05',
-    dueDate: '2024-05-20', 
+    dueDate: '2024-05-20',
     department: Department.CREATIVE,
     createdBy: 'u4',
     approvalPath: ['u3', 'u2', 'u4'], // AD -> CD -> AM
@@ -321,17 +321,17 @@ export const TASKS: Task[] = [
     createdAt: '2024-04-01T10:00:00Z',
     updatedAt: '2024-04-05T14:00:00Z'
   },
-  { 
-    id: 't2', 
+  {
+    id: 't2',
     projectId: 'p2',
-    title: 'Location Scouting', 
-    description: 'Find urban rooftops for the hero video shoot.', 
-    status: TaskStatus.AWAITING_REVIEW, 
-    priority: Priority.MEDIUM, 
+    title: 'Location Scouting',
+    description: 'Find urban rooftops for the hero video shoot.',
+    status: TaskStatus.AWAITING_REVIEW,
+    priority: Priority.MEDIUM,
     taskType: 'production',
     assigneeIds: ['u5'],
     startDate: '2024-03-01',
-    dueDate: '2024-03-15', 
+    dueDate: '2024-03-15',
     department: Department.PRODUCTION,
     createdBy: 'u1',
     approvalPath: ['u5', 'u2'], // Producer -> CD
@@ -343,17 +343,17 @@ export const TASKS: Task[] = [
     createdAt: '2024-02-28T09:00:00Z',
     updatedAt: '2024-03-14T16:00:00Z'
   },
-  { 
-    id: 't3', 
+  {
+    id: 't3',
     projectId: 'p3',
-    title: 'Copywriting - Social', 
-    description: 'Draft captions for the teaser campaign.', 
-    status: TaskStatus.NEW, 
-    priority: Priority.LOW, 
+    title: 'Copywriting - Social',
+    description: 'Draft captions for the teaser campaign.',
+    status: TaskStatus.NEW,
+    priority: Priority.LOW,
     taskType: 'copywriting',
     assigneeIds: ['u2'],
     startDate: '2024-05-01',
-    dueDate: '2024-05-25', 
+    dueDate: '2024-05-25',
     department: Department.MARKETING,
     createdBy: 'u4',
     approvalPath: ['u4'],
@@ -365,17 +365,17 @@ export const TASKS: Task[] = [
     createdAt: '2024-04-20T11:00:00Z',
     updatedAt: '2024-04-20T11:00:00Z'
   },
-  { 
-    id: 't4', 
+  {
+    id: 't4',
     projectId: 'p2',
-    title: 'Final Cut Review', 
-    description: 'Review the 30s spot edits.', 
-    status: TaskStatus.APPROVED, 
-    priority: Priority.HIGH, 
+    title: 'Final Cut Review',
+    description: 'Review the 30s spot edits.',
+    status: TaskStatus.APPROVED,
+    priority: Priority.HIGH,
     taskType: 'post_production',
     assigneeIds: ['u2', 'u5'],
     startDate: '2024-05-10',
-    dueDate: '2024-05-19', 
+    dueDate: '2024-05-19',
     department: Department.CREATIVE,
     createdBy: 'u1',
     approvalPath: ['u2', 'u1'],
@@ -387,17 +387,17 @@ export const TASKS: Task[] = [
     createdAt: '2024-05-01T10:00:00Z',
     updatedAt: '2024-05-18T15:00:00Z'
   },
-  { 
-    id: 't5', 
+  {
+    id: 't5',
     projectId: 'p4',
-    title: 'Budget Approval', 
-    description: 'Sign off on Q2 media spend.', 
-    status: TaskStatus.CLIENT_REVIEW, 
-    priority: Priority.HIGH, 
+    title: 'Budget Approval',
+    description: 'Sign off on Q2 media spend.',
+    status: TaskStatus.CLIENT_REVIEW,
+    priority: Priority.HIGH,
     taskType: 'meeting',
     assigneeIds: ['u1', 'u4'],
     startDate: '2024-04-01',
-    dueDate: '2024-04-05', 
+    dueDate: '2024-04-05',
     department: Department.ACCOUNTS,
     createdBy: 'u4',
     approvalPath: ['u1'],
@@ -415,7 +415,7 @@ export const APPROVAL_STEPS: ApprovalStep[] = [
   // Steps for t2 (Location Scouting) - Currently pending first approver (u5)
   { id: 'as1', taskId: 't2', approverId: 'u5', level: 0, status: 'pending', milestoneId: null, createdAt: '2024-03-01T09:00:00Z' },
   { id: 'as2', taskId: 't2', approverId: 'u2', level: 1, status: 'waiting', milestoneId: null, createdAt: '2024-03-01T09:00:00Z' },
-  
+
   // Steps for t4 (Final Cut Review) - Fully Approved
   { id: 'as3', taskId: 't4', approverId: 'u2', level: 0, status: 'approved', reviewedAt: '2024-05-15T10:00:00Z', comment: 'Looks great!', milestoneId: null, createdAt: '2024-05-01T10:00:00Z' },
   { id: 'as4', taskId: 't4', approverId: 'u1', level: 1, status: 'approved', reviewedAt: '2024-05-18T14:00:00Z', comment: 'Good to go.', milestoneId: null, createdAt: '2024-05-01T10:00:00Z' },
@@ -459,23 +459,23 @@ export const FOLDERS: FileFolder[] = [
   { id: 'client_c1_documents', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'documents' },
   { id: 'client_c1_strategies', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Strategies', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'strategy' },
   { id: 'client_c1_archive', clientId: 'c1', projectId: null, parentId: 'client_c1', name: 'Archive', isArchiveRoot: true, isTaskArchiveFolder: false, folderType: 'archive' },
-  
+
   // Project Folders within Client
   { id: 'proj_p1', clientId: 'c1', projectId: 'p1', parentId: 'client_c1_projects', name: 'LBD-SUM-24 - Summer Campaign 2024', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project', linkedEntityType: 'project', linkedEntityId: 'p1' },
   { id: 'proj_p1_tasks', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Tasks', isArchiveRoot: false, isTaskArchiveFolder: false },
   { id: 'proj_p1_videos', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Videos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'videos' },
   { id: 'proj_p1_photos', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Photos', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'photos' },
   { id: 'proj_p1_deliverables', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1', name: 'Deliverables', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'deliverables' },
-  
+
   // Task Folders
   { id: 'task_t1', clientId: 'c1', projectId: 'p1', parentId: 'proj_p1_tasks', name: 'Concept Sketches', isArchiveRoot: false, isTaskArchiveFolder: true, taskId: 't1', folderType: 'task', linkedEntityType: 'task', linkedEntityId: 't1' },
-  
+
   // Client 2 Folders
   { id: 'client_c2', clientId: 'c2', projectId: null, parentId: null, name: 'Shisha Kartel', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'client_root', linkedEntityType: 'client', linkedEntityId: 'c2' },
   { id: 'client_c2_projects', clientId: 'c2', projectId: null, parentId: 'client_c2', name: 'Projects', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project' },
   { id: 'proj_p2', clientId: 'c2', projectId: 'p2', parentId: 'client_c2_projects', name: 'SK-LNCH-01 - Product Launch', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'project', linkedEntityType: 'project', linkedEntityId: 'p2' },
   { id: 'proj_p2_tasks', clientId: 'c2', projectId: 'p2', parentId: 'proj_p2', name: 'Tasks', isArchiveRoot: false, isTaskArchiveFolder: false },
-  
+
   // Legacy folders for backward compatibility
   { id: 'f1', projectId: 'p1', clientId: 'c1', parentId: null, name: 'Creative Assets', isArchiveRoot: false, isTaskArchiveFolder: false },
   { id: 'f2', projectId: 'p1', clientId: 'c1', parentId: null, name: 'Documents', isArchiveRoot: false, isTaskArchiveFolder: false, folderType: 'documents' },
@@ -484,45 +484,45 @@ export const FOLDERS: FileFolder[] = [
 ];
 
 export const FILES: AgencyFile[] = [
-  { 
-    id: 'file1', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3', 
+  {
+    id: 'file1', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3',
     name: 'LBD-ConceptSketches-v1-Sketch.jpg', originalName: 'Concept_Sketch_v1.jpg',
-    type: 'image/jpeg', category: 'image', size: 2400000, 
-    url: 'https://picsum.photos/id/10/800/600', version: 1, isDeliverable: false, 
+    type: 'image/jpeg', category: 'image', size: 2400000,
+    url: 'https://picsum.photos/id/10/800/600', version: 1, isDeliverable: false,
     isArchived: false,
-    tags: ['sketch', 'concept'], createdAt: '2024-04-02T10:00:00Z' 
+    tags: ['sketch', 'concept'], createdAt: '2024-04-02T10:00:00Z'
   },
-  { 
-    id: 'file2', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3', 
+  {
+    id: 'file2', projectId: 'p1', clientId: 'c1', taskId: 't1', folderId: 'task_t1', uploaderId: 'u3',
     name: 'LBD-ConceptSketches-v2-Final.jpg', originalName: 'Concept_Sketch_v2.jpg',
-    type: 'image/jpeg', category: 'image', size: 2600000, 
-    url: 'https://picsum.photos/id/11/800/600', version: 2, isDeliverable: true, 
+    type: 'image/jpeg', category: 'image', size: 2600000,
+    url: 'https://picsum.photos/id/11/800/600', version: 2, isDeliverable: true,
     isArchived: false,
-    tags: ['sketch', 'final', 'approved'], createdAt: '2024-04-05T15:00:00Z' 
+    tags: ['sketch', 'final', 'approved'], createdAt: '2024-04-05T15:00:00Z'
   },
-  { 
-    id: 'file3', projectId: 'p1', clientId: 'c1', taskId: null, folderId: 'client_c1_documents', uploaderId: 'u4', 
+  {
+    id: 'file3', projectId: 'p1', clientId: 'c1', taskId: null, folderId: 'client_c1_documents', uploaderId: 'u4',
     name: 'LBD-SummerCampaign-Brief.pdf', originalName: 'Project_Brief.pdf',
-    type: 'application/pdf', category: 'document', size: 500000, 
-    url: '#', version: 1, isDeliverable: false, 
+    type: 'application/pdf', category: 'document', size: 500000,
+    url: '#', version: 1, isDeliverable: false,
     isArchived: false,
-    tags: ['brief', 'strategy'], createdAt: '2024-03-15T09:00:00Z' 
+    tags: ['brief', 'strategy'], createdAt: '2024-03-15T09:00:00Z'
   },
-  { 
-    id: 'file4', projectId: 'p2', clientId: 'c2', taskId: 't4', folderId: 'proj_p2_tasks', uploaderId: 'u5', 
+  {
+    id: 'file4', projectId: 'p2', clientId: 'c2', taskId: 't4', folderId: 'proj_p2_tasks', uploaderId: 'u5',
     name: 'SK-LaunchTeaser-v1-Edit.mp4', originalName: 'Launch_Teaser_Edit_01.mp4',
-    type: 'video/mp4', category: 'video', size: 45000000, 
-    url: '#', version: 1, isDeliverable: false, 
+    type: 'video/mp4', category: 'video', size: 45000000,
+    url: '#', version: 1, isDeliverable: false,
     isArchived: false,
-    tags: ['video', 'draft', 'edit'], createdAt: '2024-05-12T14:00:00Z' 
+    tags: ['video', 'draft', 'edit'], createdAt: '2024-05-12T14:00:00Z'
   },
-  { 
-    id: 'file5', projectId: 'p2', clientId: 'c2', taskId: 't2', folderId: 'proj_p2_tasks', uploaderId: 'u5', 
+  {
+    id: 'file5', projectId: 'p2', clientId: 'c2', taskId: 't2', folderId: 'proj_p2_tasks', uploaderId: 'u5',
     name: 'SK-LocationScout-Rooftop.jpg', originalName: 'Rooftop_Location_Scout.jpg',
-    type: 'image/jpeg', category: 'image', size: 3100000, 
-    url: 'https://picsum.photos/id/40/800/600', version: 1, isDeliverable: false, 
+    type: 'image/jpeg', category: 'image', size: 3100000,
+    url: 'https://picsum.photos/id/40/800/600', version: 1, isDeliverable: false,
     isArchived: false,
-    tags: ['location', 'photo', 'scout'], createdAt: '2024-03-05T11:00:00Z' 
+    tags: ['location', 'photo', 'scout'], createdAt: '2024-03-05T11:00:00Z'
   }
 ];
 
@@ -542,7 +542,7 @@ export const AGENCY_EQUIPMENT: AgencyEquipment[] = [
 ];
 
 export const SHOT_LISTS: ShotList[] = [
-  { 
+  {
     id: 'sl1', projectId: 'p2', taskId: 't2', name: 'Rooftop Sequence', description: 'Hero shots for launch video', createdBy: 'u2', date: '2024-05-12', locationId: 'loc1', createdAt: '2024-05-01',
     shots: [
       { id: 's1', shotListId: 'sl1', shotNumber: 1, description: 'Establish shot of skyline', cameraMovement: 'Static', framing: 'Wide', duration: '5s', equipment: ['eq1', 'eq3'], notes: 'Golden hour' },
@@ -552,7 +552,7 @@ export const SHOT_LISTS: ShotList[] = [
 ];
 
 export const CALL_SHEETS: CallSheet[] = [
-  { 
+  {
     id: 'cs1', projectId: 'p2', date: '2024-05-12', callTime: '06:00 AM', locationId: 'loc1', productionNotes: 'Parking in rear alley only.', status: 'Published', createdBy: 'u5', createdAt: '2024-05-10', equipmentList: ['eq1', 'eq3', 'eq4'],
     crew: [
       { id: 'crew1', callSheetId: 'cs1', userId: 'u5', role: 'Producer', phone: '555-0100', callTime: '06:00 AM' },
@@ -593,28 +593,28 @@ export const QUOTATIONS: Quotation[] = [
 ];
 
 export const INVOICES: Invoice[] = [
-  { 
+  {
     id: 'inv1', projectId: 'p1', clientId: 'c1', invoiceNumber: 'INV-2024-001', date: '2024-04-01', dueDate: '2024-04-15',
     items: [
-       { id: 'ii1', description: 'Advance Payment (50%) - Summer Campaign', quantity: 1, unitPrice: 8250, total: 8250 }
+      { id: 'ii1', description: 'Advance Payment (50%) - Summer Campaign', quantity: 1, unitPrice: 8250, total: 8250 }
     ],
     subtotal: 8250, discount: 0, tax: 0, total: 8250, paid: 8250, balance: 0,
     status: 'paid', notes: '', createdBy: 'u4', createdAt: '2024-04-01',
     client: 'Le Bon Designs', amount: 8250
   },
-  { 
+  {
     id: 'inv2', projectId: 'p2', clientId: 'c2', invoiceNumber: 'INV-2024-005', date: '2024-05-01', dueDate: '2024-05-15',
     items: [
-       { id: 'ii2', description: 'Event Production Services', quantity: 1, unitPrice: 36300, total: 36300 }
+      { id: 'ii2', description: 'Event Production Services', quantity: 1, unitPrice: 36300, total: 36300 }
     ],
     subtotal: 36300, discount: 0, tax: 0, total: 36300, paid: 15000, balance: 21300,
     status: 'partially_paid', notes: '', createdBy: 'u1', createdAt: '2024-05-01',
     client: 'Shisha Kartel', amount: 36300
   },
-  { 
+  {
     id: 'inv3', projectId: 'p3', clientId: 'c3', invoiceNumber: 'INV-2024-009', date: '2024-04-10', dueDate: '2024-04-24',
     items: [
-       { id: 'ii3', description: 'Rebranding Strategy - Phase 1', quantity: 1, unitPrice: 4500, total: 4500 }
+      { id: 'ii3', description: 'Rebranding Strategy - Phase 1', quantity: 1, unitPrice: 4500, total: 4500 }
     ],
     subtotal: 4500, discount: 0, tax: 0, total: 4500, paid: 0, balance: 4500,
     status: 'overdue', notes: 'Client requested delay.', createdBy: 'u4', createdAt: '2024-04-10',
@@ -680,17 +680,10 @@ export const DEFAULT_PREFERENCES: NotificationPreference = {
 
 // --- ADMIN & MOCK DATA ---
 
-export const DEFAULT_BRANDING: AppBranding = {
-  id: 'branding-1',
-  appName: 'IRIS Agency OS',
-  logoLightUrl: null,
-  logoDarkUrl: null,
-  primaryColor: '#4f46e5', // indigo-600
-  secondaryColor: '#f43f5e', // rose-500
-  sidebarColor: '#0f172a', // slate-900
-  backgroundColor: '#f8fafc', // slate-50
-  textColor: '#0f172a' // slate-900
-};
+// Import centralized branding configuration
+import { DEFAULT_BRANDING_CONFIG } from './config/branding.config';
+
+export const DEFAULT_BRANDING: AppBranding = DEFAULT_BRANDING_CONFIG;
 
 export const DEFAULT_SETTINGS: AppSettings = {
   id: 'settings-1',
@@ -706,13 +699,18 @@ export const DEFAULT_SETTINGS: AppSettings = {
 
 export const PERMISSIONS_LIST: Permission[] = [
   // Tasks
-  { code: 'tasks.view_all', module: 'Tasks', name: 'View All Tasks', description: 'Can view all tasks in the system' },
-  { code: 'tasks.view_own', module: 'Tasks', name: 'View Own Tasks', description: 'Can only view assigned tasks' },
+  { code: 'tasks.view.all', module: 'Tasks', name: 'View All Tasks', description: 'Can view all tasks in the system' },
+  { code: 'tasks.view.dept', module: 'Tasks', name: 'View Department Tasks', description: 'Can view tasks in own department' },
+  { code: 'tasks.view.project', module: 'Tasks', name: 'View Project Tasks', description: 'Can view tasks in assigned projects' },
+  { code: 'tasks.view.own', module: 'Tasks', name: 'View Own Tasks', description: 'Can only view assigned tasks' },
   { code: 'tasks.create', module: 'Tasks', name: 'Create Tasks', description: 'Can create new tasks' },
-  { code: 'tasks.edit_all', module: 'Tasks', name: 'Edit All Tasks', description: 'Can edit any task regardless of assignment' },
-  { code: 'tasks.edit_own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
+  { code: 'tasks.edit.all', module: 'Tasks', name: 'Edit All Tasks', description: 'Can edit any task regardless of assignment' },
+  { code: 'tasks.edit.dept', module: 'Tasks', name: 'Edit Department Tasks', description: 'Can edit tasks in own department' },
+  { code: 'tasks.edit.own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
   { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can delete tasks (soft delete)' },
   { code: 'tasks.approve', module: 'Tasks', name: 'Approve Tasks', description: 'Can approve tasks' },
+  { code: 'tasks.assign.all', module: 'Tasks', name: 'Assign Any User', description: 'Can assign any user to a task' },
+  { code: 'tasks.assign.dept', module: 'Tasks', name: 'Assign Department', description: 'Can assign department members to a task' },
   { code: 'tasks.manage_assignees', module: 'Tasks', name: 'Manage Assignees', description: 'Can assign or reassign people on a task' },
   { code: 'tasks.manage_publishing', module: 'Tasks', name: 'Manage Publishing', description: 'Can assign social managers and publishing notes' },
   { code: 'workflows.override_task_workflow', module: 'Tasks', name: 'Override Task Workflow', description: 'Can manually select a workflow for a task' },
@@ -765,104 +763,389 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'clients.notes_view', module: 'Clients', name: 'View Notes', description: 'Can view client notes' },
   { code: 'clients.notes_create', module: 'Clients', name: 'Create Notes', description: 'Can create new client notes' },
   { code: 'clients.notes_manage', module: 'Clients', name: 'Manage Notes', description: 'Can edit/delete any client note' },
-  { code: 'clients.meetings_view', module: 'Clients', name: 'View Meetings', description: 'Can view client meetings' },
-  { code: 'clients.meetings_create', module: 'Clients', name: 'Create Meetings', description: 'Can schedule new meetings' },
-  { code: 'clients.meetings_manage', module: 'Clients', name: 'Manage Meetings', description: 'Can edit/delete meetings' },
+  { code: 'client.meetings.view', module: 'Clients', name: 'View Meetings', description: 'Can view client meetings' },
+  { code: 'client.meetings.create', module: 'Clients', name: 'Create Meetings', description: 'Can schedule new meetings' },
+  { code: 'client.meetings.edit', module: 'Clients', name: 'Edit Meetings', description: 'Can edit meetings' },
+  { code: 'client.meetings.delete', module: 'Clients', name: 'Delete Meetings', description: 'Can delete meetings' },
   { code: 'clients.brand_view', module: 'Clients', name: 'View Brand Assets', description: 'Can view brand guidelines and assets' },
   { code: 'clients.brand_manage', module: 'Clients', name: 'Manage Brand Assets', description: 'Can add/edit/delete brand assets' }
 ];
 
 export const DEFAULT_ROLES: RoleDefinition[] = [
-  { 
-    id: 'r1', 
-    name: UserRole.GENERAL_MANAGER, 
-    description: 'Full system access', 
-    permissions: PERMISSIONS_LIST.map(p => p.code), 
-    isAdmin: true 
-  },
-  { 
-    id: 'r2', 
-    name: UserRole.ACCOUNT_MANAGER, 
-    description: 'Client and Project management', 
+  {
+    id: 'r1',
+    name: UserRole.GENERAL_MANAGER,
+    description: 'Full system access - complete control over all modules',
     permissions: [
-      'projects.view_all', 'projects.create', 'projects.edit_all', 'projects.archive', 'projects.marketing_assets_manage',
-      'tasks.view_all', 'tasks.create', 'tasks.edit_all', 'tasks.manage_assignees', 'tasks.manage_publishing',
-      'files.view_all', 'files.upload',
-      'finance.view',
-      'social_posts.view',
-      'clients.view', 'clients.manage', 'clients.manage_strategies', 'clients.manage_links',
-      'clients.notes_view', 'clients.notes_create', 'clients.notes_manage',
-      'clients.meetings_view', 'clients.meetings_create', 'clients.meetings_manage',
-      'clients.brand_view', 'clients.brand_manage'
-    ], 
-    isAdmin: false 
-  },
-  { 
-    id: 'r3', 
-    name: UserRole.CREATIVE_DIRECTOR, 
-    description: 'Creative oversight', 
-    permissions: [
-      'projects.view_all', 'projects.marketing_assets_manage',
-      'tasks.view_all', 'tasks.edit_all', 'tasks.approve', 'tasks.manage_assignees', 'tasks.manage_publishing',
-      'files.view_all', 'files.upload',
-      'production.view',
-      'social_posts.view',
-      'clients.view', 'clients.notes_view', 'clients.notes_create',
-      'clients.meetings_view', 'clients.meetings_create',
-      'clients.brand_view', 'clients.brand_manage'
-    ], 
-    isAdmin: false 
+      // Auth & Users
+      'auth.login', 'users.view.all', 'users.create', 'users.edit', 'users.disable', 'users.force_password_reset',
+      // Roles & Permissions
+      'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'roles.assign',
+      'permissions.view', 'permissions.manage',
+      // Departments
+      'departments.view', 'departments.create', 'departments.edit', 'departments.delete', 'departments.assign_members',
+      // Clients (all access)
+      'clients.view.all', 'clients.create', 'clients.edit', 'clients.archive', 'clients.delete',
+      'client.notes.view', 'client.notes.create', 'client.notes.edit', 'client.notes.delete',
+      'client.meetings.view', 'client.meetings.create', 'client.meetings.edit', 'client.meetings.delete',
+      'client.brand_assets.view', 'client.brand_assets.manage',
+      'client.marketing_strategies.view', 'client.marketing_strategies.manage',
+      // Projects & Milestones (all access)
+      'projects.view.all', 'projects.create', 'projects.edit', 'projects.archive', 'projects.delete',
+      'milestones.view', 'milestones.create', 'milestones.edit', 'milestones.delete',
+      // Tasks (full access)
+      'tasks.view.all', 'tasks.create', 'tasks.edit.all', 'tasks.assign.all', 'tasks.reassign.all',
+      'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve', 'tasks.reject',
+      'tasks.archive', 'tasks.delete', 'tasks.reopen', 'tasks.edit_completed',
+      'task_files.upload', 'task_files.delete', 'task_files.view',
+      // Approvals
+      'approvals.view.all', 'approvals.act', 'approvals.configure',
+      // Posting
+      'posting.view.all', 'posting.create', 'posting.edit', 'posting.assign', 'posting.submit_for_review',
+      'posting.request_revision', 'posting.approve', 'posting.schedule', 'posting.mark_published',
+      'posting.archive', 'posting.delete',
+      // Assets
+      'assets.view.all', 'assets.upload', 'assets.edit_metadata', 'assets.delete', 'assets.link_to_task', 'assets.archive',
+      // Production
+      'production.view', 'production.create', 'production.edit', 'production.assign_crew', 'production.schedule',
+      'production.close_job', 'production.delete',
+      // Vendors
+      'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.delete', 'vendors.assign_to_project',
+      // Finance (full access)
+      'finance.view.all', 'finance.create_invoice', 'finance.edit_invoice', 'finance.delete_invoice',
+      'finance.record_payment', 'finance.approve_payment', 'finance.export', 'finance.manage_budgets',
+      // Analytics & Reports
+      'reports.view.all', 'reports.export', 'analytics.view.all',
+      // Notifications
+      'notifications.view', 'notifications.manage',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own', 'notes.manage_all',
+      // Admin
+      'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
+      'admin.settings.view', 'admin.settings.edit'
+    ],
+    isAdmin: true
   },
   {
-    id: 'r_social',
-    name: UserRole.SOCIAL_MANAGER,
-    description: 'Social Media Management',
+    id: 'r2',
+    name: UserRole.ACCOUNT_MANAGER,
+    description: 'Client and project management, task oversight',
     permissions: [
-      'social_posts.view', 'social_posts.manage',
-      'tasks.view_all', 'tasks.edit_own',
-      'files.view_all', 'files.upload',
-      'clients.view', 'clients.brand_view'
+      'auth.login',
+      // Clients (full access)
+      'clients.view.all', 'clients.create', 'clients.edit', 'clients.archive',
+      'client.notes.view', 'client.notes.create', 'client.notes.edit', 'client.notes.delete',
+      'client.meetings.view', 'client.meetings.create', 'client.meetings.edit', 'client.meetings.delete',
+      'client.brand_assets.view', 'client.brand_assets.manage',
+      'client.marketing_strategies.view', 'client.marketing_strategies.manage',
+      // Projects (dept level)
+      'projects.view.all', 'projects.create', 'projects.edit',
+      'milestones.view', 'milestones.create', 'milestones.edit',
+      // Tasks (dept level management)
+      'tasks.view.all', 'tasks.create', 'tasks.edit.dept', 'tasks.assign.dept', 'tasks.reassign.dept',
+      'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve',
+      'tasks.reopen', 'tasks.edit_completed',
+      'task_files.view', 'task_files.upload',
+      // Approvals
+      'approvals.view.all', 'approvals.act', 'approvals.configure',
+      // Assets
+      'assets.view.all', 'assets.upload', 'assets.link_to_task',
+      // Finance (view all, manage budgets)
+      'finance.view.all', 'finance.create_invoice', 'finance.edit_invoice', 'finance.manage_budgets',
+      // Reports
+      'reports.view.all', 'reports.export', 'analytics.view.all',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
     isAdmin: false
   },
-  { 
-    id: 'r5', 
-    name: UserRole.DESIGNER, 
-    description: 'Task execution', 
+  {
+    id: 'r3',
+    name: UserRole.CREATIVE_DIRECTOR,
+    description: 'Creative oversight, approvals, team management',
     permissions: [
-      'projects.view_own', 
-      'tasks.view_own', 'tasks.edit_own',
-      'files.view_own', 'files.upload',
-      'clients.view', 'clients.notes_view',
-      'clients.meetings_view',
-      'clients.brand_view'
-    ], 
-    isAdmin: false 
+      'auth.login',
+      // Clients (view all)
+      'clients.view.all',
+      'client.notes.view', 'client.notes.create',
+      'client.meetings.view', 'client.meetings.create',
+      'client.brand_assets.view', 'client.brand_assets.manage',
+      'client.marketing_strategies.view',
+      // Projects (all)
+      'projects.view.all', 'projects.create', 'projects.edit',
+      'milestones.view', 'milestones.create', 'milestones.edit',
+      // Tasks (full creative control)
+      'tasks.view.all', 'tasks.create', 'tasks.edit.all', 'tasks.assign.dept', 'tasks.reassign.dept',
+      'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve', 'tasks.reject',
+      'tasks.reopen', 'tasks.edit_completed',
+      'task_files.view', 'task_files.upload', 'task_files.delete',
+      // Approvals
+      'approvals.view.all', 'approvals.act', 'approvals.configure',
+      // Posting
+      'posting.view.all', 'posting.create', 'posting.edit', 'posting.approve', 'posting.schedule',
+      // Assets
+      'assets.view.all', 'assets.upload', 'assets.edit_metadata', 'assets.link_to_task', 'assets.archive',
+      // Production
+      'production.view', 'production.edit', 'production.assign_crew',
+      // Reports
+      'reports.view.dept', 'analytics.view.dept',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
   },
-  { 
-    id: 'r9', 
-    name: 'Videographer', 
-    description: 'Video production staff', 
+  {
+    id: 'r4',
+    name: UserRole.ART_DIRECTOR,
+    description: 'Design team lead, approval authority',
     permissions: [
-      'tasks.view_own', 'tasks.edit_own',
-      'files.view_own', 'files.upload',
-      'production.view',
-      'clients.brand_view'
-    ], 
-    isAdmin: false 
+      'auth.login',
+      // Clients
+      'clients.view.dept',
+      'client.notes.view', 'client.notes.create',
+      'client.meetings.view',
+      'client.brand_assets.view',
+      // Projects
+      'projects.view.dept', 'projects.edit',
+      'milestones.view',
+      // Tasks (dept level)
+      'tasks.view.dept', 'tasks.create', 'tasks.edit.dept', 'tasks.assign.dept',
+      'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve',
+      'task_files.view', 'task_files.upload',
+      // Approvals
+      'approvals.view.dept', 'approvals.act',
+      // Assets
+      'assets.view.dept', 'assets.upload', 'assets.edit_metadata', 'assets.link_to_task',
+      // Reports
+      'reports.view.dept', 'analytics.view.dept',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
   },
-  { 
-    id: 'r10', 
-    name: 'Freelancer', 
-    description: 'External contractor', 
+  {
+    id: 'r5',
+    name: UserRole.DESIGNER,
+    description: 'Creative execution - own tasks only',
     permissions: [
-      'tasks.view_own', 'tasks.edit_own',
-      'files.view_own', 'files.upload'
-    ], 
-    isAdmin: false 
+      'auth.login',
+      // Clients (view only)
+      'clients.view.own',
+      'client.notes.view',
+      'client.meetings.view',
+      'client.brand_assets.view',
+      // Projects (own only)
+      'projects.view.own',
+      'milestones.view',
+      // Tasks (own only)
+      'tasks.view.own', 'tasks.edit.own', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Approvals
+      'approvals.view.own',
+      // Assets
+      'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r6',
+    name: UserRole.COPYWRITER,
+    description: 'Content creation - own tasks only',
+    permissions: [
+      'auth.login',
+      // Clients
+      'clients.view.own',
+      'client.notes.view',
+      'client.brand_assets.view',
+      'client.marketing_strategies.view',
+      // Projects
+      'projects.view.own',
+      'milestones.view',
+      // Tasks (own)
+      'tasks.view.own', 'tasks.edit.own', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Approvals
+      'approvals.view.own',
+      // Assets
+      'assets.view.dept', 'assets.upload',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r7',
+    name: UserRole.SOCIAL_MANAGER,
+    description: 'Social media content and posting management',
+    permissions: [
+      'auth.login',
+      // Clients
+      'clients.view.dept',
+      'client.notes.view',
+      'client.brand_assets.view',
+      'client.marketing_strategies.view',
+      // Projects
+      'projects.view.dept',
+      'milestones.view',
+      // Tasks (dept view, own edit)
+      'tasks.view.dept', 'tasks.create', 'tasks.edit.own', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Posting (full access)
+      'posting.view.dept', 'posting.create', 'posting.edit', 'posting.assign', 'posting.submit_for_review',
+      'posting.request_revision', 'posting.schedule', 'posting.mark_published', 'posting.archive',
+      // Assets
+      'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Reports
+      'reports.view.dept', 'analytics.view.dept',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r8',
+    name: UserRole.PRODUCER,
+    description: 'Production management and scheduling',
+    permissions: [
+      'auth.login',
+      // Clients
+      'clients.view.dept',
+      'client.notes.view',
+      'client.brand_assets.view',
+      // Projects
+      'projects.view.dept', 'projects.edit',
+      'milestones.view', 'milestones.create', 'milestones.edit',
+      // Tasks
+      'tasks.view.dept', 'tasks.create', 'tasks.edit.dept', 'tasks.assign.dept',
+      'tasks.advance', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Production (full access)
+      'production.view', 'production.create', 'production.edit', 'production.assign_crew',
+      'production.schedule', 'production.close_job',
+      // Vendors
+      'vendors.view', 'vendors.assign_to_project',
+      // Assets
+      'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Reports
+      'reports.view.dept', 'analytics.view.dept',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r9',
+    name: 'Videographer',
+    description: 'Video production - own tasks and production access',
+    permissions: [
+      'auth.login',
+      // Clients
+      'clients.view.own',
+      'client.brand_assets.view',
+      // Projects
+      'projects.view.own',
+      // Tasks (own)
+      'tasks.view.own', 'tasks.edit.own', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Production (view and edit)
+      'production.view', 'production.edit',
+      // Assets
+      'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r10',
+    name: 'Finance Manager',
+    description: 'Financial management and reporting',
+    permissions: [
+      'auth.login',
+      // Clients
+      'clients.view.all',
+      // Projects
+      'projects.view.all',
+      'milestones.view',
+      // Finance (full access)
+      'finance.view.all', 'finance.create_invoice', 'finance.edit_invoice', 'finance.delete_invoice',
+      'finance.record_payment', 'finance.approve_payment', 'finance.export', 'finance.manage_budgets',
+      // Vendors
+      'vendors.view', 'vendors.create', 'vendors.edit',
+      // Reports
+      'reports.view.all', 'reports.export', 'analytics.view.all',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r11',
+    name: 'Freelancer',
+    description: 'External contractor - own tasks only',
+    permissions: [
+      'auth.login',
+      // Clients
+      'client.brand_assets.view',
+      // Projects
+      'projects.view.own',
+      // Tasks (own only)
+      'tasks.view.own', 'tasks.edit.own', 'tasks.submit_for_review',
+      'task_files.view', 'task_files.upload',
+      // Assets
+      'assets.view.own', 'assets.upload',
+      // Notifications
+      'notifications.view',
+      // Notes
+      'notes.create', 'notes.edit_own', 'notes.delete_own'
+    ],
+    isAdmin: false
+  },
+  {
+    id: 'r12',
+    name: UserRole.CLIENT,
+    description: 'Client portal access - view and approve only',
+    permissions: [
+      'auth.login',
+      // Clients (own only)
+      'clients.view.own',
+      'client.notes.view', 'client.notes.create',
+      'client.meetings.view',
+      'client.brand_assets.view',
+      // Projects (own)
+      'projects.view.own',
+      'milestones.view',
+      // Tasks (view for approval)
+      'tasks.view.own',
+      'task_files.view',
+      // Approvals (client approvals only)
+      'approvals.view.own', 'approvals.act',
+      // Notifications
+      'notifications.view'
+    ],
+    isAdmin: false
   }
 ];
-
 
 
 export const AUDIT_LOGS: AuditLog[] = [
@@ -956,4 +1239,9 @@ export const SOCIAL_POSTS: any[] = [
     createdAt: '2024-05-01T10:00:00Z',
     updatedAt: '2024-05-02T11:00:00Z'
   }
+];
+
+export const NOTES: Note[] = [
+  { id: 'n1', title: 'Meeting Notes', content: 'Discussed Q3 goals with the team.', createdBy: 'u1', createdAt: '2024-05-20T10:00:00Z', updatedAt: '2024-05-20T10:00:00Z' },
+  { id: 'n2', title: 'Project Idea', content: 'New campaign for Le Bon Designs.', linkedEntityId: 'p1', linkedEntityType: 'project', createdBy: 'u2', createdAt: '2024-05-21T14:30:00Z', updatedAt: '2024-05-21T14:30:00Z' }
 ];

@@ -17,9 +17,17 @@ interface ClientMeetingsProps {
 }
 
 const ClientMeetings: React.FC<ClientMeetingsProps> = ({ 
-  clientId, meetings, users, files, folders, 
-  onAddMeeting, onUpdateMeeting, onDeleteMeeting, onUploadFile, 
-  checkPermission, currentUser 
+  clientId, 
+  meetings = [], 
+  users = [], 
+  files = [], 
+  folders = [], 
+  onAddMeeting, 
+  onUpdateMeeting, 
+  onDeleteMeeting, 
+  onUploadFile, 
+  checkPermission, 
+  currentUser 
 }) => {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,9 +47,16 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
   });
   const [clientParticipantInput, setClientParticipantInput] = useState('');
 
-  const clientMeetings = useMemo(() => 
-    meetings.filter(m => m.clientId === clientId).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()), 
-  [meetings, clientId]);
+  const clientMeetings = useMemo(() => {
+    if (!meetings) return [];
+    return meetings
+      .filter(m => m.clientId === clientId)
+      .sort((a, b) => {
+        const dateA = new Date(a.date).getTime() || 0;
+        const dateB = new Date(b.date).getTime() || 0;
+        return dateA - dateB;
+      });
+  }, [meetings, clientId]);
 
   const upcomingMeetings = useMemo(() => 
     clientMeetings.filter(m => m.status === 'scheduled' && new Date(m.date) >= new Date()), 
@@ -284,7 +299,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
                 </div>
 
                 <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-200">
-                    {checkPermission('clients.meetings_manage') && (
+                    {(checkPermission('client.meetings.edit') || checkPermission('client.meetings.delete')) && (
                         <>
                             {meeting.status === 'scheduled' && (
                                 <>
@@ -325,7 +340,13 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
     );
   };
 
-  if (!checkPermission('clients.meetings_view')) return null;
+  if (!checkPermission('client.meetings.view')) {
+    return (
+      <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+        <p>You do not have permission to view meetings.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -350,7 +371,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
             </div>
          </div>
          
-         {checkPermission('clients.meetings_create') && (
+         {checkPermission('client.meetings.create') && (
              <button 
                 onClick={() => handleOpenModal()}
                 className="flex items-center space-x-2 text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"

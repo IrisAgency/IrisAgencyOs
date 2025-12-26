@@ -16,9 +16,11 @@ import bcrypt from 'bcryptjs';
 import { auth, db, firebaseConfig } from '../lib/firebase';
 import { User, UserRole, Department, RoleDefinition } from '../types';
 import { DEFAULT_ROLES } from '../constants';
+import { can, ScopeContext } from '../lib/permissions';
 
 interface AuthContextType {
   currentUser: User | null;
+  userPermissions: string[];
   roles: RoleDefinition[];
   loading: boolean;
   allowSignUp: boolean;
@@ -27,7 +29,9 @@ interface AuthContextType {
   inviteUser: (payload: InviteUserPayload) => Promise<{ tempPassword: string }>;
   completePasswordChange: (currentPassword: string, newPassword: string) => Promise<void>;
   logout: () => Promise<void>;
-  checkPermission: (permissionCode: string) => boolean;
+  checkPermission: (permissionCode: string, context?: ScopeContext) => boolean;
+  hasAnyPermission: (permissionCodes: string[], context?: ScopeContext) => boolean;
+  hasAllPermissions: (permissionCodes: string[], context?: ScopeContext) => boolean;
 }
 
 interface InviteUserPayload {
@@ -50,6 +54,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [roles, setRoles] = useState<RoleDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [allowSignUp, setAllowSignUp] = useState(false);
@@ -78,7 +83,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const unsubscribeRoles = onSnapshot(collection(db, 'roles'), (snapshot) => {
+      console.log('📦 Roles snapshot received. Empty?', snapshot.empty, 'Size:', snapshot.size);
+      
       if (snapshot.empty) {
+        console.log('🔄 Initializing roles in Firestore with DEFAULT_ROLES');
         const batch = writeBatch(db);
         DEFAULT_ROLES.forEach(role => {
           const roleRef = doc(db, 'roles', role.id);
@@ -86,11 +94,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         batch.commit().catch(console.error);
         setRoles(DEFAULT_ROLES);
+        console.log('✅ Roles set to DEFAULT_ROLES:', DEFAULT_ROLES.length, 'roles');
       } else {
-        setRoles(snapshot.docs.map(d => d.data() as RoleDefinition));
+        const loadedRoles = snapshot.docs.map(d => d.data() as RoleDefinition);
+        console.log('✅ Roles loaded from Firestore:', loadedRoles.length, 'roles');
+        setRoles(loadedRoles);
       }
     }, (error) => {
-      console.error('Error fetching roles:', error);
+      console.error('❌ Error fetching roles:', error);
       setRoles(DEFAULT_ROLES);
     });
 
@@ -113,12 +124,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               return;
             }
 
-            setCurrentUser({
+            const user = {
               id: firebaseUser.uid,
               ...userData,
               passwordHash: userData.passwordHash || '',
               forcePasswordChange: !!userData.forcePasswordChange // Ensure boolean
-            });
+            };
+            setCurrentUser(user);
+            
+            // Permissions will be loaded by useEffect when roles are ready
           } else {
             // Fallback if no firestore profile exists (e.g. new user or admin created)
             console.warn('User profile not found in Firestore');
@@ -147,13 +161,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Auto-create the missing profile
             await setDoc(userDocRef, newUserProfile);
             setCurrentUser(newUserProfile);
+            
+            // Permissions will be loaded by useEffect when roles are ready
           }
         } catch (error) {
           console.error('Error fetching user profile:', error);
           setCurrentUser(null);
+          setUserPermissions([]);
         }
       } else {
         setCurrentUser(null);
+        setUserPermissions([]);
       }
       setLoading(false);
     });
@@ -266,19 +284,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signOut(auth);
   };
 
-  const checkPermission = (permissionCode: string): boolean => {
-    if (!currentUser) return false;
-    if (!roles || !Array.isArray(roles)) return false;
+  // Load user permissions based on their role
+  const loadUserPermissions = (userRole: UserRole) => {
+    console.log('🔍 loadUserPermissions called with role:', userRole);
+    console.log('📋 Available roles:', roles);
     
-    const userRoleDef = roles.find(r => r && r.name === currentUser.role);
-    if (!userRoleDef) return false;
-    if (userRoleDef.isAdmin) return true;
-    return userRoleDef.permissions && userRoleDef.permissions.includes(permissionCode);
+    if (!roles || !Array.isArray(roles)) {
+      console.warn('⚠️ Roles not loaded or not an array');
+      setUserPermissions([]);
+      return;
+    }
+    
+    const userRoleDef = roles.find(r => r && r.name === userRole);
+    const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
+    console.log('🎯 Found role definition:', userRoleDef);
+    
+    if (!userRoleDef) {
+      console.warn('⚠️ No role definition found for:', userRole);
+      setUserPermissions([]);
+      return;
+    }
+    
+    // Merge with default permissions to ensure new system permissions are available immediately
+    // This fixes issues where deployed Firestore data is stale compared to code constants
+    let finalPermissions = userRoleDef.permissions || [];
+    if (defaultRoleDef) {
+        finalPermissions = Array.from(new Set([...finalPermissions, ...defaultRoleDef.permissions]));
+    }
+    
+    console.log('✅ Setting permissions:', finalPermissions.length, 'permissions (merged with defaults)');
+    setUserPermissions(finalPermissions);
   };
 
+  // Reload permissions whenever roles update (admin changes permissions)
+  useEffect(() => {
+    console.log('🔄 useEffect triggered - currentUser:', currentUser?.name, 'roles.length:', roles.length);
+    if (currentUser && roles.length > 0) {
+      console.log('✅ Conditions met, calling loadUserPermissions');
+      loadUserPermissions(currentUser.role);
+    } else {
+      console.log('⏳ Waiting... currentUser:', !!currentUser, 'roles:', roles.length);
+    }
+  }, [roles, currentUser?.role]);
+
+  // New permission checking with scope support
+  const checkPermission = (permissionCode: string, context?: ScopeContext): boolean => {
+    if (!currentUser) {
+      console.log('❌ checkPermission: No current user');
+      return false;
+    }
+    const result = can(currentUser, permissionCode, userPermissions, context);
+    console.log(`🔐 checkPermission('${permissionCode}'):`, result, '| User permissions:', userPermissions.length);
+    return result;
+  };
+
+  const hasAnyPermission = (permissionCodes: string[], context?: ScopeContext): boolean => {
+    if (!currentUser) {
+      console.log('❌ hasAnyPermission: No current user');
+      return false;
+    }
+    const result = permissionCodes.some(code => can(currentUser, code, userPermissions, context));
+    console.log(`🔐 hasAnyPermission([${permissionCodes.slice(0, 2).join(', ')}...]):`, result, '| User permissions:', userPermissions.length);
+    return result;
+  };
+
+  const hasAllPermissions = (permissionCodes: string[], context?: ScopeContext): boolean => {
+    if (!currentUser) return false;
+    return permissionCodes.every(code => can(currentUser, code, userPermissions, context));
+  };
+
+  console.log('🎬 AuthContext render - loading:', loading, 'checkingUsers:', checkingUsers, 'currentUser:', currentUser?.name, 'roles:', roles.length, 'permissions:', userPermissions.length);
+
   return (
-    <AuthContext.Provider value={{ currentUser, roles, loading: loading || checkingUsers, allowSignUp, login, signup, inviteUser, completePasswordChange, logout, checkPermission }}>
-      {!(loading || checkingUsers) && children}
+    <AuthContext.Provider value={{ 
+      currentUser, 
+      userPermissions,
+      roles, 
+      loading: loading || checkingUsers, 
+      allowSignUp, 
+      login, 
+      signup, 
+      inviteUser, 
+      completePasswordChange, 
+      logout, 
+      checkPermission,
+      hasAnyPermission,
+      hasAllPermissions
+    }}>
+      {(loading || checkingUsers) ? (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div style={{ fontSize: '24px' }}>Loading...</div>
+          <div style={{ fontSize: '14px', color: '#666' }}>
+            Loading: {loading ? 'Yes' : 'No'} | Checking Users: {checkingUsers ? 'Yes' : 'No'}
+          </div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   );
 };

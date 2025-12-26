@@ -28,6 +28,23 @@ export const useDashboardData = ({
   socialPosts,
   currentUser,
 }: UseDashboardDataProps): DashboardData => {
+  // Return empty data if any required arrays are undefined (still loading)
+  if (!tasks || !users || !meetings || !socialPosts || !currentUser) {
+    return {
+      timelineItems: [],
+      focusTasks: [],
+      urgentTasks: [],
+      upcomingMeetings: [],
+      recentActivities: [],
+      stats: {
+        completionRate: 0,
+        unfinishedRate: 0,
+        typeDistribution: {},
+        weeklyActivity: [],
+      },
+    };
+  }
+
   // Convert tasks to timeline items
   const timelineItems = useMemo<DashboardTimelineItem[]>(() => {
     const items: DashboardTimelineItem[] = [];
@@ -245,6 +262,7 @@ export const useDashboardData = ({
     focusTasks: urgentTasks.slice(0, 3),
     urgentTasks,
     upcomingMeetings,
+    recentActivities: [], // TODO: Add activity log data when available
     stats,
   };
 };

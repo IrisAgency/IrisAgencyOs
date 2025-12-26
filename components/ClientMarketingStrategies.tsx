@@ -1,16 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ClientMarketingStrategy, AgencyFile } from '../types';
-import { useAuth } from '../contexts/AuthContext';
+import { ClientMarketingStrategy, AgencyFile, FileFolder, User } from '../types';
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Plus, Search, FileText, Link as LinkIcon, ExternalLink, Eye, Trash2, Edit2, MoreHorizontal, Calendar, Upload, X } from 'lucide-react';
 
 interface ClientMarketingStrategiesProps {
   clientId: string;
+  files?: AgencyFile[];
+  folders?: FileFolder[];
+  onUploadFile?: (file: AgencyFile) => Promise<void>;
+  checkPermission: (permission: string) => boolean;
+  currentUser?: User | null;
 }
 
-const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({ clientId }) => {
-  const { currentUser, checkPermission } = useAuth();
+const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({ 
+  clientId,
+  files = [],
+  folders = [],
+  onUploadFile,
+  checkPermission,
+  currentUser
+}) => {
   const [strategies, setStrategies] = useState<ClientMarketingStrategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
@@ -32,7 +42,16 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({ c
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canManage = checkPermission('clients.manage') || checkPermission('clients.manage_strategies');
+  const canManage = checkPermission('client.marketing_strategies.manage');
+  const canView = checkPermission('client.marketing_strategies.view');
+
+  if (!canView) {
+    return (
+      <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+        <p>You do not have permission to view marketing strategies.</p>
+      </div>
+    );
+  }
 
   const months = [
     { value: 1, label: 'January' },
@@ -90,26 +109,35 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({ c
     try {
       let fileId = editingStrategy?.fileId || null;
 
-      // Handle File Upload (Mock)
-      if (formState.type === 'file' && selectedFile) {
-        const newFileId = `file${Date.now()}`;
+      // Handle File Upload
+      if (formState.type === 'file' && selectedFile && onUploadFile) {
+        const newFileId = `f${Date.now()}`;
         const newFile: AgencyFile = {
           id: newFileId,
-          projectId: 'general', // or specific project if available
+          projectId: clientId, // Use clientId as projectId for strategies
+          taskId: null,
+          folderId: null,
           uploaderId: currentUser.id,
           name: selectedFile.name,
           type: selectedFile.type,
           size: selectedFile.size,
-          url: 'https://picsum.photos/800/600', // Mock URL
+          url: '', // Will be filled by upload handler
           version: 1,
           isDeliverable: false,
           isArchived: false,
-          tags: ['strategy'],
+          tags: ['strategy', clientId],
           createdAt: new Date().toISOString()
         };
         
-        await setDoc(doc(db, 'files', newFileId), newFile);
+        // Attach raw file for uploader
+        (newFile as any).file = selectedFile;
+        
+        await onUploadFile(newFile);
         fileId = newFileId;
+      } else if (formState.type === 'file' && selectedFile && !onUploadFile) {
+        console.error("onUploadFile prop is missing");
+        alert("File upload is not available at the moment.");
+        return;
       }
 
       const monthLabel = months.find(m => m.value === formState.month)?.label + ' ' + formState.year;
@@ -290,7 +318,14 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({ c
                         <button 
                           className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                           title="View File"
-                          onClick={() => alert(`Opening file ${strategy.fileId} (Mock)`)}
+                          onClick={() => {
+                              const file = files.find(f => f.id === strategy.fileId);
+                              if (file && file.url) {
+                                  window.open(file.url, '_blank');
+                              } else {
+                                  alert('File not found or URL missing.');
+                              }
+                          }}
                         >
                           <Eye className="w-4 h-4" />
                         </button>

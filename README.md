@@ -32,6 +32,7 @@ The platform is divided into functional "Hubs", each serving a specific operatio
 ### Frontend
 - **Framework**: [React 19](https://react.dev/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
+- **PWA**: [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) with Workbox
 - **Language**: [TypeScript](https://www.typescriptlang.org/)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Icons**: [Lucide React](https://lucide.dev/)
@@ -116,6 +117,31 @@ Security and visibility are governed by a robust RBAC system.
    ```bash
    npm run build
    ```
+
+## 📱 Progressive Web App (PWA)
+
+IRIS Agency OS is a fully installable Progressive Web App, providing a native app-like experience on mobile and desktop devices.
+
+### Features
+- **Offline Support**: Service worker caches assets for offline functionality
+- **Install Prompt**: Smart install banner appears on supported mobile browsers
+- **App Icons**: Custom app icons for home screen installation
+- **Standalone Mode**: Runs in standalone mode without browser UI
+- **Auto Updates**: Automatically updates when new versions are deployed
+
+### Installation
+When you visit the app on a mobile browser (Chrome, Safari, Edge), you'll see a prompt to install the app. On desktop browsers, look for the install icon in the address bar.
+
+Alternatively, you can manually install:
+- **iOS Safari**: Tap the share button → "Add to Home Screen"
+- **Android Chrome**: Tap the menu → "Install app" or "Add to Home Screen"
+- **Desktop**: Click the install icon in the address bar
+
+### Service Worker
+The app uses Workbox for intelligent caching:
+- Static assets are precached for instant loading
+- Google Fonts are cached for offline use
+- CDN resources use stale-while-revalidate strategy
 
 ## 📄 License
 

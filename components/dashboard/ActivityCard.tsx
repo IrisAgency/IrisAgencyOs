@@ -5,6 +5,16 @@ interface ActivityCardProps {
 }
 
 const ActivityCard: React.FC<ActivityCardProps> = ({ weeklyActivity }) => {
+  // Return empty state if data is not loaded yet
+  if (!weeklyActivity || weeklyActivity.length === 0) {
+    return (
+      <div className="bg-iris-black rounded-2xl p-6 text-iris-white">
+        <h3 className="text-lg font-bold text-iris-white mb-2">Your Activity</h3>
+        <p className="text-sm text-iris-white/70 text-center py-8">No activity data available</p>
+      </div>
+    );
+  }
+
   const maxCount = Math.max(...weeklyActivity.map((w) => w.count), 1);
   const totalThisWeek = weeklyActivity[weeklyActivity.length - 1]?.count || 0;
   const totalLastWeek = weeklyActivity[weeklyActivity.length - 2]?.count || 0;
@@ -33,11 +43,10 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ weeklyActivity }) => {
               title={`${week.week}: ${week.count} tasks`}
             >
               <div
-                className={`w-full rounded-t-lg relative transition-all ${
-                  isCurrentWeek
+                className={`w-full rounded-t-lg relative transition-all ${isCurrentWeek
                     ? 'bg-gradient-to-t from-iris-red to-iris-red/80'
                     : 'bg-gradient-to-t from-iris-white/40 to-iris-white/20'
-                } group-hover:from-iris-red group-hover:to-iris-red/80`}
+                  } group-hover:from-iris-red group-hover:to-iris-red/80`}
                 style={{ height: `${height}%`, minHeight: '8px' }}
               >
                 <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs font-bold text-iris-white opacity-0 group-hover:opacity-100 transition-opacity">

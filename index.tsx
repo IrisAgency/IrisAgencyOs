@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
+import { BrandingProvider } from './contexts/BrandingContext';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -13,7 +14,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AuthProvider>
-      <App />
+      <BrandingProvider>
+        <App />
+      </BrandingProvider>
     </AuthProvider>
   </React.StrictMode>
 );

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="canvas192" width="192" height="192"></canvas>
+<canvas id="canvas512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvasId, size) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  
+  // Background with rounded corners
+  ctx.fillStyle = '#6366f1';
+  const radius = size / 4;
+  ctx.beginPath();
+  ctx.moveTo(radius, 0);
+  ctx.lineTo(size - radius, 0);
+  ctx.quadraticCurveTo(size, 0, size, radius);
+  ctx.lineTo(size, size - radius);
+  ctx.quadraticCurveTo(size, size, size - radius, size);
+  ctx.lineTo(radius, size);
+  ctx.quadraticCurveTo(0, size, 0, size - radius);
+  ctx.lineTo(0, radius);
+  ctx.quadraticCurveTo(0, 0, radius, 0);
+  ctx.closePath();
+  ctx.fill();
+  
+  // Text "IO"
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${size * 0.35}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('IO', size / 2, size / 2);
+}
+
+drawIcon('canvas192', 192);
+drawIcon('canvas512', 512);
+
+// Download
+setTimeout(() => {
+  ['canvas192', 'canvas512'].forEach(id => {
+    const canvas = document.getElementById(id);
+    const link = document.createElement('a');
+    link.download = `icon-${id.replace('canvas', '')}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  });
+}, 100);
+</script>
+</body>
+</html>

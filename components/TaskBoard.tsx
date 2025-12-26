@@ -192,7 +192,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
                 <label className="block text-sm font-medium text-slate-700 mb-1">Client</label>
                 <input required value={client} onChange={e => setClient(e.target.value)} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="e.g. Le Bon" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
                    <select value={priority} onChange={e => setPriority(e.target.value as Priority)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
