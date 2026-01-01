@@ -1,13 +1,24 @@
 import React, { useState } from 'react';
 import { Task, Project, User, TaskStatus, Priority, Department, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember, RoleDefinition, ProjectMilestone, SocialPost, UserRole } from '../types';
 import {
-  Plus, Search, SlidersHorizontal, ChevronDown, Archive, Clock, ChevronRight, CheckCircle
+  Plus,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  CheckCircle,
+  LayoutGrid,
+  List,
+  Filter
 } from 'lucide-react';
 import { PERMISSIONS } from '../lib/permissions';
 import { archiveTask } from '../utils/archiveUtils';
 import TaskDetailView from './tasks/TaskDetailView';
 import CreateTaskModal from './tasks/CreateTaskModal';
 import PageContainer from './layout/PageContainer';
+import TaskBoardDark, { DueTone, ToneFn } from './tasks/TaskBoardDark';
+import TaskListDark from './tasks/TaskListDark';
+import TaskStatsRow from './tasks/TaskStatsRow';
+import WorkflowHub from './workflows/WorkflowHub';
 
 interface TasksHubProps {
   tasks: Task[];
@@ -75,6 +86,8 @@ const TasksHub: React.FC<TasksHubProps> = ({
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'my_approvals'>('all'); // Replaced onlyMyApprovals with viewMode
   const [showArchived, setShowArchived] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<'board' | 'list'>('board');
+  const [activeArea, setActiveArea] = useState<'tasks' | 'workflows'>('tasks');
 
   // Date Filters
   const [startDateFrom, setStartDateFrom] = useState('');
@@ -95,20 +108,41 @@ const TasksHub: React.FC<TasksHubProps> = ({
 
   // -- Helper Functions --
 
-  const getStatusColor = (status: TaskStatus) => {
+  const statusTone: ToneFn<TaskStatus> = (status) => {
     switch (status) {
-      case TaskStatus.NEW: return 'bg-slate-100 text-slate-600 border-slate-200';
-      case TaskStatus.ASSIGNED: return 'bg-blue-50 text-blue-600 border-blue-100';
-      case TaskStatus.IN_PROGRESS: return 'bg-indigo-50 text-indigo-600 border-indigo-100';
-      case TaskStatus.AWAITING_REVIEW: return 'bg-amber-50 text-amber-600 border-amber-100';
-      case TaskStatus.REVISIONS_REQUIRED: return 'bg-rose-50 text-rose-600 border-rose-100';
-      case TaskStatus.APPROVED: return 'bg-emerald-50 text-emerald-600 border-emerald-100';
-      case TaskStatus.CLIENT_REVIEW: return 'bg-purple-50 text-purple-600 border-purple-100';
-      case TaskStatus.CLIENT_APPROVED: return 'bg-teal-50 text-teal-600 border-teal-100';
-      case TaskStatus.COMPLETED: return 'bg-green-100 text-green-700 border-green-200';
-      case TaskStatus.ARCHIVED: return 'bg-gray-100 text-gray-400 border-gray-200';
-      default: return 'bg-slate-100 text-slate-600';
+      case TaskStatus.NEW: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
+      case TaskStatus.ASSIGNED: return 'bg-blue-500/10 text-blue-100 border-blue-500/25';
+      case TaskStatus.IN_PROGRESS: return 'bg-indigo-500/10 text-indigo-100 border-indigo-500/25';
+      case TaskStatus.AWAITING_REVIEW: return 'bg-amber-500/10 text-amber-100 border-amber-500/20';
+      case TaskStatus.REVISIONS_REQUIRED: return 'bg-rose-500/10 text-rose-100 border-rose-500/25';
+      case TaskStatus.APPROVED: return 'bg-emerald-500/10 text-emerald-100 border-emerald-500/25';
+      case TaskStatus.CLIENT_REVIEW: return 'bg-purple-500/10 text-purple-100 border-purple-500/25';
+      case TaskStatus.CLIENT_APPROVED: return 'bg-teal-500/10 text-teal-100 border-teal-500/25';
+      case TaskStatus.COMPLETED: return 'bg-emerald-600/15 text-emerald-100 border-emerald-400/40';
+      case TaskStatus.ARCHIVED: return 'bg-slate-800/60 text-slate-300 border-[color:var(--dash-glass-border)]';
+      default: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
     }
+  };
+
+  const getStatusColor = statusTone;
+
+  const priorityTone: ToneFn<Priority> = (priority) => {
+    switch (priority) {
+      case Priority.CRITICAL: return 'text-rose-100 bg-rose-500/15 border border-rose-400/30';
+      case Priority.HIGH: return 'text-orange-100 bg-orange-500/15 border border-orange-400/30';
+      case Priority.MEDIUM: return 'text-blue-100 bg-blue-500/15 border border-blue-400/30';
+      case Priority.LOW: return 'text-slate-200 bg-white/5 border border-[color:var(--dash-glass-border)]';
+    }
+  };
+
+  const dueTone: DueTone = (date) => {
+    const now = new Date();
+    const due = new Date(date);
+    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) return { label: 'Overdue', className: 'text-rose-200 bg-rose-500/10 border border-rose-500/25' };
+    if (diffDays <= 3) return { label: 'Due soon', className: 'text-amber-200 bg-amber-500/10 border border-amber-500/25' };
+    return { label: 'On track', className: 'text-emerald-200 bg-emerald-500/10 border border-emerald-500/25' };
   };
 
   const handleArchiveTask = async (task: Task) => {
@@ -143,14 +177,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
     }
   };
 
-  const getPriorityColor = (priority: Priority) => {
-    switch (priority) {
-      case Priority.CRITICAL: return 'text-rose-600 bg-rose-50 border-rose-100';
-      case Priority.HIGH: return 'text-orange-600 bg-orange-50 border-orange-100';
-      case Priority.MEDIUM: return 'text-blue-600 bg-blue-50 border-blue-100';
-      case Priority.LOW: return 'text-slate-600 bg-slate-50 border-slate-100';
-    }
-  };
+  const getPriorityColor = priorityTone;
 
   const clearFilters = () => {
     setFilterStatus('all');
@@ -255,338 +282,359 @@ const TasksHub: React.FC<TasksHubProps> = ({
       matchSearch && matchApproval && matchStartFrom && matchStartTo && matchDueFrom && matchDueTo && matchArchived;
   });
 
+  const today = new Date();
+  const activeCount = filteredTasks.filter(t => !t.isArchived && t.status !== TaskStatus.COMPLETED).length;
+  const reviewCount = filteredTasks.filter(t => [TaskStatus.AWAITING_REVIEW, TaskStatus.CLIENT_REVIEW].includes(t.status)).length;
+  const overdueCount = filteredTasks.filter(t => {
+    const due = new Date(t.dueDate);
+    return (t.status !== TaskStatus.COMPLETED && !t.isArchived) && due < today;
+  }).length;
+  const completedCount = filteredTasks.filter(t => t.status === TaskStatus.COMPLETED || t.isArchived).length;
+
   return (
-    <PageContainer>
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-12rem)] -mx-6 lg:-mx-8">
-        {/* --- LEFT PANEL: LIST --- */}
-        <div className={`
-          w-full lg:w-1/3 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col
-          ${selectedTaskId ? 'hidden lg:flex' : 'flex'}
-        `}>
-        {/* Header */}
-        <div className="p-3 sm:p-4 border-b border-slate-200 bg-white z-20">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-slate-900">Tasks</h2>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-                className={`p-2 rounded-lg border transition-all ${isFilterPanelOpen ? 'bg-indigo-50 border-indigo-200 text-indigo-600' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}
-                title="Advanced Filters"
-              >
-                <SlidersHorizontal className="w-5 h-5" />
-              </button>
-              {checkPermission('tasks.create') && (
-                <button
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search tasks by title or client..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          {/* View Toggle: Active vs Archived */}
-          <div className="mt-3 flex bg-slate-100 p-1 rounded-lg">
-            <button
-              onClick={() => setShowArchived(false)}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${!showArchived ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Active Tasks
-            </button>
-            <button
-              onClick={() => setShowArchived(true)}
-              className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${showArchived ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              Archived & Completed
-            </button>
-          </div>
-
-          {/* Advanced Filter Panel */}
-          {isFilterPanelOpen && (
-            <div className="mt-4 p-3 sm:p-4 bg-slate-50 rounded-xl border border-slate-200 shadow-inner space-y-4 text-sm animate-in slide-in-from-top-2 duration-200">
-              {/* Basic Filters Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="all">All Statuses</option>
-                    {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
-                  <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="all">All Types</option>
-                    {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Assigned To</label>
-                  <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="all">Anyone</option>
-                    {/* Filter users based on permission: manage_assignees sees all, others see only project members */}
-                    {((checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER)
-                      ? users
-                      : users.filter(u => projectMembers.some(pm => pm.userId === u.id && projects.some(p => p.id === pm.projectId)))
-                    ).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Priority</label>
-                  <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                    <option value="all">All Priorities</option>
-                    {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
+    <PageContainer className="px-0 sm:px-2 lg:px-4">
+      <div className="bg-[color:var(--dash-bg)] text-slate-100 rounded-3xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden">
+        <div className="p-4 sm:p-6 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]/80 backdrop-blur">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400 font-semibold">Tasks & Workflow</p>
+                <h1 className="text-2xl sm:text-3xl font-semibold text-white">Execution Control</h1>
               </div>
-
-              {/* More Filters Toggle */}
-              <button
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-              >
-                {showAdvancedFilters ? <ChevronDown className="w-3 h-3 rotate-180" /> : <ChevronDown className="w-3 h-3" />}
-                {showAdvancedFilters ? 'Hide Advanced Filters' : 'Show Advanced Filters'}
-              </button>
-
-              {/* Advanced Filters Section */}
-              {showAdvancedFilters && (
-                <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200 pt-2 border-t border-slate-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Client</label>
-                      <select value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="all">All Clients</option>
-                        {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Project</label>
-                      <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="all">All Projects</option>
-                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Department</label>
-                      <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="w-full p-2 border rounded-lg text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                        <option value="all">All Departments</option>
-                        {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Date Ranges */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Start Date (From/To)</label>
-                      <div className="flex flex-col sm:flex-row gap-1">
-                        <input type="date" value={startDateFrom} onChange={e => setStartDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                        <input type="date" value={startDateTo} onChange={e => setStartDateTo(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-500 mb-1">Due Date (From/To)</label>
-                      <div className="flex flex-col sm:flex-row gap-1">
-                        <input type="date" value={dueDateFrom} onChange={e => setDueDateFrom(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                        <input type="date" value={dueDateTo} onChange={e => setDueDateTo(e.target.value)} className="w-full p-1 border rounded text-xs bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between items-center pt-2">
-                <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="bg-white/5 border border-[color:var(--dash-glass-border)] rounded-full p-1 flex items-center gap-1">
                   <button
-                    onClick={() => setViewMode(viewMode === 'my_approvals' ? 'all' : 'my_approvals')}
-                    className={`text-xs px-2 py-1 rounded border font-medium transition-colors ${viewMode === 'my_approvals'
-                      ? 'bg-amber-100 text-amber-800 border-amber-200'
-                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
+                    onClick={() => setActiveArea('tasks')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${activeArea === 'tasks' ? 'bg-[color:var(--dash-primary)] text-white' : 'text-slate-200 hover:bg-white/5'}`}
                   >
-                    {viewMode === 'my_approvals' ? 'Showing My Approvals' : 'Show My Approvals'}
+                    Tasks
+                  </button>
+                  <button
+                    onClick={() => setActiveArea('workflows')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-colors ${activeArea === 'workflows' ? 'bg-[color:var(--dash-primary)] text-white' : 'text-slate-200 hover:bg-white/5'}`}
+                  >
+                    Workflows
                   </button>
                 </div>
-                <button onClick={clearFilters} className="text-xs text-indigo-600 hover:underline">
-                  Clear All Filters
-                </button>
+                {checkPermission('tasks.create') && (
+                  <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--dash-primary)] text-white text-sm font-semibold shadow-lg shadow-[color:var(--dash-primary)]/20 hover:scale-[1.01] transition-transform"
+                  >
+                    <Plus className="w-4 h-4" /> New Task
+                  </button>
+                )}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {filteredTasks.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-2">
-              <span>No tasks match your filters.</span>
-              <button onClick={clearFilters} className="text-indigo-600 hover:underline font-medium">
-                Clear Filters
-              </button>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-100">
-              {filteredTasks.map(task => {
-                const isMyApproval = approvalSteps.some(s => s.taskId === task.id && s.approverId === currentUser.id && s.status === 'pending');
-                return (
-                  <div
-                    key={task.id}
-                    onClick={() => setSelectedTaskId(task.id)}
-                    className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors border-l-4 relative ${selectedTaskId === task.id ? 'bg-indigo-50 border-indigo-500' : 'border-transparent'
-                      }`}
+            <TaskStatsRow
+              stats={[
+                { label: 'Active', value: activeCount, hint: 'Excludes completed/archived' },
+                { label: 'In Review', value: reviewCount },
+                { label: 'Overdue', value: overdueCount },
+                { label: 'Completed/Archived', value: completedCount }
+              ]}
+            />
+
+            <div className="rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/70 p-3 sm:p-4 shadow-[0_16px_38px_-28px_rgba(0,0,0,0.9)] space-y-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search by title, client, or project"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-xl text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${!showArchived ? 'bg-[color:var(--dash-primary)] text-white border-[color:var(--dash-primary)]' : 'text-slate-200 bg-white/5 border-[color:var(--dash-glass-border)]'}`}
                   >
-                    {isMyApproval && (
-                      <div className="absolute right-4 top-4">
-                        <span className="flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">{task.client}</span>
-                        <div className="flex -space-x-1 mt-1">
-                          {(task.assigneeIds || []).map(uid => {
-                            const u = users.find(user => user.id === uid);
-                            return u ? (
-                              <img 
-                                key={uid} 
-                                src={u.avatar} 
-                                className="w-4 h-4 rounded-full border border-white" 
-                                title={u.name} 
-                              />
-                            ) : null;
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {task.isArchived && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 uppercase font-bold tracking-wider flex items-center gap-1">
-                            <Archive className="w-3 h-3" /> Archived
-                          </span>
-                        )}
-                        {task.taskType && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 uppercase font-bold tracking-wider">
-                            {task.taskType}
-                          </span>
-                        )}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getPriorityColor(task.priority)}`}>
-                          {task.priority}
-                        </span>
-                      </div>
+                    {showArchived ? 'Show Active' : 'Hide Archived'}
+                  </button>
+                  <button
+                    onClick={() => setViewMode(viewMode === 'my_approvals' ? 'all' : 'my_approvals')}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${viewMode === 'my_approvals' ? 'bg-amber-500/20 text-amber-100 border-amber-400/30' : 'text-slate-200 bg-white/5 border-[color:var(--dash-glass-border)]'}`}
+                  >
+                    {viewMode === 'my_approvals' ? 'My approvals' : 'All tasks'}
+                  </button>
+                  <button
+                    onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                    className="px-3 py-1.5 rounded-full text-xs font-semibold border border-[color:var(--dash-glass-border)] text-slate-200 bg-white/5 hover:bg-white/10 inline-flex items-center gap-2"
+                  >
+                    <Filter className="w-4 h-4" /> Filters
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-1 bg-white/5 border border-[color:var(--dash-glass-border)] rounded-full p-1">
+                  <button
+                    onClick={() => setLayoutMode('board')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold inline-flex items-center gap-2 ${layoutMode === 'board' ? 'bg-[color:var(--dash-primary)] text-white' : 'text-slate-200 hover:bg-white/5'}`}
+                  >
+                    <LayoutGrid className="w-4 h-4" /> Board
+                  </button>
+                  <button
+                    onClick={() => setLayoutMode('list')}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold inline-flex items-center gap-2 ${layoutMode === 'list' ? 'bg-[color:var(--dash-primary)] text-white' : 'text-slate-200 hover:bg-white/5'}`}
+                  >
+                    <List className="w-4 h-4" /> List
+                  </button>
+                </div>
+              </div>
+
+              {isFilterPanelOpen && (
+                <div className="space-y-4 border-t border-[color:var(--dash-glass-border)] pt-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 uppercase tracking-wide">Status</label>
+                      <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                        <option value="all">All</option>
+                        {Object.values(TaskStatus).map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                      </select>
                     </div>
-                    <h3 className={`text-sm font-semibold mb-2 ${selectedTaskId === task.id ? 'text-indigo-700' : 'text-slate-900'}`}>
-                      {task.title}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
-                      <div className="flex items-center text-slate-400 text-xs gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span className="ltr-text">{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                      </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 uppercase tracking-wide">Priority</label>
+                      <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                        <option value="all">All</option>
+                        {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 uppercase tracking-wide">Type</label>
+                      <select value={filterType} onChange={e => setFilterType(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                        <option value="all">All</option>
+                        {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-slate-400 uppercase tracking-wide">Assignee</label>
+                      <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                        <option value="all">Anyone</option>
+                        {((checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER)
+                          ? users
+                          : users.filter(u => projectMembers.some(pm => pm.userId === u.id && projects.some(p => p.id === pm.projectId)))
+                        ).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
                     </div>
                   </div>
-                );
-              })}
+
+                  <button
+                    onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                    className="flex items-center gap-2 text-sm text-[color:var(--dash-primary)] font-semibold"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+                    {showAdvancedFilters ? 'Hide advanced filters' : 'Show advanced filters'}
+                  </button>
+
+                  {showAdvancedFilters && (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-slate-400 uppercase tracking-wide">Client</label>
+                          <select value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                            <option value="all">All</option>
+                            {uniqueClients.map(c => <option key={c} value={c}>{c}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-slate-400 uppercase tracking-wide">Project</label>
+                          <select value={filterProject} onChange={e => setFilterProject(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                            <option value="all">All</option>
+                            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-slate-400 uppercase tracking-wide">Department</label>
+                          <select value={filterDepartment} onChange={e => setFilterDepartment(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
+                            <option value="all">All</option>
+                            {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-slate-400 uppercase tracking-wide">Start Date</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" value={startDateFrom} onChange={e => setStartDateFrom(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100" />
+                            <input type="date" value={startDateTo} onChange={e => setStartDateTo(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] text-slate-400 uppercase tracking-wide">Due Date</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <input type="date" value={dueDateFrom} onChange={e => setDueDateFrom(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100" />
+                            <input type="date" value={dueDateTo} onChange={e => setDueDateTo(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <button onClick={clearFilters} className="text-sm text-slate-200 hover:text-white underline-offset-4 hover:underline">
+                          Clear filters
+                        </button>
+                        <span className="text-xs text-slate-500">{filteredTasks.length} matching tasks</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-6">
+          {activeArea === 'tasks' ? (
+            <div className="grid lg:grid-cols-[1.6fr_1fr] gap-6">
+              <div className="space-y-4">
+                {layoutMode === 'board' ? (
+                  <TaskBoardDark
+                    tasks={filteredTasks}
+                    users={users}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTask={setSelectedTaskId}
+                    statusTone={statusTone}
+                    priorityTone={priorityTone}
+                    dueTone={dueTone}
+                  />
+                ) : (
+                  <TaskListDark
+                    tasks={filteredTasks}
+                    users={users}
+                    selectedTaskId={selectedTaskId}
+                    onSelectTask={setSelectedTaskId}
+                    statusTone={statusTone}
+                    priorityTone={priorityTone}
+                    dueTone={dueTone}
+                  />
+                )}
+              </div>
+
+              <div className="hidden lg:flex flex-col rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 shadow-[0_20px_50px_-32px_rgba(0,0,0,0.9)] overflow-hidden">
+                {selectedTask ? (
+                  <TaskDetailView
+                    task={selectedTask}
+                    project={projects.find(p => p.id === selectedTask.projectId)}
+                    users={users}
+                    comments={comments.filter(c => c.taskId === selectedTask.id)}
+                    timeLogs={timeLogs.filter(t => t.taskId === selectedTask.id)}
+                    dependencies={dependencies.filter(d => d.taskId === selectedTask.id)}
+                    activityLogs={activityLogs.filter(l => l.taskId === selectedTask.id)}
+                    taskSteps={approvalSteps.filter(s => s.taskId === selectedTask.id)}
+                    clientApproval={clientApprovals.find(ca => ca.taskId === selectedTask.id)}
+                    taskFiles={files.filter(f => f.taskId === selectedTask.id)}
+                    allTasks={tasks}
+                    currentUser={currentUser}
+                    workflowTemplates={workflowTemplates}
+                    milestones={milestones}
+                    onUpdateTask={onUpdateTask}
+                    onAddTask={onAddTask}
+                    onAddComment={onAddComment}
+                    onAddTimeLog={onAddTimeLog}
+                    onAddDependency={onAddDependency}
+                    onUpdateApprovalStep={onUpdateApprovalStep}
+                    onAddApprovalSteps={onAddApprovalSteps}
+                    onUpdateClientApproval={onUpdateClientApproval}
+                    onAddClientApproval={onAddClientApproval}
+                    onUploadFile={onUploadFile}
+                    onNotify={onNotify}
+                    onArchiveTask={handleArchiveTask}
+                    onReopenTask={handleReopenTask}
+                    onDeleteTask={onDeleteTask}
+                    onEditTask={openEditModal}
+                    checkPermission={checkPermission}
+                    getStatusColor={getStatusColor}
+                    resolveApprover={resolveApprover}
+                    onAddSocialPost={onAddSocialPost}
+                    leaveRequests={leaveRequests}
+                  />
+                ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8">
+                    <CheckCircle className="w-12 h-12 mb-3 opacity-30" />
+                    <p className="text-sm font-medium">Select a task to view details</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <WorkflowHub
+              tasks={filteredTasks}
+              workflowTemplates={workflowTemplates}
+              approvalSteps={approvalSteps}
+              users={users}
+              projects={projects}
+              onSelectTask={setSelectedTaskId}
+              statusTone={statusTone}
+              dueTone={dueTone}
+            />
+          )}
+
+          {activeArea === 'tasks' && selectedTask && (
+            <div className="lg:hidden rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 shadow-[0_20px_50px_-32px_rgba(0,0,0,0.9)] overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-[color:var(--dash-glass-border)] text-slate-200">
+                <button onClick={() => setSelectedTaskId(null)} className="text-slate-300 hover:text-white"><ChevronRight className="w-5 h-5 rotate-180" /></button>
+                <span className="text-sm font-semibold">Task Detail</span>
+              </div>
+              <TaskDetailView
+                task={selectedTask}
+                project={projects.find(p => p.id === selectedTask.projectId)}
+                users={users}
+                comments={comments.filter(c => c.taskId === selectedTask.id)}
+                timeLogs={timeLogs.filter(t => t.taskId === selectedTask.id)}
+                dependencies={dependencies.filter(d => d.taskId === selectedTask.id)}
+                activityLogs={activityLogs.filter(l => l.taskId === selectedTask.id)}
+                taskSteps={approvalSteps.filter(s => s.taskId === selectedTask.id)}
+                clientApproval={clientApprovals.find(ca => ca.taskId === selectedTask.id)}
+                taskFiles={files.filter(f => f.taskId === selectedTask.id)}
+                allTasks={tasks}
+                currentUser={currentUser}
+                workflowTemplates={workflowTemplates}
+                milestones={milestones}
+                onUpdateTask={onUpdateTask}
+                onAddTask={onAddTask}
+                onAddComment={onAddComment}
+                onAddTimeLog={onAddTimeLog}
+                onAddDependency={onAddDependency}
+                onUpdateApprovalStep={onUpdateApprovalStep}
+                onAddApprovalSteps={onAddApprovalSteps}
+                onUpdateClientApproval={onUpdateClientApproval}
+                onAddClientApproval={onAddClientApproval}
+                onUploadFile={onUploadFile}
+                onNotify={onNotify}
+                onArchiveTask={handleArchiveTask}
+                onReopenTask={handleReopenTask}
+                onDeleteTask={onDeleteTask}
+                onEditTask={openEditModal}
+                checkPermission={checkPermission}
+                getStatusColor={getStatusColor}
+                resolveApprover={resolveApprover}
+                onAddSocialPost={onAddSocialPost}
+                leaveRequests={leaveRequests}
+              />
             </div>
           )}
         </div>
-      </div>
 
-      {/* --- RIGHT PANEL: DETAILS --- */}
-      <div className={`
-        flex-1 bg-slate-50 flex flex-col h-full overflow-hidden relative
-        ${!selectedTaskId ? 'hidden lg:flex' : 'flex'}
-      `}>
-        {selectedTask ? (
-          <>
-            {/* Mobile back button */}
-            <button
-              onClick={() => setSelectedTaskId(null)}
-              className="lg:hidden flex items-center gap-2 p-4 bg-white border-b border-slate-200 text-slate-600 hover:text-slate-900"
-            >
-              <ChevronRight className="w-5 h-5 rotate-180" />
-              <span className="font-medium">Back to Tasks</span>
-            </button>
-
-            <TaskDetailView
-              task={selectedTask}
-              project={projects.find(p => p.id === selectedTask.projectId)}
-              users={users}
-              comments={comments.filter(c => c.taskId === selectedTask.id)}
-              timeLogs={timeLogs.filter(t => t.taskId === selectedTask.id)}
-              dependencies={dependencies.filter(d => d.taskId === selectedTask.id)}
-              activityLogs={activityLogs.filter(l => l.taskId === selectedTask.id)}
-              taskSteps={approvalSteps.filter(s => s.taskId === selectedTask.id)}
-              clientApproval={clientApprovals.find(ca => ca.taskId === selectedTask.id)}
-              taskFiles={files.filter(f => f.taskId === selectedTask.id)}
-              allTasks={tasks}
-              currentUser={currentUser}
-              workflowTemplates={workflowTemplates}
-              milestones={milestones}
-              onUpdateTask={onUpdateTask}
-              onAddTask={onAddTask}
-              onAddComment={onAddComment}
-              onAddTimeLog={onAddTimeLog}
-              onAddDependency={onAddDependency}
-              onUpdateApprovalStep={onUpdateApprovalStep}
-              onAddApprovalSteps={onAddApprovalSteps}
-              onUpdateClientApproval={onUpdateClientApproval}
-              onAddClientApproval={onAddClientApproval}
-              onUploadFile={onUploadFile}
-              onNotify={onNotify}
-              onArchiveTask={handleArchiveTask}
-              onReopenTask={handleReopenTask}
-              onDeleteTask={onDeleteTask}
-              onEditTask={openEditModal}
-              checkPermission={checkPermission}
-              getStatusColor={getStatusColor}
-              resolveApprover={resolveApprover}
-              onAddSocialPost={onAddSocialPost}
-              leaveRequests={leaveRequests}
-            />
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-8">
-            <CheckCircle className="w-16 h-16 mb-4 opacity-20" />
-            <p className="text-lg font-medium">Select a task to view details</p>
-          </div>
-        )}
-      </div>
-
-      {/* Create Task Modal */}
-      <CreateTaskModal
-        isOpen={isCreateModalOpen}
-        onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }}
-        editingTask={editingTask}
-        currentUser={currentUser}
-        projects={projects}
-        users={users}
-        milestones={milestones}
-        workflowTemplates={workflowTemplates}
-        projectMembers={projectMembers}
-        leaveRequests={leaveRequests}
-        checkPermission={checkPermission}
-        onAddTask={onAddTask}
-        onUpdateTask={onUpdateTask}
-        onNotify={onNotify}
-      />
+        <CreateTaskModal
+          isOpen={isCreateModalOpen}
+          onClose={() => { setIsCreateModalOpen(false); setEditingTask(null); }}
+          editingTask={editingTask}
+          currentUser={currentUser}
+          projects={projects}
+          users={users}
+          milestones={milestones}
+          workflowTemplates={workflowTemplates}
+          projectMembers={projectMembers}
+          leaveRequests={leaveRequests}
+          checkPermission={checkPermission}
+          onAddTask={onAddTask}
+          onUpdateTask={onUpdateTask}
+          onNotify={onNotify}
+        />
       </div>
     </PageContainer>
   );
