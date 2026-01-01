@@ -1,148 +1,101 @@
 # IRIS Agency OS
 
-IRIS Agency OS is a comprehensive operating system designed for creative agencies to streamline operations, manage clients, orchestrate production workflows, and handle financial tracking. It serves as a centralized hub for the entire agency lifecycle, from lead management to project delivery and invoicing.
+IRIS Agency OS is a unified operating system for creative agencies covering clients, projects, production, posting, finance, HR, files, and analytics with AI assistance, PWA installability, and Firebase real-time data.
 
-## 🚀 Features
+**Live**
+- https://iris-os-43718.web.app (PWA build)
+- https://agency-management-cba4a.web.app (dashboard refactor build)
 
-The platform is divided into functional "Hubs", each serving a specific operational domain:
+## Tech Stack
+- React 19 + TypeScript (strict, bundler resolution), Vite 6, Tailwind CSS, Lucide React icons, Recharts.
+- Firebase Auth, Firestore, Storage; Firestore indexes via `firestore.indexes.json`, hosting config in `firebase.json` with SPA rewrites.
+- PWA via `vite-plugin-pwa` + Workbox runtime caching; dev server `0.0.0.0:3000`.
+- AI: Google Gemini (`@google/generative-ai`).
+- Tooling: Vitest + Testing Library (not yet wired into scripts), PostCSS/Autoprefixer, Sharp (icons).
 
-### 🏢 Core Operations
-- **Dashboard**: High-level overview of agency performance, urgent tasks, and upcoming deadlines.
-- **Clients Hub**: Complete CRM for managing client profiles, brand assets, meeting notes, and marketing strategies.
-- **Projects Hub**: End-to-end project management with milestone tracking, team assignment, and file management.
-- **Tasks Hub**: Kanban-style task board with advanced filtering, time tracking, dependencies, and approval workflows.
-- **Files Hub**: Centralized digital asset management with folder hierarchies and project associations.
+## Architecture
+- `App.tsx` orchestrates hubs, handlers, theming, and permission checks (`useAuth().checkPermission`).
+- Data access: `useFirestoreCollection` real-time listeners; writes through Firebase SDK handlers in `App.tsx`; path alias `@/*` → project root.
+- Contexts: `AuthContext` (auth + permissions), `BrandingContext` (CSS variables from `config/branding.config.ts`).
+- Hubs (domain modules): `Dashboard`, `ClientsHub`, `ProjectsHub`, `TasksHub`, `PostingHub`, `FilesHub`, `ProductionHub`, `FinanceHub`, `VendorsHub`, `TeamHub`, `AnalyticsHub`, `NotificationsHub`, `AdminHub`, `AIAssistant`.
+- Dashboard refactor: modular components under `components/dashboard/*` using `useDashboardData` and `types/dashboard.ts`.
 
-### 🎬 Production & Creative
-- **Production Hub**: Specialized tools for video/photo production, including shot lists, call sheets, location scouting, and equipment inventory.
-- **Posting Hub**: Social media content planning and scheduling.
-- **AI Assistant**: Integrated Gemini-powered assistant for creative ideation and content generation.
+## Features by Hub
+- Dashboard: timeline/week/today views, urgent tasks, focus list, stats (completion, type distribution, weekly activity), upcoming meetings.
+- Clients: CRM with notes, meetings, brand assets, marketing strategies; cascades to projects/tasks/files.
+- Projects: lifecycle, milestones, members (staff/freelancers), approvals, files, activity logs.
+- Tasks: Kanban with workflows, approvals, dependencies, time logs, comments, file attachments.
+- Posting: Refactored responsive board (kanban desktop, tabbed mobile), drawer/modal details, permission-aware read-only UX.
+- Files: Client-first hierarchy with auto-created client/project/task folders, smart categorization, breadcrumbs, filters.
+- Production: shot lists, call sheets, locations, equipment inventory.
+- Finance: invoices, quotations, payments, expenses, budget tracking.
+- Vendors/Team/Analytics/Notifications/Admin: vendor registry, HR/roles, analytics dashboards, in-app notifications, system settings, branding editor, role/permission management.
+- AI Assistant: Gemini-backed ideation and content helpers.
 
-### 💰 Finance & HR
-- **Finance Hub**: Management of invoices, quotations, payments, and expense tracking.
-- **Vendors Hub**: Registry for freelancers and vendors, including service orders and assignments.
-- **Team Hub**: HR management system for employee profiles, leave requests, and attendance tracking.
+## Theming & Branding
+- Single source: `config/branding.config.ts` (identity, colors, typography, assets). Admin → Branding overrides defaults and persists to Firestore.
+- CSS variables injected via `BrandingContext`, mapped in Tailwind; 57+ components consume branding.
+- Color audit: many core surfaces now variable-driven; some elements remain hardcoded (e.g., tables/cards/body text slate palette, login page colors) and need future variable hooks for full theming.
 
-### ⚙️ Administration
-- **Admin Hub**: System-wide settings, role-based access control (RBAC) configuration, and audit logs.
-- **Notifications**: Real-time system notifications with user-configurable preferences.
+## Permissions (RBAC)
+- Permission catalog (150+ keys) and `can()` helper in `lib/permissions.ts`; hooks in `hooks/usePermissions.ts`; gates in `components/PermissionGate.tsx`; roles in `constants.ts` (12 defaults).
+- Coverage map and implementation/status migrated into this README for reference.
+- Current gaps to fix soon:
+  - `App.tsx` still checks old permission keys (underscored variants) causing false Access Denied; migrate to `PERMISSIONS.*` constants.
+  - Hub components largely ungated and lack scope-based filtering (own/dept/project/all) for tasks/projects/clients/posts/finance/etc.
+  - Firestore security rules not yet updated to mirror the new permission model.
 
-## 🛠 Tech Stack
+## Notifications
+- Type system with 40+ notification types, severities, categories; Firestore collection `notifications` schema documented here.
+- `services/notificationService.ts` handles creation, dedupe (5-minute window), grouping, and routing; UI via `NotificationsHub` with filters, badges, quick actions.
 
-### Frontend
-- **Framework**: [React 19](https://react.dev/)
-- **Build Tool**: [Vite](https://vitejs.dev/)
-- **PWA**: [vite-plugin-pwa](https://vite-pwa-org.netlify.app/) with Workbox
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Charts**: [Recharts](https://recharts.org/)
+## File Management
+- Client-centric folder hierarchy with auto folder creation for clients/projects/tasks; standardized filenames `[ClientCode]-[TaskName]-v[Version]-[Timestamp].[ext]`.
+- Category detection (video/image/document/design/presentation/spreadsheet/archive/strategy) drives destination folders and UI badges.
+- FilesHub UI: breadcrumbs, filters (videos/photos/documents/strategies), type icons, list/grid, client-first navigation.
+- Future enhancements (not yet built): drag-and-drop upload/move, move/copy, bulk ops, storage quotas, advanced search, sharing, version history, approvals.
 
-### Backend & Services
-- **Database**: [Firebase Firestore](https://firebase.google.com/docs/firestore) (NoSQL)
-- **Authentication**: [Firebase Auth](https://firebase.google.com/docs/auth)
-- **Storage**: [Firebase Storage](https://firebase.google.com/docs/storage)
-- **AI**: [Google Gemini API](https://ai.google.dev/) (`@google/genai`)
+## PWA
+- Installable on Android/desktop; iOS manual add-to-home-screen. Service worker caches assets, Google Fonts cache-first; include assets `icon-192/512`, `apple-touch-icon`, `splash.gif/mp4`.
+- Install prompt obeys Chrome engagement heuristics; if prompt not shown, use browser Install/Add to Home Screen.
+- Manifest in `vite.config.ts`; hosting headers in `firebase.json` set cache controls and SPA rewrites.
 
-## 🏗 Architecture & Business Logic
+## AI Assistant
+- `services/geminiService.ts` wraps Gemini (model `gemini-2.5-flash`); surfaced via `components/AIAssistant.tsx` for creative briefs/captions/logistics.
 
-### Data Flow
-The application uses a real-time data architecture.
-- **Firestore Listeners**: Custom hooks (`useFirestoreCollection`) subscribe to Firestore collections, ensuring the UI is always in sync with the database.
-- **Optimistic Updates**: The UI reflects changes immediately while persisting them to the backend.
+## Setup & Local Development
+- Prereqs: Node 18+, npm.
+- Install: `npm install`
+- Env (`.env.local`):
+  - `VITE_FIREBASE_API_KEY`
+  - `VITE_FIREBASE_AUTH_DOMAIN`
+  - `VITE_FIREBASE_PROJECT_ID`
+  - `VITE_FIREBASE_STORAGE_BUCKET`
+  - `VITE_FIREBASE_MESSAGING_SENDER_ID`
+  - `VITE_FIREBASE_APP_ID`
+  - `VITE_GEMINI_API_KEY`
+- Run dev: `npm run dev` (serves on 3000, 0.0.0.0)
+- Build: `npm run build`; Preview: `npm run preview`.
+- Tests: Vitest/RTL available; add an npm script and write coverage—currently not run here.
 
-### Role-Based Access Control (RBAC)
-Security and visibility are governed by a robust RBAC system.
-- **Roles**: Defined in `types.ts` (e.g., General Manager, Creative Director, Account Manager, Client).
-- **Permissions**: Granular permissions (e.g., `finance.view`, `projects.edit`) are assigned to roles.
-- **Enforcement**:
-  - **UI Level**: The `Sidebar` and Hubs conditionally render based on the current user's permissions via `useAuth().checkPermission()`.
-  - **Data Level**: Firestore Security Rules (`firestore.rules`) enforce access policies at the database level.
+## Deployment
+- Target: Firebase Hosting (`dist`), SPA rewrite to `index.html`; cache headers set for assets/manifest/service worker.
+- Rebuild after branding config changes; deploy with `firebase deploy --only hosting`.
+- Firestore: rules in `firestore.rules`, indexes in `firestore.indexes.json`; update rules to reflect RBAC scopes before production use.
 
-### Project Structure
-```
-/
-├── components/         # UI Components and Hubs
-│   ├── dashboard/      # Dashboard specific widgets
-│   ├── ...             # Feature-specific components (AdminHub, FinanceHub, etc.)
-├── contexts/           # React Contexts (AuthContext)
-├── hooks/              # Custom Hooks (useFirestore, useDashboardData)
-├── lib/                # Service configurations (firebase.ts)
-├── services/           # External API services (geminiService.ts)
-├── types/              # TypeScript definitions
-├── utils/              # Helper functions
-├── App.tsx             # Main application layout and routing logic
-├── constants.ts        # System constants and default data
-└── firestore.rules     # Database security rules
-```
+## Data & Models
+- Authoritative types in `types.ts` (users/roles/clients/projects/tasks/workflows/files/finance/vendors/production/notifications/settings).
+- Seed helpers in `utils/seedData.ts` (optional bootstrap); mock dashboard data in `data/mockDashboardData.ts`.
 
-## 🚦 Getting Started
+## Known Bugs / Technical Debt
+- Permission key mismatch in `App.tsx`; replace old underscore keys with `PERMISSIONS.*` constants.
+- Hubs missing permission gates and scope-based filtering (clients/projects/tasks/posts/finance/production/team/vendors/analytics/files/admin/notifications).
+- Firestore security rules not aligned with new RBAC model.
+- PostingHub future items: drag/drop moves, calendar responsiveness, keyboard/swipe UX; needs regression tests.
+- File management future items: drag/drop upload, move/copy, bulk ops, quotas, version history, approvals.
+- Theming gaps: tables/cards/login/text still use hardcoded slate/white; extend branding variables for full theming.
+- Storage integration: replace any mock file URLs with Firebase Storage + signed URLs before production.
+- Testing gap: Vitest/RTL present but no automated test suite executed yet.
 
-### Prerequisites
-- Node.js (v18 or higher)
-- npm or yarn
-- A Firebase project
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd iris-agency-os
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   Create a `.env.local` file in the root directory with your Firebase and Gemini credentials:
-   ```env
-   VITE_FIREBASE_API_KEY=your_api_key
-   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-   VITE_FIREBASE_PROJECT_ID=your_project_id
-   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-   VITE_FIREBASE_APP_ID=your_app_id
-   VITE_GEMINI_API_KEY=your_gemini_api_key
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Build for production**
-   ```bash
-   npm run build
-   ```
-
-## 📱 Progressive Web App (PWA)
-
-IRIS Agency OS is a fully installable Progressive Web App, providing a native app-like experience on mobile and desktop devices.
-
-### Features
-- **Offline Support**: Service worker caches assets for offline functionality
-- **Install Prompt**: Smart install banner appears on supported mobile browsers
-- **App Icons**: Custom app icons for home screen installation
-- **Standalone Mode**: Runs in standalone mode without browser UI
-- **Auto Updates**: Automatically updates when new versions are deployed
-
-### Installation
-When you visit the app on a mobile browser (Chrome, Safari, Edge), you'll see a prompt to install the app. On desktop browsers, look for the install icon in the address bar.
-
-Alternatively, you can manually install:
-- **iOS Safari**: Tap the share button → "Add to Home Screen"
-- **Android Chrome**: Tap the menu → "Install app" or "Add to Home Screen"
-- **Desktop**: Click the install icon in the address bar
-
-### Service Worker
-The app uses Workbox for intelligent caching:
-- Static assets are precached for instant loading
-- Google Fonts are cached for offline use
-- CDN resources use stale-while-revalidate strategy
-
-## 📄 License
-
-[MIT](LICENSE)
+## Documentation Policy
+- This `README.md` is the single source of truth. Additional project markdown files have been consolidated here.
