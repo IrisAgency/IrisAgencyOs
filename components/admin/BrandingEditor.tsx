@@ -159,7 +159,7 @@ const BrandingEditor: React.FC<BrandingEditorProps> = ({ branding: propsBranding
                             />
                         )}
                         <p className="text-xs text-slate-400 mt-2">
-                            {(fileRef.size / 1024).toFixed(1)} KB • {fileRef.mimeType}
+                            <span className="ltr-text">{(fileRef.size / 1024).toFixed(1)} KB</span> • {fileRef.mimeType}
                         </p>
                     </div>
                 ) : (
@@ -272,7 +272,7 @@ const BrandingEditor: React.FC<BrandingEditorProps> = ({ branding: propsBranding
                                             type="text"
                                             value={(localBranding as any)[field]}
                                             onChange={(e) => handleColorChange(field as keyof AppBranding, e.target.value)}
-                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-iris-red"
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-iris-red ltr-text"
                                         />
                                     </div>
                                 </div>

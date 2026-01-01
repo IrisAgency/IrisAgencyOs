@@ -74,31 +74,31 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                             <h3 className="text-sm font-medium text-slate-500">Total Revenue</h3>
                             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><DollarSign className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900">${(totalRevenue || 0).toLocaleString()}</p>
-                        <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> +8% vs last month</p>
+                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalRevenue || 0).toLocaleString()}</p>
+                        <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> <span className="ltr-text">+8%</span> vs last month</p>
                     </div>
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-slate-500">Outstanding</h3>
                             <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><AlertCircle className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900">${(totalOutstanding || 0).toLocaleString()}</p>
-                        <p className="text-xs text-slate-400 mt-2">Across {invoices.filter(i => i.balance > 0).length} invoices</p>
+                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalOutstanding || 0).toLocaleString()}</p>
+                        <p className="text-xs text-slate-400 mt-2">Across <span className="ltr-text">{invoices.filter(i => i.balance > 0).length}</span> invoices</p>
                     </div>
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-slate-500">Expenses</h3>
                             <div className="p-2 bg-rose-50 text-rose-600 rounded-lg"><Activity className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900">${(totalExpenses || 0).toLocaleString()}</p>
-                        <p className="text-xs text-slate-400 mt-2">{totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : 0}% of revenue</p>
+                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalExpenses || 0).toLocaleString()}</p>
+                        <p className="text-xs text-slate-400 mt-2"><span className="ltr-text">{totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : 0}%</span> of revenue</p>
                     </div>
                     <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-medium text-slate-500">Net Profit</h3>
                             <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><PieIcon className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900">${(profit || 0).toLocaleString()}</p>
+                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(profit || 0).toLocaleString()}</p>
                         <p className="text-xs text-indigo-600 mt-2">Healthy Margin</p>
                     </div>
                 </div>
@@ -179,7 +179,7 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                             <div key={q.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-sm text-slate-600 mb-1">{q.quotationNumber}</p>
+                                        <p className="font-mono text-sm text-slate-600 mb-1 ltr-text">{q.quotationNumber}</p>
                                         <h4 className="font-semibold text-slate-900 truncate">{client?.name}</h4>
                                         <p className="text-xs text-slate-500 truncate">{project?.name}</p>
                                     </div>
@@ -191,8 +191,8 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                                     </span>
                                 </div>
                                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                    <span className="text-xs text-slate-500">{new Date(q.date).toLocaleDateString()}</span>
-                                    <span className="font-bold text-slate-900">${(q.total || 0).toLocaleString()}</span>
+                                    <span className="text-xs text-slate-500 ltr-text">{new Date(q.date).toLocaleDateString()}</span>
+                                    <span className="font-bold text-slate-900 ltr-text">${(q.total || 0).toLocaleString()}</span>
                                 </div>
                             </div>
                         );
@@ -226,9 +226,9 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                             <div key={inv.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-sm text-slate-600 mb-1">{inv.invoiceNumber}</p>
+                                        <p className="font-mono text-sm text-slate-600 mb-1 ltr-text">{inv.invoiceNumber}</p>
                                         <h4 className="font-semibold text-slate-900 truncate">{client?.name || inv.client}</h4>
-                                        <p className="text-xs text-slate-500">Due: {new Date(inv.dueDate).toLocaleDateString()}</p>
+                                        <p className="text-xs text-slate-500">Due: <span className="ltr-text">{new Date(inv.dueDate).toLocaleDateString()}</span></p>
                                     </div>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize flex-shrink-0 ml-2 ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
                                         inv.status === 'overdue' ? 'bg-rose-100 text-rose-800' :
@@ -241,11 +241,11 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                                 <div className="space-y-2 py-3 border-t border-slate-100">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-600">Amount</span>
-                                        <span className="font-semibold text-slate-900">${(inv.total || 0).toLocaleString()}</span>
+                                        <span className="font-semibold text-slate-900 ltr-text">${(inv.total || 0).toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
                                         <span className="text-slate-600">Balance</span>
-                                        <span className="font-semibold text-slate-900">${(inv.balance || 0).toLocaleString()}</span>
+                                        <span className="font-semibold text-slate-900 ltr-text">${(inv.balance || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
                                 <div className="flex gap-2 pt-3 border-t border-slate-100">
@@ -295,15 +295,15 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                             <div key={p.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-xs text-slate-500 mb-1">{p.reference}</p>
+                                        <p className="font-mono text-xs text-slate-500 mb-1 ltr-text">{p.reference}</p>
                                         <h4 className="font-semibold text-slate-900 truncate">{client?.name}</h4>
-                                        <p className="text-xs text-indigo-600 truncate">{invoice?.invoiceNumber}</p>
+                                        <p className="text-xs text-indigo-600 truncate ltr-text">{invoice?.invoiceNumber}</p>
                                     </div>
-                                    <span className="font-bold text-lg text-emerald-600 flex-shrink-0 ml-2">+${(p.amount || 0).toLocaleString()}</span>
+                                    <span className="font-bold text-lg text-emerald-600 flex-shrink-0 ml-2 ltr-text">+${(p.amount || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex items-center justify-between pt-3 border-t border-slate-100">
                                     <span className="text-xs capitalize text-slate-600">{p.method.replace('_', ' ')}</span>
-                                    <span className="text-xs text-slate-500">{new Date(p.date).toLocaleDateString()}</span>
+                                    <span className="text-xs text-slate-500 ltr-text">{new Date(p.date).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         );
@@ -343,11 +343,11 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                                             <span className="text-xs text-slate-500">{project?.name || 'General'}</span>
                                         </div>
                                     </div>
-                                    <span className="font-bold text-lg text-rose-600 flex-shrink-0 ml-2">-${(e.amount || 0).toLocaleString()}</span>
+                                    <span className="font-bold text-lg text-rose-600 flex-shrink-0 ml-2 ltr-text">-${(e.amount || 0).toLocaleString()}</span>
                                 </div>
                                 <p className="text-sm text-slate-600 mb-2 line-clamp-2">{e.description}</p>
                                 <div className="pt-3 border-t border-slate-100">
-                                    <span className="text-xs text-slate-500">{new Date(e.date).toLocaleDateString()}</span>
+                                    <span className="text-xs text-slate-500 ltr-text">{new Date(e.date).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         );

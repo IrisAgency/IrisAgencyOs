@@ -83,10 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const unsubscribeRoles = onSnapshot(collection(db, 'roles'), (snapshot) => {
-      console.log('📦 Roles snapshot received. Empty?', snapshot.empty, 'Size:', snapshot.size);
-      
       if (snapshot.empty) {
-        console.log('🔄 Initializing roles in Firestore with DEFAULT_ROLES');
         const batch = writeBatch(db);
         DEFAULT_ROLES.forEach(role => {
           const roleRef = doc(db, 'roles', role.id);
@@ -94,10 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         batch.commit().catch(console.error);
         setRoles(DEFAULT_ROLES);
-        console.log('✅ Roles set to DEFAULT_ROLES:', DEFAULT_ROLES.length, 'roles');
       } else {
         const loadedRoles = snapshot.docs.map(d => d.data() as RoleDefinition);
-        console.log('✅ Roles loaded from Firestore:', loadedRoles.length, 'roles');
         setRoles(loadedRoles);
       }
     }, (error) => {
@@ -286,9 +281,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Load user permissions based on their role
   const loadUserPermissions = (userRole: UserRole) => {
-    console.log('🔍 loadUserPermissions called with role:', userRole);
-    console.log('📋 Available roles:', roles);
-    
     if (!roles || !Array.isArray(roles)) {
       console.warn('⚠️ Roles not loaded or not an array');
       setUserPermissions([]);
@@ -297,7 +289,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const userRoleDef = roles.find(r => r && r.name === userRole);
     const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
-    console.log('🎯 Found role definition:', userRoleDef);
     
     if (!userRoleDef) {
       console.warn('⚠️ No role definition found for:', userRole);
@@ -312,39 +303,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         finalPermissions = Array.from(new Set([...finalPermissions, ...defaultRoleDef.permissions]));
     }
     
-    console.log('✅ Setting permissions:', finalPermissions.length, 'permissions (merged with defaults)');
     setUserPermissions(finalPermissions);
   };
 
   // Reload permissions whenever roles update (admin changes permissions)
   useEffect(() => {
-    console.log('🔄 useEffect triggered - currentUser:', currentUser?.name, 'roles.length:', roles.length);
     if (currentUser && roles.length > 0) {
-      console.log('✅ Conditions met, calling loadUserPermissions');
       loadUserPermissions(currentUser.role);
-    } else {
-      console.log('⏳ Waiting... currentUser:', !!currentUser, 'roles:', roles.length);
     }
   }, [roles, currentUser?.role]);
 
   // New permission checking with scope support
   const checkPermission = (permissionCode: string, context?: ScopeContext): boolean => {
-    if (!currentUser) {
-      console.log('❌ checkPermission: No current user');
-      return false;
-    }
+    if (!currentUser) return false;
     const result = can(currentUser, permissionCode, userPermissions, context);
-    console.log(`🔐 checkPermission('${permissionCode}'):`, result, '| User permissions:', userPermissions.length);
     return result;
   };
 
   const hasAnyPermission = (permissionCodes: string[], context?: ScopeContext): boolean => {
-    if (!currentUser) {
-      console.log('❌ hasAnyPermission: No current user');
-      return false;
-    }
+    if (!currentUser) return false;
     const result = permissionCodes.some(code => can(currentUser, code, userPermissions, context));
-    console.log(`🔐 hasAnyPermission([${permissionCodes.slice(0, 2).join(', ')}...]):`, result, '| User permissions:', userPermissions.length);
     return result;
   };
 
@@ -352,8 +330,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) return false;
     return permissionCodes.every(code => can(currentUser, code, userPermissions, context));
   };
-
-  console.log('🎬 AuthContext render - loading:', loading, 'checkingUsers:', checkingUsers, 'currentUser:', currentUser?.name, 'roles:', roles.length, 'permissions:', userPermissions.length);
 
   return (
     <AuthContext.Provider value={{ 

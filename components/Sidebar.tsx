@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Settings, Hexagon, Building2, Layers, Network, ShieldAlert, Share2, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Settings, Building2, Layers, Network, ShieldAlert, Share2, X } from 'lucide-react';
 import { UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
@@ -157,11 +157,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
             className="w-8 h-8 object-contain"
           />
         ) : (
-          <Hexagon className="w-8 h-8 fill-current" style={{ color: 'var(--brand-primary, #de1e3b)' }} />
+          <img 
+            src="/logo.png" 
+            onError={(e) => {
+              e.currentTarget.src = '/icon.svg';
+              e.currentTarget.onerror = null; // Prevent infinite loop
+            }}
+            alt="Logo" 
+            className="w-8 h-8 object-contain" 
+          />
         )}
-        <span className="text-lg font-bold text-white tracking-tight">
-          {branding?.appName || 'IRIS'} <span style={{ color: 'var(--brand-primary, #de1e3b)' }}>OS</span>
-        </span>
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4">

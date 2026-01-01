@@ -80,7 +80,6 @@ const PostingHub: React.FC<PostingHubProps> = ({
       });
 
       if (postsToArchive.length > 0) {
-        console.log(`Found ${postsToArchive.length} posts to auto-archive`);
         for (const post of postsToArchive) {
           try {
             await archiveSocialPost(post, currentUser.id);
@@ -98,8 +97,6 @@ const PostingHub: React.FC<PostingHubProps> = ({
   // Debug permissions
   const canManage = checkPermission('posting.edit');
   const canView = checkPermission('posting.view.dept');
-  console.log('PostingHub Permissions:', { canManage, canView, currentUser: currentUser?.name, role: currentUser?.role });
-
   // Enhanced Filter Logic
   const filteredPosts = socialPosts.filter(p => {
     // Search filter
@@ -148,8 +145,6 @@ const PostingHub: React.FC<PostingHubProps> = ({
   };
 
   const handleStatusChange = (post: SocialPost, newStatus: SocialPost['status']) => {
-    console.log('handleStatusChange called', { postId: post.id, currentStatus: post.status, newStatus, canManage });
-    
     // Permission check
     if (!canManage) {
       onNotify('error', 'Permission Denied', 'You do not have permission to manage posts.');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, NOTIFICATIONS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
+import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
 import { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -28,6 +28,8 @@ import { useBranding } from './contexts/BrandingContext';
 import { PERMISSIONS } from './lib/permissions';
 import { X, Bell } from 'lucide-react';
 import { useFirestoreCollection } from './hooks/useFirestore';
+import { useNotifications } from './hooks/useNotifications';
+import { NotificationService } from './services/notificationService';
 import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './lib/firebase';
@@ -123,7 +125,7 @@ const App: React.FC = () => {
   const [attendanceRecords] = useFirestoreCollection<AttendanceRecord>('attendance_records', ATTENDANCE_RECORDS);
 
   // Notifications State
-  const [notifications] = useFirestoreCollection<Notification>('notifications', NOTIFICATIONS);
+  const { notifications } = useNotifications();
   const [notificationPreferences] = useState<NotificationPreference>(DEFAULT_PREFERENCES);
 
   // Notes State
@@ -137,7 +139,7 @@ const App: React.FC = () => {
   const [workflowTemplates] = useFirestoreCollection<WorkflowTemplate>('workflow_templates', WORKFLOW_TEMPLATES);
   const [departments] = useFirestoreCollection<DepartmentDefinition>('departments', []);
 
-  const { branding, updateBranding, loading: brandingLoading } = useBranding();
+  const { branding, loading: brandingLoading } = useBranding();
   const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
 
   // Defensive check for users array
@@ -177,21 +179,7 @@ const App: React.FC = () => {
 
   // Notification Logic
   const handleNotify = async (type: string, title: string, message: string) => {
-    // 1. Create notification
-    const newNotification: Notification = {
-      id: `notif${Date.now()}`,
-      userId: user!.id,
-      type: type as NotificationType,
-      title,
-      message,
-      severity: 'info',
-      category: 'system',
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'notifications', newNotification.id), newNotification);
-
-    // 2. Show toast if enabled (basic implementation)
+    // Only show toast - persistent notifications are handled by NotificationService
     setToast({ title, message });
     setTimeout(() => setToast(null), 4000);
   };
@@ -220,6 +208,19 @@ const App: React.FC = () => {
   // -- Task Handlers --
   const handleAddTask = async (newTask: Task) => {
     await setDoc(doc(db, 'tasks', newTask.id), newTask);
+
+    // Notify assignees
+    if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
+      const assigneesToNotify = newTask.assigneeIds.filter(id => id !== user?.id);
+      if (assigneesToNotify.length > 0) {
+        await NotificationService.notifyTaskAssigned(
+          newTask.id,
+          newTask.title,
+          assigneesToNotify,
+          user?.id || 'system'
+        );
+      }
+    }
 
     // Auto-create task folder
     try {
@@ -257,7 +258,27 @@ const App: React.FC = () => {
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
+    const oldTask = tasks.find(t => t.id === updatedTask.id);
+    
     await updateDoc(doc(db, 'tasks', updatedTask.id), updatedTask as any);
+
+    // Notifications
+    if (oldTask && oldTask.status !== updatedTask.status) {
+      const assigneesToNotify = updatedTask.assigneeIds.filter(id => id !== user?.id);
+      
+      if (assigneesToNotify.length > 0) {
+        await NotificationService.createForUsers(assigneesToNotify, {
+          type: 'TASK_STATUS_CHANGED',
+          title: 'Task Status Updated',
+          message: `"${updatedTask.title}" is now ${updatedTask.status}`,
+          entityType: 'task',
+          entityId: updatedTask.id,
+          actionUrl: `/tasks/${updatedTask.id}`,
+          groupKey: `task_${updatedTask.id}`
+        });
+      }
+    }
+
     const log: TaskActivityLog = {
       id: `tal${Date.now()}`, taskId: updatedTask.id, userId: user!.id, type: 'status_change', message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString()
     };
@@ -361,13 +382,9 @@ const App: React.FC = () => {
         const projectId = file.projectId || 'unknown-project';
         const storagePath = `clients/${clientId}/projects/${projectId}/assets/${file.id}_${rawFile.name}`;
 
-        console.log('Uploading file to:', storagePath);
-
         const storageRef = ref(storage, storagePath);
         const snapshot = await uploadBytes(storageRef, rawFile);
         fileUrl = await getDownloadURL(snapshot.ref);
-
-        console.log('File uploaded successfully, URL:', fileUrl);
       } else if (!fileUrl) {
         // Fallback if no file and no URL
         fileUrl = 'https://picsum.photos/800/600';
@@ -411,8 +428,6 @@ const App: React.FC = () => {
 
       // Remove the raw file object before saving to Firestore
       delete (fileToSave as any).file;
-
-      console.log('Saving file to Firestore:', fileToSave);
 
       await setDoc(doc(db, 'files', file.id), fileToSave);
 
@@ -1107,11 +1122,6 @@ const App: React.FC = () => {
     await setDoc(doc(db, 'audit_logs', newLog.id), newLog);
   };
 
-  const handleUpdateSettings = async (newSettings: AppSettings) => {
-    // setAppSettings(newSettings);
-    await addAuditLog('update_settings', 'AppSettings', newSettings.id, 'Updated global settings');
-  };
-
   const handleUpdateRole = async (newRole: RoleDefinition) => {
     await updateDoc(doc(db, 'roles', newRole.id), newRole as any);
     await addAuditLog('update_role', 'Role', newRole.id, `Updated permissions for ${newRole.name}`);
@@ -1611,7 +1621,7 @@ const App: React.FC = () => {
             onUpdateUser={handleUpdateUser}
             onAddLeaveRequest={handleAddLeaveRequest}
             onUpdateLeaveRequest={handleUpdateLeaveRequest}
-            onDeleteLeaveRequest={(id) => { console.log('Delete leave', id); }} // Placeholder if not defined
+            onDeleteLeaveRequest={() => { }} // Placeholder if not defined
             onClockIn={() => { }} // Placeholder
             onClockOut={() => { }} // Placeholder
             onAddDepartment={handleAddDepartment}
@@ -1656,18 +1666,15 @@ const App: React.FC = () => {
         );
       case 'admin':
         // Only GM can access
-        if (!checkPermission(PERMISSIONS.ROLES.VIEW) && !checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW) && !checkPermission(PERMISSIONS.ADMIN_BRANDING.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
+        if (!checkPermission(PERMISSIONS.ROLES.VIEW) && !checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
         return (
           <AdminHub
-            branding={branding || DEFAULT_BRANDING}
             settings={appSettings}
             users={users}
             roles={systemRoles}
             auditLogs={auditLogs}
             workflowTemplates={workflowTemplates}
             departments={departments}
-            onUpdateBranding={updateBranding}
-            onUpdateSettings={handleUpdateSettings}
             onUpdateUser={handleUpdateUser}
             onAddUser={handleAddUser}
             onUpdateRole={handleUpdateRole}
@@ -1680,7 +1687,6 @@ const App: React.FC = () => {
             onAddDepartment={handleAddDepartment}
             onUpdateDepartment={handleUpdateDepartment}
             onDeleteDepartment={handleDeleteDepartment}
-            projectMembers={projectMembers}
           />
         );
       default:

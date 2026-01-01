@@ -1,10 +1,9 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Initialize the client. The API key is injected via process.env.API_KEY
+// Initialize the client. The API key is injected via import.meta.env
 // In a real production app, ensure this is handled securely (e.g., via backend proxy).
-// For this demo, we assume the environment variable is available.
-const apiKey = process.env.API_KEY || ''; 
-const ai = new GoogleGenAI({ apiKey });
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || ''; 
+const genAI = new GoogleGenerativeAI(apiKey);
 
 export const generateCreativeContent = async (prompt: string, context: string = ''): Promise<string> => {
   if (!apiKey) {
@@ -12,7 +11,7 @@ export const generateCreativeContent = async (prompt: string, context: string = 
   }
 
   try {
-    const modelId = 'gemini-2.5-flash';
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     
     // Construct a rich prompt combining context and user request
     const fullPrompt = `
@@ -26,12 +25,9 @@ export const generateCreativeContent = async (prompt: string, context: string = 
       Provide a concise and actionable response.
     `;
 
-    const response = await ai.models.generateContent({
-      model: modelId,
-      contents: fullPrompt,
-    });
-
-    return response.text || "No response generated.";
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    return response.text() || "No response generated.";
   } catch (error) {
     console.error("Gemini API Error:", error);
     return "I encountered an error while processing your request. Please try again.";

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 export interface Column<T> {
     header: string;
@@ -38,7 +38,7 @@ const DataTable = <T,>({
     return (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-right">
                     <thead className="bg-slate-50 text-slate-500 font-medium">
                         <tr>
                             {columns.map((col, idx) => (
@@ -49,7 +49,7 @@ const DataTable = <T,>({
                                     {col.header}
                                 </th>
                             ))}
-                            {onRowClick && <th className="px-6 py-4 text-right"></th>}
+                            {onRowClick && <th className="px-6 py-4 text-left"></th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -72,8 +72,8 @@ const DataTable = <T,>({
                                         </td>
                                     ))}
                                     {onRowClick && (
-                                        <td className="px-6 py-4 text-right">
-                                            <ChevronRight className="w-5 h-5 text-slate-300 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        <td className="px-6 py-4 text-left">
+                                            <ChevronLeft className="w-5 h-5 text-slate-300 mr-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </td>
                                     )}
                                 </tr>

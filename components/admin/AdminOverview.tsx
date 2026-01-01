@@ -27,15 +27,15 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({
                         <h3 className="font-bold text-slate-700">Active Users</h3>
                         <Users className="w-5 h-5 text-indigo-500" />
                     </div>
-                    <p className="text-3xl font-bold text-slate-900">{users.filter(u => u.status === 'active').length}</p>
-                    <p className="text-xs text-slate-500 mt-1">Total {users.length} registered</p>
+                    <p className="text-3xl font-bold text-slate-900 ltr-text">{users.filter(u => u.status === 'active').length}</p>
+                    <p className="text-xs text-slate-500 mt-1">Total <span className="ltr-text">{users.length}</span> registered</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                         <h3 className="font-bold text-slate-700">Departments</h3>
                         <Building className="w-5 h-5 text-blue-500" />
                     </div>
-                    <p className="text-3xl font-bold text-slate-900">{departments.length}</p>
+                    <p className="text-3xl font-bold text-slate-900 ltr-text">{departments.length}</p>
                     <p className="text-xs text-slate-500 mt-1">Operational Units</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -43,7 +43,7 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({
                         <h3 className="font-bold text-slate-700">Active Workflows</h3>
                         <GitBranch className="w-5 h-5 text-emerald-500" />
                     </div>
-                    <p className="text-3xl font-bold text-slate-900">{workflowTemplates.length}</p>
+                    <p className="text-3xl font-bold text-slate-900 ltr-text">{workflowTemplates.length}</p>
                     <p className="text-xs text-slate-500 mt-1">Automated approval chains</p>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -52,7 +52,7 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({
                         <Lock className="w-5 h-5 text-rose-500" />
                     </div>
                     <p className="text-lg font-bold text-slate-900">{settings.security.enable2FA ? '2FA Enabled' : 'Standard Auth'}</p>
-                    <p className="text-xs text-slate-500 mt-1">Timeout: {settings.security.sessionTimeoutMinutes} mins</p>
+                    <p className="text-xs text-slate-500 mt-1">Timeout: <span className="ltr-text">{settings.security.sessionTimeoutMinutes}</span> mins</p>
                 </div>
             </div>
 
@@ -83,7 +83,7 @@ const AdminOverview: React.FC<AdminOverviewProps> = ({
                                 <p className="text-sm font-medium text-slate-900"><span className="font-bold">{log.action}</span> on {log.entityType}</p>
                                 <p className="text-xs text-slate-500">{log.description}</p>
                             </div>
-                            <span className="text-xs text-slate-400">{new Date(log.createdAt).toLocaleString()}</span>
+                            <span className="text-xs text-slate-400 ltr-text">{new Date(log.createdAt).toLocaleString()}</span>
                         </div>
                     ))}
                 </div>

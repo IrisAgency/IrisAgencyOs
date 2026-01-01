@@ -233,10 +233,10 @@ const TeamHub: React.FC<TeamHubProps> = ({
 
                             <div className="w-full border-t border-slate-100 pt-4 mt-auto space-y-2">
                                 <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                                    <Mail className="w-3.5 h-3.5 text-slate-400" /> {user.email || 'No email'}
+                                    <Mail className="w-3.5 h-3.5 text-slate-400" /> <span className="ltr-text">{user.email || 'No email'}</span>
                                 </div>
                                 <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                                    <Phone className="w-3.5 h-3.5 text-slate-400" /> {user.phone || 'No phone'}
+                                    <Phone className="w-3.5 h-3.5 text-slate-400" /> <span className="ltr-text">{user.phone || 'No phone'}</span>
                                 </div>
                                 {user.location && (
                                     <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
@@ -278,7 +278,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-sm font-bold ${item.active > 5 ? 'text-rose-600' : 'text-slate-700'}`}>{item.active} Tasks</span>
+                                        <span className={`text-sm font-bold ${item.active > 5 ? 'text-rose-600' : 'text-slate-700'}`}><span className="ltr-text">{item.active}</span> Tasks</span>
                                     </div>
                                 </div>
                                 <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
@@ -329,14 +329,14 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-slate-600">Tasks Assigned</span>
-                                        <span className="text-sm font-mono font-semibold text-slate-900">{data.totalAssigned}</span>
+                                        <span className="text-sm font-mono font-semibold text-slate-900 ltr-text">{data.totalAssigned}</span>
                                     </div>
                                 </div>
                                 
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-slate-600">Completion Rate</span>
-                                        <span className="text-xs font-semibold text-slate-900">{data.completionRate}%</span>
+                                        <span className="text-xs font-semibold text-slate-900 ltr-text">{data.completionRate}%</span>
                                     </div>
                                     <div className="bg-slate-200 rounded-full h-2">
                                         <div className="bg-indigo-500 h-2 rounded-full transition-all" style={{ width: `${data.completionRate}%` }}></div>
@@ -346,7 +346,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <span className="text-xs text-slate-600">On-Time Delivery</span>
-                                        <span className="text-xs font-semibold text-slate-900">{data.onTimeRate}%</span>
+                                        <span className="text-xs font-semibold text-slate-900 ltr-text">{data.onTimeRate}%</span>
                                     </div>
                                     <div className="bg-slate-200 rounded-full h-2">
                                         <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${data.onTimeRate}%` }}></div>
@@ -383,12 +383,12 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                     <div key={req.id} className="p-4 hover:bg-slate-50 flex justify-between items-center">
                                         <div className="flex items-center gap-4">
                                             <div className="text-center w-12 bg-slate-100 rounded p-1">
-                                                <p className="text-xs text-slate-500 uppercase font-bold">{new Date(req.startDate).toLocaleString('default', { month: 'short' })}</p>
-                                                <p className="text-lg font-bold text-slate-800 leading-none">{new Date(req.startDate).getDate()}</p>
+                                                <p className="text-xs text-slate-500 uppercase font-bold ltr-text">{new Date(req.startDate).toLocaleString('default', { month: 'short' })}</p>
+                                                <p className="text-lg font-bold text-slate-800 leading-none ltr-text">{new Date(req.startDate).getDate()}</p>
                                             </div>
                                             <div>
                                                 <p className="font-bold text-slate-900 text-sm">{user?.name} <span className="font-normal text-slate-500">requested {req.type} leave</span></p>
-                                                <p className="text-xs text-slate-500">{new Date(req.startDate).toLocaleDateString()} - {new Date(req.endDate).toLocaleDateString()} • "{req.reason}"</p>
+                                                <p className="text-xs text-slate-500"><span className="ltr-text">{new Date(req.startDate).toLocaleDateString()}</span> - <span className="ltr-text">{new Date(req.endDate).toLocaleDateString()}</span> • "{req.reason}"</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">

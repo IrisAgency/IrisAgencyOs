@@ -496,9 +496,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border ${getStatusColor(task.status)}`}>
                         {task.status.replace('_', ' ')}
                       </span>
-                      <div className="flex items-center text-slate-400 text-xs space-x-1">
+                      <div className="flex items-center text-slate-400 text-xs gap-1">
                         <Clock className="w-3 h-3" />
-                        <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                        <span className="ltr-text">{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                       </div>
                     </div>
                   </div>

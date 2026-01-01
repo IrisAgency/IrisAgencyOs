@@ -10,6 +10,10 @@ interface ProjectCalendarProps {
 }
 
 const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users, onTaskClick }) => {
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'px-2 py-1 rounded-full text-[11px] font-medium border';
   const [currentDate, setCurrentDate] = useState(new Date());
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterAssignee, setFilterAssignee] = useState<string>('all');
@@ -64,16 +68,16 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
       case TaskStatus.COMPLETED:
       case TaskStatus.APPROVED:
       case TaskStatus.CLIENT_APPROVED:
-        return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+        return 'bg-emerald-500/15 text-emerald-100 border-emerald-400/40';
       case TaskStatus.IN_PROGRESS:
-        return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+        return 'bg-indigo-500/15 text-indigo-100 border-indigo-400/40';
       case TaskStatus.AWAITING_REVIEW:
       case TaskStatus.CLIENT_REVIEW:
-        return 'bg-amber-100 text-amber-700 border-amber-200';
+        return 'bg-amber-500/15 text-amber-100 border-amber-400/40';
       case TaskStatus.REVISIONS_REQUIRED:
-        return 'bg-rose-100 text-rose-700 border-rose-200';
+        return 'bg-rose-500/15 text-rose-100 border-rose-400/40';
       default:
-        return 'bg-slate-100 text-slate-600 border-slate-200';
+        return 'bg-slate-500/15 text-slate-200 border-slate-400/40';
     }
   };
 
@@ -88,7 +92,7 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
       
       if (!isCurrentMonth) {
         days.push(
-          <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[120px] border-b border-r border-slate-100 p-2"></div>
+          <div key={`empty-${i}`} className="bg-[color:var(--dash-surface)] min-h-[120px] border-b border-r border-[color:var(--dash-glass-border)] p-2"></div>
         );
         continue;
       }
@@ -102,9 +106,9 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
       const isToday = new Date().toDateString() === currentDayDate.toDateString();
 
       days.push(
-        <div key={dayNumber} className={`min-h-[120px] border-b border-r border-slate-100 p-2 transition-colors hover:bg-slate-50 ${isToday ? 'bg-indigo-50/30' : 'bg-white'}`}>
+        <div key={dayNumber} className={`min-h-[120px] border-b border-r border-[color:var(--dash-glass-border)] p-2 transition-colors hover:bg-[color:var(--dash-surface)] ${isToday ? 'bg-[color:var(--dash-primary)]/10' : 'bg-[color:var(--dash-surface-elevated)]'}`}>
           <div className="flex justify-between items-start mb-2">
-            <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full ${isToday ? 'bg-indigo-600 text-white' : 'text-slate-700'}`}>
+            <span className={`text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full border border-[color:var(--dash-glass-border)] ${isToday ? 'bg-[color:var(--dash-primary)] text-white' : 'text-slate-200 bg-[color:var(--dash-surface)]'}`}>
               {dayNumber}
             </span>
             {dayTasks.length > 0 && (
@@ -136,22 +140,22 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-full">
+    <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] flex flex-col h-full`}>
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="p-4 border-b border-[color:var(--dash-glass-border)] flex flex-col md:flex-row justify-between items-center gap-4 bg-[color:var(--dash-surface)]">
         <div className="flex items-center space-x-4">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <CalendarIcon className="w-5 h-5 text-slate-500" />
+          <h2 className="text-lg font-bold text-slate-50 flex items-center gap-2">
+            <CalendarIcon className="w-5 h-5 text-slate-300" />
             {monthNames[month]} {year}
           </h2>
-          <div className="flex items-center bg-slate-100 rounded-lg p-1">
-            <button onClick={prevMonth} className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-slate-600">
+          <div className="flex items-center bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg p-1">
+            <button onClick={prevMonth} className="p-1 hover:bg-[color:var(--dash-surface)] hover:shadow-sm rounded-md transition-all text-slate-200">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <button onClick={goToToday} className="px-3 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600">
+            <button onClick={goToToday} className="px-3 py-1 text-xs font-medium text-slate-200 hover:text-[color:var(--dash-primary)]">
               Today
             </button>
-            <button onClick={nextMonth} className="p-1 hover:bg-white hover:shadow-sm rounded-md transition-all text-slate-600">
+            <button onClick={nextMonth} className="p-1 hover:bg-[color:var(--dash-surface)] hover:shadow-sm rounded-md transition-all text-slate-200">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -160,12 +164,12 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
         <div className="flex items-center space-x-2">
            <button 
              onClick={() => setShowFilters(!showFilters)}
-             className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+             className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${showFilters ? 'bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-primary)] text-[color:var(--dash-primary)]' : 'bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)] text-slate-200 hover:bg-[color:var(--dash-surface)]'}`}
            >
              <Filter className="w-4 h-4" />
              <span>Filters</span>
              {(filterStatus !== 'all' || filterAssignee !== 'all') && (
-               <span className="flex h-2 w-2 rounded-full bg-indigo-600"></span>
+               <span className="flex h-2 w-2 rounded-full bg-[color:var(--dash-primary)]"></span>
              )}
            </button>
         </div>
@@ -173,13 +177,13 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
 
       {/* Filters Panel */}
       {showFilters && (
-        <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-2">
+        <div className="p-4 bg-[color:var(--dash-surface)] border-b border-[color:var(--dash-glass-border)] grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-2">
            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Status</label>
               <select 
                 value={filterStatus} 
                 onChange={e => setFilterStatus(e.target.value)}
-                className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className={inputClass}
               >
                 <option value="all">All Statuses</option>
                 {Object.values(TaskStatus).map(s => (
@@ -188,11 +192,11 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
               </select>
            </div>
            <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Assignee</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Assignee</label>
               <select 
                 value={filterAssignee} 
                 onChange={e => setFilterAssignee(e.target.value)}
-                className="w-full p-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className={inputClass}
               >
                 <option value="all">All Members</option>
                 {users.map(u => (
@@ -203,7 +207,7 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
            <div className="flex items-end">
               <button 
                 onClick={() => { setFilterStatus('all'); setFilterAssignee('all'); }}
-                className="text-sm text-slate-500 hover:text-indigo-600 underline px-2 py-2"
+                className="text-sm text-slate-400 hover:text-[color:var(--dash-primary)] underline px-2 py-2"
               >
                 Clear Filters
               </button>
@@ -212,27 +216,27 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
       )}
 
       {/* Calendar Grid Header */}
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+      <div className="grid grid-cols-7 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="py-2 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+         <div key={day} className="py-2 text-center text-xs font-bold text-slate-300 uppercase tracking-wider">
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar Grid Body */}
-      <div className="grid grid-cols-7 flex-1 auto-rows-fr bg-slate-200 gap-px border-b border-slate-200">
+      <div className="grid grid-cols-7 flex-1 auto-rows-fr bg-[color:var(--dash-surface)] gap-px border-b border-[color:var(--dash-glass-border)]">
          {renderCalendarDays()}
       </div>
       
-      <div className="p-3 bg-slate-50 text-xs text-slate-500 flex justify-between items-center">
-         <span>* Showing tasks based on Due Date</span>
-         <div className="flex gap-3">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Completed</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500"></span> In Progress</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Review</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500"></span> Revisions</span>
-         </div>
+      <div className="p-3 bg-[color:var(--dash-surface)] text-xs text-slate-400 flex justify_between items-center border-t border-[color:var(--dash-glass-border)]">
+        <span>* Showing tasks based on Due Date</span>
+        <div className="flex gap-3 text-slate-300">
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400"></span> Completed</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-400"></span> In Progress</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Review</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-400"></span> Revisions</span>
+        </div>
       </div>
     </div>
   );

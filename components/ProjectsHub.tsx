@@ -67,6 +67,12 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   const [formManager, setFormManager] = useState('');
   const [formBrief, setFormBrief] = useState('');
 
+  // Theming helpers for dashboard palette
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full h-11 px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'px-2 py-1 rounded-full text-xs font-medium border';
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
   // --- Handlers ---
@@ -119,12 +125,12 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case 'active': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-      case 'completed': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'planning': return 'bg-iris-red/20 text-rose-700 border-rose-400';
-      case 'on_hold': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'cancelled': return 'bg-rose-100 text-rose-700 border-rose-200';
-      default: return 'bg-slate-100 text-slate-700 border-slate-200';
+      case 'active': return 'bg-emerald-500/15 text-emerald-100 border-emerald-400/40';
+      case 'completed': return 'bg-blue-500/15 text-blue-100 border-blue-400/40';
+      case 'planning': return 'bg-[color:var(--dash-primary)]/15 text-[color:var(--dash-primary)] border-[color:var(--dash-primary)]/40';
+      case 'on_hold': return 'bg-amber-500/15 text-amber-100 border-amber-400/40';
+      case 'cancelled': return 'bg-rose-500/15 text-rose-100 border-rose-400/40';
+      default: return 'bg-slate-500/15 text-slate-100 border-slate-500/40';
     }
   };
 
@@ -138,7 +144,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           actions={
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-iris-red text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+              className="flex items-center gap-2 bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded-lg text-sm font-medium shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] hover:shadow-[0_18px_40px_-20px_rgba(230,60,60,0.9)] transition-all"
             >
               <Plus className="w-4 h-4" />
               <span>New Project</span>
@@ -155,7 +161,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search projects..."
-              className="w-full pl-10 pr-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+              className={`${inputClass} pl-10 pr-4 h-11 bg-[color:var(--dash-surface-elevated)] text-slate-100`}
             />
           </div>
 
@@ -163,7 +169,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+            className={`${inputClass} max-w-[220px]`}
           >
             <option value="All">All Statuses</option>
             <option value="planning">Planning</option>
@@ -186,19 +192,19 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             return (
               <div
                 key={project.id}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] hover:shadow-[0_22px_60px_-26px_rgba(0,0,0,0.9)] transition-shadow`}
               >
                 {/* Card Content */}
                 <div className="p-4 flex flex-col gap-3 overflow-hidden">
                   {/* Header Row */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex gap-3 flex-1 min-w-0">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-iris-red/10 to-rose-100 flex items-center justify-center flex-shrink-0">
-                        <Briefcase className="w-6 h-6 text-iris-red" />
+                      <div className="w-12 h-12 rounded-lg bg-[color:var(--dash-primary)]/15 border border-[color:var(--dash-primary)]/40 flex items-center justify-center flex-shrink-0">
+                        <Briefcase className="w-6 h-6 text-[color:var(--dash-primary)]" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-lg leading-tight text-slate-900 truncate">{project.name}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5 truncate">{project.client}</p>
+                        <h3 className="font-bold text-lg leading-tight text-slate-50 truncate">{project.name}</h3>
+                        <p className="text-xs text-slate-400 mt-0.5 truncate">{project.client}</p>
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium border capitalize flex-shrink-0 leading-none ${getStatusColor(project.status)}`}>
@@ -207,59 +213,59 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                   </div>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-3 pt-3 border-t border-slate-100">
+                  <div className="grid grid-cols-3 gap-3 pt-3 border-t border-[color:var(--dash-glass-border)]">
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Budget</p>
-                      <p className="font-semibold text-slate-900 text-sm">{budgetUsedPercent}%</p>
+                      <p className="text-xs text-slate-400 mb-1">Budget</p>
+                      <p className="font-semibold text-slate-100 text-sm ltr-text">{budgetUsedPercent}%</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Tasks</p>
-                      <p className="font-semibold text-slate-900 text-sm">{activeTasks}/{projectTasks.length}</p>
+                      <p className="text-xs text-slate-400 mb-1">Tasks</p>
+                      <p className="font-semibold text-slate-100 text-sm ltr-text">{activeTasks}/{projectTasks.length}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Type</p>
-                      <p className="font-semibold text-slate-900 text-sm capitalize">{project.type.replace('_', ' ')}</p>
+                      <p className="text-xs text-slate-400 mb-1">Type</p>
+                      <p className="font-semibold text-slate-100 text-sm capitalize">{project.type.replace('_', ' ')}</p>
                     </div>
                   </div>
 
                   {/* Manager & Deadline */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-600">
+                  <div className="flex items-center justify-between pt-2 border-t border-[color:var(--dash-glass-border)] text-xs text-slate-400">
                     <div className="flex items-center gap-2 min-w-0">
                       {am ? (
                         <>
                           <img src={am.avatar} alt={am.name} className="w-6 h-6 rounded-full flex-shrink-0" />
-                          <span className="truncate">{am.name}</span>
+                          <span className="truncate text-slate-100">{am.name}</span>
                         </>
                       ) : (
-                        <span className="text-slate-400">No manager</span>
+                        <span className="text-slate-500">No manager</span>
                       )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <Calendar className="w-3 h-3" />
-                      <span>{new Date(project.endDate).toLocaleDateString()}</span>
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      <span className="ltr-text text-slate-100">{new Date(project.endDate).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Footer Row */}
-                <div className="border-t border-slate-200 p-3 bg-slate-50/50">
+                <div className="border-t border-[color:var(--dash-glass-border)] p-3 bg-[color:var(--dash-surface)]">
                   <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-center">
                     <button
                       onClick={() => { setSelectedProjectId(project.id); setViewMode('detail'); }}
-                      className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      className="h-11 bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm font-medium text-slate-100 hover:bg-[color:var(--dash-surface-elevated)]/80 transition-colors"
                     >
                       Open
                     </button>
                     <button
                       onClick={() => { setSelectedProjectId(project.id); setViewMode('detail'); }}
-                      className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      className="h-11 bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm font-medium text-slate-100 hover:bg-[color:var(--dash-surface-elevated)]/80 transition-colors"
                     >
                       Details
                     </button>
                     <DropdownMenu
                       trigger={
-                        <button className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
-                          <MoreHorizontal className="w-5 h-5 text-slate-400" />
+                        <button className="w-11 h-11 flex items-center justify-center bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg hover:bg-[color:var(--dash-surface-elevated)]/80 transition-colors">
+                          <MoreHorizontal className="w-5 h-5 text-slate-300" />
                         </button>
                       }
                       items={[
@@ -299,9 +305,9 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         </div>
 
         {filteredProjects.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">No projects found matching your filters.</p>
+          <div className={`${surface} text-center py-12 rounded-xl`}>
+            <Briefcase className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <p className="text-slate-400">No projects found matching your filters.</p>
           </div>
         )}
         </PageContent>
@@ -313,22 +319,22 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           title="Start New Project"
           size="lg"
         >
-          <form onSubmit={handleCreateProject} className="p-6 space-y-4">
+          <form onSubmit={handleCreateProject} className="p-6 space-y-4 bg-[color:var(--dash-surface)] text-slate-100">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Project Name *</label>
-              <input required value={formName} onChange={e => setFormName(e.target.value)} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none" />
+              <label className="block text-sm font-medium text-slate-200 mb-1">Project Name *</label>
+              <input required value={formName} onChange={e => setFormName(e.target.value)} type="text" className={inputClass} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Client *</label>
-                <select required value={formClientId} onChange={e => setFormClientId(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none">
+                <label className="block text-sm font-medium text-slate-200 mb-1">Client *</label>
+                <select required value={formClientId} onChange={e => setFormClientId(e.target.value)} className={inputClass}>
                   <option value="">Select Client</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                <select value={formType} onChange={e => setFormType(e.target.value as ProjectType)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none">
+                <label className="block text-sm font-medium text-slate-200 mb-1">Type</label>
+                <select value={formType} onChange={e => setFormType(e.target.value as ProjectType)} className={inputClass}>
                   <option value="campaign">Campaign</option>
                   <option value="retainer">Retainer</option>
                   <option value="one_time">One Time</option>
@@ -338,35 +344,35 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
-                <input required value={formStart} onChange={e => setFormStart(e.target.value)} type="date" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none" />
+                <label className="block text-sm font-medium text-slate-200 mb-1">Start Date</label>
+                <input required value={formStart} onChange={e => setFormStart(e.target.value)} type="date" className={inputClass} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
-                <input required value={formEnd} onChange={e => setFormEnd(e.target.value)} type="date" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none" />
+                <label className="block text-sm font-medium text-slate-200 mb-1">End Date</label>
+                <input required value={formEnd} onChange={e => setFormEnd(e.target.value)} type="date" className={inputClass} />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Budget</label>
+              <label className="block text-sm font-medium text-slate-200 mb-1">Budget</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
-                <input value={formBudget} onChange={e => setFormBudget(e.target.value)} type="number" className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none" placeholder="0.00" />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                <input value={formBudget} onChange={e => setFormBudget(e.target.value)} type="number" className={`${inputClass} pl-7`} placeholder="0.00" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Brief Summary</label>
-              <textarea value={formBrief} onChange={e => setFormBrief(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none" rows={3} placeholder="What is the main goal?" />
+              <label className="block text-sm font-medium text-slate-200 mb-1">Brief Summary</label>
+              <textarea value={formBrief} onChange={e => setFormBrief(e.target.value)} className={`${inputClass} min-h-[110px]`} rows={3} placeholder="What is the main goal?" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Manager</label>
-              <select value={formManager} onChange={e => setFormManager(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-iris-red/100 focus:outline-none">
+              <label className="block text-sm font-medium text-slate-200 mb-1">Manager</label>
+              <select value={formManager} onChange={e => setFormManager(e.target.value)} className={inputClass}>
                 <option value="">Auto-assign (Client AM)</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
 
             <div className="pt-2">
-              <button type="submit" className="w-full bg-iris-red text-white py-2.5 rounded-lg font-medium hover:bg-rose-700 transition-colors">Create Project</button>
+              <button type="submit" className="w-full bg-[color:var(--dash-primary)] text-white py-2.5 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all">Create Project</button>
             </div>
           </form>
         </Modal>
@@ -376,7 +382,23 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
   // --- Render Detail View ---
 
-  if (!selectedProject) return null;
+  if (!selectedProject) {
+    return (
+      <PageContainer>
+        <div className={`${surface} p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] space-y-3`}> 
+          <h2 className="text-lg font-bold text-slate-50">Project not found</h2>
+          <p className="text-slate-400 text-sm">The selected project is unavailable. It may have been deleted or you may need to reselect it.</p>
+          <button
+            onClick={() => { setViewMode('list'); setSelectedProjectId(null); }}
+            className="inline-flex items-center gap-2 bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to projects
+          </button>
+        </div>
+      </PageContainer>
+    );
+  }
 
   return (
     <ProjectDetailView
@@ -453,36 +475,42 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Team' | 'Milestones' | 'Calendar' | 'Files' | 'Activity'>('Overview');
 
+  // Theming helpers for detail views
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'px-2 py-1 rounded-full text-[11px] font-medium border';
+
   // Status Change Handler
   const handleStatusChange = (newStatus: string) => {
     onUpdateProject({ ...project, status: newStatus as ProjectStatus, updatedAt: new Date().toISOString() });
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-100">
       {/* Header */}
       <div className="flex flex-col space-y-4">
-        <button onClick={onBack} className="text-slate-500 hover:text-iris-red flex items-center space-x-2 w-fit">
+        <button onClick={onBack} className="text-slate-400 hover:text-[color:var(--dash-primary)] flex items-center space-x-2 w-fit">
           <ArrowLeft className="w-4 h-4" />
           <span>Back to List</span>
         </button>
 
-        <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className={`${elevated} p-4 md:p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.9)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4`}>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-1">
-              <h1 className="text-xl md:text-2xl font-bold text-slate-900">{project.name}</h1>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-50">{project.name}</h1>
               <span className={`text-xs px-2.5 py-0.5 rounded-full border uppercase tracking-wide font-bold ${getStatusColor(project.status)}`}>
                 {project.status.replace('_', ' ')}
               </span>
             </div>
-            <p className="text-sm md:text-base text-slate-500 truncate">{project.client} • {project.type.replace('_', ' ')} • Due {new Date(project.endDate).toLocaleDateString()}</p>
+            <p className="text-sm md:text-base text-slate-400 truncate">{project.client} • {project.type.replace('_', ' ')} • Due {new Date(project.endDate).toLocaleDateString()}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <select
               value={project.status}
               onChange={(e) => handleStatusChange(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-900 text-xs md:text-sm rounded-lg focus:ring-iris-red/100 focus:border-iris-red/100 block p-2"
+              className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 text-xs md:text-sm rounded-lg focus:ring-[color:var(--dash-primary)] focus:border-[color:var(--dash-primary)] block p-2"
             >
               <option value="planning">Planning</option>
               <option value="active">Active</option>
@@ -490,12 +518,12 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
             </select>
-            <button className="p-2.5 text-slate-400 hover:bg-slate-50 hover:text-iris-red rounded-lg transition-colors">
+            <button className="p-2.5 text-slate-400 hover:bg-[color:var(--dash-surface)] hover:text-[color:var(--dash-primary)] rounded-lg transition-colors border border-[color:var(--dash-glass-border)]">
               <Settings className="w-5 h-5" />
             </button>
             <button
               onClick={() => { onDeleteProject(project.id); onBack(); }}
-              className="p-2.5 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+              className="p-2.5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-200 rounded-lg transition-colors border border-[color:var(--dash-glass-border)]"
               title="Delete Project"
             >
               <Trash2 className="w-5 h-5" />
@@ -505,7 +533,7 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-slate-200 overflow-x-auto">
+      <div className="border-b border-[color:var(--dash-glass-border)] overflow-x-auto">
         <nav className="-mb-px flex space-x-4 md:space-x-8 min-w-max">
           {['Overview', 'Team', 'Milestones', 'Calendar', 'Files', 'Activity'].map((tab) => (
             <button
@@ -514,8 +542,8 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
               className={`
                 whitespace-nowrap py-3 md:py-4 px-1 border-b-2 font-medium text-xs md:text-sm
                 ${activeTab === tab
-                  ? 'border-iris-red/100 text-iris-red'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'}
+                  ? 'border-[color:var(--dash-primary)] text-[color:var(--dash-primary)]'
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-[color:var(--dash-glass-border)]'}
               `}
             >
               {tab}
@@ -555,7 +583,7 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
           </div>
         )}
         {activeTab === 'Files' && (
-          <div className="h-[600px]">
+          <div className={`${elevated} h-[600px] rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] p-4`}>
             <FilesHub
               files={files}
               folders={folders}
@@ -578,6 +606,12 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
 // --- Tabs Components ---
 
 const OverviewTab = ({ project, milestones, tasks, members, users, marketingAssets, files, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, checkPermission }: { project: Project, milestones: ProjectMilestone[], tasks: Task[], members: ProjectMember[], users: User[], marketingAssets: ProjectMarketingAsset[], files: AgencyFile[], onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onDeleteMarketingAsset: (assetId: string) => Promise<void>, onUploadFile: (f: AgencyFile) => Promise<void>, checkPermission: (p: string) => boolean }) => {
+
+  // Local theming helpers for detail cards
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'px-2 py-1 rounded-full text-[11px] font-medium border';
 
   // Asset Modal State
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
@@ -754,13 +788,13 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
       <div className="md:col-span-2 space-y-4 md:space-y-6">
         {/* Milestones Graph */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-3 md:p-5 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
-            <h3 className="text-sm md:text-base font-bold text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-slate-400" />
+        <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
+          <div className="p-3 md:p-5 border-b border-[color:var(--dash-glass-border)] flex flex-wrap justify-between items-center gap-2 bg-[color:var(--dash-surface)]">
+            <h3 className="text-sm md:text-base font-bold text-slate-50 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-slate-300" />
               This Month’s Milestones – Task Progress
             </h3>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded">
+            <span className={`${pill} bg-[color:var(--dash-surface-elevated)] text-slate-200 border-[color:var(--dash-glass-border)]`}>
               {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
             </span>
           </div>
@@ -774,19 +808,13 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
                       data={currentMonthMilestones}
                       margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
-                      <Tooltip
-                        formatter={(value: number, name: string, props: any) => {
-                          if (name === 'Completed') return [value, 'Completed Tasks'];
-                          if (name === 'Remaining') return [value, 'Remaining Tasks'];
-                          return [value, name];
-                        }}
-                      />
-                      <Legend />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.08)" />
+                      <XAxis type="number" stroke="#94a3b8" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                      <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12, fill: '#cbd5e1' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.08)', color: '#e2e8f0' }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                      <Legend wrapperStyle={{ color: '#cbd5e1' }} />
                       <Bar dataKey="completed" name="Completed" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="remaining" name="Remaining" stackId="a" fill={getComputedStyle(document.documentElement).getPropertyValue('--brand-bg').trim() || '#cbd5e1'} radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="remaining" name="Remaining" stackId="a" fill="rgba(148,163,184,0.5)" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -800,43 +828,43 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
         </div>
 
         {/* Team Progress Cards */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
-          <div className="p-5 border-b border-slate-100">
-            <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Users className="w-4 h-4 text-slate-400" />
+        <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)]`}>
+          <div className="p-5 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
+            <h3 className="text-base font-bold text-slate-50 flex items-center gap-2">
+              <Users className="w-4 h-4 text-slate-300" />
               Team Progress & Approvals
             </h3>
           </div>
           <div className="p-4 space-y-3">
             {teamProgress.map((tp) => (
-              <div key={tp.memberId} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div key={tp.memberId} className="p-4 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)]">
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     {tp.user ? (
                       <img src={tp.user.avatar} alt="" className="w-10 h-10 rounded-full flex-shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-full bg-slate-200 flex-shrink-0"></div>
+                      <div className="w-10 h-10 rounded-full bg-slate-700 flex-shrink-0"></div>
                     )}
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 truncate">{tp.user?.name || 'Unknown'}</p>
-                      <p className="text-sm text-slate-600">{tp.role}</p>
+                      <p className="font-semibold text-slate-50 truncate">{tp.user?.name || 'Unknown'}</p>
+                      <p className="text-sm text-slate-400">{tp.role}</p>
                     </div>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-xs text-slate-500">Tasks</p>
-                    <p className="font-mono font-semibold text-slate-900">{tp.completed}/{tp.total}</p>
+                    <p className="text-xs text-slate-400">Tasks</p>
+                    <p className="font-mono font-semibold text-slate-50">{tp.completed}/{tp.total}</p>
                   </div>
                 </div>
 
                 {/* Progress Bar */}
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-600">Progress</span>
-                    <span className="text-xs font-semibold text-slate-900">{tp.progress}%</span>
+                    <span className="text-xs text-slate-400">Progress</span>
+                    <span className="text-xs font-semibold text-slate-100">{tp.progress}%</span>
                   </div>
-                  <div className="bg-slate-200 rounded-full h-2">
+                  <div className="bg-[color:var(--dash-surface-elevated)] rounded-full h-2 border border-[color:var(--dash-glass-border)]">
                     <div
-                      className="bg-iris-red h-2 rounded-full transition-all duration-500"
+                      className="bg-[color:var(--dash-primary)] h-2 rounded-full transition-all duration-500"
                       style={{ width: `${tp.progress}%` }}
                     ></div>
                   </div>
@@ -846,17 +874,17 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
                 {(tp.approvals.awaiting > 0 || tp.approvals.revisions > 0 || tp.approvals.clientReview > 0) && (
                   <div className="flex flex-wrap gap-2">
                     {tp.approvals.awaiting > 0 && (
-                      <span className="px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded text-xs font-medium">
+                      <span className="px-2 py-1 bg-amber-500/15 text-amber-100 border border-amber-400/40 rounded text-xs font-medium">
                         {tp.approvals.awaiting} awaiting
                       </span>
                     )}
                     {tp.approvals.revisions > 0 && (
-                      <span className="px-2 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded text-xs font-medium">
+                      <span className="px-2 py-1 bg-rose-500/15 text-rose-100 border border-rose-400/40 rounded text-xs font-medium">
                         {tp.approvals.revisions} revisions
                       </span>
                     )}
                     {tp.approvals.clientReview > 0 && (
-                      <span className="px-2 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded text-xs font-medium">
+                      <span className="px-2 py-1 bg-blue-500/15 text-blue-100 border border-blue-400/40 rounded text-xs font-medium">
                         {tp.approvals.clientReview} at client
                       </span>
                     )}
@@ -870,44 +898,44 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-bold text-slate-900 mb-4">Project Brief</h3>
-          <p className="text-slate-600 leading-relaxed whitespace-pre-line">{project.brief || "No brief provided."}</p>
+        <div className={`${elevated} p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)]`}>
+          <h3 className="font-bold text-slate-50 mb-4">Project Brief</h3>
+          <p className="text-slate-300 leading-relaxed whitespace-pre-line">{project.brief || "No brief provided."}</p>
         </div>
       </div>
       <div className="space-y-6">
         {/* Marketing Strategies Card */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-slate-400" />
+        <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
+          <div className="p-4 border-b border-[color:var(--dash-glass-border)] flex justify-between items-center bg-[color:var(--dash-surface)]">
+            <h3 className="font-bold text-slate-50 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-slate-300" />
               Marketing Strategies
             </h3>
             {checkPermission('projects.marketing_assets_manage') && (
-              <button onClick={() => openAssetModal()} className="text-iris-red hover:bg-iris-red/10 p-1 rounded transition-colors">
+              <button onClick={() => openAssetModal()} className="text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-primary)]/10 p-1 rounded transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
             )}
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-[color:var(--dash-glass-border)]">
             {marketingAssets.length > 0 ? (
               marketingAssets.map(asset => (
-                <div key={asset.id} className="p-4 hover:bg-slate-50 transition-colors group">
+                <div key={asset.id} className="p-4 hover:bg-[color:var(--dash-surface)] transition-colors group">
                   <div className="flex justify-between items-start">
                     <div className="flex items-start space-x-3">
-                      <div className="mt-1 p-1.5 bg-iris-red/10 text-iris-red rounded-lg">
+                      <div className="mt-1 p-1.5 bg-[color:var(--dash-primary)]/15 text-[color:var(--dash-primary)] rounded-lg border border-[color:var(--dash-primary)]/30">
                         {asset.type === 'link' ? <LinkIcon className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
                       </div>
                       <div>
-                        <h4 className="text-sm font-medium text-slate-900">{asset.name}</h4>
-                        <span className="text-xs text-slate-500 capitalize bg-slate-100 px-1.5 py-0.5 rounded mt-1 inline-block">
+                        <h4 className="text-sm font-medium text-slate-50">{asset.name}</h4>
+                        <span className="text-xs text-slate-300 capitalize bg-[color:var(--dash-surface-elevated)] px-1.5 py-0.5 rounded mt-1 inline-block border border-[color:var(--dash-glass-border)]">
                           {asset.category.replace('_', ' ')}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {asset.type === 'link' && asset.url && (
-                        <a href={asset.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-iris-red rounded">
+                        <a href={asset.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-300 hover:text-[color:var(--dash-primary)] rounded">
                           <ExternalLink className="w-3.5 h-3.5" />
                         </a>
                       )}
@@ -915,23 +943,23 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
                         const file = files.find(f => f.id === asset.fileId);
                         if (file && file.url) {
                           return (
-                            <a href={file.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-iris-red rounded" title="View File">
+                            <a href={file.url} target="_blank" rel="noreferrer" className="p-1.5 text-slate-300 hover:text-[color:var(--dash-primary)] rounded" title="View File">
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           );
                         }
                         return (
-                          <button className="p-1.5 text-slate-400 hover:text-iris-red rounded opacity-50 cursor-not-allowed" title="File not found">
+                          <button className="p-1.5 text-slate-500 rounded opacity-50 cursor-not-allowed" title="File not found">
                             <ExternalLink className="w-3.5 h-3.5" />
                           </button>
                         );
                       })()}
                       {checkPermission('projects.marketing_assets_manage') && (
                         <>
-                          <button onClick={() => openAssetModal(asset)} className="p-1.5 text-slate-400 hover:text-iris-red rounded">
+                          <button onClick={() => openAssetModal(asset)} className="p-1.5 text-slate-300 hover:text-[color:var(--dash-primary)] rounded">
                             <Settings className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => onDeleteMarketingAsset(asset.id)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded">
+                          <button onClick={() => onDeleteMarketingAsset(asset.id)} className="p-1.5 text-slate-300 hover:text-rose-200 rounded">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </>
@@ -948,15 +976,15 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
-          <h3 className="font-bold text-slate-900 border-b border-slate-100 pb-2">Key Info</h3>
+        <div className={`${elevated} p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] space-y-4`}>
+          <h3 className="font-bold text-slate-50 border-b border-[color:var(--dash-glass-border)] pb-2">Key Info</h3>
           <div>
-            <p className="text-xs text-slate-500 uppercase">Start Date</p>
-            <p className="font-medium text-slate-900">{new Date(project.startDate).toLocaleDateString()}</p>
+            <p className="text-xs text-slate-400 uppercase">Start Date</p>
+            <p className="font-medium text-slate-100">{new Date(project.startDate).toLocaleDateString()}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500 uppercase">End Date</p>
-            <p className="font-medium text-slate-900">{new Date(project.endDate).toLocaleDateString()}</p>
+            <p className="text-xs text-slate-400 uppercase">End Date</p>
+            <p className="font-medium text-slate-100">{new Date(project.endDate).toLocaleDateString()}</p>
           </div>
         </div>
       </div>
@@ -968,14 +996,14 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
         title={editingAsset ? 'Edit Asset' : 'Add Strategy Asset'}
         size="md"
       >
-        <form onSubmit={handleSaveAsset} className="p-4 space-y-4">
+        <form onSubmit={handleSaveAsset} className="p-4 space-y-4 bg-[color:var(--dash-surface)] text-slate-100">
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
-            <input required type="text" value={assetName} onChange={e => setAssetName(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="e.g. Q3 Media Plan" />
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Name</label>
+            <input required type="text" value={assetName} onChange={e => setAssetName(e.target.value)} className={inputClass} placeholder="e.g. Q3 Media Plan" />
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Category</label>
-            <select value={assetCategory} onChange={e => setAssetCategory(e.target.value as any)} className="w-full p-2 border rounded-lg text-sm">
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Category</label>
+            <select value={assetCategory} onChange={e => setAssetCategory(e.target.value as any)} className={inputClass}>
               <option value="strategy_doc">Strategy Document</option>
               <option value="media_plan">Media Plan</option>
               <option value="content_calendar">Content Calendar</option>
@@ -985,38 +1013,38 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
             </select>
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Type</label>
+            <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Type</label>
             <div className="flex space-x-4">
               <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="radio" name="assetType" value="link" checked={assetType === 'link'} onChange={() => setAssetType('link')} className="text-iris-red" />
-                <span className="text-sm text-slate-700">External Link</span>
+                <input type="radio" name="assetType" value="link" checked={assetType === 'link'} onChange={() => setAssetType('link')} className="text-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" />
+                <span className="text-sm text-slate-100">External Link</span>
               </label>
               <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="radio" name="assetType" value="file" checked={assetType === 'file'} onChange={() => setAssetType('file')} className="text-iris-red" />
-                <span className="text-sm text-slate-700">File</span>
+                <input type="radio" name="assetType" value="file" checked={assetType === 'file'} onChange={() => setAssetType('file')} className="text-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" />
+                <span className="text-sm text-slate-100">File</span>
               </label>
             </div>
           </div>
 
           {assetType === 'link' ? (
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">URL</label>
-              <input required type="url" value={assetUrl} onChange={e => setAssetUrl(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="https://..." />
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">URL</label>
+              <input required type="url" value={assetUrl} onChange={e => setAssetUrl(e.target.value)} className={inputClass} placeholder="https://..." />
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex space-x-4 border-b border-slate-100 pb-2">
+              <div className="flex space-x-4 border-b border-[color:var(--dash-glass-border)] pb-2">
                 <button
                   type="button"
                   onClick={() => setUploadMode('upload')}
-                  className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'upload' ? 'border-iris-red text-iris-red' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'upload' ? 'border-[color:var(--dash-primary)] text-[color:var(--dash-primary)]' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
                 >
                   Upload New
                 </button>
                 <button
                   type="button"
                   onClick={() => setUploadMode('select')}
-                  className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'select' ? 'border-iris-red text-iris-red' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                  className={`text-xs font-bold uppercase pb-1 border-b-2 transition-colors ${uploadMode === 'select' ? 'border-[color:var(--dash-primary)] text-[color:var(--dash-primary)]' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
                 >
                   Select Existing
                 </button>
@@ -1024,26 +1052,26 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
 
               {uploadMode === 'select' ? (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select File</label>
-                  <select required={uploadMode === 'select'} value={assetFileId} onChange={e => setAssetFileId(e.target.value)} className="w-full p-2 border rounded-lg text-sm">
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Select File</label>
+                  <select required={uploadMode === 'select'} value={assetFileId} onChange={e => setAssetFileId(e.target.value)} className={inputClass}>
                     <option value="">Select a file...</option>
                     {files.filter(f => f.projectId === project.id).map(f => (
                       <option key={f.id} value={f.id}>{f.name}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-slate-400 mt-1">Only showing files linked to this project.</p>
+                  <p className="text-xs text-slate-500 mt-1">Only showing files linked to this project.</p>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Upload File</label>
-                  <div className="border-2 border-dashed border-slate-200 rounded-lg p-4 text-center hover:bg-slate-50 transition-colors">
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Upload File</label>
+                  <div className="border-2 border-dashed border-[color:var(--dash-glass-border)] rounded-lg p-4 text-center hover:bg-[color:var(--dash-surface-elevated)] transition-colors">
                     <input
                       type="file"
                       required={uploadMode === 'upload'}
                       onChange={e => setSelectedFile(e.target.files ? e.target.files[0] : null)}
-                      className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-iris-red/10 file:text-rose-700 hover:file:bg-iris-red/20"
+                      className="w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[color:var(--dash-primary)]/15 file:text-white hover:file:bg-[color:var(--dash-primary)]/25"
                     />
-                    <p className="text-xs text-slate-400 mt-2">Max size 10MB.</p>
+                    <p className="text-xs text-slate-500 mt-2">Max size 10MB.</p>
                   </div>
                 </div>
               )}
@@ -1051,7 +1079,7 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
           )}
 
           <div className="pt-2">
-            <button type="submit" className="w-full bg-iris-red text-white py-2 rounded-lg font-medium hover:bg-rose-700">Save Asset</button>
+            <button type="submit" className="w-full bg-[color:var(--dash-primary)] text-white py-2 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all">Save Asset</button>
           </div>
         </form>
       </Modal>
@@ -1070,6 +1098,10 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [role, setRole] = useState('');
+
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full p-2 text-sm rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
 
   const [isFreelancerAddOpen, setIsFreelancerAddOpen] = useState(false);
   const [selectedFreelancer, setSelectedFreelancer] = useState('');
@@ -1122,23 +1154,25 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-slate-100">
       {/* Internal Team */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="font-bold text-slate-900">Internal Team</h3>
-          <button onClick={() => setIsAddOpen(true)} className="text-iris-red text-sm font-medium hover:bg-iris-red/10 px-3 py-1 rounded">Add Members</button>
+      <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
+        <div className="p-4 border-b border-[color:var(--dash-glass-border)] flex justify-between items-center bg-[color:var(--dash-surface)]">
+          <h3 className="font-bold text-slate-50">Internal Team</h3>
+          <button onClick={() => setIsAddOpen(true)} className="text-[color:var(--dash-primary)] text-sm font-medium hover:bg-[color:var(--dash-primary)]/10 px-3 py-1 rounded">
+            Add Members
+          </button>
         </div>
 
         {isAddOpen && (
-          <div className="p-4 border-b border-iris-red/20 bg-iris-red/10 grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
+          <div className="p-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)] grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
             <div>
-              <label className="text-xs font-bold text-indigo-800">Select Users</label>
-              <div className="mt-1 p-2 border border-indigo-200 rounded bg-white max-h-40 overflow-y-auto custom-scrollbar">
+              <label className="text-xs font-bold text-slate-300">Select Users</label>
+              <div className="mt-1 p-2 border border-[color:var(--dash-glass-border)] rounded bg-[color:var(--dash-surface-elevated)] max-h-40 overflow-y-auto custom-scrollbar">
                 {users.map(u => {
                   const isMember = members.some(m => m.userId === u.id);
                   return (
-                    <label key={u.id} className={`flex items-center space-x-2 py-1.5 px-2 rounded cursor-pointer transition-colors ${isMember ? 'opacity-50 bg-slate-50' : 'hover:bg-indigo-50'}`}>
+                    <label key={u.id} className={`flex items-center space-x-2 py-1.5 px-2 rounded cursor-pointer transition-colors ${isMember ? 'opacity-50 bg-[color:var(--dash-surface)]' : 'hover:bg-[color:var(--dash-surface)]'}`}>
                       <input
                         type="checkbox"
                         disabled={isMember}
@@ -1150,27 +1184,27 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
                             setSelectedUsers(selectedUsers.filter(id => id !== u.id));
                           }
                         }}
-                        className="rounded text-iris-red focus:ring-iris-red border-slate-300"
+                        className="rounded text-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]"
                       />
                       <div className="flex items-center gap-2">
                         <img src={u.avatar} className="w-5 h-5 rounded-full" alt="" />
-                        <span className="text-sm text-slate-700">{u.name}</span>
-                        {isMember && <span className="text-[10px] text-slate-400">(Joined)</span>}
+                        <span className="text-sm text-slate-100">{u.name}</span>
+                        {isMember && <span className="text-[10px] text-slate-500">(Joined)</span>}
                       </div>
                     </label>
                   );
                 })}
               </div>
-              <p className="text-[10px] text-indigo-600 mt-1 font-medium">{selectedUsers.length} users selected</p>
+              <p className="text-[10px] text-[color:var(--dash-primary)] mt-1 font-medium">{selectedUsers.length} users selected</p>
             </div>
             <div>
-              <label className="text-xs font-bold text-indigo-800">Role on Project</label>
-              <input type="text" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Designer" className="w-full mt-1 p-2 text-sm border border-indigo-200 rounded focus:ring-2 focus:ring-iris-red/20 focus:border-iris-red" />
-              <p className="text-[10px] text-indigo-500 mt-1">This role will be assigned to all selected users.</p>
+              <label className="text-xs font-bold text-slate-300">Role on Project</label>
+              <input type="text" value={role} onChange={e => setRole(e.target.value)} placeholder="e.g. Designer" className={`${inputClass} mt-1`} />
+              <p className="text-[10px] text-slate-400 mt-1">This role will be assigned to all selected users.</p>
             </div>
             <div className="flex space-x-2 pt-6">
-              <button onClick={handleAdd} disabled={selectedUsers.length === 0 || !role} className="bg-iris-red text-white px-4 py-2 rounded text-sm hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">Add Selected</button>
-              <button onClick={() => { setIsAddOpen(false); setSelectedUsers([]); setRole(''); }} className="bg-white text-slate-600 px-4 py-2 rounded text-sm hover:bg-slate-50 border border-slate-200 transition-colors">Cancel</button>
+              <button onClick={handleAdd} disabled={selectedUsers.length === 0 || !role} className="bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded text-sm hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">Add Selected</button>
+              <button onClick={() => { setIsAddOpen(false); setSelectedUsers([]); setRole(''); }} className="bg-[color:var(--dash-surface)] text-slate-200 px-4 py-2 rounded text-sm hover:bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] transition-colors">Cancel</button>
             </div>
           </div>
         )}
@@ -1180,20 +1214,20 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
             const user = users.find(u => u.id === m.userId);
             if (!user) return null;
             return (
-              <div key={m.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div key={m.id} className="flex items-center justify-between p-4 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)]">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <img src={user.avatar} className="w-10 h-10 rounded-full flex-shrink-0" alt="" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 truncate">{user.name}</p>
-                    <p className="text-sm text-slate-600">{m.roleInProject}</p>
+                    <p className="font-semibold text-slate-50 truncate">{user.name}</p>
+                    <p className="text-sm text-slate-400">{m.roleInProject}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs text-slate-500">{user.department}</p>
-                    <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">Internal</span>
+                    <p className="text-xs text-slate-400">{user.department}</p>
+                    <span className="text-xs px-2 py-1 rounded-full bg-[color:var(--dash-surface-elevated)] text-slate-200 border border-[color:var(--dash-glass-border)]">Internal</span>
                   </div>
-                  <button onClick={() => onRemoveMember(m.id)} className="text-slate-400 hover:text-rose-600 transition-colors p-2">
+                  <button onClick={() => onRemoveMember(m.id)} className="text-slate-400 hover:text-rose-200 transition-colors p-2">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1207,17 +1241,17 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
       </div>
 
       {/* External Freelancers */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="font-bold text-slate-900">External Freelancers</h3>
-          <button onClick={() => setIsFreelancerAddOpen(true)} className="text-iris-red text-sm font-medium hover:bg-iris-red/10 px-3 py-1 rounded">Assign Freelancer</button>
+      <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
+        <div className="p-4 border-b border-[color:var(--dash-glass-border)] flex justify-between items-center bg-[color:var(--dash-surface)]">
+          <h3 className="font-bold text-slate-50">External Freelancers</h3>
+          <button onClick={() => setIsFreelancerAddOpen(true)} className="text-[color:var(--dash-primary)] text-sm font-medium hover:bg-[color:var(--dash-primary)]/10 px-3 py-1 rounded">Assign Freelancer</button>
         </div>
 
         {isFreelancerAddOpen && (
-          <div className="p-4 border-b border-iris-red/20 bg-iris-red/10 space-y-4">
+          <div className="p-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)] space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-indigo-800">Freelancer</label>
+                <label className="text-xs font-bold text-slate-300">Freelancer</label>
                 <select value={selectedFreelancer} onChange={e => {
                   const fId = e.target.value;
                   setSelectedFreelancer(fId);
@@ -1226,32 +1260,32 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
                     setFreelancerRate(f.defaultRate);
                     setFreelancerRateType(f.rateType);
                   }
-                }} className="w-full mt-1 p-2 text-sm border rounded">
+                }} className={`${inputClass} mt-1`}>
                   <option value="">Select...</option>
                   {freelancers.map(f => <option key={f.id} value={f.id}>{f.name} ({f.specialization})</option>)}
                 </select>
               </div>
               <div>
-                <label className="text-xs font-bold text-indigo-800">Role on Project</label>
-                <input type="text" value={freelancerRole} onChange={e => setFreelancerRole(e.target.value)} placeholder="e.g. Lead Videographer" className="w-full mt-1 p-2 text-sm border rounded" />
+                <label className="text-xs font-bold text-slate-300">Role on Project</label>
+                <input type="text" value={freelancerRole} onChange={e => setFreelancerRole(e.target.value)} placeholder="e.g. Lead Videographer" className={`${inputClass} mt-1`} />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
               <div>
-                <label className="text-xs font-bold text-indigo-800">Rate</label>
-                <input type="number" value={freelancerRate} onChange={e => setFreelancerRate(Number(e.target.value))} className="w-full mt-1 p-2 text-sm border rounded" />
+                <label className="text-xs font-bold text-slate-300">Rate</label>
+                <input type="number" value={freelancerRate} onChange={e => setFreelancerRate(Number(e.target.value))} className={`${inputClass} mt-1`} />
               </div>
               <div>
-                <label className="text-xs font-bold text-indigo-800">Rate Type</label>
-                <select value={freelancerRateType} onChange={e => setFreelancerRateType(e.target.value as any)} className="w-full mt-1 p-2 text-sm border rounded">
+                <label className="text-xs font-bold text-slate-300">Rate Type</label>
+                <select value={freelancerRateType} onChange={e => setFreelancerRateType(e.target.value as any)} className={`${inputClass} mt-1`}>
                   <option value="hourly">Hourly</option>
                   <option value="daily">Daily</option>
                   <option value="project">Project</option>
                 </select>
               </div>
               <div className="flex space-x-2">
-                <button onClick={handleAddFreelancer} className="bg-iris-red text-white px-4 py-2 rounded text-sm w-full">Save Assignment</button>
-                <button onClick={() => setIsFreelancerAddOpen(false)} className="bg-white text-slate-600 px-4 py-2 rounded text-sm w-full">Cancel</button>
+                <button onClick={handleAddFreelancer} className="bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded text-sm w-full hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)]">Save Assignment</button>
+                <button onClick={() => setIsFreelancerAddOpen(false)} className="bg-[color:var(--dash-surface)] text-slate-200 px-4 py-2 rounded text-sm w-full border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)]">Cancel</button>
               </div>
             </div>
           </div>
@@ -1262,27 +1296,27 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
             const freelancer = freelancers.find(f => f.id === a.freelancerId);
             if (!freelancer) return null;
             return (
-              <div key={a.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div key={a.id} className="flex items-center justify-between p-4 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)]">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-full bg-iris-red/10 flex items-center justify-center text-iris-red font-bold border border-iris-red/20 flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[color:var(--dash-primary)]/15 flex items-center justify-center text-[color:var(--dash-primary)] font-bold border border-[color:var(--dash-primary)]/30 flex-shrink-0">
                     {freelancer.name.charAt(0)}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-slate-900 truncate">{freelancer.name}</p>
-                    <p className="text-xs text-slate-500">{freelancer.specialization}</p>
-                    <p className="text-sm text-slate-600 mt-1">{a.role}</p>
+                    <p className="font-semibold text-slate-50 truncate">{freelancer.name}</p>
+                    <p className="text-xs text-slate-400">{freelancer.specialization}</p>
+                    <p className="text-sm text-slate-300 mt-1">{a.role}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right hidden sm:block">
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-400">
                       {a.startDate ? `${new Date(a.startDate).toLocaleDateString()} - ${a.endDate ? new Date(a.endDate).toLocaleDateString() : 'Ongoing'}` : 'TBD'}
                     </p>
-                    <p className="text-sm font-semibold text-slate-900 mt-1">
+                    <p className="text-sm font-semibold text-slate-100 mt-1">
                       {a.currency} {a.agreedRate} / {a.agreedRateType}
                     </p>
                   </div>
-                  <button onClick={() => onRemoveFreelancerAssignment(a.id)} className="text-slate-400 hover:text-rose-600 transition-colors p-2">
+                  <button onClick={() => onRemoveFreelancerAssignment(a.id)} className="text-slate-400 hover:text-rose-200 transition-colors p-2">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -1302,6 +1336,11 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
   const [view, setView] = useState<'list' | 'timeline'>('list');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'px-2 py-1 rounded-full text-[11px] font-medium border';
 
   // Form State
   const [name, setName] = useState('');
@@ -1411,46 +1450,46 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
     <div className="space-y-6">
       {/* Header & Controls */}
       <div className="flex justify-between items-center">
-        <div className="flex space-x-2 bg-slate-100 p-1 rounded-lg">
-          <button onClick={() => setView('list')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'list' ? 'bg-white text-iris-red shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>List View</button>
-          <button onClick={() => setView('timeline')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'timeline' ? 'bg-white text-iris-red shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Timeline</button>
+        <div className="flex space-x-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] p-1 rounded-lg">
+          <button onClick={() => setView('list')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'list' ? 'bg-[color:var(--dash-surface-elevated)] text-[color:var(--dash-primary)] shadow-sm border border-[color:var(--dash-glass-border)]' : 'text-slate-400 hover:text-slate-200'}`}>List View</button>
+          <button onClick={() => setView('timeline')} className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${view === 'timeline' ? 'bg-[color:var(--dash-surface-elevated)] text-[color:var(--dash-primary)] shadow-sm border border-[color:var(--dash-glass-border)]' : 'text-slate-400 hover:text-slate-200'}`}>Timeline</button>
         </div>
-        <button onClick={() => { resetForm(); setIsAddOpen(true); }} className="bg-iris-red hover:bg-rose-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2">
+        <button onClick={() => { resetForm(); setIsAddOpen(true); }} className="bg-[color:var(--dash-primary)] hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2 border border-[color:var(--dash-glass-border)]">
           <Plus className="w-4 h-4" /> <span>Add Milestone</span>
         </button>
       </div>
 
       {/* Add/Edit Modal (Inline for simplicity) */}
       {isAddOpen && (
-        <div className="bg-white p-6 rounded-xl border border-iris-red/20 shadow-lg space-y-4 animate-in fade-in slide-in-from-top-4">
-          <h3 className="font-bold text-lg text-slate-900">{editingId ? 'Edit Milestone' : 'New Milestone'}</h3>
+        <div className={`${elevated} p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] space-y-4 animate-in fade-in slide-in-from-top-4`}>
+          <h3 className="font-bold text-lg text-slate-50">{editingId ? 'Edit Milestone' : 'New Milestone'}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Name</label>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded-lg text-sm" placeholder="Milestone Title" />
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Name</label>
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Milestone Title" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 border rounded-lg text-sm" rows={2} placeholder="Key deliverables..." />
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Description</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} className={`${inputClass} min-h-[90px]`} rows={2} placeholder="Key deliverables..." />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Start Date</label>
-              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full p-2 border rounded-lg text-sm" />
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Start Date</label>
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">End Date</label>
-              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full p-2 border rounded-lg text-sm" />
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">End Date</label>
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Owner</label>
-              <select value={ownerId} onChange={e => setOwnerId(e.target.value)} className="w-full p-2 border rounded-lg text-sm">
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Owner</label>
+              <select value={ownerId} onChange={e => setOwnerId(e.target.value)} className={inputClass}>
                 <option value="">Unassigned</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Status</label>
-              <select value={status} onChange={e => setStatus(e.target.value as any)} className="w-full p-2 border rounded-lg text-sm">
+              <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Status</label>
+              <select value={status} onChange={e => setStatus(e.target.value as any)} className={inputClass}>
                 <option value="not_started">Not Started</option>
                 <option value="in_progress">In Progress</option>
                 <option value="completed">Completed</option>
@@ -1459,19 +1498,19 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
             </div>
 
             {/* Target Tasks Configuration */}
-            <div className="md:col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-              <h4 className="text-xs font-bold text-slate-700 uppercase mb-2">Progress Tracking</h4>
+            <div className="md:col-span-2 bg-[color:var(--dash-surface)] p-3 rounded-lg border border-[color:var(--dash-glass-border)]">
+              <h4 className="text-xs font-bold text-slate-200 uppercase mb-2">Progress Tracking</h4>
               <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
                 <div className="flex-1">
-                  <label className="block text-xs text-slate-500 mb-1">Target Task Count (Optional)</label>
+                  <label className="block text-xs text-slate-400 mb-1">Target Task Count (Optional)</label>
                   <input
                     type="number"
                     value={targetTaskCount}
                     onChange={e => setTargetTaskCount(e.target.value)}
-                    className="w-full p-2 border rounded-lg text-sm"
+                    className={inputClass}
                     placeholder="e.g. 5 tasks to complete"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Leave empty to calculate progress based on all linked tasks.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Leave empty to calculate progress based on all linked tasks.</p>
                 </div>
                 <div className="flex items-center space-x-2 pt-4">
                   <input
@@ -1479,9 +1518,9 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
                     id="autoComplete"
                     checked={autoCompleteOnTarget}
                     onChange={e => setAutoCompleteOnTarget(e.target.checked)}
-                    className="rounded text-iris-red focus:ring-iris-red/100"
+                    className="rounded text-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)] focus:ring-[color:var(--dash-primary)]/80"
                   />
-                  <label htmlFor="autoComplete" className="text-sm text-slate-700 cursor-pointer">
+                  <label htmlFor="autoComplete" className="text-sm text-slate-200 cursor-pointer">
                     Auto-complete when target reached
                   </label>
                 </div>
@@ -1489,8 +1528,8 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
             </div>
           </div>
           <div className="flex justify-end space-x-3 pt-2">
-            <button onClick={() => setIsAddOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-50 rounded-lg text-sm">Cancel</button>
-            <button onClick={handleSave} className="px-4 py-2 bg-iris-red text-white rounded-lg text-sm font-medium hover:bg-rose-700">Save Milestone</button>
+            <button onClick={() => setIsAddOpen(false)} className="px-4 py-2 text-slate-300 hover:bg-[color:var(--dash-surface)] rounded-lg text-sm border border-[color:var(--dash-glass-border)]">Cancel</button>
+            <button onClick={handleSave} className="px-4 py-2 bg-[color:var(--dash-primary)] text-white rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)]">Save Milestone</button>
           </div>
         </div>
       )}
@@ -1521,19 +1560,19 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
             if (m.status === 'completed') progress = 100;
 
             return (
-              <div key={m.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4">
+              <div key={m.id} className={`${elevated} p-5 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] hover:shadow-[0_22px_60px_-26px_rgba(0,0,0,0.9)] transition-shadow flex flex-col gap-4`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-1">
-                      <h4 className="font-bold text-slate-900 text-lg">{m.name}</h4>
-                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${m.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                        m.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
-                          m.status === 'blocked' ? 'bg-rose-100 text-rose-700' :
-                            'bg-slate-100 text-slate-600'
+                      <h4 className="font-bold text-slate-50 text-lg">{m.name}</h4>
+                      <span className={`text-xs px-2 py-0.5 rounded-full capitalize border ${m.status === 'completed' ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/40' :
+                        m.status === 'in_progress' ? 'bg-blue-500/15 text-blue-100 border-blue-400/40' :
+                          m.status === 'blocked' ? 'bg-rose-500/15 text-rose-100 border-rose-400/40' :
+                            'bg-slate-500/15 text-slate-200 border-slate-400/40'
                         }`}>{m.status.replace('_', ' ')}</span>
                     </div>
-                    <p className="text-slate-500 text-sm mb-3">{m.description}</p>
-                    <div className="flex items-center space-x-4 text-xs text-slate-500">
+                    <p className="text-slate-300 text-sm mb-3">{m.description}</p>
+                    <div className="flex items-center space-x-4 text-xs text-slate-400">
                       <div className="flex items-center space-x-1">
                         <Calendar className="w-3.5 h-3.5" />
                         <span>{new Date(m.startDate || m.dueDate).toLocaleDateString()} - {new Date(m.endDate || m.dueDate).toLocaleDateString()}</span>
@@ -1547,17 +1586,17 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-6 min-w-[200px]">
+                    <div className="flex items-center space-x-6 min-w-[200px]">
                     <div className="flex-1">
                       <div className="flex justify-between text-xs mb-1">
-                        <span className="font-medium text-slate-700">Progress</span>
-                        <span className="text-slate-500">{progressText}</span>
+                          <span className="font-medium text-slate-200">Progress</span>
+                          <span className="text-slate-400">{progressText}</span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
-                        <div className="bg-iris-red h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                        <div className="w-full bg-[color:var(--dash-surface)] rounded-full h-2 border border-[color:var(--dash-glass-border)]">
+                          <div className="bg-[color:var(--dash-primary)] h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                       </div>
                     </div>
-                    <button onClick={() => startEdit(m)} className="p-2 text-slate-400 hover:text-iris-red hover:bg-iris-red/10 rounded-lg transition-colors">
+                      <button onClick={() => startEdit(m)} className="p-2 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-primary)]/10 rounded-lg transition-colors border border-[color:var(--dash-glass-border)]">
                       <Settings className="w-4 h-4" />
                     </button>
                   </div>
@@ -1565,19 +1604,19 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
 
                 {/* Tasks & Approvals Section */}
                 {milestoneTasks.length > 0 && (
-                  <div className="mt-2 pt-4 border-t border-slate-100">
-                    <h5 className="text-xs font-bold text-slate-500 uppercase mb-2">Tasks & Approvals</h5>
+                  <div className="mt-2 pt-4 border-t border-[color:var(--dash-glass-border)]">
+                    <h5 className="text-xs font-bold text-slate-300 uppercase mb-2">Tasks & Approvals</h5>
                     <div className="space-y-2">
                       {milestoneTasks.map(task => {
                         const approval = getTaskApprovalStatus(task.id);
                         return (
-                          <div key={task.id} className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded-lg">
+                          <div key={task.id} className="flex items-center justify_between text-sm p-2 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)]">
                             <div className="flex items-center space-x-2">
                               <div className={`w-2 h-2 rounded-full ${task.status === 'completed' ? 'bg-emerald-500' : 'bg-slate-300'}`}></div>
-                              <span className="text-slate-700 font-medium">{task.title}</span>
+                              <span className="text-slate-100 font-medium">{task.title}</span>
                             </div>
                             <div className="flex items-center space-x-3">
-                              <span className="text-xs text-slate-500 capitalize">{task.status.replace('_', ' ')}</span>
+                              <span className="text-xs text-slate-400 capitalize">{task.status.replace('_', ' ')}</span>
                               {approval && approval.status === 'pending' && (
                                 <span className="flex items-center space-x-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
                                   <Clock className="w-3 h-3" />
@@ -1606,16 +1645,16 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
               </div>
             );
           })}
-          {milestones.length === 0 && <div className="text-center py-12 text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">No milestones defined yet. Start planning your roadmap!</div>}
+          {milestones.length === 0 && <div className={`${surface} text-center py-12 rounded-xl border border-dashed border-[color:var(--dash-glass-border)] text-slate-400`}>No milestones defined yet. Start planning your roadmap!</div>}
         </div>
       )}
 
       {/* Timeline View */}
       {view === 'timeline' && (
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+        <div className={`${elevated} p-6 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-x-auto`}>
           <div className="min-w-[350px]">
             {/* Timeline Header */}
-            <div className="flex justify-between text-xs text-slate-400 uppercase font-bold mb-4 border-b border-slate-100 pb-2">
+            <div className="flex justify-between text-xs text-slate-400 uppercase font-bold mb-4 border-b border-[color:var(--dash-glass-border)] pb-2">
               <span>{new Date(project.startDate).toLocaleDateString()}</span>
               <span>Project Timeline</span>
               <span>{new Date(project.endDate).toLocaleDateString()}</span>
@@ -1625,11 +1664,11 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
             <div className="space-y-6 relative min-h-[200px]">
               {/* Grid Lines (Optional visual aid) */}
               <div className="absolute inset-0 flex justify-between pointer-events-none opacity-10">
-                <div className="w-px h-full bg-slate-900"></div>
-                <div className="w-px h-full bg-slate-900"></div>
-                <div className="w-px h-full bg-slate-900"></div>
-                <div className="w-px h-full bg-slate-900"></div>
-                <div className="w-px h-full bg-slate-900"></div>
+                <div className="w-px h-full bg-white/20"></div>
+                <div className="w-px h-full bg-white/20"></div>
+                <div className="w-px h-full bg-white/20"></div>
+                <div className="w-px h-full bg-white/20"></div>
+                <div className="w-px h-full bg-white/20"></div>
               </div>
 
               {milestones.map(m => {
@@ -1637,20 +1676,20 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
                 return (
                   <div key={m.id} className="relative h-12">
                     <div
-                      className={`absolute h-10 rounded-lg shadow-sm border flex items-center px-3 cursor-pointer hover:shadow-md transition-all ${m.status === 'completed' ? 'bg-emerald-50 border-emerald-200' :
-                        m.status === 'in_progress' ? 'bg-blue-50 border-blue-200' :
-                          'bg-slate-50 border-slate-200'
+                      className={`absolute h-10 rounded-lg shadow-sm border flex items-center px-3 cursor-pointer hover:shadow-md transition-all ${m.status === 'completed' ? 'bg-emerald-500/15 border-emerald-400/40' :
+                        m.status === 'in_progress' ? 'bg-blue-500/15 border-blue-400/40' :
+                          'bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]'
                         }`}
                       style={style}
                       onClick={() => startEdit(m)}
                     >
                       <div className="truncate w-full">
-                        <p className="text-xs font-bold text-slate-900 truncate">{m.name}</p>
+                        <p className="text-xs font-bold text-slate-50 truncate">{m.name}</p>
                         <div className="flex justify-between items-center mt-1">
-                          <span className="text-[10px] text-slate-500">{m.progressPercent || 0}%</span>
+                          <span className="text-[10px] text-slate-300">{m.progressPercent || 0}%</span>
                         </div>
-                        <div className="w-full bg-black/5 rounded-full h-1 mt-1">
-                          <div className={`h-1 rounded-full ${m.status === 'completed' ? 'bg-emerald-500' : 'bg-iris-red/100'
+                        <div className="w-full bg-black/20 rounded-full h-1 mt-1">
+                          <div className={`h-1 rounded-full ${m.status === 'completed' ? 'bg-emerald-400' : 'bg-[color:var(--dash-primary)]'
                             }`} style={{ width: `${m.progressPercent || 0}%` }}></div>
                         </div>
                       </div>

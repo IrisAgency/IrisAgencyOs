@@ -18,13 +18,13 @@ export default defineConfig(({ mode }) => {
           enabled: true,
           type: 'module'
         },
-        includeAssets: ['icon-192x192.png', 'icon-512x512.png', 'splash.gif', 'splash.mp4'],
+        includeAssets: ['icon-192x192.png', 'icon-512x512.png', 'apple-touch-icon.png', 'splash.gif', 'splash.mp4'],
         manifest: {
           name: 'IRIS Agency OS',
           short_name: 'IRIS OS',
           description: 'A comprehensive agency operating system for project management, team collaboration, and business operations',
-          theme_color: '#6366f1',
-          background_color: '#0f172a',
+          theme_color: '#050505',
+          background_color: '#050505',
           display: 'standalone',
           orientation: 'portrait',
           start_url: '/',
@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,mp4,gif,woff,woff2}'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
-          skipWaiting: false,
+          skipWaiting: true,
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//],
           runtimeCaching: [

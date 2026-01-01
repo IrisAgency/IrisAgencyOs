@@ -21,6 +21,11 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
   checkPermission,
   currentUser
 }) => {
+  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide';
+
   const [strategies, setStrategies] = useState<ClientMarketingStrategy[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterYear, setFilterYear] = useState<number>(new Date().getFullYear());
@@ -47,7 +52,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
   if (!canView) {
     return (
-      <div className="p-8 text-center text-slate-400 bg-slate-50 rounded-xl border border-slate-200">
+      <div className={`${surface} p-8 text-center text-slate-400 rounded-xl`}>
         <p>You do not have permission to view marketing strategies.</p>
       </div>
     );
@@ -226,11 +231,11 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
   );
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className={`${elevated} rounded-xl shadow-[0_20px_60px_-28px_rgba(0,0,0,0.8)] overflow-hidden`}>
+      <div className="p-5 border-b border-[color:var(--dash-glass-border)] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[color:var(--dash-surface)]">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-slate-400" />
-          <h3 className="font-bold text-slate-900">Marketing Strategies</h3>
+          <FileText className="w-5 h-5 text-[color:var(--dash-primary)]" />
+          <h3 className="font-bold text-slate-50">Marketing Strategies</h3>
         </div>
         
         <div className="flex items-center gap-3">
@@ -238,7 +243,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
           <select 
             value={filterYear}
             onChange={(e) => setFilterYear(Number(e.target.value))}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className={`${inputClass} w-[120px] md:w-[140px]`}
           >
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
@@ -251,14 +256,14 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
               placeholder="Search..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-32 md:w-48"
+              className={`${inputClass} pl-9 w-32 md:w-48`}
             />
           </div>
 
           {canManage && (
             <button 
               onClick={() => openModal()}
-              className="flex items-center space-x-2 bg-indigo-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+              className="flex items-center space-x-2 bg-[color:var(--dash-primary)] text-white px-3 py-2 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden md:inline">Add Strategy</span>
@@ -269,34 +274,34 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-500 font-medium">
-            <tr>
+          <thead className="bg-[color:var(--dash-surface)] text-slate-400 font-medium">
+            <tr className="border-b border-[color:var(--dash-glass-border)]">
               <th className="px-6 py-3">Month</th>
               <th className="px-6 py-3">Title</th>
               <th className="px-6 py-3">Type</th>
               <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[color:var(--dash-glass-border)]">
             {loading ? (
               <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Loading strategies...</td></tr>
             ) : filteredStrategies.length === 0 ? (
               <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">No strategies found for {filterYear}.</td></tr>
             ) : (
               filteredStrategies.map(strategy => (
-                <tr key={strategy.id} className="hover:bg-slate-50 group">
-                  <td className="px-6 py-4 font-medium text-slate-700">{strategy.monthLabel}</td>
+                <tr key={strategy.id} className="hover:bg-[color:var(--dash-surface-elevated)]/60 group">
+                  <td className="px-6 py-4 font-medium text-slate-100">{strategy.monthLabel}</td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-slate-900">{strategy.title}</div>
-                    {strategy.notes && <div className="text-xs text-slate-500 mt-0.5">{strategy.notes}</div>}
+                    <div className="font-medium text-slate-50">{strategy.title}</div>
+                    {strategy.notes && <div className="text-xs text-slate-400 mt-0.5">{strategy.notes}</div>}
                   </td>
                   <td className="px-6 py-4">
                     {strategy.type === 'file' ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+                      <span className={`${pill} bg-[color:var(--dash-primary)]/15 text-[color:var(--dash-primary)] border border-[color:var(--dash-primary)]/40`}>
                         <FileText className="w-3 h-3" /> File
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700">
+                      <span className={`${pill} bg-indigo-500/15 text-indigo-200 border border-indigo-400/40`}>
                         <LinkIcon className="w-3 h-3" /> Link
                       </span>
                     )}
@@ -308,7 +313,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                           href={strategy.url.startsWith('http') ? strategy.url : `https://${strategy.url}`} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
                           title="Open Link"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -316,7 +321,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       )}
                       {strategy.type === 'file' && (
                         <button 
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
                           title="View File"
                           onClick={() => {
                               const file = files.find(f => f.id === strategy.fileId);
@@ -335,14 +340,14 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                         <>
                           <button 
                             onClick={() => openModal(strategy)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
                             title="Edit"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(strategy.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-[color:var(--dash-surface)] rounded transition-colors"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -360,32 +365,32 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-900">{editingStrategy ? 'Edit Strategy' : 'Add Strategy'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+          <div className={`${elevated} rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200`}>
+            <div className="p-6 border-b border-[color:var(--dash-glass-border)] flex justify-between items-center bg-[color:var(--dash-surface)]">
+              <h2 className="text-lg font-bold text-slate-50">{editingStrategy ? 'Edit Strategy' : 'Add Strategy'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5"/></button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Month</label>
+                  <label className="block text-sm font-semibold text-slate-200 mb-1">Month</label>
                   <select 
                     required
                     value={formState.month}
                     onChange={e => setFormState({...formState, month: Number(e.target.value)})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className={inputClass}
                   >
                     {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Year</label>
+                  <label className="block text-sm font-semibold text-slate-200 mb-1">Year</label>
                   <select 
                     required
                     value={formState.year}
                     onChange={e => setFormState({...formState, year: Number(e.target.value)})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className={inputClass}
                   >
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
@@ -393,19 +398,19 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                <label className="block text-sm font-semibold text-slate-200 mb-1">Title</label>
                 <input 
                   required 
                   type="text" 
                   value={formState.title}
                   onChange={e => setFormState({...formState, title: e.target.value})}
                   placeholder="e.g. Q1 Content Strategy"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                  className={inputClass} 
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Type</label>
+                <label className="block text-sm font-semibold text-slate-200 mb-2">Type</label>
                 <div className="flex space-x-4">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input 
@@ -414,9 +419,9 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       value="file" 
                       checked={formState.type === 'file'} 
                       onChange={() => setFormState({...formState, type: 'file'})}
-                      className="text-indigo-600 focus:ring-indigo-500" 
+                      className="text-[color:var(--dash-primary)] focus:ring-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" 
                     />
-                    <span className="text-sm text-slate-700">File Upload</span>
+                    <span className="text-sm text-slate-200">File Upload</span>
                   </label>
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input 
@@ -425,27 +430,27 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       value="link" 
                       checked={formState.type === 'link'} 
                       onChange={() => setFormState({...formState, type: 'link'})}
-                      className="text-indigo-600 focus:ring-indigo-500" 
+                      className="text-[color:var(--dash-primary)] focus:ring-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" 
                     />
-                    <span className="text-sm text-slate-700">External Link</span>
+                    <span className="text-sm text-slate-200">External Link</span>
                   </label>
                 </div>
               </div>
 
               {formState.type === 'file' ? (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">File</label>
+                  <label className="block text-sm font-semibold text-slate-200 mb-1">File</label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center cursor-pointer hover:bg-slate-50 transition-colors"
+                    className="border-2 border-dashed border-[color:var(--dash-glass-border)] rounded-lg p-4 text-center cursor-pointer hover:bg-[color:var(--dash-surface)] transition-colors bg-[color:var(--dash-surface-elevated)]"
                   >
                     {selectedFile ? (
-                      <div className="flex items-center justify-center space-x-2 text-indigo-600">
+                      <div className="flex items-center justify-center space-x-2 text-[color:var(--dash-primary)]">
                         <FileText className="w-5 h-5" />
                         <span className="text-sm font-medium">{selectedFile.name}</span>
                       </div>
                     ) : editingStrategy?.fileId && !selectedFile ? (
-                       <div className="flex items-center justify-center space-x-2 text-slate-600">
+                       <div className="flex items-center justify-center space-x-2 text-slate-300">
                         <FileText className="w-5 h-5" />
                         <span className="text-sm font-medium">Current File (Click to replace)</span>
                       </div>
@@ -465,25 +470,25 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">URL</label>
+                  <label className="block text-sm font-semibold text-slate-200 mb-1">URL</label>
                   <input 
                     required 
                     type="url" 
                     value={formState.url || ''}
                     onChange={e => setFormState({...formState, url: e.target.value})}
                     placeholder="https://"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                    className={inputClass} 
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes (Optional)</label>
+                <label className="block text-sm font-semibold text-slate-200 mb-1">Notes (Optional)</label>
                 <textarea 
                   rows={3}
                   value={formState.notes || ''}
                   onChange={e => setFormState({...formState, notes: e.target.value})}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" 
+                  className={`${inputClass} min-h-[80px]`} 
                 />
               </div>
 
@@ -491,13 +496,13 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-[color:var(--dash-glass-border)] text-slate-200 bg-[color:var(--dash-surface)] rounded-lg font-medium hover:bg-[color:var(--dash-surface-elevated)] transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                  className="flex-1 bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] transition-colors"
                 >
                   Save Strategy
                 </button>

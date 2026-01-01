@@ -1,0 +1,502 @@
+/* DashboardTheme.css - Vitreous Inky Suspension Theme */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@300;500&display=swap');
+
+:root {
+    --dash-bg: #050505;
+    --dash-surface: #0a0a0a;
+    --dash-surface-elevated: #121212;
+    --dash-primary: #DF1E3C;
+    --dash-on-primary: #FFFFFF;
+    --dash-secondary: #CCC2DC;
+    --dash-tertiary: #EFB8C8;
+    --dash-error: #F2B8B5;
+    --dash-outline: #49454F;
+    --dash-glass-border: rgba(255, 255, 255, 0.08);
+    --dash-ink-gradient: radial-gradient(circle at 50% 0%, rgba(223, 30, 60, 0.05) 0%, transparent 70%);
+    --dash-transition: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Custom Scrollbar */
+.task-list::-webkit-scrollbar,
+.notes-list::-webkit-scrollbar,
+.calendar-widget > div::-webkit-scrollbar {
+    width: 6px;
+}
+
+.task-list::-webkit-scrollbar-track,
+.notes-list::-webkit-scrollbar-track,
+.calendar-widget > div::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+
+.task-list::-webkit-scrollbar-thumb,
+.notes-list::-webkit-scrollbar-thumb,
+.calendar-widget > div::-webkit-scrollbar-thumb {
+    background: rgba(223, 30, 60, 0.2);
+    border-radius: 10px;
+}
+
+.task-list::-webkit-scrollbar-thumb:hover,
+.notes-list::-webkit-scrollbar-thumb:hover,
+.calendar-widget > div::-webkit-scrollbar-thumb:hover {
+    background: rgba(223, 30, 60, 0.3);
+}
+
+.dashboard-theme-wrapper {
+    background-color: var(--dash-bg) !important;
+    background-image: 
+        radial-gradient(circle at 20% 30%, rgba(223, 30, 60, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 80% 70%, rgba(239, 184, 200, 0.05) 0%, transparent 40%);
+    color: #E6E1E5;
+    font-family: 'Outfit', sans-serif;
+    min-height: 100vh;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    overflow-x: hidden;
+    transition: background-image 0.2s ease;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.dashboard-theme-wrapper * {
+    box-sizing: border-box;
+}
+
+/* Vitreous Inky Suspension Effect */
+.glass-panel {
+    background: rgba(18, 18, 18, 0.6);
+    backdrop-filter: blur(25px) saturate(180%);
+    border: 1px solid var(--dash-glass-border);
+    border-radius: 28px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8), 
+                inset 0 1px 1px rgba(255, 255, 255, 0.05);
+    transition: transform 0.4s var(--dash-transition), box-shadow 0.4s var(--dash-transition), border-color 0.4s var(--dash-transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 100px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+    pointer-events: none;
+}
+
+.glass-panel:hover {
+    transform: translateY(-4px);
+    border-color: rgba(223, 30, 60, 0.2);
+    box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.9);
+}
+
+/* Main Viewport */
+.viewport {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: clamp(12px, 2vw, 24px);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 20px 8px;
+    margin-bottom: 24px;
+}
+
+.greeting h1 {
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(to bottom, #fff, #aaa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.role-badge {
+    background: rgba(223, 30, 60, 0.1);
+    color: var(--dash-primary);
+    padding: 4px 12px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    border: 1px solid rgba(223, 30, 60, 0.2);
+    display: inline-block;
+    margin-bottom: 0.5rem;
+}
+
+/* Dashboard Grid */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+}
+
+.grid-container > * {
+    min-width: 0; /* Prevent grid blowout */
+}
+
+.widget-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--dash-secondary);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.data-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+}
+
+/* Widget 1: My Tasks (Wide) */
+.my-tasks { 
+    grid-column: span 8; 
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+}
+
+.task-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 500px;
+    padding-right: 4px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    padding: 16px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid var(--dash-primary);
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 0;
+}
+.task-item:hover { background: rgba(255,255,255,0.05); }
+.task-item > div:first-child {
+    min-width: 0;
+    overflow: hidden;
+}
+.task-item > div:first-child > div:first-child {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Widget 2: GM Urgent (Critical) */
+.gm-urgent { 
+    grid-column: span 4; 
+    padding: 24px; 
+    background: linear-gradient(145deg, rgba(242, 184, 181, 0.05), transparent);
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+.urgent-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--dash-glass-border);
+    cursor: pointer;
+    min-width: 0;
+    gap: 8px;
+}
+.urgent-item > span:first-child {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.status-dot { 
+    width: 8px; 
+    height: 8px; 
+    border-radius: 50%; 
+    display: inline-block; 
+    margin-right: 8px; 
+    background: var(--dash-error); 
+    box-shadow: 0 0 10px var(--dash-error);
+    flex-shrink: 0;
+}
+
+/* Widget 3: Team Progress */
+.team-progress { 
+    grid-column: span 4; 
+    padding: 24px;
+    min-height: 280px;
+}
+.progress-bar {
+    height: 6px;
+    background: var(--dash-outline);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.progress-fill { 
+    height: 100%; 
+    background: var(--dash-primary); 
+    border-radius: 10px; 
+    width: 0%; 
+    transition: width 1s ease-out; 
+}
+
+/* Widget 4: Client Status */
+.client-status { 
+    grid-column: span 4; 
+    padding: 24px;
+    min-height: 280px;
+}
+.client-avatar-row { 
+    display: flex; 
+    gap: -10px; 
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.client-avatar { 
+    width: 40px; 
+    height: 40px; 
+    border-radius: 50%; 
+    border: 3px solid var(--dash-surface); 
+    margin-left: -12px; 
+    transition: transform 0.2s; 
+    cursor: pointer; 
+    background: var(--dash-outline); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    font-size: 0.8rem; 
+    font-weight: bold; 
+    color: #fff;
+    flex-shrink: 0;
+}
+.client-avatar:first-child { margin-left: 0; }
+.client-avatar:hover { transform: scale(1.1) translateY(-5px); z-index: 10; }
+
+/* Widget 5: Calendar/Meetings */
+.calendar-widget { 
+    grid-column: span 4; 
+    padding: 24px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+.meeting-card {
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 12px;
+    cursor: pointer;
+    min-width: 0;
+}
+.time-label { 
+    color: var(--dash-tertiary); 
+    font-weight: 600; 
+    font-size: 0.75rem; 
+    margin-bottom: 4px; 
+}
+
+/* Widget 6: Project Milestones */
+.milestones { 
+    grid-column: span 6; 
+    padding: 24px;
+    min-height: 280px;
+}
+.milestone-track { 
+    position: relative; 
+    padding-left: 20px; 
+    border-left: 2px dashed var(--dash-outline); 
+    margin-top: 10px; 
+}
+.milestone-point { 
+    position: absolute; 
+    left: -7px; 
+    top: 0; 
+    width: 12px; 
+    height: 12px; 
+    border-radius: 50%; 
+    background: var(--dash-tertiary); 
+}
+
+/* Widget 7: Quick Notes */
+.quick-notes { 
+    grid-column: span 6; 
+    padding: 24px;
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+.notes-list {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 350px;
+    padding-right: 4px;
+}
+.notes-area {
+    width: 100%;
+    height: 100px;
+    background: transparent;
+    border: none;
+    color: #ccc;
+    font-family: 'Outfit', sans-serif;
+    resize: none;
+    outline: none;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Animations */
+@keyframes reveal {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-reveal {
+    animation: reveal 0.8s var(--dash-transition) both;
+}
+
+.dot-pattern {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Form Controls Override */
+select {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--dash-glass-border);
+    color: var(--dash-secondary);
+    border-radius: 8px;
+    padding: 4px 8px;
+}
+select option {
+    background: var(--dash-surface-elevated);
+    color: var(--dash-primary);
+}
+button {
+    font-family: 'Outfit', sans-serif;
+}
+
+/* Responsive Breakpoints */
+
+/* Large Desktop (>= 1280px) - 12 columns (default) */
+@media (min-width: 1280px) {
+    .grid-container {
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+    }
+}
+
+/* Medium Desktop (1024px - 1279px) - 8 columns */
+@media (max-width: 1279px) and (min-width: 1024px) {
+    .grid-container {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .my-tasks { grid-column: span 8; }
+    .gm-urgent { grid-column: span 4; }
+    .team-progress { grid-column: span 4; }
+    .calendar-widget { grid-column: span 4; }
+    .client-status { grid-column: span 4; }
+    .milestones { grid-column: span 4; }
+    .quick-notes { grid-column: span 4; }
+}
+
+/* Tablet (768px - 1023px) - 4 columns */
+@media (max-width: 1023px) and (min-width: 768px) {
+    .grid-container {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .my-tasks { grid-column: span 4; min-height: 320px; }
+    .gm-urgent { grid-column: span 4; }
+    .team-progress { grid-column: span 2; }
+    .calendar-widget { grid-column: span 2; }
+    .client-status { grid-column: span 4; }
+    .milestones { grid-column: span 4; }
+    .quick-notes { grid-column: span 4; }
+}
+
+/* Mobile (< 768px) - 1 column */
+@media (max-width: 767px) {
+    .viewport {
+        padding: 12px;
+    }
+
+    .grid-container {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .my-tasks, 
+    .gm-urgent, 
+    .team-progress, 
+    .calendar-widget, 
+    .client-status, 
+    .milestones, 
+    .quick-notes {
+        width: 100%;
+        min-height: auto;
+        grid-column: auto;
+        grid-row: auto;
+        padding: 16px;
+    }
+    
+    .glass-panel {
+        padding: 16px;
+        border-radius: 20px;
+    }
+    
+    .widget-title {
+        font-size: 0.8rem;
+    }
+    
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+        padding: 12px 4px;
+        margin-bottom: 16px;
+    }
+    
+    header .glass-panel {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .greeting h1 {
+        font-size: 1.8rem;
+    }
+
+    .task-list,
+    .notes-list {
+        max-height: 300px;
+    }
+}
+
+

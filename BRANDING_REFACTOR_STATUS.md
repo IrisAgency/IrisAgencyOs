@@ -16,6 +16,13 @@
 3) Retire branding edit UI and related update flows while keeping DOM/application branding intact.
 4) Verify branding persists (colors/logos) across app and PWA assets.
 
+## Progress
+- [x] Milestone 1: Created `theme/appTheme.ts` with static palette and assets; applies dashboard variables to DOM.
+- [x] Milestone 2: `config/branding.config.ts` and `BrandingContext` now delegate to the static theme; App uses read-only branding.
+- [x] Milestone 3 (UI removal): Removed Admin Branding tab/editor and related props; admin dashboard copy updated to reflect remaining scope.
+- [ ] Milestone 4: Pending verification pass across app/PWA surfaces.
+- Theming follow-through: Clients Hub re-skinned to use dashboard surfaces, borders, and primary tokens; remaining widgets and PWA checks still to verify.
+
 ## Notes
 - Do not modify existing color/asset values; only centralize and remove dynamic edits.
 - Track each milestone here for multi-session continuity.

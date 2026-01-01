@@ -1,15 +1,10 @@
 import React, { useState } from 'react';
-import { AppBranding, AppSettings, User, RoleDefinition, Permission, AuditLog, UserRole, Department, WorkflowTemplate, WorkflowStepTemplate, TaskType, DepartmentDefinition } from '../types';
-import { USERS, PERMISSIONS_LIST } from '../constants';
-import {
-    Shield, Palette, Users, Settings, Activity, Save, RotateCcw,
-    CheckCircle, Lock, Globe, Database, UserPlus, Edit2, Trash2,
-    Search, X, GitBranch, Plus, ArrowUp, ArrowDown, Building, Grid3x3
-} from 'lucide-react';
+import { AppSettings, User, RoleDefinition, AuditLog, DepartmentDefinition, WorkflowTemplate } from '../types';
+import { PERMISSIONS_LIST } from '../constants';
+import { GitBranch, Building, Grid3x3 } from 'lucide-react';
 import RolesManager from './RolesManager';
 import PermissionMatrix from './PermissionMatrix';
 import AdminOverview from './admin/AdminOverview';
-import BrandingEditor from './admin/BrandingEditor';
 import UsersManager from './admin/UsersManager';
 import WorkflowsManager from './admin/WorkflowsManager';
 import DepartmentsManager from './admin/DepartmentsManager';
@@ -18,15 +13,12 @@ import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
 
 interface AdminHubProps {
-    branding: AppBranding;
     settings: AppSettings;
     users: User[];
     roles: RoleDefinition[];
     auditLogs: AuditLog[];
     workflowTemplates: WorkflowTemplate[];
     departments: DepartmentDefinition[];
-    onUpdateBranding: (branding: AppBranding) => void;
-    onUpdateSettings: (settings: AppSettings) => void;
     onUpdateUser: (user: User) => void;
     onAddUser: (user: User) => void;
     onUpdateRole: (role: RoleDefinition) => void;
@@ -42,22 +34,22 @@ interface AdminHubProps {
 }
 
 const AdminHub: React.FC<AdminHubProps> = ({
-    branding, settings, users, roles, auditLogs, workflowTemplates, departments,
-    onUpdateBranding, onUpdateSettings, onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow, onSyncRoles,
+    settings, users, roles, auditLogs, workflowTemplates, departments,
+    onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow, onSyncRoles,
     onAddDepartment, onUpdateDepartment, onDeleteDepartment
 }) => {
-    const [activeTab, setActiveTab] = useState<'Overview' | 'Branding' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Settings' | 'Audit'>('Overview');
+    const [activeTab, setActiveTab] = useState<'Overview' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Settings' | 'Audit'>('Overview');
 
     return (
         <PageContainer>
             <PageHeader
                 title="Admin Dashboard"
-                subtitle="Control center for branding, users, and security."
+                subtitle="Control center for users, security, and workflows."
             />
 
             <div className="border-b border-slate-200">
                 <nav className="flex space-x-6 overflow-x-auto pb-1">
-                    {['Overview', 'Branding', 'Users', 'Roles', 'Matrix', 'Departments', 'Workflows', 'Settings', 'Audit'].map(tab => (
+                    {['Overview', 'Users', 'Roles', 'Matrix', 'Departments', 'Workflows', 'Settings', 'Audit'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
@@ -84,7 +76,6 @@ const AdminHub: React.FC<AdminHubProps> = ({
                         onSyncRoles={onSyncRoles}
                     />
                 )}
-                {activeTab === 'Branding' && <BrandingEditor branding={branding} onUpdateBranding={onUpdateBranding} />}
                 {activeTab === 'Users' && <UsersManager users={users} onUpdateUser={onUpdateUser} onAddUser={onAddUser} />}
                 {activeTab === 'Roles' && <RolesManager roles={roles} onAddRole={onAddRole} onUpdateRole={onUpdateRole} onDeleteRole={onDeleteRole} />}
                 {activeTab === 'Matrix' && <PermissionMatrix roles={roles} permissions={PERMISSIONS_LIST} onUpdateRole={onUpdateRole} onSyncRoles={onSyncRoles} />}

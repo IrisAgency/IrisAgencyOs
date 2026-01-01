@@ -709,9 +709,9 @@ const TaskDetailView = ({
                             )}
                         </div>
                         <div className="h-8 w-px bg-slate-200"></div>
-                        <div className="flex items-center text-sm text-slate-600 space-x-2">
+                        <div className="flex items-center text-sm text-slate-600 gap-2">
                             <Calendar className="w-4 h-4 text-slate-400" />
-                            <span>Due {new Date(task.dueDate).toLocaleDateString()}</span>
+                            <span className="ltr-text">Due {new Date(task.dueDate).toLocaleDateString()}</span>
                         </div>
                     </div>
 
@@ -783,7 +783,7 @@ const TaskDetailView = ({
 
             {/* Tabs */}
             <div className="border-b border-slate-200 px-6">
-                <nav className="-mb-px flex space-x-6 overflow-x-auto">
+                <nav className="-mb-px flex gap-6 overflow-x-auto">
                     {['overview', 'references', 'approvals', 'files', 'comments', 'time_logs', 'dependencies'].map(tab => (
                         <button
                             key={tab}

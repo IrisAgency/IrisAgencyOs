@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Search, Bell, Sparkles, LogOut, X, Check, Menu } from 'lucide-react';
 import { User, Notification } from '../types';
 import { useBranding } from '../contexts/BrandingContext';
+import './dashboard/DashboardTheme.css';
 
 interface HeaderProps {
   currentUser: User;
@@ -35,27 +36,27 @@ const Header: React.FC<HeaderProps> = ({
   }, [notificationRef]);
 
   return (
-    <header className="header bg-white border-b border-slate-200 shadow-sm">
+    <header className="header bg-[var(--dash-bg)] border-b border-[var(--dash-glass-border)] shadow-sm relative z-20" dir="ltr">
       <div className="h-full flex items-center justify-between px-4 lg:px-6 max-w-[1280px] mx-auto gap-4">
 
         {/* Left Section: Menu + Logo + Search */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors shrink-0"
+            className="lg:hidden p-2 rounded-lg hover:bg-[var(--dash-surface-elevated)] text-[var(--dash-secondary)] transition-colors shrink-0"
             aria-label="Toggle menu"
           >
-            <Menu className="w-6 h-6 text-slate-600" />
+            <Menu className="w-6 h-6" />
           </button>
 
           {/* Logo removed - redundant with sidebar */}
 
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--dash-secondary)] opacity-50 pointer-events-none" />
             <input
               type="text"
               placeholder="Search projects..."
-              className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-iris-red focus:bg-white transition-all"
+              className="w-full pl-10 pr-4 py-2 bg-[var(--dash-surface-elevated)] border border-[var(--dash-glass-border)] rounded-full text-sm text-[var(--dash-secondary)] placeholder-[var(--dash-secondary)]/50 focus:outline-none focus:ring-2 focus:ring-[var(--dash-primary)] focus:bg-[var(--dash-surface)] transition-all"
             />
           </div>
         </div>
@@ -64,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={toggleAI}
-            className="flex items-center gap-2 bg-gradient-to-r from-iris-red to-rose-600 text-white px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-iris-red/30 transition-all whitespace-nowrap"
+            className="flex items-center gap-2 bg-gradient-to-r from-[var(--dash-primary)] to-[var(--dash-secondary)] text-[var(--dash-on-primary)] px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-[var(--dash-primary)]/30 transition-all whitespace-nowrap"
           >
             <Sparkles className="w-4 h-4" />
             <span className="hidden sm:inline">Ask AI</span>
@@ -74,33 +75,33 @@ const Header: React.FC<HeaderProps> = ({
           <div className="relative" ref={notificationRef}>
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className={`relative text-slate-500 hover:text-slate-700 transition-colors p-1.5 rounded-full ${showNotifications ? 'bg-slate-100 text-iris-red' : ''}`}
+              className={`relative text-[var(--dash-secondary)] hover:text-[var(--dash-primary)] transition-colors p-1.5 rounded-full ${showNotifications ? 'bg-[var(--dash-surface-elevated)] text-[var(--dash-primary)]' : ''}`}
             >
               <Bell className="w-5 h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-0 right-0 w-2 h-2 bg-iris-red rounded-full border-2 border-white"></span>
+                <span className="absolute top-0 right-0 w-2 h-2 bg-[var(--dash-error)] rounded-full border-2 border-[var(--dash-bg)]"></span>
               )}
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right z-50">
-                <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                  <h3 className="font-bold text-sm text-slate-900">Notifications</h3>
-                  {unreadCount > 0 && <span className="text-xs font-bold text-white bg-iris-red px-2 py-0.5 rounded-full">{unreadCount} New</span>}
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-[var(--dash-surface)] rounded-xl shadow-xl border border-[var(--dash-glass-border)] overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right z-50">
+                <div className="p-3 border-b border-[var(--dash-glass-border)] flex justify-between items-center bg-[var(--dash-surface-elevated)]">
+                  <h3 className="font-bold text-sm text-[var(--dash-secondary)]">Notifications</h3>
+                  {unreadCount > 0 && <span className="text-xs font-bold text-[var(--dash-on-primary)] bg-[var(--dash-primary)] px-2 py-0.5 rounded-full">{unreadCount} New</span>}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {recentNotifications.length > 0 ? (
                     recentNotifications.map(n => (
-                      <div key={n.id} className={`p-3 border-b border-slate-50 hover:bg-slate-50 transition-colors ${!n.isRead ? 'bg-iris-red/5' : ''}`}>
+                      <div key={n.id} className={`p-3 border-b border-[var(--dash-glass-border)] hover:bg-[var(--dash-surface-elevated)] transition-colors ${!n.isRead ? 'bg-[var(--dash-primary)]/5' : ''}`}>
                         <div className="flex justify-between items-start mb-1">
-                          <span className={`text-xs font-bold ${!n.isRead ? 'text-iris-red' : 'text-slate-700'}`}>{n.title}</span>
-                          <span className="text-[10px] text-slate-400">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className={`text-xs font-bold ${!n.isRead ? 'text-[var(--dash-primary)]' : 'text-[var(--dash-secondary)]'}`}>{n.title}</span>
+                          <span className="text-[10px] text-[var(--dash-secondary)] opacity-70">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <p className="text-xs text-slate-600 line-clamp-2">{n.message}</p>
+                        <p className="text-xs text-[var(--dash-secondary)] opacity-80 line-clamp-2">{n.message}</p>
                         {!n.isRead && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onMarkAsRead(n.id); }}
-                            className="mt-2 text-[10px] text-iris-red font-medium hover:underline flex items-center gap-1"
+                            className="mt-2 text-[10px] text-[var(--dash-primary)] font-medium hover:underline flex items-center gap-1"
                           >
                             <Check className="w-3 h-3" /> Mark read
                           </button>
@@ -108,12 +109,12 @@ const Header: React.FC<HeaderProps> = ({
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-slate-400 text-xs">No notifications.</div>
+                    <div className="p-8 text-center text-[var(--dash-secondary)] opacity-50 text-xs">No notifications.</div>
                   )}
                 </div>
                 <button
                   onClick={() => { setShowNotifications(false); onViewAllNotifications(); }}
-                  className="w-full p-3 text-center text-sm font-medium text-iris-red hover:bg-slate-50 border-t border-slate-100"
+                  className="w-full p-3 text-center text-sm font-medium text-[var(--dash-primary)] hover:bg-[var(--dash-surface-elevated)] border-t border-[var(--dash-glass-border)]"
                 >
                   View All Notifications
                 </button>
@@ -121,20 +122,20 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-3 border-l border-slate-200 pl-3">
+          <div className="flex items-center gap-3 border-l border-[var(--dash-glass-border)] pl-3">
             <div className="text-right hidden lg:block">
-              <p className="text-sm font-semibold text-slate-900">{currentUser.name}</p>
-              <p className="text-xs text-slate-500">{currentUser.role || 'No Role'}</p>
+              <p className="text-sm font-semibold text-[var(--dash-secondary)]">{currentUser.name}</p>
+              <p className="text-xs text-[var(--dash-secondary)] opacity-70">{currentUser.role || 'No Role'}</p>
             </div>
             <img
               src={currentUser.avatar}
               alt={currentUser.name}
-              className="w-8 h-8 rounded-full object-cover border border-slate-200 ring-2 ring-transparent hover:ring-iris-red/20 transition-all shrink-0"
+              className="w-8 h-8 rounded-full object-cover border border-[var(--dash-glass-border)] ring-2 ring-transparent hover:ring-[var(--dash-primary)]/20 transition-all shrink-0"
             />
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="hidden sm:block p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-all"
+                className="hidden sm:block p-1.5 text-[var(--dash-secondary)] hover:text-[var(--dash-error)] hover:bg-[var(--dash-error)]/10 rounded-full transition-all"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />

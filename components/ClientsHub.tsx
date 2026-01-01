@@ -103,6 +103,24 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   // Notes State
   const [newNoteText, setNewNoteText] = useState('');
 
+  // Theming helpers to align with dashboard surfaces and tokens
+  const inputClass = 'w-full px-4 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)] focus:border-[color:var(--dash-primary)]';
+  const mutedLabel = 'block text-sm font-medium text-slate-200 mb-2';
+  const cardSurface = 'bg-[color:var(--dash-surface)] border border-transparent shadow-[0_18px_50px_rgba(0,0,0,0.45)]';
+  const elevatedSurface = 'bg-[color:var(--dash-surface-elevated)] border border-transparent shadow-[0_14px_40px_rgba(0,0,0,0.38)]';
+  const softDivider = 'border-[color:var(--dash-glass-border)]';
+  const backgroundGlow = (
+    <div
+      className="pointer-events-none absolute inset-0 -z-10"
+      style={{
+        backgroundImage:
+          'radial-gradient(circle at 20% 25%, rgba(223, 30, 60, 0.16) 0%, transparent 40%), ' +
+          'radial-gradient(circle at 80% 65%, rgba(239, 184, 200, 0.08) 0%, transparent 45%)',
+        backgroundColor: 'var(--dash-bg)'
+      }}
+    />
+  );
+
   // Helper Functions
   const getActiveProjectsCount = (client: Client) => {
     return projects.filter(p => p.clientId === client.id && !p.archived).length;
@@ -262,17 +280,17 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsClientModalOpen(false)}>
-        <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-          <div className="p-6 border-b border-slate-200">
-            <h2 className="text-xl font-bold text-slate-900">{isEditing ? 'Edit Client' : 'New Client'}</h2>
+        <div className={`${cardSurface} rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto text-slate-100`} onClick={(e) => e.stopPropagation()}>
+          <div className={`p-6 border-b ${softDivider}`}>
+            <h2 className="text-xl font-bold text-white">{isEditing ? 'Edit Client' : 'New Client'}</h2>
           </div>
           
           <form onSubmit={isEditing ? handleUpdateClient : handleCreateClient} className="p-6 space-y-4">
             {/* Logo Upload */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Logo</label>
+              <label className={mutedLabel}>Logo</label>
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden">
+                <div className="w-20 h-20 rounded-lg border-2 border-dashed border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] flex items-center justify-center overflow-hidden">
                   {clientForm.logo ? (
                     <img src={clientForm.logo} alt="Logo" className="w-full h-full object-contain p-2" />
                   ) : (
@@ -282,7 +300,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-medium"
+                  className="px-4 py-2 rounded-lg text-sm font-medium border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-100 hover:border-[color:var(--dash-outline)] transition-colors"
                 >
                   Upload Logo
                 </button>
@@ -299,22 +317,22 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {/* Name & Industry */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Client Name *</label>
+                <label className={mutedLabel}>Client Name *</label>
                 <input
                   type="text"
                   value={clientForm.name || ''}
                   onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Industry</label>
+                <label className={mutedLabel}>Industry</label>
                 <input
                   type="text"
                   value={clientForm.industry || ''}
                   onChange={(e) => setClientForm({ ...clientForm, industry: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -322,22 +340,22 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {/* Email & Phone */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                <label className={mutedLabel}>Email *</label>
                 <input
                   type="email"
                   value={clientForm.email || ''}
                   onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                   required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Phone</label>
+                <label className={mutedLabel}>Phone</label>
                 <input
                   type="tel"
                   value={clientForm.phone || ''}
                   onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -345,22 +363,22 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {/* Website & Address */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Website</label>
+                <label className={mutedLabel}>Website</label>
                 <input
                   type="text"
                   value={clientForm.website || ''}
                   onChange={(e) => setClientForm({ ...clientForm, website: e.target.value })}
                   placeholder="example.com"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Address</label>
+                <label className={mutedLabel}>Address</label>
                 <input
                   type="text"
                   value={clientForm.address || ''}
                   onChange={(e) => setClientForm({ ...clientForm, address: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 />
               </div>
             </div>
@@ -368,11 +386,11 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {/* Account Manager & Status */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Account Manager</label>
+                <label className={mutedLabel}>Account Manager</label>
                 <select
                   value={clientForm.accountManagerId || ''}
                   onChange={(e) => setClientForm({ ...clientForm, accountManagerId: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 >
                   <option value="">Select Manager</option>
                   {accountManagers.map(am => (
@@ -381,11 +399,11 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                <label className={mutedLabel}>Status</label>
                 <select
                   value={clientForm.status || 'active'}
                   onChange={(e) => setClientForm({ ...clientForm, status: e.target.value as any })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                  className={inputClass}
                 >
                   <option value="active">Active</option>
                   <option value="lead">Lead</option>
@@ -396,12 +414,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+              <label className={mutedLabel}>Notes</label>
               <textarea
                 value={clientForm.notes || ''}
                 onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })}
                 rows={3}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red"
+                className={inputClass}
               />
             </div>
 
@@ -410,13 +428,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               <button
                 type="button"
                 onClick={() => setIsClientModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                className="px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] text-slate-200 bg-[color:var(--dash-surface)] hover:border-[color:var(--dash-outline)] transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-iris-red text-white rounded-lg hover:bg-rose-700"
+                className="px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 transition-colors"
               >
                 {isEditing ? 'Update Client' : 'Create Client'}
               </button>
@@ -430,7 +448,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   // === LIST VIEW ===
   if (viewMode === 'list') {
     return (
-      <PageContainer>
+      <PageContainer className="relative isolate">
+        {backgroundGlow}
         {/* Page Header */}
         <PageHeader
           title="Clients"
@@ -443,7 +462,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                   setClientForm({ name: '', industry: '', email: '', phone: '', address: '', website: '', notes: '', status: 'active', accountManagerId: '', logo: '' });
                   setIsClientModalOpen(true);
                 }}
-                className="flex items-center gap-2 bg-iris-red text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[color:var(--dash-primary)] text-white border border-transparent hover:brightness-110 transition-all shadow-[0_10px_40px_rgba(223,30,60,0.35)]"
               >
                 <Plus className="w-4 h-4" />
                 <span>New Client</span>
@@ -461,7 +480,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name, industry, city..."
-              className="w-full pl-10 pr-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+              className={`w-full h-11 pl-10 pr-4 rounded-lg text-sm text-slate-100 placeholder:text-slate-500 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]`}
             />
           </div>
 
@@ -469,7 +488,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+            className={`px-4 h-11 rounded-lg text-sm text-slate-100 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]`}
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -482,7 +501,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-4 h-11 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red"
+            className={`px-4 h-11 rounded-lg text-sm text-slate-100 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]`}
           >
             <option value="newest">Newest</option>
             <option value="name">Name A-Z</option>
@@ -502,68 +521,68 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               return (
                 <div
                   key={client.id}
-                  className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                  className={`${cardSurface} rounded-xl shadow-[0_10px_30px_rgba(0,0,0,0.35)] hover:shadow-[0_20px_60px_rgba(0,0,0,0.45)] transition-all text-slate-100`}
                 >
                   {/* Card Content with consistent 16px padding and 12px gaps */}
                   <div className="p-4 flex flex-col gap-3 overflow-hidden">
                     {/* Header Row: Logo + Name/Industry + Status Badge */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex gap-3 flex-1 min-w-0">
-                        <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center overflow-hidden border border-iris-red/20 flex-shrink-0">
+                        <div className="w-12 h-12 rounded-lg bg-[color:var(--dash-surface-elevated)] flex items-center justify-center overflow-hidden border border-[color:var(--dash-glass-border)] flex-shrink-0">
                           {client.logo ? (
                             <img src={client.logo} alt="" className="w-full h-full object-contain p-1" />
                           ) : (
-                            <Building2 className="w-6 h-6 text-iris-red" />
+                            <Building2 className="w-6 h-6 text-[color:var(--dash-primary)]" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-lg leading-tight text-slate-900 truncate">{client.name}</h3>
-                          <p className="text-xs text-slate-500 mt-0.5 truncate">{client.industry}</p>
+                          <h3 className="font-bold text-lg leading-tight text-white truncate">{client.name}</h3>
+                          <p className="text-xs text-slate-400 mt-0.5 truncate">{client.industry}</p>
                         </div>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium border capitalize flex-shrink-0 leading-none ${
-                        client.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        client.status === 'lead' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        'bg-slate-50 text-slate-600 border-slate-200'
+                        client.status === 'active' ? 'bg-[rgba(16,185,129,0.12)] text-emerald-200 border-[color:rgba(16,185,129,0.35)]' :
+                        client.status === 'lead' ? 'bg-[rgba(245,158,11,0.12)] text-amber-200 border-[color:rgba(245,158,11,0.35)]' :
+                        'bg-[rgba(148,163,184,0.12)] text-slate-300 border-[color:rgba(148,163,184,0.35)]'
                       }`}>
                         {client.status}
                       </span>
                     </div>
 
                     {/* Stats Row: 2-column grid */}
-                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-100">
+                    <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[color:var(--dash-glass-border)]">
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">LTV</p>
-                        <p className="font-semibold text-slate-900">${ltv.toLocaleString()}</p>
+                        <p className="text-xs text-slate-400 mb-1">LTV</p>
+                        <p className="font-semibold text-white ltr-text">${ltv.toLocaleString()}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500 mb-1">Projects</p>
-                        <p className="font-semibold text-slate-900">{activeProjectsCount}</p>
+                        <p className="text-xs text-slate-400 mb-1">Projects</p>
+                        <p className="font-semibold text-white ltr-text">{activeProjectsCount}</p>
                       </div>
                     </div>
 
                     {/* Account Manager */}
-                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center gap-2 pt-2 border-t border-[color:var(--dash-glass-border)]">
                       {am ? (
                         <>
                           <img src={am.avatar} alt={am.name} className="w-6 h-6 rounded-full flex-shrink-0" />
-                          <span className="text-xs text-slate-600 truncate">{am.name}</span>
+                          <span className="text-xs text-slate-300 truncate">{am.name}</span>
                         </>
                       ) : (
-                        <span className="text-xs text-slate-400">No manager</span>
+                        <span className="text-xs text-slate-500">No manager</span>
                       )}
                     </div>
                   </div>
 
                   {/* Footer Row: Open + Projects + Menu (consistent heights) */}
-                  <div className="border-t border-slate-200 p-3 bg-slate-50/50">
+                  <div className={`border-t ${softDivider} p-3 bg-[color:var(--dash-surface-elevated)]`}>
                     <div className="grid grid-cols-[1fr_1fr_auto] gap-2.5 items-center">
                       <button
                         onClick={() => {
                           setSelectedClient(client);
                           setViewMode('detail');
                         }}
-                        className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                        className="h-11 rounded-lg text-sm font-medium text-slate-100 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)] hover:border-[color:var(--dash-outline)] transition-colors"
                       >
                         Open
                       </button>
@@ -573,13 +592,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                           setViewMode('detail');
                           setActiveTab('projects');
                         }}
-                        className="h-11 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                        className="h-11 rounded-lg text-sm font-medium text-slate-100 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)] hover:border-[color:var(--dash-outline)] transition-colors"
                       >
                         Projects
                       </button>
                       <DropdownMenu
                         trigger={
-                          <button className="w-11 h-11 flex items-center justify-center bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                          <button className="w-11 h-11 flex items-center justify-center rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)] hover:border-[color:var(--dash-outline)] transition-colors">
                             <MoreHorizontal className="w-5 h-5 text-slate-400" />
                           </button>
                         }
@@ -629,9 +648,9 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           </div>
 
           {filteredClients.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-              <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No clients found matching your filters.</p>
+            <div className={`${cardSurface} text-center py-12 rounded-xl text-slate-200`}>
+              <Building2 className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+              <p className="text-slate-400">No clients found matching your filters.</p>
             </div>
           )}
         </PageContent>
@@ -653,59 +672,60 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const clientBrandAssets = brandAssets.filter(ba => ba.clientId === selectedClient.id);
 
   return (
-    <PageContainer>
+    <PageContainer className="relative isolate">
+      {backgroundGlow}
       {/* Back Button */}
       <button
         onClick={() => setViewMode('list')}
-        className="flex items-center gap-2 text-slate-600 hover:text-iris-red transition-colors"
+        className="flex items-center gap-2 text-slate-300 hover:text-[color:var(--dash-primary)] transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Clients</span>
       </button>
 
       {/* Client Header */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <div className={`${cardSurface} rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.35)] p-6 text-slate-100`}>
         <div className="flex flex-col lg:flex-row justify-between items-start gap-4">
           <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className="w-16 h-16 rounded-lg overflow-hidden bg-white flex items-center justify-center border border-iris-red/20 flex-shrink-0">
+            <div className="w-16 h-16 rounded-lg overflow-hidden bg-[color:var(--dash-surface-elevated)] flex items-center justify-center border border-[color:var(--dash-glass-border)] flex-shrink-0">
               {selectedClient.logo ? (
                 <img src={selectedClient.logo} alt={selectedClient.name} className="w-full h-full object-contain p-2" />
               ) : (
-                <Building2 className="w-8 h-8 text-iris-red" />
+                <Building2 className="w-8 h-8 text-[color:var(--dash-primary)]" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <h1 className="text-2xl font-bold text-slate-900">{selectedClient.name}</h1>
+                <h1 className="text-2xl font-bold text-white">{selectedClient.name}</h1>
                 <span className={`px-3 py-1 rounded-full text-xs font-medium border uppercase ${
-                  selectedClient.status === 'active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                  selectedClient.status === 'inactive' ? 'bg-slate-50 text-slate-600 border-slate-200' :
-                  'bg-amber-50 text-amber-700 border-amber-200'
+                  selectedClient.status === 'active' ? 'bg-[rgba(16,185,129,0.14)] text-emerald-200 border-[color:rgba(16,185,129,0.35)]' :
+                  selectedClient.status === 'inactive' ? 'bg-[rgba(148,163,184,0.12)] text-slate-300 border-[color:rgba(148,163,184,0.35)]' :
+                  'bg-[rgba(245,158,11,0.14)] text-amber-200 border-[color:rgba(245,158,11,0.35)]'
                 }`}>
                   {selectedClient.status}
                 </span>
               </div>
-              <p className="text-slate-600 mb-3">{selectedClient.industry}</p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-600">
+              <p className="text-slate-300 mb-3">{selectedClient.industry}</p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-300">
                 {selectedClient.website && (
                   <a
                     href={selectedClient.website.startsWith('http') ? selectedClient.website : `https://${selectedClient.website}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 hover:text-iris-red"
+                    className="flex items-center gap-1 hover:text-[color:var(--dash-primary)]"
                   >
                     <Globe className="w-4 h-4" />
-                    <span className="truncate">{selectedClient.website}</span>
+                    <span className="truncate ltr-text">{selectedClient.website}</span>
                   </a>
                 )}
                 <span className="flex items-center gap-1">
                   <Mail className="w-4 h-4" />
-                  <span className="truncate">{selectedClient.email}</span>
+                  <span className="truncate ltr-text">{selectedClient.email}</span>
                 </span>
                 {selectedClient.phone && (
                   <span className="flex items-center gap-1">
                     <Phone className="w-4 h-4" />
-                    <span>{selectedClient.phone}</span>
+                    <span className="ltr-text">{selectedClient.phone}</span>
                   </span>
                 )}
               </div>
@@ -732,7 +752,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                   setIsEditing(true);
                   setIsClientModalOpen(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-100 hover:border-[color:var(--dash-outline)]"
               >
                 <Edit2 className="w-4 h-4" />
                 <span>Edit</span>
@@ -741,7 +761,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {checkPermission('clients.archive') && (
               <button
                 onClick={handleArchiveClient}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-100 hover:border-[color:var(--dash-outline)]"
               >
                 <Archive className="w-4 h-4" />
               </button>
@@ -749,7 +769,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             {checkPermission('clients.delete') && (
               <button
                 onClick={() => handleDeleteClient(selectedClient.id)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-red-600 hover:bg-red-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] text-red-300 hover:border-red-400"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -759,8 +779,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="client-tabs bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="border-b border-slate-200 overflow-x-auto">
+      <div className={`client-tabs ${cardSurface} rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.35)] overflow-hidden`}>
+        <div className={`border-b ${softDivider} overflow-x-auto`}>
           <div className="flex min-w-max">
             {[
               { id: 'overview', label: 'Overview' },
@@ -775,8 +795,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-iris-red text-iris-red'
-                    : 'border-transparent text-slate-600 hover:text-slate-900'
+                    ? 'border-[color:var(--dash-primary)] text-white'
+                    : 'border-transparent text-slate-400 hover:text-slate-100'
                 }`}
               >
                 {tab.label}
@@ -790,16 +810,16 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             <div className="space-y-6">
               {/* Stats Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-sm text-slate-600 mb-1">Active Projects</p>
-                  <p className="text-2xl font-bold text-slate-900">{activeProjects.length}</p>
+                <div className={`${elevatedSurface} rounded-lg p-4`}>
+                  <p className="text-sm text-slate-400 mb-1">Active Projects</p>
+                  <p className="text-2xl font-bold text-white ltr-text">{activeProjects.length}</p>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-sm text-slate-600 mb-1">Lifetime Value</p>
-                  <p className="text-2xl font-bold text-slate-900">${getLifetimeValue(selectedClient).toLocaleString()}</p>
+                <div className={`${elevatedSurface} rounded-lg p-4`}>
+                  <p className="text-sm text-slate-400 mb-1">Lifetime Value</p>
+                  <p className="text-2xl font-bold text-white ltr-text">${getLifetimeValue(selectedClient).toLocaleString()}</p>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-4">
-                  <p className="text-sm text-slate-600 mb-1">Account Manager</p>
+                <div className={`${elevatedSurface} rounded-lg p-4`}>
+                  <p className="text-sm text-slate-400 mb-1">Account Manager</p>
                   <div className="flex items-center gap-2 mt-2">
                     {getAccountManager(selectedClient) ? (
                       <>
@@ -808,12 +828,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                           alt=""
                           className="w-6 h-6 rounded-full"
                         />
-                        <span className="text-sm font-medium text-slate-900 truncate">
+                        <span className="text-sm font-medium text-white truncate">
                           {getAccountManager(selectedClient)!.name}
                         </span>
                       </>
                     ) : (
-                      <span className="text-sm text-slate-400">Unassigned</span>
+                      <span className="text-sm text-slate-500">Unassigned</span>
                     )}
                   </div>
                 </div>
@@ -821,21 +841,21 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
               {/* Client Info */}
               <div>
-                <h3 className="font-semibold text-slate-900 mb-3">Client Information</h3>
+                <h3 className="font-semibold text-white mb-3">Client Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-slate-500">Address</p>
-                    <p className="text-slate-900 wrap-anywhere">{selectedClient.address || 'Not provided'}</p>
+                    <p className="text-slate-400">Address</p>
+                    <p className="text-slate-100 wrap-anywhere">{selectedClient.address || 'Not provided'}</p>
                   </div>
                   <div>
-                    <p className="text-slate-500">Created</p>
-                    <p className="text-slate-900">{new Date(selectedClient.createdAt || '').toLocaleDateString()}</p>
+                    <p className="text-slate-400">Created</p>
+                    <p className="text-slate-100">{new Date(selectedClient.createdAt || '').toLocaleDateString()}</p>
                   </div>
                 </div>
                 {selectedClient.notes && (
                   <div className="mt-4">
-                    <p className="text-slate-500 mb-1">Notes</p>
-                    <p className="text-slate-900 wrap-anywhere">{selectedClient.notes}</p>
+                    <p className="text-slate-400 mb-1">Notes</p>
+                    <p className="text-slate-100 wrap-anywhere">{selectedClient.notes}</p>
                   </div>
                 )}
               </div>
@@ -843,7 +863,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               {/* Social Links */}
               {clientSocialLinks.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-slate-900 mb-3">Social Media</h3>
+                  <h3 className="font-semibold text-white mb-3">Social Media</h3>
                   <div className="flex flex-wrap gap-2">
                     {clientSocialLinks.map(link => (
                       <a
@@ -851,7 +871,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                         href={link.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 text-sm"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-100 border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] hover:border-[color:var(--dash-outline)] transition-colors"
                       >
                         {link.platform === 'instagram' && <Instagram className="w-4 h-4 text-pink-600" />}
                         {link.platform === 'facebook' && <Facebook className="w-4 h-4 text-blue-600" />}
@@ -860,7 +880,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                         {link.platform === 'tiktok' && <Video className="w-4 h-4" />}
                         {link.platform === 'other' && <LinkIcon className="w-4 h-4" />}
                         <span className="truncate">{link.username || link.label || link.platform}</span>
-                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                        <ExternalLink className="w-3 h-3 text-slate-500" />
                       </a>
                     ))}
                   </div>
@@ -872,28 +892,28 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           {activeTab === 'projects' && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="font-semibold text-slate-900">Projects</h3>
+                <h3 className="font-semibold text-white">Projects</h3>
               </div>
               
               {/* Projects List as Cards */}
               <div className="space-y-3">
                 {activeProjects.length === 0 ? (
-                  <p className="text-slate-500 text-center py-8">No active projects</p>
+                  <p className="text-slate-400 text-center py-8">No active projects</p>
                 ) : (
                   activeProjects.map(project => (
-                    <div key={project.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                    <div key={project.id} className={`${elevatedSurface} rounded-lg p-4 text-slate-100`}>
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-slate-900 truncate">{project.name}</h4>
-                          <p className="text-sm text-slate-600 mt-1 truncate">{project.description}</p>
-                          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-500">
+                          <h4 className="font-medium text-white truncate">{project.name}</h4>
+                          <p className="text-sm text-slate-300 mt-1 truncate">{project.description}</p>
+                          <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-400">
                             <span>Start: {new Date(project.startDate).toLocaleDateString()}</span>
                             {project.endDate && <span>End: {new Date(project.endDate).toLocaleDateString()}</span>}
                           </div>
                         </div>
                         <button
                           onClick={() => onOpenProject?.(project.id)}
-                          className="px-3 py-1.5 bg-white border border-slate-200 rounded text-sm hover:bg-slate-50 flex-shrink-0"
+                          className="px-3 py-1.5 rounded text-sm flex-shrink-0 border border-[color:var(--dash-outline)] text-slate-100 hover:border-[color:var(--dash-primary)]"
                         >
                           Open
                         </button>
@@ -948,19 +968,19 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           {activeTab === 'notes' && (
             <div className="space-y-4">
               {checkPermission('client.notes.create') && (
-                <form onSubmit={handleAddNote} className="bg-slate-50 rounded-lg p-4">
+                <form onSubmit={handleAddNote} className={`${elevatedSurface} rounded-lg p-4`}>
                   <textarea
                     value={newNoteText}
                     onChange={(e) => setNewNoteText(e.target.value)}
                     placeholder="Add a note..."
                     rows={3}
-                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-iris-red resize-none"
+                    className={`${inputClass} resize-none`}
                   />
                   <div className="flex justify-end mt-2">
                     <button
                       type="submit"
                       disabled={!newNoteText.trim()}
-                      className="px-4 py-2 bg-iris-red text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                      className="px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                     >
                       Add Note
                     </button>
@@ -971,17 +991,17 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               {/* Notes List */}
               <div className="space-y-3">
                 {clientNotes.length === 0 ? (
-                  <p className="text-slate-500 text-center py-8">No notes yet</p>
+                  <p className="text-slate-400 text-center py-8">No notes yet</p>
                 ) : (
                   clientNotes.map(note => (
-                    <div key={note.id} className="bg-white border border-slate-200 rounded-lg p-4">
-                      <p className="text-slate-900 wrap-anywhere">{note.text}</p>
+                    <div key={note.id} className={`${cardSurface} rounded-lg p-4`}>
+                      <p className="text-slate-100 wrap-anywhere">{note.text}</p>
                       <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
                         <span>{note.createdByName} • {new Date(note.createdAt).toLocaleDateString()}</span>
                         {checkPermission('client.notes.delete') && (
                           <button
                             onClick={() => onDeleteNote?.(note.id)}
-                            className="text-red-600 hover:text-red-700"
+                            className="text-red-300 hover:text-red-200"
                           >
                             Delete
                           </button>

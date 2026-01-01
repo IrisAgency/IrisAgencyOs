@@ -147,7 +147,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                         </div>
 
                         <div className="border-t border-slate-100 pt-4 flex items-center justify-between text-xs text-slate-400">
-                            <span>{wf.steps.length} Steps</span>
+                            <span className="ltr-text">{wf.steps.length} Steps</span>
                             <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">{wf.requiresClientApproval ? <CheckCircle className="w-3 h-3 text-indigo-500" /> : <X className="w-3 h-3" />} Client Approval</span>
                             </div>
@@ -209,7 +209,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                         <div key={step.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex gap-4 items-start">
                                             <div className="flex flex-col gap-1 pt-2">
                                                 <button onClick={() => moveStep(index, 'up')} disabled={index === 0} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ArrowUp className="w-4 h-4" /></button>
-                                                <span className="text-xs font-mono text-center font-bold text-slate-300">{index + 1}</span>
+                                                <span className="text-xs font-mono text-center font-bold text-slate-300 ltr-text">{index + 1}</span>
                                                 <button onClick={() => moveStep(index, 'down')} disabled={index === editingWorkflow.steps.length - 1} className="text-slate-400 hover:text-indigo-600 disabled:opacity-30"><ArrowDown className="w-4 h-4" /></button>
                                             </div>
                                             <div className="flex-1 grid grid-cols-2 gap-4">
