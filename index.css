@@ -53,6 +53,7 @@
   body {
     width: 100%;
     overflow-x: hidden;
+    background-color: #050505;
   }
   
   /* PWA Support - iOS Safe Areas */
@@ -74,6 +75,7 @@
   /* AppShell Layout System */
   .app-shell {
     min-height: 100vh;
+    background-color: #050505;
   }
 
   .sidebar {
@@ -98,6 +100,7 @@
     margin-left: var(--sidebar-w);
     padding-top: var(--header-h);
     min-height: 100vh;
+    background-color: #050505;
   }
 
   .page {
@@ -324,5 +327,32 @@
 
   .animate-slide-up {
     animation: slide-up 0.3s ease-out;
+  }
+
+  /* Text handling defaults to LTR; utility class keeps numbers/codes aligned */
+  body {
+    direction: ltr;
+    text-align: left;
+  }
+
+  .ltr-text,
+  .data-mono,
+  input[type="email"],
+  input[type="url"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"],
+  input[type="number"],
+  .technical-text,
+  .input-ltr {
+    direction: ltr !important;
+    unicode-bidi: isolate !important;
+    text-align: left;
+  }
+
+  .isolate-bidi {
+    unicode-bidi: isolate;
   }
 }
