@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getMessaging, isSupported } from 'firebase/messaging';
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -12,7 +13,16 @@ export const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+export const firebaseApp = initializeApp(firebaseConfig);
+export const auth = getAuth(firebaseApp);
+export const db = initializeFirestore(firebaseApp, {
+  experimentalForceLongPolling: true,
+});
+export const storage = getStorage(firebaseApp);
+
+export const messagingPromise = isSupported().then((supported) => {
+  if (!supported) return null;
+  return getMessaging(firebaseApp);
+});
+
+export const messagingVapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
