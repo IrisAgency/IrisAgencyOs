@@ -15,8 +15,8 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
     return (
         <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Budget vs Spent (Top Active)</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Budget vs Spent (Top Active)</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[320px] h-64 w-full text-xs">
                             <ResponsiveContainer width="100%" height="100%">
@@ -34,8 +34,8 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
                     </div>
                 </div>
 
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm lg:col-span-2">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Project Status Distribution</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10 lg:col-span-2">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Project Status Distribution</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[320px] h-64 w-full flex items-center justify-center">
                             <ResponsiveContainer width="100%" height="100%">
@@ -66,9 +66,9 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
             </div>
 
             {/* Detailed List */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
-                    <h3 className="font-bold text-slate-900">Project Health Check</h3>
+            <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 overflow-hidden">
+                <div className="p-6 border-b border-iris-white/10">
+                    <h3 className="font-bold text-iris-white">Project Health Check</h3>
                 </div>
                 <DataTable<Project>
                     data={projects}
@@ -78,7 +78,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
                         {
                             header: 'Project',
                             accessorKey: 'name',
-                            className: 'font-medium text-slate-900'
+                            className: 'font-medium text-iris-white'
                         },
                         {
                             header: 'Progress (Tasks)',
@@ -88,10 +88,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
                                 const progress = projectTasks.length > 0 ? Math.round((completed / projectTasks.length) * 100) : 0;
                                 return (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-full bg-slate-200 rounded-full h-2">
+                                        <div className="w-full bg-iris-black/95 border border-iris-white/10 rounded-full h-2">
                                             <div className="bg-iris-red h-2 rounded-full" style={{ width: `${progress}%` }}></div>
                                         </div>
-                                        <span className="text-xs text-slate-500 w-8">{progress}%</span>
+                                        <span className="text-xs text-iris-white/70 w-8">{progress}%</span>
                                     </div>
                                 );
                             },
@@ -103,10 +103,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
                                 const burn = p.budget > 0 ? Math.round((p.spent / p.budget) * 100) : 0;
                                 return (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-full bg-slate-200 rounded-full h-2">
+                                        <div className="w-full bg-iris-black/95 border border-iris-white/10 rounded-full h-2">
                                             <div className={`h-2 rounded-full ${burn > 100 ? 'bg-rose-500' : burn > 80 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(burn, 100)}%` }}></div>
                                         </div>
-                                        <span className="text-xs text-slate-500 w-8">{burn}%</span>
+                                        <span className="text-xs text-iris-white/70 w-8">{burn}%</span>
                                     </div>
                                 );
                             },
@@ -120,10 +120,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
                                 const timeProgress = Math.min(Math.max(Math.round((daysPassed / totalDays) * 100), 0), 100);
                                 return (
                                     <div className="flex items-center gap-2">
-                                        <div className="w-full bg-slate-200 rounded-full h-2">
+                                        <div className="w-full bg-iris-black/95 border border-iris-white/10 rounded-full h-2">
                                             <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${timeProgress}%` }}></div>
                                         </div>
-                                        <span className="text-xs text-slate-500 w-8">{timeProgress}%</span>
+                                        <span className="text-xs text-iris-white/70 w-8">{timeProgress}%</span>
                                     </div>
                                 );
                             },

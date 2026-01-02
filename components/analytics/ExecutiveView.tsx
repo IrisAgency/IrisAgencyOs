@@ -40,7 +40,7 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                     subtext="+12.5% from last month"
                     icon={DollarSign}
                     trend="up"
-                    color="bg-emerald-50 text-emerald-600"
+                    color="bg-emerald-500/20 text-emerald-400"
                 />
                 <KPICard
                     title="Net Profit"
@@ -48,28 +48,28 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                     subtext={`${profitMargin.toFixed(1)}% margin`}
                     icon={TrendingUp}
                     trend={netProfit > 0 ? 'up' : 'down'}
-                    color={netProfit > 0 ? "bg-iris-red/10 text-iris-red" : "bg-rose-50 text-rose-600"}
+                    color={netProfit > 0 ? "bg-iris-red/20 text-iris-red" : "bg-rose-500/20 text-rose-400"}
                 />
                 <KPICard
                     title="Active Projects"
                     value={activeProjects.length}
                     subtext={`${atRiskProjects.length} requiring attention`}
                     icon={Briefcase}
-                    color="bg-blue-50 text-blue-600"
+                    color="bg-blue-500/20 text-blue-400"
                 />
                 <KPICard
                     title="Outstanding Invoices"
                     value={`$${(totalOutstanding || 0).toLocaleString()}`}
                     subtext="Unpaid client balance"
                     icon={AlertCircle}
-                    color="bg-amber-50 text-amber-600"
+                    color="bg-amber-500/20 text-amber-400"
                 />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                 {/* Main Financial Chart */}
-                <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Financial Performance</h3>
+                <div className="lg:col-span-2 bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Financial Performance</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[350px] h-80 w-full text-xs min-h-[320px]">
                             <ResponsiveContainer width="100%" height={320}>
@@ -98,8 +98,8 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                 </div>
 
                 {/* Top Clients Donut */}
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Revenue by Client</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Revenue by Client</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[300px] h-60 w-full">
                             <ResponsiveContainer width="100%" height={240}>
@@ -127,12 +127,12 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
             </div>
 
             {/* Projects at Risk Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm md:text-base">
+            <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 overflow-hidden">
+                <div className="p-4 md:p-6 border-b border-iris-white/10 flex justify-between items-center">
+                    <h3 className="font-bold text-iris-white flex items-center gap-2 text-sm md:text-base">
                         <AlertCircle className="w-4 h-4 md:w-5 md:h-5 text-rose-500" /> Projects Requiring Attention
                     </h3>
-                    <button className="text-xs md:text-sm text-iris-red hover:underline">View All</button>
+                    <button className="text-xs md:text-sm text-iris-red hover:brightness-110">View All</button>
                 </div>
                 <DataTable<Project>
                     data={atRiskProjects}
@@ -142,12 +142,12 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                         {
                             header: 'Project Name',
                             accessorKey: 'name',
-                            className: 'font-medium text-slate-900'
+                            className: 'font-medium text-iris-white'
                         },
                         {
                             header: 'Client',
                             accessorKey: 'client',
-                            className: 'text-slate-600'
+                            className: 'text-iris-white/70'
                         },
                         {
                             header: 'Manager',
@@ -166,10 +166,10 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                             cell: (p) => (
                                 <>
                                     {p.spent > p.budget && (
-                                        <span className="text-rose-600 font-medium flex items-center gap-1">Over Budget <TrendingUp className="w-3 h-3" /></span>
+                                        <span className="text-rose-400 font-medium flex items-center gap-1">Over Budget <TrendingUp className="w-3 h-3" /></span>
                                     )}
                                     {new Date(p.endDate) < new Date() && (
-                                        <span className="text-amber-600 font-medium flex items-center gap-1">Overdue <Calendar className="w-3 h-3" /></span>
+                                        <span className="text-amber-400 font-medium flex items-center gap-1">Overdue <Calendar className="w-3 h-3" /></span>
                                     )}
                                 </>
                             )
@@ -177,7 +177,7 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
                         {
                             header: 'Status',
                             cell: (p) => (
-                                <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs uppercase font-bold">{p.status}</span>
+                                <span className="bg-iris-black/95 text-iris-white/70 px-2 py-1 rounded text-xs uppercase font-bold border border-iris-white/10">{p.status}</span>
                             )
                         }
                     ]}

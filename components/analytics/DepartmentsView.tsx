@@ -13,8 +13,8 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
     return (
         <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Workload Distribution</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Workload Distribution</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[350px] h-80 w-full text-xs">
                             <ResponsiveContainer width="100%" height="100%">
@@ -32,22 +32,22 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
                     </div>
                 </div>
 
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Task Throughput by Department</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Task Throughput by Department</h3>
                     <div className="space-y-4">
                         {deptData.map((d, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg hover:bg-slate-50">
+                            <div key={i} className="flex items-center justify-between p-3 border border-iris-white/10 rounded-lg hover:bg-iris-black/95">
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-lg ${d.subject === 'Creative' ? 'bg-purple-50 text-purple-600' :
-                                        d.subject === 'Production' ? 'bg-blue-50 text-blue-600' :
-                                            'bg-slate-100 text-slate-600'
+                                    <div className={`p-2 rounded-lg ${d.subject === 'Creative' ? 'bg-purple-500/20 text-purple-400' :
+                                        d.subject === 'Production' ? 'bg-blue-500/20 text-blue-400' :
+                                            'bg-iris-black/95 text-iris-white/70'
                                         }`}>
                                         <Briefcase className="w-4 h-4" />
                                     </div>
-                                    <span className="font-medium text-slate-900">{d.subject}</span>
+                                    <span className="font-medium text-iris-white">{d.subject}</span>
                                 </div>
                                 <div className="text-right">
-                                    <span className="text-xs text-slate-500 block">Completion Rate</span>
+                                    <span className="text-xs text-iris-white/40 block">Completion Rate</span>
                                     <span className="text-sm font-bold text-iris-red">
                                         {d.A > 0 ? Math.round((d.B / d.A) * 100) : 0}%
                                     </span>
@@ -59,9 +59,9 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
             </div>
 
             {/* Workload Table */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-slate-100">
-                    <h3 className="font-bold text-slate-900">Departmental Bottlenecks</h3>
+            <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 overflow-hidden">
+                <div className="p-6 border-b border-iris-white/10">
+                    <h3 className="font-bold text-iris-white">Departmental Bottlenecks</h3>
                 </div>
                 <DataTable<string>
                     data={Object.values(Department)}
@@ -70,7 +70,7 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
                     columns={[
                         {
                             header: 'Department',
-                            cell: (dept) => <span className="font-medium text-slate-900">{dept}</span>
+                            cell: (dept) => <span className="font-medium text-iris-white">{dept}</span>
                         },
                         {
                             header: 'Active Tasks',
@@ -85,7 +85,7 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
                             cell: (dept) => {
                                 const deptTasks = tasks.filter(t => t.department === dept);
                                 const overdue = deptTasks.filter(t => new Date(t.dueDate) < new Date() && t.status !== 'completed').length;
-                                return overdue > 0 ? <span className="text-rose-600 font-bold">{overdue}</span> : <span className="text-emeraliris-red">0</span>;
+                                return overdue > 0 ? <span className="text-rose-400 font-bold">{overdue}</span> : <span className="text-emerald-400">0</span>;
                             }
                         },
                         {
@@ -93,7 +93,7 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
                             cell: (dept) => {
                                 const deptTasks = tasks.filter(t => t.department === dept);
                                 const highPriority = deptTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length;
-                                return <span className="text-slate-500">{highPriority} High/Crit</span>;
+                                return <span className="text-iris-white/70">{highPriority} High/Crit</span>;
                             }
                         }
                     ]}

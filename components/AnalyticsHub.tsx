@@ -101,13 +101,13 @@ const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
             subtitle="Strategic insights and performance monitoring."
          />
 
-         <div className="border-b border-slate-200">
+         <div className="border-b border-iris-white/10">
             <nav className="flex space-x-6">
                {['Executive', 'Financial', 'Projects', 'Departments'].map(tab => (
                   <button
                      key={tab}
                      onClick={() => setActiveTab(tab as any)}
-                     className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                     className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-iris-red text-iris-red' : 'border-transparent text-iris-white/70 hover:text-iris-white'
                         }`}
                   >
                      {tab === 'Executive' && <Activity className="w-4 h-4" />}

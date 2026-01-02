@@ -21,27 +21,27 @@ const FinancialView: React.FC<FinancialViewProps> = ({
     return (
         <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <h3 className="text-slate-500 font-medium text-sm uppercase">Total Invoiced</h3>
-                    <p className="text-3xl font-bold text-slate-900 my-2">${invoices.reduce((acc, i) => acc + i.total, 0).toLocaleString()}</p>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 flex flex-col justify-between">
+                    <h3 className="text-iris-white/70 font-medium text-sm uppercase">Total Invoiced</h3>
+                    <p className="text-3xl font-bold text-iris-white my-2">${invoices.reduce((acc, i) => acc + i.total, 0).toLocaleString()}</p>
+                    <div className="w-full bg-iris-black/95 h-2 rounded-full overflow-hidden border border-iris-white/10">
                         <div className="h-full bg-iris-red" style={{ width: '100%' }}></div>
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <h3 className="text-slate-500 font-medium text-sm uppercase">Collected</h3>
-                    <p className="text-3xl font-bold text-emerald-600 my-2">${invoices.reduce((acc, i) => acc + i.paid, 0).toLocaleString()}</p>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 flex flex-col justify-between">
+                    <h3 className="text-iris-white/70 font-medium text-sm uppercase">Collected</h3>
+                    <p className="text-3xl font-bold text-emerald-400 my-2">${invoices.reduce((acc, i) => acc + i.paid, 0).toLocaleString()}</p>
+                    <div className="w-full bg-iris-black/95 h-2 rounded-full overflow-hidden border border-iris-white/10">
                         <div
                             className="h-full bg-emerald-500"
                             style={{ width: `${(invoices.reduce((acc, i) => acc + i.paid, 0) / Math.max(invoices.reduce((acc, i) => acc + i.total, 0), 1)) * 100}%` }}
                         ></div>
                     </div>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                    <h3 className="text-slate-500 font-medium text-sm uppercase">Outstanding</h3>
-                    <p className="text-3xl font-bold text-amber-600 my-2">${(totalOutstanding || 0).toLocaleString()}</p>
-                    <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 flex flex-col justify-between">
+                    <h3 className="text-iris-white/70 font-medium text-sm uppercase">Outstanding</h3>
+                    <p className="text-3xl font-bold text-amber-400 my-2">${(totalOutstanding || 0).toLocaleString()}</p>
+                    <div className="w-full bg-iris-black/95 h-2 rounded-full overflow-hidden border border-iris-white/10">
                         <div
                             className="h-full bg-amber-500"
                             style={{ width: `${(totalOutstanding / Math.max(invoices.reduce((acc, i) => acc + i.total, 0), 1)) * 100}%` }}
@@ -52,8 +52,8 @@ const FinancialView: React.FC<FinancialViewProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 {/* Expense Breakdown */}
-                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Expense Distribution</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10">
+                    <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Expense Distribution</h3>
                     <div className="overflow-x-auto">
                         <div className="min-w-[400px] h-64 w-full text-xs">
                             <ResponsiveContainer width="100%" height="100%">
@@ -79,9 +79,9 @@ const FinancialView: React.FC<FinancialViewProps> = ({
                 </div>
 
                 {/* Recent Payments Table */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                    <div className="p-4 md:p-6 border-b border-slate-100">
-                        <h3 className="font-bold text-slate-900 text-sm md:text-base">Recent Payments Received</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 overflow-hidden flex flex-col">
+                    <div className="p-4 md:p-6 border-b border-iris-white/10">
+                        <h3 className="font-bold text-iris-white text-sm md:text-base">Recent Payments Received</h3>
                     </div>
                     <div className="flex-1">
                         <DataTable<Payment>
@@ -99,7 +99,7 @@ const FinancialView: React.FC<FinancialViewProps> = ({
                                 },
                                 {
                                     header: 'Amount',
-                                    cell: (pay) => <span className="text-emerald-600 font-medium">+${pay.amount.toLocaleString()}</span>,
+                                    cell: (pay) => <span className="text-emerald-400 font-medium">+${pay.amount.toLocaleString()}</span>,
                                     className: 'text-right'
                                 }
                             ]}
