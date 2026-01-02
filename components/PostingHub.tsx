@@ -241,17 +241,17 @@ const PostingHub: React.FC<PostingHubProps> = ({
         title="Posting & Captions"
         subtitle="Manage social media content pipeline"
         actions={
-          <div className="flex bg-slate-100 p-1 rounded-lg">
+          <div className="flex bg-iris-white/10 p-1 rounded-lg backdrop-blur-sm">
             <button
               onClick={() => setViewMode('kanban')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'kanban' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'kanban' ? 'bg-gradient-to-r from-iris-red to-iris-red/80 shadow-lg text-white' : 'text-iris-white/70 hover:text-iris-white'}`}
             >
               <Layout className="w-4 h-4" />
               <span>Board</span>
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${viewMode === 'calendar' ? 'bg-gradient-to-r from-iris-red to-iris-red/80 shadow-lg text-white' : 'text-iris-white/70 hover:text-iris-white'}`}
             >
               <Calendar className="w-4 h-4" />
               <span>Calendar</span>
@@ -264,13 +264,13 @@ const PostingHub: React.FC<PostingHubProps> = ({
         <div className="flex flex-col sm:flex-row gap-3 w-full">
           {/* Search Bar */}
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-iris-white/40" />
             <input
               type="text"
               placeholder="Search posts by title, client, or caption..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full pl-10 pr-4 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
             />
           </div>
 
@@ -278,14 +278,14 @@ const PostingHub: React.FC<PostingHubProps> = ({
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all shrink-0 ${showFilters
-              ? 'bg-indigo-600 text-white'
-              : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+              ? 'bg-gradient-to-r from-iris-red to-iris-red/80 text-white shadow-lg'
+              : 'bg-iris-white/5 border border-iris-white/10 text-iris-white/70 hover:bg-iris-white/10 hover:text-iris-white'
               }`}
           >
             <Filter className="w-4 h-4" />
             Filters
             {(filterClient !== 'all' || filterPlatform !== 'all' || filterStatus !== 'all' || filterProject !== 'all' || filterOwner !== 'all') && (
-              <span className="w-2 h-2 bg-rose-500 rounded-full"></span>
+              <span className="w-2 h-2 bg-iris-red rounded-full animate-pulse"></span>
             )}
           </button>
         </div>
@@ -293,31 +293,31 @@ const PostingHub: React.FC<PostingHubProps> = ({
         {/* Status Counts - Wrap on mobile */}
         <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
-            <span className="text-slate-600 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'PENDING').length} Pending</span>
+            <div className="w-2 h-2 bg-iris-white/40 rounded-full"></div>
+            <span className="text-iris-white/70 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'PENDING').length} Pending</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span className="text-slate-600 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'READY').length} Ready</span>
+            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+            <span className="text-iris-white/70 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'READY').length} Ready</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span className="text-slate-600 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'SCHEDULED').length} Scheduled</span>
+            <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+            <span className="text-iris-white/70 text-xs sm:text-sm">{filteredPosts.filter(p => p.status === 'SCHEDULED').length} Scheduled</span>
           </div>
         </div>
       </PageControls>
 
       {/* Filter Panel */}
       {showFilters && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 animate-in slide-in-from-top duration-200">
+            <div className="bg-iris-white/5 border border-iris-white/10 rounded-2xl p-4 animate-in slide-in-from-top duration-200 backdrop-blur-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                 {/* Client Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-700 mb-1 block">Client</label>
+                  <label className="text-xs font-medium text-iris-white/70 mb-1 block">Client</label>
                   <select
                     value={filterClient}
                     onChange={e => setFilterClient(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
                   >
                     <option value="all">All Clients</option>
                     {clients.map(client => (
@@ -328,11 +328,11 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                 {/* Project Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-700 mb-1 block">Project</label>
+                  <label className="text-xs font-medium text-iris-white/70 mb-1 block">Project</label>
                   <select
                     value={filterProject}
                     onChange={e => setFilterProject(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
                   >
                     <option value="all">All Projects</option>
                     {projects.map(project => (
@@ -343,11 +343,11 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                 {/* Platform Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-700 mb-1 block">Platform</label>
+                  <label className="text-xs font-medium text-iris-white/70 mb-1 block">Platform</label>
                   <select
                     value={filterPlatform}
                     onChange={e => setFilterPlatform(e.target.value as SocialPlatform | 'all')}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
                   >
                     <option value="all">All Platforms</option>
                     <option value="instagram">Instagram</option>
@@ -361,11 +361,11 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                 {/* Status Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-700 mb-1 block">Status</label>
+                  <label className="text-xs font-medium text-iris-white/70 mb-1 block">Status</label>
                   <select
                     value={filterStatus}
                     onChange={e => setFilterStatus(e.target.value as SocialPost['status'] | 'all')}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
                   >
                     <option value="all">All Statuses</option>
                     <option value="PENDING">Pending</option>
@@ -377,11 +377,11 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                 {/* Owner Filter */}
                 <div>
-                  <label className="text-xs font-medium text-slate-700 mb-1 block">Assigned To</label>
+                  <label className="text-xs font-medium text-iris-white/70 mb-1 block">Assigned To</label>
                   <select
                     value={filterOwner}
                     onChange={e => setFilterOwner(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-iris-white/5 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none backdrop-blur-sm"
                   >
                     <option value="all">All Team Members</option>
                     <option value={currentUser.id}>My Posts</option>
@@ -403,7 +403,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                       setFilterProject('all');
                       setFilterOwner('all');
                     }}
-                    className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="text-sm text-iris-red hover:text-iris-red/80 font-medium transition-colors"
                   >
                     Clear All Filters
                   </button>
@@ -424,25 +424,25 @@ const PostingHub: React.FC<PostingHubProps> = ({
                   const isEmpty = colPosts.length === 0;
 
                   return (
-                    <div key={col.id} className="flex flex-col bg-white rounded-xl border-2 border-slate-200 overflow-hidden w-80 shrink-0">
-                      <div className={`flex items-center justify-between px-4 py-3 border-b-2 ${col.color.replace('bg-', 'border-').replace('50', '300')}`}>
+                    <div key={col.id} className="flex flex-col bg-iris-white/5 rounded-2xl border-2 border-iris-white/10 overflow-hidden w-80 shrink-0 backdrop-blur-sm">
+                      <div className={`flex items-center justify-between px-4 py-3 border-b-2 border-iris-white/10 bg-gradient-to-r ${col.id === 'PENDING' ? 'from-iris-white/5 to-iris-white/5' : col.id === 'READY' ? 'from-blue-500/10 to-blue-600/10' : col.id === 'SCHEDULED' ? 'from-purple-500/10 to-purple-600/10' : col.id === 'PUBLISHED' ? 'from-emerald-500/10 to-emerald-600/10' : 'from-rose-500/10 to-rose-600/10'}`}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${col.color.replace('50', '500').replace('bg-', 'bg-')}`}></div>
-                          <span className="font-bold text-slate-800 text-sm">{col.label}</span>
+                          <div className={`w-3 h-3 rounded-full ${col.id === 'PENDING' ? 'bg-iris-white/40' : col.id === 'READY' ? 'bg-blue-400' : col.id === 'SCHEDULED' ? 'bg-purple-400' : col.id === 'PUBLISHED' ? 'bg-emerald-400' : 'bg-rose-400'}`}></div>
+                          <span className="font-bold text-iris-white text-sm">{col.label}</span>
                         </div>
-                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${col.color.replace('50', '100')} ${col.color.replace('bg-', 'text-').replace('50', '700')}`}>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold bg-iris-white/10 text-iris-white`}>
                           {colPosts.length}
                         </span>
                       </div>
 
-                      <div className={`flex-1 p-3 space-y-3 overflow-y-auto ${col.color}`}>
+                      <div className={`flex-1 p-3 space-y-3 overflow-y-auto`}>
                         {isEmpty ? (
                           <div className="h-full flex items-center justify-center">
                             <div className="text-center py-8">
-                              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-200 flex items-center justify-center">
-                                <MessageSquare className="w-6 h-6 text-slate-400" />
+                              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-iris-white/5 flex items-center justify-center">
+                                <MessageSquare className="w-6 h-6 text-iris-white/40" />
                               </div>
-                              <p className="text-sm text-slate-400 font-medium">No posts here yet</p>
+                              <p className="text-sm text-iris-white/40 font-medium">No posts here yet</p>
                             </div>
                           </div>
                         ) : (
@@ -454,61 +454,61 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               <div
                                 key={post.id}
                                 onClick={() => setSelectedPostId(post.id)}
-                                className={`group bg-white p-4 rounded-lg border-2 cursor-pointer hover:shadow-lg transition-all ${selectedPostId === post.id
-                                    ? 'border-indigo-500 shadow-md ring-2 ring-indigo-200'
-                                    : 'border-slate-200 hover:border-indigo-300'
+                                className={`group bg-iris-black/80 p-4 rounded-xl border-2 cursor-pointer hover:shadow-2xl transition-all backdrop-blur-sm ${selectedPostId === post.id
+                                    ? 'border-iris-red shadow-xl ring-2 ring-iris-red/30'
+                                    : 'border-iris-white/10 hover:border-iris-red/50'
                                   }`}
                               >
                                 <div className="flex justify-between items-start mb-3">
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase px-2 py-1 bg-slate-100 rounded truncate max-w-[150px]">
+                                  <span className="text-[10px] font-bold text-iris-white/70 uppercase px-2 py-1 bg-iris-white/5 rounded truncate max-w-[150px]">
                                     {client?.name || 'Unknown'}
                                   </span>
                                   {post.platforms && post.platforms.length > 0 && (
                                     <div className="flex gap-1 flex-wrap justify-end">
                                       {post.platforms.slice(0, 3).map(p => (
-                                        <div key={p} className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center border border-slate-200 text-indigo-600" title={p}>
+                                        <div key={p} className="w-6 h-6 rounded-full bg-gradient-to-br from-iris-red/20 to-iris-red/10 flex items-center justify-center border border-iris-white/10 text-iris-red" title={p}>
                                           {getPlatformIcon(p)}
                                         </div>
                                       ))}
                                       {post.platforms.length > 3 && (
-                                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                                          <span className="text-[10px] font-bold text-slate-600">+{post.platforms.length - 3}</span>
+                                        <div className="w-6 h-6 rounded-full bg-iris-white/5 flex items-center justify-center border border-iris-white/10">
+                                          <span className="text-[10px] font-bold text-iris-white/70">+{post.platforms.length - 3}</span>
                                         </div>
                                       )}
                                     </div>
                                   )}
                                 </div>
 
-                                <h3 className="text-sm font-bold text-slate-900 mb-2 line-clamp-2 min-h-[2.5rem]">
-                                  {post.title || <span className="italic text-slate-400 font-normal">Untitled Post</span>}
+                                <h3 className="text-sm font-bold text-iris-white mb-2 line-clamp-2 min-h-[2.5rem]">
+                                  {post.title || <span className="italic text-iris-white/40 font-normal">Untitled Post</span>}
                                 </h3>
 
                                 {post.caption && (
-                                  <p className="text-xs text-slate-600 mb-3 line-clamp-2 bg-slate-50 p-2 rounded border border-slate-100">
+                                  <p className="text-xs text-iris-white/70 mb-3 line-clamp-2 bg-iris-white/5 p-2 rounded border border-iris-white/10">
                                     {post.caption}
                                   </p>
                                 )}
 
                                 {post.publishAt && (
-                                  <div className="flex items-center text-xs text-slate-600 bg-amber-50 px-2 py-1.5 rounded mb-3 border border-amber-100">
-                                    <Clock className="w-3 h-3 mr-1.5 text-amber-600 shrink-0" />
+                                  <div className="flex items-center text-xs text-amber-300 bg-amber-500/10 px-2 py-1.5 rounded mb-3 border border-amber-500/20">
+                                    <Clock className="w-3 h-3 mr-1.5 text-amber-400 shrink-0" />
                                     <span className="font-medium truncate">{new Date(post.publishAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                                   </div>
                                 )}
 
-                                <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                                <div className="flex justify-between items-center pt-2 border-t border-iris-white/10">
                                   <div className="flex items-center gap-2 min-w-0 flex-1">
                                     {manager ? (
                                       <>
-                                        <img src={manager.avatar} className="w-6 h-6 rounded-full border border-white shadow-sm shrink-0" title={manager.name} alt={manager.name} />
-                                        <span className="text-xs text-slate-600 font-medium truncate">{manager.name.split(' ')[0]}</span>
+                                        <img src={manager.avatar} className="w-6 h-6 rounded-full border border-iris-white/20 shadow-sm shrink-0" title={manager.name} alt={manager.name} />
+                                        <span className="text-xs text-iris-white/70 font-medium truncate">{manager.name.split(' ')[0]}</span>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
-                                          <UserIcon className="w-3 h-3 text-slate-400" />
+                                        <div className="w-6 h-6 rounded-full bg-iris-white/5 flex items-center justify-center shrink-0">
+                                          <UserIcon className="w-3 h-3 text-iris-white/40" />
                                         </div>
-                                        <span className="text-xs text-slate-400">Unassigned</span>
+                                        <span className="text-xs text-iris-white/40">Unassigned</span>
                                       </>
                                     )}
                                   </div>
@@ -519,7 +519,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                                       {getNormalizedStatus(post.status) === 'PENDING' && (
                                         <button
                                           onClick={() => handleStatusChange(post, 'READY')}
-                                          className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                                          className="text-[10px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded hover:bg-blue-500/20 transition-colors border border-blue-500/20"
                                         >
                                           Mark Ready
                                         </button>
@@ -527,7 +527,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                                       {getNormalizedStatus(post.status) === 'READY' && (
                                         <button
                                           onClick={() => handleStatusChange(post, 'SCHEDULED')}
-                                          className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors"
+                                          className="text-[10px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded hover:bg-purple-500/20 transition-colors border border-purple-500/20"
                                         >
                                           Schedule
                                         </button>
@@ -535,7 +535,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                                       {getNormalizedStatus(post.status) === 'SCHEDULED' && (
                                         <button
                                           onClick={() => handleStatusChange(post, 'PUBLISHED')}
-                                          className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded hover:bg-emerald-100 transition-colors"
+                                          className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
                                         >
                                           Publish
                                         </button>
