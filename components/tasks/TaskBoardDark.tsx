@@ -48,10 +48,10 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   const activeTasks = tasks.filter(t => t.status === activeStatus);
 
   return (
-    <div className="w-full max-w-[1280px] mx-auto overflow-x-hidden">
+    <div className="w-full max-w-[1280px] mx-auto overflow-x-hidden px-1 sm:px-0">
       {/* Status Switcher Bar */}
-      <div className="mb-6 overflow-x-auto pb-2 -mx-2 px-2 scrollbar-thin">
-        <div className="flex gap-2 min-w-max">
+      <div className="mb-6 overflow-x-auto pb-2 scrollbar-thin">
+        <div className="flex gap-2 flex-nowrap">
           {statusColumns.map(({ status, label }) => {
             const count = getStatusCount(status);
             const isActive = activeStatus === status;
@@ -61,7 +61,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                 key={status}
                 onClick={() => setActiveStatus(status)}
                 className={`
-                  min-w-[130px] h-[44px] px-3 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 flex items-center justify-between gap-2
+                  flex-shrink-0 min-w-[110px] sm:min-w-[130px] h-[44px] px-2 sm:px-3 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 flex items-center justify-between gap-1.5 sm:gap-2
                   ${isActive 
                     ? 'bg-[color:var(--dash-primary)] text-white shadow-lg shadow-[color:var(--dash-primary)]/20 border-2 border-[color:var(--dash-primary)]' 
                     : 'bg-[color:var(--dash-surface-elevated)]/80 text-slate-300 border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] hover:text-white hover:border-[color:var(--dash-primary)]/30'
@@ -70,7 +70,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
               >
                 <span className="truncate">{label}</span>
                 <span className={`
-                  px-2 py-0.5 rounded-full text-xs font-semibold min-w-[24px] text-center
+                  px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold min-w-[20px] sm:min-w-[24px] text-center flex-shrink-0
                   ${isActive 
                     ? 'bg-white/20 text-white' 
                     : 'bg-white/5 text-slate-400'
@@ -85,7 +85,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
       </div>
 
       {/* Task Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
         {activeTasks.length === 0 ? (
           <div className="col-span-full">
             <div className="text-center py-12 px-4 border border-dashed border-[color:var(--dash-glass-border)] rounded-2xl bg-[color:var(--dash-surface-elevated)]/40">
@@ -102,9 +102,9 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
               <div
                 key={task.id}
                 onClick={() => onSelectTask(task.id)}
-                className="min-h-[120px] p-4 rounded-xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 backdrop-blur-sm shadow-[0_10px_30px_-24px_rgba(0,0,0,1)] hover:shadow-[0_18px_35px_-22px_rgba(0,0,0,0.9)] hover:border-[color:var(--dash-primary)]/40 transition-all duration-200 cursor-pointer group"
+                className="min-h-[120px] p-3 sm:p-4 rounded-xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 backdrop-blur-sm shadow-[0_10px_30px_-24px_rgba(0,0,0,1)] hover:shadow-[0_18px_35px_-22px_rgba(0,0,0,0.9)] hover:border-[color:var(--dash-primary)]/40 transition-all duration-200 cursor-pointer group overflow-hidden"
               >
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 min-w-0">
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col gap-1 flex-1 min-w-0">

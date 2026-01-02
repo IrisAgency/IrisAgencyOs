@@ -487,9 +487,9 @@ const TasksHub: React.FC<TasksHubProps> = ({
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-6 overflow-x-hidden">
+        <div className="p-2 sm:p-4 md:p-6 space-y-6 overflow-x-hidden">
           {activeArea === 'tasks' ? (
-            <div className="space-y-4">
+            <div className="space-y-4 overflow-x-hidden">
               {layoutMode === 'board' ? (
                 <TaskBoardDark
                   tasks={filteredTasks}
