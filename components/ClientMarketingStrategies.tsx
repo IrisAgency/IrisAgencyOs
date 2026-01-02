@@ -21,9 +21,9 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
   checkPermission,
   currentUser
 }) => {
-  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
-  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const surface = 'bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+  const elevated = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
   const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide';
 
   const [strategies, setStrategies] = useState<ClientMarketingStrategy[]>([]);
@@ -52,7 +52,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
   if (!canView) {
     return (
-      <div className={`${surface} p-8 text-center text-slate-400 rounded-xl`}>
+      <div className={`${surface} p-8 text-center text-iris-white/70 rounded-xl`}>
         <p>You do not have permission to view marketing strategies.</p>
       </div>
     );
@@ -231,11 +231,11 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
   );
 
   return (
-    <div className={`${elevated} rounded-xl shadow-[0_20px_60px_-28px_rgba(0,0,0,0.8)] overflow-hidden`}>
-      <div className="p-5 border-b border-[color:var(--dash-glass-border)] flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[color:var(--dash-surface)]">
+    <div className={`${elevated} rounded-xl shadow-lg overflow-hidden`}>
+      <div className="p-5 border-b border-iris-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-iris-black">
         <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-[color:var(--dash-primary)]" />
-          <h3 className="font-bold text-slate-50">Marketing Strategies</h3>
+          <FileText className="w-5 h-5 text-iris-red" />
+          <h3 className="font-bold text-iris-white">Marketing Strategies</h3>
         </div>
         
         <div className="flex items-center gap-3">
@@ -250,7 +250,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-iris-white/40" />
             <input 
               type="text" 
               placeholder="Search..." 
@@ -263,7 +263,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
           {canManage && (
             <button 
               onClick={() => openModal()}
-              className="flex items-center space-x-2 bg-[color:var(--dash-primary)] text-white px-3 py-2 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] transition-colors"
+              className="flex items-center space-x-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-3 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden md:inline">Add Strategy</span>
@@ -274,34 +274,34 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="bg-[color:var(--dash-surface)] text-slate-400 font-medium">
-            <tr className="border-b border-[color:var(--dash-glass-border)]">
+          <thead className="bg-iris-black text-iris-white/70 font-medium">
+            <tr className="border-b border-iris-white/10">
               <th className="px-6 py-3">Month</th>
               <th className="px-6 py-3">Title</th>
               <th className="px-6 py-3">Type</th>
               <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-[color:var(--dash-glass-border)]">
+          <tbody className="divide-y divide-iris-white/10">
             {loading ? (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">Loading strategies...</td></tr>
+              <tr><td colSpan={4} className="px-6 py-8 text-center text-iris-white/70">Loading strategies...</td></tr>
             ) : filteredStrategies.length === 0 ? (
-              <tr><td colSpan={4} className="px-6 py-8 text-center text-slate-400">No strategies found for {filterYear}.</td></tr>
+              <tr><td colSpan={4} className="px-6 py-8 text-center text-iris-white/70">No strategies found for {filterYear}.</td></tr>
             ) : (
               filteredStrategies.map(strategy => (
-                <tr key={strategy.id} className="hover:bg-[color:var(--dash-surface-elevated)]/60 group">
-                  <td className="px-6 py-4 font-medium text-slate-100">{strategy.monthLabel}</td>
+                <tr key={strategy.id} className="hover:bg-iris-white/5 group">
+                  <td className="px-6 py-4 font-medium text-iris-white">{strategy.monthLabel}</td>
                   <td className="px-6 py-4">
-                    <div className="font-medium text-slate-50">{strategy.title}</div>
-                    {strategy.notes && <div className="text-xs text-slate-400 mt-0.5">{strategy.notes}</div>}
+                    <div className="font-medium text-iris-white">{strategy.title}</div>
+                    {strategy.notes && <div className="text-xs text-iris-white/70 mt-0.5">{strategy.notes}</div>}
                   </td>
                   <td className="px-6 py-4">
                     {strategy.type === 'file' ? (
-                      <span className={`${pill} bg-[color:var(--dash-primary)]/15 text-[color:var(--dash-primary)] border border-[color:var(--dash-primary)]/40`}>
+                      <span className={`${pill} bg-iris-red/10 text-iris-red border border-iris-red/20`}>
                         <FileText className="w-3 h-3" /> File
                       </span>
                     ) : (
-                      <span className={`${pill} bg-indigo-500/15 text-indigo-200 border border-indigo-400/40`}>
+                      <span className={`${pill} bg-blue-500/10 text-blue-400 border border-blue-400/20`}>
                         <LinkIcon className="w-3 h-3" /> Link
                       </span>
                     )}
@@ -313,7 +313,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                           href={strategy.url.startsWith('http') ? strategy.url : `https://${strategy.url}`} 
                           target="_blank" 
                           rel="noreferrer"
-                          className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
+                          className="p-1.5 text-iris-white/70 hover:text-iris-red hover:bg-iris-white/5 rounded transition-colors"
                           title="Open Link"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -321,7 +321,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       )}
                       {strategy.type === 'file' && (
                         <button 
-                          className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
+                          className="p-1.5 text-iris-white/70 hover:text-iris-red hover:bg-iris-white/5 rounded transition-colors"
                           title="View File"
                           onClick={() => {
                               const file = files.find(f => f.id === strategy.fileId);
@@ -340,14 +340,14 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                         <>
                           <button 
                             onClick={() => openModal(strategy)}
-                            className="p-1.5 text-slate-400 hover:text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-surface)] rounded transition-colors"
+                            className="p-1.5 text-iris-white/70 hover:text-iris-red hover:bg-iris-white/5 rounded transition-colors"
                             title="Edit"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(strategy.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-[color:var(--dash-surface)] rounded transition-colors"
+                            className="p-1.5 text-iris-white/70 hover:text-rose-400 hover:bg-iris-white/5 rounded transition-colors"
                             title="Delete"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -365,16 +365,16 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
           <div className={`${elevated} rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200`}>
-            <div className="p-6 border-b border-[color:var(--dash-glass-border)] flex justify-between items-center bg-[color:var(--dash-surface)]">
-              <h2 className="text-lg font-bold text-slate-50">{editingStrategy ? 'Edit Strategy' : 'Add Strategy'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-200"><X className="w-5 h-5"/></button>
+            <div className="p-6 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
+              <h2 className="text-lg font-bold text-iris-white">{editingStrategy ? 'Edit Strategy' : 'Add Strategy'}</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-iris-white/70 hover:text-iris-white transition-colors"><X className="w-5 h-5"/></button>
             </div>
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-200 mb-1">Month</label>
+                  <label className="block text-sm font-semibold text-iris-white/70 mb-1">Month</label>
                   <select 
                     required
                     value={formState.month}
@@ -385,7 +385,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-200 mb-1">Year</label>
+                  <label className="block text-sm font-semibold text-iris-white/70 mb-1">Year</label>
                   <select 
                     required
                     value={formState.year}
@@ -398,7 +398,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-1">Title</label>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Title</label>
                 <input 
                   required 
                   type="text" 
@@ -410,7 +410,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-2">Type</label>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-2">Type</label>
                 <div className="flex space-x-4">
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input 
@@ -419,9 +419,9 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       value="file" 
                       checked={formState.type === 'file'} 
                       onChange={() => setFormState({...formState, type: 'file'})}
-                      className="text-[color:var(--dash-primary)] focus:ring-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" 
+                      className="text-iris-red focus:ring-iris-red bg-iris-black border-iris-white/10" 
                     />
-                    <span className="text-sm text-slate-200">File Upload</span>
+                    <span className="text-sm text-iris-white">File Upload</span>
                   </label>
                   <label className="flex items-center space-x-2 cursor-pointer">
                     <input 
@@ -430,32 +430,32 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                       value="link" 
                       checked={formState.type === 'link'} 
                       onChange={() => setFormState({...formState, type: 'link'})}
-                      className="text-[color:var(--dash-primary)] focus:ring-[color:var(--dash-primary)] bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]" 
+                      className="text-iris-red focus:ring-iris-red bg-iris-black border-iris-white/10" 
                     />
-                    <span className="text-sm text-slate-200">External Link</span>
+                    <span className="text-sm text-iris-white">External Link</span>
                   </label>
                 </div>
               </div>
 
               {formState.type === 'file' ? (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-200 mb-1">File</label>
+                  <label className="block text-sm font-semibold text-iris-white/70 mb-1">File</label>
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-[color:var(--dash-glass-border)] rounded-lg p-4 text-center cursor-pointer hover:bg-[color:var(--dash-surface)] transition-colors bg-[color:var(--dash-surface-elevated)]"
+                    className="border-2 border-dashed border-iris-white/20 rounded-lg p-4 text-center cursor-pointer hover:bg-iris-white/5 transition-colors bg-iris-black/80"
                   >
                     {selectedFile ? (
-                      <div className="flex items-center justify-center space-x-2 text-[color:var(--dash-primary)]">
+                      <div className="flex items-center justify-center space-x-2 text-iris-red">
                         <FileText className="w-5 h-5" />
                         <span className="text-sm font-medium">{selectedFile.name}</span>
                       </div>
                     ) : editingStrategy?.fileId && !selectedFile ? (
-                       <div className="flex items-center justify-center space-x-2 text-slate-300">
+                       <div className="flex items-center justify-center space-x-2 text-iris-white/70">
                         <FileText className="w-5 h-5" />
                         <span className="text-sm font-medium">Current File (Click to replace)</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col items-center text-slate-400">
+                      <div className="flex flex-col items-center text-iris-white/70">
                         <Upload className="w-6 h-6 mb-1" />
                         <span className="text-sm">Click to upload file</span>
                       </div>
@@ -470,7 +470,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-200 mb-1">URL</label>
+                  <label className="block text-sm font-semibold text-iris-white/70 mb-1">URL</label>
                   <input 
                     required 
                     type="url" 
@@ -483,7 +483,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-slate-200 mb-1">Notes (Optional)</label>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Notes (Optional)</label>
                 <textarea 
                   rows={3}
                   value={formState.notes || ''}
@@ -496,13 +496,13 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
                 <button 
                   type="button" 
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-[color:var(--dash-glass-border)] text-slate-200 bg-[color:var(--dash-surface)] rounded-lg font-medium hover:bg-[color:var(--dash-surface-elevated)] transition-colors"
+                  className="flex-1 px-4 py-2 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="flex-1 bg-[color:var(--dash-primary)] text-white px-4 py-2 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] transition-colors"
+                  className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg font-medium hover:brightness-110 transition-all"
                 >
                   Save Strategy
                 </button>
