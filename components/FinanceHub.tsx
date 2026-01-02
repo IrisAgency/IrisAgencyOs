@@ -69,43 +69,43 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
         return (
             <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-slate-500">Total Revenue</h3>
-                            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><DollarSign className="w-4 h-4" /></div>
+                            <h3 className="text-sm font-medium text-iris-white/70">Total Revenue</h3>
+                            <div className="p-2 bg-emerald-500/20 text-emerald-400 rounded-lg"><DollarSign className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalRevenue || 0).toLocaleString()}</p>
-                        <p className="text-xs text-emerald-600 mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> <span className="ltr-text">+8%</span> vs last month</p>
+                        <p className="text-3xl font-bold text-iris-white ltr-text">${(totalRevenue || 0).toLocaleString()}</p>
+                        <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> <span className="ltr-text">+8%</span> vs last month</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-slate-500">Outstanding</h3>
-                            <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><AlertCircle className="w-4 h-4" /></div>
+                            <h3 className="text-sm font-medium text-iris-white/70">Outstanding</h3>
+                            <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg"><AlertCircle className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalOutstanding || 0).toLocaleString()}</p>
-                        <p className="text-xs text-slate-400 mt-2">Across <span className="ltr-text">{invoices.filter(i => i.balance > 0).length}</span> invoices</p>
+                        <p className="text-3xl font-bold text-iris-white ltr-text">${(totalOutstanding || 0).toLocaleString()}</p>
+                        <p className="text-xs text-iris-white/70 mt-2">Across <span className="ltr-text">{invoices.filter(i => i.balance > 0).length}</span> invoices</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-slate-500">Expenses</h3>
-                            <div className="p-2 bg-rose-50 text-rose-600 rounded-lg"><Activity className="w-4 h-4" /></div>
+                            <h3 className="text-sm font-medium text-iris-white/70">Expenses</h3>
+                            <div className="p-2 bg-rose-500/20 text-rose-400 rounded-lg"><Activity className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(totalExpenses || 0).toLocaleString()}</p>
-                        <p className="text-xs text-slate-400 mt-2"><span className="ltr-text">{totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : 0}%</span> of revenue</p>
+                        <p className="text-3xl font-bold text-iris-white ltr-text">${(totalExpenses || 0).toLocaleString()}</p>
+                        <p className="text-xs text-iris-white/70 mt-2"><span className="ltr-text">{totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : 0}%</span> of revenue</p>
                     </div>
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-6 rounded-xl border border-iris-white/10 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-medium text-slate-500">Net Profit</h3>
-                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><PieIcon className="w-4 h-4" /></div>
+                            <h3 className="text-sm font-medium text-iris-white/70">Net Profit</h3>
+                            <div className="p-2 bg-iris-red/20 text-iris-red rounded-lg"><PieIcon className="w-4 h-4" /></div>
                         </div>
-                        <p className="text-3xl font-bold text-slate-900 ltr-text">${(profit || 0).toLocaleString()}</p>
-                        <p className="text-xs text-indigo-600 mt-2">Healthy Margin</p>
+                        <p className="text-3xl font-bold text-iris-white ltr-text">${(profit || 0).toLocaleString()}</p>
+                        <p className="text-xs text-iris-red mt-2">Healthy Margin</p>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                    <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Revenue vs Expenses</h3>
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10 shadow-sm">
+                        <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Revenue vs Expenses</h3>
                         <div className="overflow-x-auto"><div className="min-w-[350px] h-64 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={dataBar}>
@@ -121,8 +121,8 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                         </div></div>
                     </div>
 
-                    <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 className="font-bold text-slate-900 mb-4 md:mb-6 text-sm md:text-base">Cashflow Distribution</h3>
+                    <div className="bg-iris-black/80 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-iris-white/10 shadow-sm">
+                        <h3 className="font-bold text-iris-white mb-4 md:mb-6 text-sm md:text-base">Cashflow Distribution</h3>
                         <div className="overflow-x-auto"><div className="min-w-[300px] h-64 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -145,8 +145,8 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                             </ResponsiveContainer>
                         </div></div>
                         <div className="text-center -mt-6">
-                            <p className="text-xs md:text-sm text-slate-500">Collection Rate</p>
-                            <p className="text-lg md:text-xl font-bold text-slate-800">{Math.round((totalRevenue / totalInvoiced) * 100)}%</p>
+                            <p className="text-xs md:text-sm text-iris-white/70">Collection Rate</p>
+                            <p className="text-lg md:text-xl font-bold text-iris-white">{Math.round((totalRevenue / totalInvoiced) * 100)}%</p>
                         </div>
                     </div>
                 </div>
@@ -158,16 +158,16 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900">Quotations</h3>
-                    <p className="text-sm text-slate-500">Manage client proposals and estimates.</p>
+                    <h3 className="text-lg font-bold text-iris-white">Quotations</h3>
+                    <p className="text-sm text-iris-white/70">Manage client proposals and estimates.</p>
                 </div>
-                <button onClick={() => { setModalType('Quotation'); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
+                <button onClick={() => { setModalType('Quotation'); setIsModalOpen(true); }} className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> New Quote
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {quotations.length === 0 ? (
-                    <div className="col-span-full p-8 text-center text-slate-400">
+                    <div className="col-span-full p-8 text-center text-iris-white/70">
                         <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>No quotations created yet.</p>
                     </div>
@@ -176,12 +176,12 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                         const client = clients.find(c => c.id === q.clientId);
                         const project = projects.find(p => p.id === q.projectId);
                         return (
-                            <div key={q.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                            <div key={q.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 hover:shadow-md hover:border-iris-red/40 transition-all">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-sm text-slate-600 mb-1 ltr-text">{q.quotationNumber}</p>
-                                        <h4 className="font-semibold text-slate-900 truncate">{client?.name}</h4>
-                                        <p className="text-xs text-slate-500 truncate">{project?.name}</p>
+                                        <p className="font-mono text-sm text-iris-white/70 mb-1 ltr-text">{q.quotationNumber}</p>
+                                        <h4 className="font-semibold text-iris-white truncate">{client?.name}</h4>
+                                        <p className="text-xs text-iris-white/70 truncate">{project?.name}</p>
                                     </div>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize flex-shrink-0 ml-2 ${q.status === 'approved' ? 'bg-emerald-100 text-emerald-800' :
                                         q.status === 'rejected' ? 'bg-rose-100 text-rose-800' :
@@ -190,9 +190,9 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                                         {q.status}
                                     </span>
                                 </div>
-                                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                    <span className="text-xs text-slate-500 ltr-text">{new Date(q.date).toLocaleDateString()}</span>
-                                    <span className="font-bold text-slate-900 ltr-text">${(q.total || 0).toLocaleString()}</span>
+                                <div className="flex items-center justify-between pt-3 border-t border-iris-white/10">
+                                    <span className="text-xs text-iris-white/70 ltr-text">{new Date(q.date).toLocaleDateString()}</span>
+                                    <span className="font-bold text-iris-white ltr-text">${(q.total || 0).toLocaleString()}</span>
                                 </div>
                             </div>
                         );
@@ -206,16 +206,16 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900">Invoices</h3>
-                    <p className="text-sm text-slate-500">Track billings and payments.</p>
+                    <h3 className="text-lg font-bold text-iris-white">Invoices</h3>
+                    <p className="text-sm text-iris-white/70">Track billings and payments.</p>
                 </div>
-                <button onClick={() => { setModalType('Invoice'); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
+                <button onClick={() => { setModalType('Invoice'); setIsModalOpen(true); }} className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Create Invoice
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {invoices.length === 0 ? (
-                    <div className="col-span-full p-8 text-center text-slate-400">
+                    <div className="col-span-full p-8 text-center text-iris-white/70">
                         <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>No invoices generated yet.</p>
                     </div>
@@ -223,12 +223,12 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                     invoices.map(inv => {
                         const client = clients.find(c => c.id === inv.clientId);
                         return (
-                            <div key={inv.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                            <div key={inv.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 hover:shadow-md hover:border-iris-red/40 transition-all">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-sm text-slate-600 mb-1 ltr-text">{inv.invoiceNumber}</p>
-                                        <h4 className="font-semibold text-slate-900 truncate">{client?.name || inv.client}</h4>
-                                        <p className="text-xs text-slate-500">Due: <span className="ltr-text">{new Date(inv.dueDate).toLocaleDateString()}</span></p>
+                                        <p className="font-mono text-sm text-iris-white/70 mb-1 ltr-text">{inv.invoiceNumber}</p>
+                                        <h4 className="font-semibold text-iris-white truncate">{client?.name || inv.client}</h4>
+                                        <p className="text-xs text-iris-white/70">Due: <span className="ltr-text">{new Date(inv.dueDate).toLocaleDateString()}</span></p>
                                     </div>
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium capitalize flex-shrink-0 ml-2 ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
                                         inv.status === 'overdue' ? 'bg-rose-100 text-rose-800' :
@@ -238,24 +238,24 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                                         {inv.status.replace('_', ' ')}
                                     </span>
                                 </div>
-                                <div className="space-y-2 py-3 border-t border-slate-100">
+                                <div className="space-y-2 py-3 border-t border-iris-white/10">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Amount</span>
-                                        <span className="font-semibold text-slate-900 ltr-text">${(inv.total || 0).toLocaleString()}</span>
+                                        <span className="text-iris-white/70">Amount</span>
+                                        <span className="font-semibold text-iris-white ltr-text">${(inv.total || 0).toLocaleString()}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Balance</span>
-                                        <span className="font-semibold text-slate-900 ltr-text">${(inv.balance || 0).toLocaleString()}</span>
+                                        <span className="text-iris-white/70">Balance</span>
+                                        <span className="font-semibold text-iris-white ltr-text">${(inv.balance || 0).toLocaleString()}</span>
                                     </div>
                                 </div>
-                                <div className="flex gap-2 pt-3 border-t border-slate-100">
-                                    <button className="flex-1 text-indigo-600 hover:bg-indigo-50 py-2 rounded text-sm font-medium transition-colors" title="View">
+                                <div className="flex gap-2 pt-3 border-t border-iris-white/10">
+                                    <button className="flex-1 text-iris-red hover:bg-iris-red/10 py-2 rounded text-sm font-medium transition-colors" title="View">
                                         <FileText className="w-4 h-4 mx-auto" />
                                     </button>
                                     {inv.balance > 0 && (
                                         <button
                                             onClick={() => { setModalType('Payment'); setIsModalOpen(true); }}
-                                            className="flex-1 text-emerald-600 hover:bg-emerald-50 py-2 rounded text-sm font-medium transition-colors"
+                                            className="flex-1 text-emerald-400 hover:bg-emerald-500/10 py-2 rounded text-sm font-medium transition-colors"
                                             title="Record Payment"
                                         >
                                             <DollarSign className="w-4 h-4 mx-auto" />
@@ -274,16 +274,16 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900">Payments Received</h3>
-                    <p className="text-sm text-slate-500">History of all incoming transactions.</p>
+                    <h3 className="text-lg font-bold text-iris-white">Payments Received</h3>
+                    <p className="text-sm text-iris-white/70">History of all incoming transactions.</p>
                 </div>
-                <button onClick={() => { setModalType('Payment'); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
+                <button onClick={() => { setModalType('Payment'); setIsModalOpen(true); }} className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Record Payment
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {payments.length === 0 ? (
-                    <div className="col-span-full p-8 text-center text-slate-400">
+                    <div className="col-span-full p-8 text-center text-iris-white/70">
                         <DollarSign className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>No payments recorded yet.</p>
                     </div>
@@ -292,18 +292,18 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                         const client = clients.find(c => c.id === p.clientId);
                         const invoice = invoices.find(i => i.id === p.invoiceId);
                         return (
-                            <div key={p.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                            <div key={p.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 hover:shadow-md hover:border-iris-red/40 transition-all">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-mono text-xs text-slate-500 mb-1 ltr-text">{p.reference}</p>
-                                        <h4 className="font-semibold text-slate-900 truncate">{client?.name}</h4>
-                                        <p className="text-xs text-indigo-600 truncate ltr-text">{invoice?.invoiceNumber}</p>
+                                        <p className="font-mono text-xs text-iris-white/70 mb-1 ltr-text">{p.reference}</p>
+                                        <h4 className="font-semibold text-iris-white truncate">{client?.name}</h4>
+                                        <p className="text-xs text-iris-red truncate ltr-text">{invoice?.invoiceNumber}</p>
                                     </div>
-                                    <span className="font-bold text-lg text-emerald-600 flex-shrink-0 ml-2 ltr-text">+${(p.amount || 0).toLocaleString()}</span>
+                                    <span className="font-bold text-lg text-emerald-400 flex-shrink-0 ml-2 ltr-text">+${(p.amount || 0).toLocaleString()}</span>
                                 </div>
-                                <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                    <span className="text-xs capitalize text-slate-600">{p.method.replace('_', ' ')}</span>
-                                    <span className="text-xs text-slate-500 ltr-text">{new Date(p.date).toLocaleDateString()}</span>
+                                <div className="flex items-center justify-between pt-3 border-t border-iris-white/10">
+                                    <span className="text-xs capitalize text-iris-white/70">{p.method.replace('_', ' ')}</span>
+                                    <span className="text-xs text-iris-white/70 ltr-text">{new Date(p.date).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         );
@@ -317,16 +317,16 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-bold text-slate-900">Expenses</h3>
-                    <p className="text-sm text-slate-500">Track vendor costs and operational spending.</p>
+                    <h3 className="text-lg font-bold text-iris-white">Expenses</h3>
+                    <p className="text-sm text-iris-white/70">Track vendor costs and operational spending.</p>
                 </div>
-                <button onClick={() => { setModalType('Expense'); setIsModalOpen(true); }} className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2">
+                <button onClick={() => { setModalType('Expense'); setIsModalOpen(true); }} className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> Add Expense
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {expenses.length === 0 ? (
-                    <div className="col-span-full p-8 text-center text-slate-400">
+                    <div className="col-span-full p-8 text-center text-iris-white/70">
                         <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
                         <p>No expenses recorded.</p>
                     </div>
@@ -334,20 +334,20 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                     expenses.map(e => {
                         const project = projects.find(p => p.id === e.projectId);
                         return (
-                            <div key={e.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+                            <div key={e.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 hover:shadow-md hover:border-iris-red/40 transition-all">
                                 <div className="flex items-start justify-between mb-3">
                                     <div className="flex-1 min-w-0">
-                                        <h4 className="font-semibold text-slate-900 truncate">{e.vendor}</h4>
+                                        <h4 className="font-semibold text-iris-white truncate">{e.vendor}</h4>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600 capitalize">{e.category}</span>
-                                            <span className="text-xs text-slate-500">{project?.name || 'General'}</span>
+                                            <span className="text-xs bg-iris-black/95 px-2 py-1 rounded text-iris-white/70 capitalize border border-iris-white/10">{e.category}</span>
+                                            <span className="text-xs text-iris-white/70">{project?.name || 'General'}</span>
                                         </div>
                                     </div>
-                                    <span className="font-bold text-lg text-rose-600 flex-shrink-0 ml-2 ltr-text">-${(e.amount || 0).toLocaleString()}</span>
+                                    <span className="font-bold text-lg text-rose-400 flex-shrink-0 ml-2 ltr-text">-${(e.amount || 0).toLocaleString()}</span>
                                 </div>
-                                <p className="text-sm text-slate-600 mb-2 line-clamp-2">{e.description}</p>
-                                <div className="pt-3 border-t border-slate-100">
-                                    <span className="text-xs text-slate-500 ltr-text">{new Date(e.date).toLocaleDateString()}</span>
+                                <p className="text-sm text-iris-white/70 mb-2 line-clamp-2">{e.description}</p>
+                                <div className="pt-3 border-t border-iris-white/10">
+                                    <span className="text-xs text-iris-white/70 ltr-text">{new Date(e.date).toLocaleDateString()}</span>
                                 </div>
                             </div>
                         );
@@ -364,13 +364,13 @@ const FinanceHub: React.FC<FinanceHubProps> = ({
                 subtitle="Unified view of agency health, billings, and costs."
             />
 
-            <div className="border-b border-slate-200">
+            <div className="border-b border-iris-white/10">
                 <nav className="flex space-x-6">
                     {['Dashboard', 'Quotations', 'Invoices', 'Payments', 'Expenses'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
-                            className={`py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                            className={`py-4 text-sm font-medium border-b-2 transition-colors ${activeTab === tab ? 'border-iris-red text-iris-red' : 'border-transparent text-iris-white/70 hover:text-iris-white'
                                 }`}
                         >
                             {tab}
@@ -544,30 +544,30 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                 <div className="grid grid-cols-2 gap-4 mb-4">
                     {type !== 'Expense' && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Client</label>
-                            <select required value={clientId} onChange={e => setClientId(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <label className="block text-sm font-medium text-iris-white/70 mb-1">Client</label>
+                            <select required value={clientId} onChange={e => setClientId(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white">
                                 <option value="">Select Client</option>
                                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                             </select>
                         </div>
                     )}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Project</label>
-                        <select value={projectId} onChange={e => setProjectId(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                        <label className="block text-sm font-medium text-iris-white/70 mb-1">Project</label>
+                        <select value={projectId} onChange={e => setProjectId(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white">
                             <option value="">Select Project</option>
                             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
-                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                        <label className="block text-sm font-medium text-iris-white/70 mb-1">Date</label>
+                        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white" />
                     </div>
                 </div>
 
                 {/* Quote & Invoice Line Items */}
                 {(type === 'Quotation' || type === 'Invoice') && (
                     <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Line Items</label>
+                        <label className="block text-sm font-medium text-iris-white/70 mb-2">Line Items</label>
                         <div className="space-y-2">
                             {items.map((item, idx) => (
                                 <div key={item.id} className="flex gap-2 items-center">
@@ -575,24 +575,24 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                                         type="text" placeholder="Description"
                                         value={item.description}
                                         onChange={e => updateItem(item.id, 'description', e.target.value)}
-                                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                        className="flex-1 px-3 py-2 border border-iris-white/10 rounded-lg text-sm bg-iris-black/80 text-iris-white placeholder:text-iris-white/40"
                                     />
                                     <input
                                         type="number" placeholder="Qty"
                                         value={item.quantity}
                                         onChange={e => updateItem(item.id, 'quantity', parseInt(e.target.value))}
-                                        className="w-20 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                        className="w-20 px-3 py-2 border border-iris-white/10 rounded-lg text-sm bg-iris-black/80 text-iris-white"
                                     />
                                     <input
                                         type="number" placeholder="Price"
                                         value={item.unitPrice}
                                         onChange={e => updateItem(item.id, 'unitPrice', parseFloat(e.target.value))}
-                                        className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                                        className="w-24 px-3 py-2 border border-iris-white/10 rounded-lg text-sm bg-iris-black/80 text-iris-white"
                                     />
                                 </div>
                             ))}
                         </div>
-                        <button type="button" onClick={addItem} className="mt-2 text-sm text-indigo-600 font-medium hover:underline">+ Add Item</button>
+                        <button type="button" onClick={addItem} className="mt-2 text-sm text-iris-red font-medium hover:text-iris-red/80">+ Add Item</button>
                     </div>
                 )}
 
@@ -600,8 +600,8 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                 {type === 'Payment' && (
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Invoice</label>
-                            <select required value={invoiceId} onChange={e => setInvoiceId(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <label className="block text-sm font-medium text-iris-white/70 mb-1">Invoice</label>
+                            <select required value={invoiceId} onChange={e => setInvoiceId(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white">
                                 <option value="">Select Invoice to Pay</option>
                                 {invoices.filter(i => i.balance > 0).map(i => (
                                     <option key={i.id} value={i.id}>{i.invoiceNumber} - ${i.balance} Remaining</option>
@@ -610,12 +610,12 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
-                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                                <label className="block text-sm font-medium text-iris-white/70 mb-1">Amount</label>
+                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Reference #</label>
-                                <input type="text" value={reference} onChange={e => setReference(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                                <label className="block text-sm font-medium text-iris-white/70 mb-1">Reference #</label>
+                                <input type="text" value={reference} onChange={e => setReference(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white" />
                             </div>
                         </div>
                     </div>
@@ -626,17 +626,17 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
-                                <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="e.g. Adorama" />
+                                <label className="block text-sm font-medium text-iris-white/70 mb-1">Vendor</label>
+                                <input type="text" value={vendor} onChange={e => setVendor(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white placeholder:text-iris-white/40" placeholder="e.g. Adorama" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Amount</label>
-                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                                <label className="block text-sm font-medium text-iris-white/70 mb-1">Amount</label>
+                                <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white" />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <label className="block text-sm font-medium text-iris-white/70 mb-1">Category</label>
+                            <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white">
                                 <option value="production">Production</option>
                                 <option value="equipment">Equipment</option>
                                 <option value="location">Location</option>
@@ -645,15 +645,15 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-                            <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                            <label className="block text-sm font-medium text-iris-white/70 mb-1">Description</label>
+                            <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="w-full px-3 py-2 border border-iris-white/10 rounded-lg bg-iris-black/80 text-iris-white" />
                         </div>
                     </div>
                 )}
 
-                <div className="pt-4 mt-4 border-t border-slate-100 flex justify-end gap-3">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium">Cancel</button>
-                    <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700">Save {type}</button>
+                <div className="pt-4 mt-4 border-t border-iris-white/10 flex justify-end gap-3">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-iris-white/70 hover:bg-iris-white/5 rounded-lg font-medium border border-iris-white/10">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg font-medium hover:brightness-110">Save {type}</button>
                 </div>
             </form>
         </Modal>
