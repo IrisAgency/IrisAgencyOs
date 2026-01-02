@@ -45,12 +45,12 @@ const Modal: React.FC<ModalProps> = ({
         <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-iris-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/80"
                 onClick={onClose}
             />
 
             {/* Modal Content */}
-            <div className={`bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 rounded-xl shadow-2xl w-full ${sizeClasses[size]} overflow-hidden relative transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
+            <div className={`bg-iris-black border border-iris-white/10 rounded-xl shadow-2xl w-full ${sizeClasses[size]} overflow-hidden relative transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
                 <div className="p-6 border-b border-iris-white/10 flex justify-between items-center">
                     <div className="text-lg font-bold text-iris-white">{title}</div>
                     {showCloseButton && (
