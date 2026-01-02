@@ -124,40 +124,40 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
   const FreelancersView = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
       {filteredFreelancers.map(f => (
-        <div key={f.id} className="bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm hover:shadow-md transition-all flex flex-col group relative">
+        <div key={f.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 md:p-6 shadow-lg hover:shadow-xl transition-all flex flex-col group relative">
           <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button onClick={() => setSelectedEntity(f)} className="text-slate-400 hover:text-indigo-600"><MoreHorizontal className="w-5 h-5" /></button>
+            <button onClick={() => setSelectedEntity(f)} className="text-iris-white/70 hover:text-iris-red"><MoreHorizontal className="w-5 h-5" /></button>
           </div>
           <div className="flex items-center space-x-4 mb-4">
-            <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 text-xl font-bold border border-indigo-100">
+            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-iris-red to-iris-red/80 flex items-center justify-center text-white text-xl font-bold border border-iris-red/20">
               {f.name.charAt(0)}
             </div>
             <div>
-              <h3 className="font-bold text-slate-900">{f.name}</h3>
-              <p className="text-sm text-indigo-600 font-medium">{f.specialization}</p>
+              <h3 className="font-bold text-iris-white">{f.name}</h3>
+              <p className="text-sm text-iris-red font-medium">{f.specialization}</p>
             </div>
           </div>
 
-          <div className="space-y-2 text-sm text-slate-600 mb-4">
+          <div className="space-y-2 text-sm text-iris-white/70 mb-4">
             <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-slate-400" /> {f.location}
+              <MapPin className="w-3.5 h-3.5 text-iris-white/40" /> {f.location}
             </div>
             <div className="flex items-center gap-2">
-              <DollarSign className="w-3.5 h-3.5 text-slate-400" /> {f.defaultRate} / {f.rateType}
+              <DollarSign className="w-3.5 h-3.5 text-iris-white/40" /> {f.defaultRate} / {f.rateType}
             </div>
             {f.portfolioUrl && (
               <div className="flex items-center gap-2">
-                <Globe className="w-3.5 h-3.5 text-slate-400" />
-                <a href={`https://${f.portfolioUrl}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-indigo-600 truncate max-w-[150px]">{f.portfolioUrl}</a>
+                <Globe className="w-3.5 h-3.5 text-iris-white/40" />
+                <a href={`https://${f.portfolioUrl}`} target="_blank" rel="noreferrer" className="hover:underline hover:text-iris-red truncate max-w-[150px]">{f.portfolioUrl}</a>
               </div>
             )}
           </div>
 
-          <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${f.active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+          <div className="mt-auto pt-4 border-t border-iris-white/10 flex justify-between items-center">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${f.active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-iris-white/5 text-iris-white/50'}`}>
               {f.active ? 'Active' : 'Inactive'}
             </span>
-            <button className="text-xs font-medium text-slate-500 hover:text-indigo-600 flex items-center gap-1">
+            <button className="text-xs font-medium text-iris-white/70 hover:text-iris-red flex items-center gap-1 transition-colors">
               View History
             </button>
           </div>
@@ -169,36 +169,36 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
   const VendorsView = () => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {vendors.length === 0 ? (
-        <div className="col-span-full p-8 text-center text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+        <div className="col-span-full p-8 text-center text-iris-white/70 border-2 border-dashed border-iris-white/10 rounded-xl bg-iris-black/80 backdrop-blur-sm">
           <Building2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p>No vendors in the database.</p>
         </div>
       ) : (
         vendors.map(v => (
-          <div key={v.id} className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow">
+          <div key={v.id} className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 min-w-0">
-                <h3 className="font-semibold text-slate-900 truncate">{v.name}</h3>
-                <span className="inline-block mt-1 bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs capitalize">{v.type}</span>
+                <h3 className="font-semibold text-iris-white truncate">{v.name}</h3>
+                <span className="inline-block mt-1 bg-iris-red/10 text-iris-red px-2 py-1 rounded text-xs capitalize border border-iris-red/20">{v.type}</span>
               </div>
-              <button className="text-slate-400 hover:text-indigo-600 p-1 flex-shrink-0">
+              <button className="text-iris-white/70 hover:text-iris-red p-1 flex-shrink-0 transition-colors">
                 <MoreHorizontal className="w-5 h-5" />
               </button>
             </div>
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-600">
+              <div className="flex items-center gap-2 text-iris-white/70">
                 <Users className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{v.contactName}</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-500">
+              <div className="flex items-center gap-2 text-iris-white/70">
                 <Mail className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{v.email}</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-500">
+              <div className="flex items-center gap-2 text-iris-white/70">
                 <Phone className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{v.phone}</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-500">
+              <div className="flex items-center gap-2 text-iris-white/70">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{v.address}</span>
               </div>
@@ -218,36 +218,36 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
 
       <PageControls>
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-iris-white/40" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-10 pr-4 py-2 bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50"
           />
         </div>
         <button
           onClick={() => { setModalType('Freelancer'); setIsModalOpen(true); }}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-2 whitespace-nowrap"
+          className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 flex items-center gap-2 whitespace-nowrap transition-all"
         >
           <Plus className="w-4 h-4" /> Add Freelancer
         </button>
         <button
           onClick={() => { setModalType('Vendor'); setIsModalOpen(true); }}
-          className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-2 whitespace-nowrap"
+          className="bg-iris-black border border-iris-white/10 text-iris-white/70 px-4 py-2 rounded-lg text-sm font-medium hover:bg-iris-white/5 flex items-center gap-2 whitespace-nowrap transition-colors"
         >
           <Plus className="w-4 h-4" /> Add Vendor
         </button>
       </PageControls>
 
-      <div className="border-b border-slate-200">
+      <div className="border-b border-iris-white/10">
         <nav className="flex space-x-6">
           {['Freelancers', 'Vendors'].map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+              className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-iris-red text-iris-red' : 'border-transparent text-iris-white/70 hover:text-iris-white'
                 }`}
             >
               {tab === 'Freelancers' ? <Users className="w-4 h-4" /> : <Building2 className="w-4 h-4" />}
@@ -273,32 +273,32 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
             <form onSubmit={handleAddFreelancerSubmit} className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                  <input type="text" value={freelancerName} onChange={e => setFreelancerName(e.target.value)} required className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Full Name</label>
+                  <input type="text" value={freelancerName} onChange={e => setFreelancerName(e.target.value)} required className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Specialization</label>
-                  <input type="text" value={freelancerSpecialization} onChange={e => setFreelancerSpecialization(e.target.value)} required placeholder="e.g., Videographer, Copywriter" className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                  <input type="email" value={freelancerEmail} onChange={e => setFreelancerEmail(e.target.value)} required className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                  <input type="tel" value={freelancerPhone} onChange={e => setFreelancerPhone(e.target.value)} className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Specialization</label>
+                  <input type="text" value={freelancerSpecialization} onChange={e => setFreelancerSpecialization(e.target.value)} required placeholder="e.g., Videographer, Copywriter" className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Default Rate</label>
-                  <input type="number" value={freelancerRate} onChange={e => setFreelancerRate(parseFloat(e.target.value))} required className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Email</label>
+                  <input type="email" value={freelancerEmail} onChange={e => setFreelancerEmail(e.target.value)} required className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Rate Type</label>
-                  <select value={freelancerRateType} onChange={e => setFreelancerRateType(e.target.value as RateType)} className="w-full border-slate-300 rounded-md shadow-sm text-sm">
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Phone</label>
+                  <input type="tel" value={freelancerPhone} onChange={e => setFreelancerPhone(e.target.value)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Default Rate</label>
+                  <input type="number" value={freelancerRate} onChange={e => setFreelancerRate(parseFloat(e.target.value))} required className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Rate Type</label>
+                  <select value={freelancerRateType} onChange={e => setFreelancerRateType(e.target.value as RateType)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50 [&>option]:bg-iris-black [&>option]:text-iris-white">
                     <option value="hourly">Hourly</option>
                     <option value="daily">Daily</option>
                     <option value="project">Project-based</option>
@@ -307,24 +307,24 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Portfolio URL</label>
-                <input type="text" value={freelancerPortfolio} onChange={e => setFreelancerPortfolio(e.target.value)} placeholder="e.g., behance.net/johndoe" className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Portfolio URL</label>
+                <input type="text" value={freelancerPortfolio} onChange={e => setFreelancerPortfolio(e.target.value)} placeholder="e.g., behance.net/johndoe" className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
-                <input type="text" value={freelancerLocation} onChange={e => setFreelancerLocation(e.target.value)} placeholder="e.g., Dubai, UAE" className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Location</label>
+                <input type="text" value={freelancerLocation} onChange={e => setFreelancerLocation(e.target.value)} placeholder="e.g., Dubai, UAE" className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Skills (comma-separated)</label>
-                <input type="text" value={freelancerSkills} onChange={e => setFreelancerSkills(e.target.value)} placeholder="e.g., DaVinci Resolve, ARRI Alexa" className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Skills (comma-separated)</label>
+                <input type="text" value={freelancerSkills} onChange={e => setFreelancerSkills(e.target.value)} placeholder="e.g., DaVinci Resolve, ARRI Alexa" className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
-                <textarea value={freelancerNotes} onChange={e => setFreelancerNotes(e.target.value)} rows={3} className="w-full border-slate-300 rounded-md shadow-sm text-sm"></textarea>
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Notes</label>
+                <textarea value={freelancerNotes} onChange={e => setFreelancerNotes(e.target.value)} rows={3} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50"></textarea>
               </div>
-              <div className="pt-4 border-t border-slate-200 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
-                <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Save Freelancer</button>
+              <div className="pt-4 border-t border-iris-white/10 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-iris-black border border-iris-white/10 text-iris-white/70 px-4 py-2 rounded-lg text-sm font-medium hover:bg-iris-white/5 transition-colors">Cancel</button>
+                <button type="submit" className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all">Save Freelancer</button>
               </div>
             </form>
           )}
@@ -333,12 +333,12 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
             <form onSubmit={handleAddVendorSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Company Name</label>
-                  <input type="text" value={vendorName} onChange={e => setVendorName(e.target.value)} required className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Company Name</label>
+                  <input type="text" value={vendorName} onChange={e => setVendorName(e.target.value)} required className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
-                  <select value={vendorType} onChange={e => setVendorType(e.target.value as any)} className="w-full border-slate-300 rounded-md shadow-sm text-sm">
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Type</label>
+                  <select value={vendorType} onChange={e => setVendorType(e.target.value as any)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50 [&>option]:bg-iris-black [&>option]:text-iris-white">
                     <option value="equipment">Equipment</option>
                     <option value="location">Location</option>
                     <option value="catering">Catering</option>
@@ -349,26 +349,26 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Contact Person</label>
-                <input type="text" value={vendorContactName} onChange={e => setVendorContactName(e.target.value)} className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Contact Person</label>
+                <input type="text" value={vendorContactName} onChange={e => setVendorContactName(e.target.value)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                  <input type="email" value={vendorEmail} onChange={e => setVendorEmail(e.target.value)} className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Email</label>
+                  <input type="email" value={vendorEmail} onChange={e => setVendorEmail(e.target.value)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
-                  <input type="tel" value={vendorPhone} onChange={e => setVendorPhone(e.target.value)} className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                  <label className="block text-sm font-medium text-iris-white/70 mb-1">Phone</label>
+                  <input type="tel" value={vendorPhone} onChange={e => setVendorPhone(e.target.value)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Address/Location</label>
-                <input type="text" value={vendorAddress} onChange={e => setVendorAddress(e.target.value)} className="w-full border-slate-300 rounded-md shadow-sm text-sm" />
+                <label className="block text-sm font-medium text-iris-white/70 mb-1">Address/Location</label>
+                <input type="text" value={vendorAddress} onChange={e => setVendorAddress(e.target.value)} className="w-full bg-iris-black/80 border-iris-white/10 text-iris-white placeholder:text-iris-white/40 rounded-md shadow-sm text-sm focus:ring-iris-red focus:border-iris-red/50" />
               </div>
-              <div className="pt-4 border-t border-slate-200 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">Cancel</button>
-                <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">Save Vendor</button>
+              <div className="pt-4 border-t border-iris-white/10 flex justify-end gap-3">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="bg-iris-black border border-iris-white/10 text-iris-white/70 px-4 py-2 rounded-lg text-sm font-medium hover:bg-iris-white/5 transition-colors">Cancel</button>
+                <button type="submit" className="bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all">Save Vendor</button>
               </div>
             </form>
           )}
