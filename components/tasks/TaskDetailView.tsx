@@ -69,8 +69,24 @@ const TaskDetailView = ({
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [revisionMessage, setRevisionMessage] = useState('');
     const [revisionAssignee, setRevisionAssignee] = useState('');
+    
+    // Edit state for description and voiceOver
+    const [isEditingDescription, setIsEditingDescription] = useState(false);
+    const [isEditingVoiceOver, setIsEditingVoiceOver] = useState(false);
+    const [editDescription, setEditDescription] = useState('');
+    const [editVoiceOver, setEditVoiceOver] = useState('');
+    const [editTextDirHint, setEditTextDirHint] = useState<'auto' | 'rtl' | 'ltr'>('auto');
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+    
+    // Arabic/English text direction helpers
+    const hasArabic = (text: string): boolean => {
+        return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+    };
+    
+    const detectDir = (text: string): 'rtl' | 'ltr' => {
+        return hasArabic(text) ? 'rtl' : 'ltr';
+    };
 
     const usedTemplate = workflowTemplates.find(w => w.id === task.workflowTemplateId);
 
@@ -792,14 +808,184 @@ const TaskDetailView = ({
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div className="md:col-span-2 space-y-4">
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Description</label>
-                                    <textarea
-                                        className="w-full p-3 border border-slate-200 rounded-lg text-sm text-slate-700 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
-                                        value={task.description}
-                                        onChange={e => onUpdateTask({ ...task, description: e.target.value })}
-                                        placeholder="Add details about this task..."
-                                    />
+                                {/* Description Section */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase">Description</label>
+                                        {checkPermission('tasks.edit.all') || checkPermission('tasks.edit.own') ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isEditingDescription) {
+                                                        onUpdateTask({ 
+                                                            ...task, 
+                                                            description: editDescription?.trim() || null,
+                                                            textDirHint: editTextDirHint,
+                                                            updatedAt: new Date().toISOString()
+                                                        });
+                                                        setIsEditingDescription(false);
+                                                    } else {
+                                                        setEditDescription(task.description || '');
+                                                        setEditTextDirHint(task.textDirHint || 'auto');
+                                                        setIsEditingDescription(true);
+                                                    }
+                                                }}
+                                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                                            >
+                                                {isEditingDescription ? <><Check className="w-3 h-3" /> Save</> : <><Edit2 className="w-3 h-3" /> Edit</>}
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    
+                                    {isEditingDescription ? (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-end gap-2 mb-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('auto')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'auto' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Auto
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('rtl')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'rtl' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    عربي
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('ltr')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'ltr' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    English
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px] resize-y"
+                                                value={editDescription}
+                                                onChange={e => setEditDescription(e.target.value)}
+                                                placeholder="Add details about this task..."
+                                                dir={editTextDirHint !== 'auto' ? editTextDirHint : detectDir(editDescription)}
+                                                style={{
+                                                    textAlign: 'start',
+                                                    unicodeBidi: 'plaintext',
+                                                    lineHeight: '1.6',
+                                                    whiteSpace: 'pre-wrap'
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingDescription(false)}
+                                                className="text-xs text-slate-500 hover:text-slate-700"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="text-sm text-slate-700 whitespace-pre-wrap min-h-[60px] p-2"
+                                            dir={task.textDirHint !== 'auto' ? task.textDirHint : detectDir(task.description || '')}
+                                            style={{
+                                                textAlign: 'start',
+                                                unicodeBidi: 'plaintext',
+                                                lineHeight: '1.6'
+                                            }}
+                                        >
+                                            {task.description || <span className="text-slate-400 italic">No description provided</span>}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Voice Over Section */}
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <label className="block text-xs font-bold text-slate-400 uppercase">Voice Over Script</label>
+                                        {checkPermission('tasks.edit.all') || checkPermission('tasks.edit.own') ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (isEditingVoiceOver) {
+                                                        onUpdateTask({ 
+                                                            ...task, 
+                                                            voiceOver: editVoiceOver?.trim() || null,
+                                                            textDirHint: editTextDirHint,
+                                                            updatedAt: new Date().toISOString()
+                                                        });
+                                                        setIsEditingVoiceOver(false);
+                                                    } else {
+                                                        setEditVoiceOver(task.voiceOver || '');
+                                                        setEditTextDirHint(task.textDirHint || 'auto');
+                                                        setIsEditingVoiceOver(true);
+                                                    }
+                                                }}
+                                                className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+                                            >
+                                                {isEditingVoiceOver ? <><Check className="w-3 h-3" /> Save</> : <><Edit2 className="w-3 h-3" /> Edit</>}
+                                            </button>
+                                        ) : null}
+                                    </div>
+                                    
+                                    {isEditingVoiceOver ? (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-end gap-2 mb-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('auto')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'auto' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Auto
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('rtl')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'rtl' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    عربي
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditTextDirHint('ltr')}
+                                                    className={`px-2 py-1 text-xs font-medium rounded ${editTextDirHint === 'ltr' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    English
+                                                </button>
+                                            </div>
+                                            <textarea
+                                                className="w-full p-3 border border-slate-300 rounded-lg text-sm text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[160px] resize-y"
+                                                value={editVoiceOver}
+                                                onChange={e => setEditVoiceOver(e.target.value)}
+                                                placeholder="Write voice over script..."
+                                                dir={editTextDirHint !== 'auto' ? editTextDirHint : detectDir(editVoiceOver)}
+                                                style={{
+                                                    textAlign: 'start',
+                                                    unicodeBidi: 'plaintext',
+                                                    lineHeight: '1.6',
+                                                    whiteSpace: 'pre-wrap'
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsEditingVoiceOver(false)}
+                                                className="text-xs text-slate-500 hover:text-slate-700"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div 
+                                            className="text-sm text-slate-700 whitespace-pre-wrap min-h-[80px] p-2"
+                                            dir={task.textDirHint !== 'auto' ? task.textDirHint : detectDir(task.voiceOver || '')}
+                                            style={{
+                                                textAlign: 'start',
+                                                unicodeBidi: 'plaintext',
+                                                lineHeight: '1.6'
+                                            }}
+                                        >
+                                            {task.voiceOver || <span className="text-slate-400 italic">No voice over script provided</span>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                             <div className="space-y-4">

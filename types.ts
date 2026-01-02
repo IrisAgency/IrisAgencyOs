@@ -252,7 +252,9 @@ export interface Task {
   projectId: string;       // reference to Project
   milestoneId?: string;    // reference to ProjectMilestone
   title: string;
-  description: string;
+  description: string | null;      // Detailed task description (supports Arabic/English)
+  voiceOver: string | null;        // Voice over script (supports Arabic/English)
+  textDirHint?: 'auto' | 'rtl' | 'ltr'; // Text direction hint for description/voiceOver
   department: Department;
   priority: Priority;
   taskType: TaskType;      // New field

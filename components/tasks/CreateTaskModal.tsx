@@ -45,6 +45,11 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     const [requiresSocial, setRequiresSocial] = useState(false);
     const [socialPlatforms, setSocialPlatforms] = useState<SocialPlatform[]>([]);
     const [socialManagerId, setSocialManagerId] = useState<string>('');
+    
+    // Description & Voice Over State
+    const [description, setDescription] = useState('');
+    const [voiceOver, setVoiceOver] = useState('');
+    const [textDirHint, setTextDirHint] = useState<'auto' | 'rtl' | 'ltr'>('auto');
 
     // References State
     const [referenceLinks, setReferenceLinks] = useState<ReferenceLink[]>([]);
@@ -61,6 +66,15 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     // Dropdown options
     const taskTypes: TaskType[] = ['design', 'video', 'photo', 'motion', 'post_production', 'copywriting', 'meeting', 'production', 'social_content', 'other'];
     const socialPlatformOptions: SocialPlatform[] = ['instagram', 'facebook', 'linkedin', 'tiktok', 'youtube', 'website', 'twitter', 'other'];
+    
+    // Arabic/English text direction helpers
+    const hasArabic = (text: string): boolean => {
+        return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(text);
+    };
+    
+    const detectDir = (text: string): 'rtl' | 'ltr' => {
+        return hasArabic(text) ? 'rtl' : 'ltr';
+    };
 
     // Initialize form when opening/editing
     useEffect(() => {
@@ -80,6 +94,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setAssigneeIds(editingTask.assigneeIds || []);
                 setReferenceLinks(editingTask.referenceLinks || []);
                 setSelectedImages([]); // Reset images on edit open
+                setDescription(editingTask.description || '');
+                setVoiceOver(editingTask.voiceOver || '');
+                setTextDirHint(editingTask.textDirHint || 'auto');
             } else {
                 // Reset defaults
                 setTitle('');
@@ -96,6 +113,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setSocialManagerId('');
                 setReferenceLinks([]);
                 setSelectedImages([]);
+                setDescription('');
+                setVoiceOver('');
+                setTextDirHint('auto');
             }
         }
     }, [isOpen, editingTask]);
@@ -261,7 +281,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     updatedAt: new Date().toISOString(),
                     assigneeIds: assigneeIds,
                     referenceLinks: referenceLinks,
-                    referenceImages: finalReferenceImages
+                    referenceImages: finalReferenceImages,
+                    description: description?.trim() || null,
+                    voiceOver: voiceOver?.trim() || null,
+                    textDirHint: textDirHint
                 };
 
                 await onUpdateTask(taskToSave);
@@ -291,7 +314,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     id: taskId,
                     projectId,
                     title,
-                    description: '',
+                    description: description?.trim() || null,
+                    voiceOver: voiceOver?.trim() || null,
+                    textDirHint: textDirHint,
                     department,
                     priority,
                     taskType,
@@ -415,6 +440,77 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
                             <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                        </div>
+                    </div>
+
+                    {/* Description & Voice Over Section */}
+                    <div className="border border-slate-200 rounded-lg p-4 space-y-4 bg-slate-50">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-slate-700">Task Details</h3>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500">Direction:</span>
+                                <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTextDirHint('auto')}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors ${textDirHint === 'auto' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        Auto
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTextDirHint('rtl')}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-slate-300 ${textDirHint === 'rtl' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        عربي
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setTextDirHint('ltr')}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-slate-300 ${textDirHint === 'ltr' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        English
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <textarea
+                                value={description}
+                                onChange={e => setDescription(e.target.value)}
+                                placeholder="Write detailed brief, requirements, notes…"
+                                rows={5}
+                                dir={textDirHint !== 'auto' ? textDirHint : detectDir(description)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg resize-y min-h-[120px] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                style={{
+                                    textAlign: 'start',
+                                    unicodeBidi: 'plaintext',
+                                    lineHeight: '1.6',
+                                    whiteSpace: 'pre-wrap'
+                                }}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Supports Arabic, English, and mixed text</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Voice Over Script</label>
+                            <textarea
+                                value={voiceOver}
+                                onChange={e => setVoiceOver(e.target.value)}
+                                placeholder="Write voice over script here…"
+                                rows={6}
+                                dir={textDirHint !== 'auto' ? textDirHint : detectDir(voiceOver)}
+                                className="w-full px-3 py-2 border border-slate-300 rounded-lg resize-y min-h-[160px] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                style={{
+                                    textAlign: 'start',
+                                    unicodeBidi: 'plaintext',
+                                    lineHeight: '1.6',
+                                    whiteSpace: 'pre-wrap'
+                                }}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">Supports Arabic, English, and mixed text</p>
                         </div>
                     </div>
 
