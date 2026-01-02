@@ -372,102 +372,102 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             size="lg"
         >
             <div className="max-h-[80vh] overflow-y-auto custom-scrollbar p-1">
-                <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4">
+                <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4 bg-[#0a0a0a]">
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Task Title *</label>
-                        <input required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" placeholder="e.g. Design Homepage" />
+                        <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Task Title *</label>
+                        <input required value={title} onChange={e => setTitle(e.target.value)} className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] placeholder-gray-500 focus:ring-[#DF1E3C] focus:border-[#DF1E3C]" placeholder="e.g. Design Homepage" />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Project *</label>
+                        <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Project *</label>
                         <select
                             required
                             value={projectId}
                             onChange={e => setProjectId(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                            className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
                             disabled={!!editingTask && !checkPermission('tasks.edit.all')}
                         >
-                            <option value="">Select Project</option>
+                            <option value="" className="bg-[#121212]">Select Project</option>
                             {projects.filter(p => p.status === 'active' || p.status === 'planning').map(p => (
-                                <option key={p.id} value={p.id}>{p.name} ({p.client})</option>
+                                <option key={p.id} value={p.id} className="bg-[#121212]">{p.name} ({p.client})</option>
                             ))}
                         </select>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Milestone (Optional)</label>
+                        <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Milestone (Optional)</label>
                         <select
                             value={milestoneId}
                             onChange={e => setMilestoneId(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+                            className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
                             disabled={!projectId || (!!editingTask && !checkPermission('tasks.edit.all'))}
                         >
-                            <option value="">Select Milestone</option>
+                            <option value="" className="bg-[#121212]">Select Milestone</option>
                             {milestones.filter(m => m.projectId === projectId).map(m => (
-                                <option key={m.id} value={m.id}>{m.name}</option>
+                                <option key={m.id} value={m.id} className="bg-[#121212]">{m.name}</option>
                             ))}
                         </select>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Type</label>
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Type</label>
                             <select
                                 value={taskType}
                                 onChange={e => setTaskType(e.target.value as TaskType)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500"
+                                className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
                                 disabled={!!editingTask && !checkPermission('tasks.edit.all')}
                             >
-                                {taskTypes.map(t => <option key={t} value={t}>{t.replace('_', ' ').toUpperCase()}</option>)}
+                                {taskTypes.map(t => <option key={t} value={t} className="bg-[#121212]">{t.replace('_', ' ').toUpperCase()}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                            <select value={priority} onChange={e => setPriority(e.target.value as Priority)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
-                                {Object.values(Priority).map(p => <option key={p} value={p}>{p}</option>)}
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Priority</label>
+                            <select value={priority} onChange={e => setPriority(e.target.value as Priority)} className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C]">
+                                {Object.values(Priority).map(p => <option key={p} value={p} className="bg-[#121212]">{p}</option>)}
                             </select>
                         </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Department</label>
                             <select
                                 value={department}
                                 onChange={e => setDepartment(e.target.value as Department)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg disabled:bg-slate-100 disabled:text-slate-500"
+                                className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
                                 disabled={!!editingTask && !checkPermission('tasks.edit.all')}
                             >
-                                {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
+                                {Object.values(Department).map(d => <option key={d} value={d} className="bg-[#121212]">{d}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Due Date</label>
-                            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Due Date</label>
+                            <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C]" />
                         </div>
                     </div>
 
                     {/* Description & Voice Over Section */}
-                    <div className="border border-slate-200 rounded-lg p-4 space-y-4 bg-slate-50">
+                    <div className="border border-[rgba(255,255,255,0.08)] rounded-2xl p-4 space-y-4 bg-[rgba(18,18,18,0.6)] backdrop-blur-sm">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-slate-700">Task Details</h3>
+                            <h3 className="text-sm font-semibold text-[#E6E1E5]">Task Details</h3>
                             <div className="flex items-center gap-2">
-                                <span className="text-xs text-slate-500">Direction:</span>
-                                <div className="flex rounded-lg border border-slate-300 overflow-hidden">
+                                <span className="text-xs text-gray-400">Direction:</span>
+                                <div className="flex rounded-lg border border-[#49454F] overflow-hidden">
                                     <button
                                         type="button"
                                         onClick={() => setTextDirHint('auto')}
-                                        className={`px-2 py-1 text-xs font-medium transition-colors ${textDirHint === 'auto' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors ${textDirHint === 'auto' ? 'bg-[#DF1E3C] text-white' : 'bg-[#121212] text-gray-400 hover:bg-[#1a1a1a]'}`}
                                     >
                                         Auto
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setTextDirHint('rtl')}
-                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-slate-300 ${textDirHint === 'rtl' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-[#49454F] ${textDirHint === 'rtl' ? 'bg-[#DF1E3C] text-white' : 'bg-[#121212] text-gray-400 hover:bg-[#1a1a1a]'}`}
                                     >
                                         عربي
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setTextDirHint('ltr')}
-                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-slate-300 ${textDirHint === 'ltr' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
+                                        className={`px-2 py-1 text-xs font-medium transition-colors border-l border-[#49454F] ${textDirHint === 'ltr' ? 'bg-[#DF1E3C] text-white' : 'bg-[#121212] text-gray-400 hover:bg-[#1a1a1a]'}`}
                                     >
                                         English
                                     </button>
@@ -476,14 +476,14 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Description</label>
                             <textarea
                                 value={description}
                                 onChange={e => setDescription(e.target.value)}
                                 placeholder="Write detailed brief, requirements, notes…"
                                 rows={5}
                                 dir={textDirHint !== 'auto' ? textDirHint : detectDir(description)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg resize-y min-h-[120px] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] placeholder-gray-500 resize-y min-h-[120px] focus:ring-2 focus:ring-[#DF1E3C] focus:border-[#DF1E3C]"
                                 style={{
                                     textAlign: 'start',
                                     unicodeBidi: 'plaintext',
@@ -491,18 +491,18 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                     whiteSpace: 'pre-wrap'
                                 }}
                             />
-                            <p className="text-xs text-slate-500 mt-1">Supports Arabic, English, and mixed text</p>
+                            <p className="text-xs text-gray-400 mt-1">Supports Arabic, English, and mixed text</p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Voice Over Script</label>
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Voice Over Script</label>
                             <textarea
                                 value={voiceOver}
                                 onChange={e => setVoiceOver(e.target.value)}
                                 placeholder="Write voice over script here…"
                                 rows={6}
                                 dir={textDirHint !== 'auto' ? textDirHint : detectDir(voiceOver)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg resize-y min-h-[160px] focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] placeholder-gray-500 resize-y min-h-[160px] focus:ring-2 focus:ring-[#DF1E3C] focus:border-[#DF1E3C]"
                                 style={{
                                     textAlign: 'start',
                                     unicodeBidi: 'plaintext',
@@ -510,83 +510,83 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                     whiteSpace: 'pre-wrap'
                                 }}
                             />
-                            <p className="text-xs text-slate-500 mt-1">Supports Arabic, English, and mixed text</p>
+                            <p className="text-xs text-gray-400 mt-1">Supports Arabic, English, and mixed text</p>
                         </div>
                     </div>
 
                     {/* References Section */}
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="border border-[rgba(255,255,255,0.08)] rounded-2xl overflow-hidden">
                         <button
                             type="button"
                             onClick={() => setShowReferences(!showReferences)}
-                            className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 transition-colors"
+                            className="w-full flex items-center justify-between p-3 bg-[rgba(18,18,18,0.6)] hover:bg-[rgba(18,18,18,0.8)] transition-colors"
                         >
-                            <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                            <span className="text-sm font-medium text-[#E6E1E5] flex items-center gap-2">
                                 <LinkIcon className="w-4 h-4" /> References & Assets
                             </span>
                             <div className="flex items-center gap-3">
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-gray-400">
                                     {referenceLinks.length} links, {selectedImages.length + (editingTask?.referenceImages?.length || 0)} images
                                 </span>
-                                {showReferences ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                                {showReferences ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                             </div>
                         </button>
                         
                         {showReferences && (
-                            <div className="p-4 space-y-4 bg-white">
+                            <div className="p-4 space-y-4 bg-[#0a0a0a]">
                                 {/* Links Block */}
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Reference Links</label>
-                                        <button type="button" onClick={() => setShowLinkInput(true)} className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Reference Links</label>
+                                        <button type="button" onClick={() => setShowLinkInput(true)} className="text-xs text-[#DF1E3C] hover:underline flex items-center gap-1">
                                             <Plus className="w-3 h-3" /> Add Link
                                         </button>
                                     </div>
                                     
                                     {showLinkInput && (
-                                        <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-3 space-y-2">
+                                        <div className="bg-[#121212] p-3 rounded-lg border border-[#49454F] mb-3 space-y-2">
                                             <input 
                                                 placeholder="Title (e.g. Competitor Site)" 
-                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                className="w-full px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5] placeholder-gray-500"
                                                 value={newLinkTitle}
                                                 onChange={e => setNewLinkTitle(e.target.value)}
                                             />
                                             <input 
                                                 placeholder="URL (https://...)" 
-                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                className="w-full px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5] placeholder-gray-500"
                                                 value={newLinkUrl}
                                                 onChange={e => setNewLinkUrl(e.target.value)}
                                             />
                                             <input 
                                                 placeholder="Note (Optional)" 
-                                                className="w-full px-2 py-1 text-sm border rounded"
+                                                className="w-full px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5] placeholder-gray-500"
                                                 value={newLinkNote}
                                                 onChange={e => setNewLinkNote(e.target.value)}
                                             />
                                             <div className="flex justify-end gap-2 mt-2">
-                                                <button type="button" onClick={() => setShowLinkInput(false)} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
-                                                <button type="button" onClick={handleAddLink} className="text-xs bg-indigo-600 text-white px-3 py-1 rounded hover:bg-indigo-700">Add</button>
+                                                <button type="button" onClick={() => setShowLinkInput(false)} className="text-xs text-gray-400 hover:text-gray-300">Cancel</button>
+                                                <button type="button" onClick={handleAddLink} className="text-xs bg-[#DF1E3C] text-white px-3 py-1 rounded hover:bg-[#c91a35]">Add</button>
                                             </div>
                                         </div>
                                     )}
 
                                     <div className="space-y-2">
                                         {referenceLinks.map(link => (
-                                            <div key={link.id} className="flex items-start justify-between p-2 bg-slate-50 rounded border border-slate-100">
+                                            <div key={link.id} className="flex items-start justify-between p-2 bg-[#121212] rounded border border-[#49454F]">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
                                                         <img src={`https://www.google.com/s2/favicons?domain=${link.url}&sz=16`} alt="" className="w-4 h-4 opacity-50" />
-                                                        <a href={link.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-indigo-600 hover:underline truncate block">{link.title}</a>
+                                                        <a href={link.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#DF1E3C] hover:underline truncate block">{link.title}</a>
                                                     </div>
-                                                    {link.note && <p className="text-xs text-slate-500 mt-0.5 ml-6">{link.note}</p>}
+                                                    {link.note && <p className="text-xs text-gray-400 mt-0.5 ml-6">{link.note}</p>}
                                                 </div>
-                                                <button type="button" onClick={() => handleRemoveLink(link.id)} className="text-slate-400 hover:text-rose-500 ml-2">
+                                                <button type="button" onClick={() => handleRemoveLink(link.id)} className="text-gray-400 hover:text-[#DF1E3C] ml-2">
                                                     <X className="w-4 h-4" />
                                                 </button>
                                             </div>
                                         ))}
                                         {referenceLinks.length === 0 && !showLinkInput && (
-                                            <p className="text-xs text-slate-400 italic">No links added.</p>
+                                            <p className="text-xs text-gray-500 italic">No links added.</p>
                                         )}
                                     </div>
                                 </div>
@@ -594,8 +594,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                 {/* Images Block */}
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <label className="text-xs font-bold text-slate-500 uppercase">Reference Images</label>
-                                        <label className="cursor-pointer text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Reference Images</label>
+                                        <label className="cursor-pointer text-xs text-[#DF1E3C] hover:underline flex items-center gap-1">
                                             <Plus className="w-3 h-3" /> Upload Images
                                             <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageSelect} />
                                         </label>
@@ -604,7 +604,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                         {/* Existing Images (if editing) */}
                                         {editingTask?.referenceImages?.map((img) => (
-                                            <div key={img.id} className="relative group aspect-square bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                                            <div key={img.id} className="relative group aspect-square bg-[#121212] rounded-lg overflow-hidden border border-[#49454F]">
                                                 <img src={img.downloadUrl} alt={img.title} className="w-full h-full object-cover" />
                                                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                     <span className="text-xs text-white font-medium px-1 text-center">{img.fileName}</span>
@@ -614,12 +614,12 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
                                         {/* New Selected Images */}
                                         {selectedImages.map((file, index) => (
-                                            <div key={index} className="relative group aspect-square bg-slate-100 rounded-lg overflow-hidden border border-indigo-200 ring-2 ring-indigo-50">
+                                            <div key={index} className="relative group aspect-square bg-[#121212] rounded-lg overflow-hidden border border-[#DF1E3C] ring-2 ring-[#DF1E3C]/20">
                                                 <img src={URL.createObjectURL(file)} alt="preview" className="w-full h-full object-cover opacity-80" />
                                                 <button 
                                                     type="button"
                                                     onClick={() => handleRemoveImage(index)}
-                                                    className="absolute top-1 right-1 bg-white/90 text-rose-600 rounded-full p-0.5 hover:bg-white"
+                                                    className="absolute top-1 right-1 bg-white/90 text-[#DF1E3C] rounded-full p-0.5 hover:bg-white"
                                                 >
                                                     <X className="w-3 h-3" />
                                                 </button>
@@ -630,7 +630,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                         ))}
                                     </div>
                                     {selectedImages.length === 0 && (!editingTask?.referenceImages || editingTask.referenceImages.length === 0) && (
-                                        <p className="text-xs text-slate-400 italic">No images uploaded.</p>
+                                        <p className="text-xs text-gray-500 italic">No images uploaded.</p>
                                     )}
                                 </div>
                             </div>
@@ -640,8 +640,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     {/* Assignees Selection */}
                     {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER) && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Assign Team Members</label>
-                            <div className="border border-slate-300 rounded-lg p-2 max-h-48 overflow-y-auto space-y-1 custom-scrollbar">
+                            <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Assign Team Members</label>
+                            <div className="border border-[#49454F] rounded-lg p-2 max-h-48 overflow-y-auto space-y-1 custom-scrollbar bg-[#121212]">
                                 {users.filter(user => {
                                     if (projectId) {
                                         return projectMembers.some(pm => pm.projectId === projectId && pm.userId === user.id);
@@ -664,7 +664,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                     })();
 
                                     return (
-                                        <label key={user.id} className={`flex items-center justify-between p-2 rounded cursor-pointer ${isAvailable ? 'hover:bg-slate-50' : 'bg-rose-50 opacity-80'}`}>
+                                        <label key={user.id} className={`flex items-center justify-between p-2 rounded cursor-pointer ${isAvailable ? 'hover:bg-[#1a1a1a]' : 'bg-[#DF1E3C]/10 opacity-80'}`}>
                                             <div className="flex items-center space-x-2">
                                                 <input
                                                     type="checkbox"
@@ -679,17 +679,17 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                                             }
                                                         });
                                                     }}
-                                                    className="rounded text-indigo-600 focus:ring-indigo-500"
+                                                    className="rounded text-[#DF1E3C] focus:ring-[#DF1E3C] bg-[#0a0a0a] border-[#49454F]"
                                                 />
-                                                <span className="text-sm text-slate-700">{user.name}</span>
-                                                <span className="text-xs text-slate-400">({user.role})</span>
+                                                <span className="text-sm text-[#E6E1E5]">{user.name}</span>
+                                                <span className="text-xs text-gray-400">({user.role})</span>
                                             </div>
-                                            {!isAvailable && <span className="text-[10px] uppercase font-bold text-rose-600 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> On Leave</span>}
+                                            {!isAvailable && <span className="text-[10px] uppercase font-bold text-[#DF1E3C] flex items-center gap-1"><AlertCircle className="w-3 h-3" /> On Leave</span>}
                                         </label>
                                     );
                                 })}
                             </div>
-                            <p className="text-xs text-slate-500 mt-1">
+                            <p className="text-xs text-gray-400 mt-1">
                                 {assigneeIds.length === 0 ? 'No members assigned' : `${assigneeIds.length} member(s) assigned`}
                             </p>
                         </div>
@@ -697,20 +697,20 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
                     {/* Workflow Selection */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Workflow</label>
+                        <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Workflow</label>
                         <select
                             value={workflowId}
                             onChange={e => setWorkflowId(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+                            className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C]"
                         >
-                            <option value="">Select Workflow</option>
+                            <option value="" className="bg-[#121212]">Select Workflow</option>
                             {getAvailableWorkflows(department, taskType).map(wf => (
-                                <option key={wf.id} value={wf.id}>
+                                <option key={wf.id} value={wf.id} className="bg-[#121212]">
                                     {wf.name}
                                 </option>
                             ))}
                         </select>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-gray-400 mt-1">
                             {workflowId
                                 ? `Selected: ${workflowTemplates.find(w => w.id === workflowId)?.name}`
                                 : `Default: ${getActiveWorkflow(department, taskType)?.name || 'None'}`
@@ -719,34 +719,34 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     </div>
 
                     {/* Social Handover Options */}
-                    <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                    <div className="bg-[rgba(223,30,60,0.1)] p-3 rounded-lg border border-[rgba(223,30,60,0.3)]">
                         <label className="flex items-center space-x-2 cursor-pointer mb-2">
                             <input
                                 type="checkbox"
                                 checked={requiresSocial}
                                 onChange={e => setRequiresSocial(e.target.checked)}
-                                className="rounded text-indigo-600 focus:ring-indigo-500"
+                                className="rounded text-[#DF1E3C] focus:ring-[#DF1E3C] bg-[#0a0a0a] border-[#49454F]"
                             />
-                            <span className="text-sm font-bold text-indigo-900">Requires Social Media Post?</span>
+                            <span className="text-sm font-bold text-[#DF1E3C]">Requires Social Media Post?</span>
                         </label>
 
                         {requiresSocial && (
                             <div className="pl-6 animate-in fade-in slide-in-from-top-1">
                                 <div className="mb-3">
-                                    <label className="block text-xs font-medium text-indigo-800 mb-1">Social Manager</label>
+                                    <label className="block text-xs font-medium text-[#E6E1E5] mb-1">Social Manager</label>
                                     <select
                                         value={socialManagerId}
                                         onChange={e => setSocialManagerId(e.target.value)}
-                                        className="w-full px-2 py-1.5 border border-indigo-200 rounded text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                        className="w-full px-2 py-1.5 bg-[#121212] border border-[#49454F] rounded text-sm text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C]"
                                     >
-                                        <option value="">Select Manager</option>
+                                        <option value="" className="bg-[#121212]">Select Manager</option>
                                         {users.filter(u => u.role === 'Social Manager' || u.department === 'Marketing').map(u => (
-                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                            <option key={u.id} value={u.id} className="bg-[#121212]">{u.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                <label className="block text-xs font-medium text-indigo-800 mb-1">Select Platforms</label>
+                                <label className="block text-xs font-medium text-[#E6E1E5] mb-1">Select Platforms</label>
                                 <div className="grid grid-cols-2 gap-2">
                                     {socialPlatformOptions.map(platform => (
                                         <label key={platform} className="flex items-center space-x-2 cursor-pointer">
@@ -760,9 +760,9 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                                         setSocialPlatforms(socialPlatforms.filter(p => p !== platform));
                                                     }
                                                 }}
-                                                className="rounded text-indigo-600 focus:ring-indigo-500"
+                                                className="rounded text-[#DF1E3C] focus:ring-[#DF1E3C] bg-[#0a0a0a] border-[#49454F]"
                                             />
-                                            <span className="text-xs text-indigo-700 capitalize">{platform}</span>
+                                            <span className="text-xs text-[#E6E1E5] capitalize">{platform}</span>
                                         </label>
                                     ))}
                                 </div>
@@ -770,10 +770,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                         )}
                     </div>
 
-                    <div className="pt-4 border-t border-slate-200 flex justify-between items-center mt-6">
-                        <div className="text-xs text-slate-500">
+                    <div className="pt-4 border-t border-[#49454F] flex justify-between items-center mt-6">
+                        <div className="text-xs text-gray-400">
                             {isUploading ? (
-                                <span className="flex items-center gap-2 text-indigo-600 font-medium">
+                                <span className="flex items-center gap-2 text-[#DF1E3C] font-medium">
                                     <Loader2 className="w-3 h-3 animate-spin" />
                                     Uploading assets... {Math.round(uploadProgress)}%
                                 </span>
@@ -785,7 +785,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             <button
                                 type="button"
                                 onClick={onClose}
-                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg font-medium text-sm"
+                                className="px-4 py-2 text-gray-400 hover:bg-[#121212] rounded-lg font-medium text-sm border border-[#49454F] hover:text-[#E6E1E5] transition-colors"
                                 disabled={isUploading}
                             >
                                 Cancel
@@ -793,7 +793,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             <button
                                 type="submit"
                                 disabled={!title || !projectId || isUploading}
-                                className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="px-6 py-2 bg-[#DF1E3C] text-white rounded-lg font-bold text-sm hover:bg-[#c91a35] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors"
                             >
                                 {isUploading && <Loader2 className="w-4 h-4 animate-spin" />}
                                 {editingTask ? 'Update Task' : 'Create Task'}
