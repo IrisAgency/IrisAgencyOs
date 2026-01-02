@@ -487,36 +487,63 @@ const TasksHub: React.FC<TasksHubProps> = ({
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-6 overflow-x-hidden">
           {activeArea === 'tasks' ? (
-            <div className="grid lg:grid-cols-[1.6fr_1fr] gap-6">
-              <div className="space-y-4">
-                {layoutMode === 'board' ? (
-                  <TaskBoardDark
-                    tasks={filteredTasks}
-                    users={users}
-                    selectedTaskId={selectedTaskId}
-                    onSelectTask={setSelectedTaskId}
-                    onUpdateTask={onUpdateTask}
-                    statusTone={statusTone}
-                    priorityTone={priorityTone}
-                    dueTone={dueTone}
-                  />
-                ) : (
-                  <TaskListDark
-                    tasks={filteredTasks}
-                    users={users}
-                    selectedTaskId={selectedTaskId}
-                    onSelectTask={setSelectedTaskId}
-                    statusTone={statusTone}
-                    priorityTone={priorityTone}
-                    dueTone={dueTone}
-                  />
-                )}
-              </div>
+            <div className="space-y-4">
+              {layoutMode === 'board' ? (
+                <TaskBoardDark
+                  tasks={filteredTasks}
+                  users={users}
+                  onSelectTask={setSelectedTaskId}
+                  statusTone={statusTone}
+                  priorityTone={priorityTone}
+                  dueTone={dueTone}
+                />
+              ) : (
+                <TaskListDark
+                  tasks={filteredTasks}
+                  users={users}
+                  selectedTaskId={selectedTaskId}
+                  onSelectTask={setSelectedTaskId}
+                  statusTone={statusTone}
+                  priorityTone={priorityTone}
+                  dueTone={dueTone}
+                />
+              )}
+            </div>
+          ) : (
+            <WorkflowHub
+              tasks={filteredTasks}
+              workflowTemplates={workflowTemplates}
+              approvalSteps={approvalSteps}
+              users={users}
+              projects={projects}
+              onSelectTask={setSelectedTaskId}
+              statusTone={statusTone}
+              dueTone={dueTone}
+            />
+          )}
 
-              <div className="hidden lg:flex flex-col rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 shadow-[0_20px_50px_-32px_rgba(0,0,0,0.9)] overflow-hidden">
-                {selectedTask ? (
+          {/* Task Detail Modal - Desktop & Mobile */}
+          {activeArea === 'tasks' && selectedTask && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTaskId(null)}>
+              <div 
+                className="w-full max-w-[900px] max-h-[85vh] bg-[color:var(--dash-surface-elevated)] rounded-2xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Modal Header */}
+                <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/95 backdrop-blur-sm sticky top-0 z-10">
+                  <h3 className="text-lg font-semibold text-slate-100">Task Details</h3>
+                  <button 
+                    onClick={() => setSelectedTaskId(null)}
+                    className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Modal Content - Scrollable */}
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
                   <TaskDetailView
                     task={selectedTask}
                     project={projects.find(p => p.id === selectedTask.projectId)}
@@ -553,69 +580,8 @@ const TasksHub: React.FC<TasksHubProps> = ({
                     onAddSocialPost={onAddSocialPost}
                     leaveRequests={leaveRequests}
                   />
-                ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center text-slate-500 p-8">
-                    <CheckCircle className="w-12 h-12 mb-3 opacity-30" />
-                    <p className="text-sm font-medium">Select a task to view details</p>
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <WorkflowHub
-              tasks={filteredTasks}
-              workflowTemplates={workflowTemplates}
-              approvalSteps={approvalSteps}
-              users={users}
-              projects={projects}
-              onSelectTask={setSelectedTaskId}
-              statusTone={statusTone}
-              dueTone={dueTone}
-            />
-          )}
-
-          {activeArea === 'tasks' && selectedTask && (
-            <div className="lg:hidden rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 shadow-[0_20px_50px_-32px_rgba(0,0,0,0.9)] overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-3 border-b border-[color:var(--dash-glass-border)] text-slate-200">
-                <button onClick={() => setSelectedTaskId(null)} className="text-slate-300 hover:text-white"><ChevronRight className="w-5 h-5 rotate-180" /></button>
-                <span className="text-sm font-semibold">Task Detail</span>
-              </div>
-              <TaskDetailView
-                task={selectedTask}
-                project={projects.find(p => p.id === selectedTask.projectId)}
-                users={users}
-                comments={comments.filter(c => c.taskId === selectedTask.id)}
-                timeLogs={timeLogs.filter(t => t.taskId === selectedTask.id)}
-                dependencies={dependencies.filter(d => d.taskId === selectedTask.id)}
-                activityLogs={activityLogs.filter(l => l.taskId === selectedTask.id)}
-                taskSteps={approvalSteps.filter(s => s.taskId === selectedTask.id)}
-                clientApproval={clientApprovals.find(ca => ca.taskId === selectedTask.id)}
-                taskFiles={files.filter(f => f.taskId === selectedTask.id)}
-                allTasks={tasks}
-                currentUser={currentUser}
-                workflowTemplates={workflowTemplates}
-                milestones={milestones}
-                onUpdateTask={onUpdateTask}
-                onAddTask={onAddTask}
-                onAddComment={onAddComment}
-                onAddTimeLog={onAddTimeLog}
-                onAddDependency={onAddDependency}
-                onUpdateApprovalStep={onUpdateApprovalStep}
-                onAddApprovalSteps={onAddApprovalSteps}
-                onUpdateClientApproval={onUpdateClientApproval}
-                onAddClientApproval={onAddClientApproval}
-                onUploadFile={onUploadFile}
-                onNotify={onNotify}
-                onArchiveTask={handleArchiveTask}
-                onReopenTask={handleReopenTask}
-                onDeleteTask={onDeleteTask}
-                onEditTask={openEditModal}
-                checkPermission={checkPermission}
-                getStatusColor={getStatusColor}
-                resolveApprover={resolveApprover}
-                onAddSocialPost={onAddSocialPost}
-                leaveRequests={leaveRequests}
-              />
             </div>
           )}
         </div>
