@@ -13,6 +13,7 @@ interface TaskBoardProps {
 const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskStatus, onDeleteTask }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [mobileActiveStatus, setMobileActiveStatus] = useState<TaskStatus>(TaskStatus.NEW);
 
   // Form State
   const [title, setTitle] = useState('');
@@ -118,7 +119,82 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
+      {/* Mobile: Tab Navigation */}
+      <div className="lg:hidden flex overflow-x-auto space-x-2 mb-4 pb-2 scrollbar-thin">
+        {columns.map((status) => (
+          <button
+            key={status}
+            onClick={() => setMobileActiveStatus(status)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+              mobileActiveStatus === status
+                ? 'bg-iris-red text-iris-white'
+                : 'bg-iris-black/60 text-iris-white/70 border border-iris-white/10 hover:bg-iris-black/80'
+            }`}
+          >
+            {status.replace('_', ' ')} ({tasks.filter(t => t.status === status).length})
+          </button>
+        ))}
+      </div>
+
+      {/* Mobile: Single Column View */}
+      <div className="lg:hidden flex-1 overflow-y-auto">
+        <div className="space-y-3">
+          {tasks.filter(t => t.status === mobileActiveStatus).map((task) => (
+            <div 
+              key={task.id} 
+              onClick={() => handleTaskClick(task)}
+              className="bg-iris-black/80 backdrop-blur-sm p-4 rounded-lg border border-iris-white/10 hover:border-iris-red/40 cursor-pointer transition-all"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-[10px] font-bold text-iris-white/40 uppercase tracking-wider">{task.client}</span>
+              </div>
+              
+              <h4 className="text-sm font-semibold text-iris-white mb-2 leading-snug line-clamp-2">{task.title}</h4>
+              
+              <div className="flex items-center flex-wrap gap-2 mb-3">
+                <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${getPriorityColor(task.priority)}`}>
+                  {task.priority}
+                </span>
+                <span className="text-[10px] text-iris-white/50">{task.department}</span>
+                {task.dueDate && (
+                  <span className="text-[10px] text-iris-white/50 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(task.dueDate).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
+
+              {task.assigneeIds && task.assigneeIds.length > 0 && (
+                <div className="flex -space-x-2">
+                  {task.assigneeIds.slice(0, 3).map((assigneeId) => {
+                    const avatar = getAssigneeAvatar(assigneeId);
+                    return avatar ? (
+                      <img key={assigneeId} src={avatar} alt="Assignee" className="w-7 h-7 rounded-full border-2 border-iris-black/90" />
+                    ) : (
+                      <div key={assigneeId} className="w-7 h-7 rounded-full bg-iris-white/20 border-2 border-iris-black/90 flex items-center justify-center text-xs text-iris-white/80 font-medium">
+                        ?
+                      </div>
+                    );
+                  })}
+                  {task.assigneeIds.length > 3 && (
+                    <div className="w-7 h-7 rounded-full bg-iris-white/10 border-2 border-iris-black/90 flex items-center justify-center text-xs text-iris-white/60 font-medium">
+                      +{task.assigneeIds.length - 3}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+          {tasks.filter(t => t.status === mobileActiveStatus).length === 0 && (
+            <div className="text-center py-12 text-iris-white/40">
+              <p>No tasks in this stage</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop: Horizontal Kanban Board */}
+      <div className="hidden lg:block flex-1 overflow-x-auto overflow-y-hidden pb-4">
         <div className="flex h-full space-x-4 sm:space-x-6 min-w-max">
           {columns.map((status) => (
             <div key={status} className="w-72 sm:w-80 flex flex-col h-full rounded-xl bg-iris-black/60 border border-iris-white/10">

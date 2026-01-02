@@ -52,9 +52,11 @@
     font-family: 'Outfit', sans-serif;
     min-height: 100vh;
     width: 100%;
+    max-width: 100%;
     position: relative;
     z-index: 1;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
     transition: background-image 0.2s ease;
     margin: 0;
     padding: 0;
@@ -63,6 +65,7 @@
 
 .dashboard-theme-wrapper * {
     box-sizing: border-box;
+    max-width: 100%;
 }
 
 /* Vitreous Inky Suspension Effect */
@@ -76,6 +79,7 @@
     transition: transform 0.4s var(--dash-transition), box-shadow 0.4s var(--dash-transition), border-color 0.4s var(--dash-transition);
     position: relative;
     overflow: hidden;
+    max-width: 100%;
 }
 
 .glass-panel::before {
@@ -98,6 +102,7 @@
     max-width: 1440px;
     margin: 0 auto;
     padding: clamp(12px, 2vw, 24px);
+    overflow-x: hidden;
 }
 
 header {

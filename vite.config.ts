@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'prompt',
+        registerType: 'autoUpdate',
         devOptions: {
           enabled: false  // Disable PWA in dev to avoid conflict with FCM service worker
         },
@@ -63,7 +63,20 @@ export default defineConfig(({ mode }) => {
           skipWaiting: true,
           navigateFallback: 'index.html',
           navigateFallbackDenylist: [/^\/api\//],
+          // Network first for HTML to always get latest version
           runtimeCaching: [
+            {
+              urlPattern: /\.html$/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'html-cache',
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24 // 1 day
+                },
+                networkTimeoutSeconds: 3
+              }
+            },
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
               handler: 'CacheFirst',

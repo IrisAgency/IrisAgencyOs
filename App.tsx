@@ -42,6 +42,7 @@ import {
   generateFileName,
   getDestinationFolder
 } from './utils/folderUtils';
+import { startOverflowMonitoring } from './utils/overflowDetector';
 
 // Helper hook for LocalStorage persistence
 function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -66,6 +67,14 @@ const App: React.FC = () => {
   const [toast, setToast] = useState<{ title: string, message: string } | null>(null);
   const [splashFinished, setSplashFinished] = useState(false);
   const [hidePushPrompt, setHidePushPrompt] = useStickyState<boolean>(false, 'iris_hide_push_prompt');
+
+  // Overflow detection in development mode
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const cleanup = startOverflowMonitoring();
+      return cleanup;
+    }
+  }, []);
 
   // -- Application State (Persisted) --
   const { currentUser: user, loading, logout, checkPermission } = useAuth();

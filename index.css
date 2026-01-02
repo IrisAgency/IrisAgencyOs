@@ -49,16 +49,77 @@
     box-sizing: border-box;
   }
 
+  /* CRITICAL: Prevent horizontal scrolling globally */
   html,
   body {
     width: 100%;
+    max-width: 100%;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
     background-color: #050505;
+    position: relative;
+  }
+
+  html {
+    /* Prevent horizontal bounce on iOS */
+    overscroll-behavior-x: none;
+    /* Allow only vertical panning on touch devices */
+    touch-action: pan-y pinch-zoom;
+  }
+
+  body {
+    /* Prevent horizontal bounce */
+    overscroll-behavior-x: none;
+    touch-action: pan-y pinch-zoom;
+    /* Disable text size adjustment on iOS */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   
   /* PWA Support - iOS Safe Areas */
   body {
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Root container must not exceed viewport */
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* All elements must respect container width */
+  * {
+    max-width: 100%;
+  }
+
+  /* Safe text handling for Arabic + English mixed content */
+  p, span, div, h1, h2, h3, h4, h5, h6, label, td, th {
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    hyphens: auto;
+  }
+
+  /* Ensure inputs and textareas don't overflow */
+  input,
+  textarea,
+  select {
+    max-width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  /* Prevent pre/code blocks from causing overflow */
+  pre,
+  code {
+    max-width: 100%;
+    overflow-x: auto;
+    word-wrap: break-word;
+    white-space: pre-wrap;
   }
 
   img,
@@ -76,6 +137,10 @@
   .app-shell {
     min-height: 100vh;
     background-color: #050505;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    position: relative;
   }
 
   .sidebar {
@@ -85,6 +150,7 @@
     bottom: 0;
     width: var(--sidebar-w);
     z-index: 40;
+    max-width: 100%;
   }
 
   .header {
@@ -94,6 +160,7 @@
     right: 0;
     height: var(--header-h);
     z-index: 10;
+    max-width: 100%;
   }
 
   .main {
@@ -101,12 +168,18 @@
     padding-top: var(--header-h);
     min-height: 100vh;
     background-color: #050505;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    position: relative;
   }
 
   .page {
     max-width: var(--page-max);
     margin: 0 auto;
     padding: var(--page-pad);
+    width: 100%;
+    overflow-x: hidden;
   }
 
   /* Header Internal Layout */
@@ -296,20 +369,36 @@
 
     .main {
       margin-left: 0;
+      width: 100%;
+      max-width: 100%;
     }
 
     .page {
       padding: var(--page-padding-mobile);
+      width: 100%;
+      max-width: 100%;
     }
 
     .page-container {
       padding: var(--page-padding-mobile);
+      width: 100%;
+      max-width: 100%;
+    }
+
+    /* Force all grids to be responsive on mobile */
+    [class*="grid-cols-"] {
+      grid-template-columns: 1fr !important;
     }
   }
 
   @media (max-width: 640px) {
     .grid2 {
       grid-template-columns: 1fr;
+    }
+
+    /* Ensure small screens don't have horizontal scroll */
+    * {
+      max-width: 100vw;
     }
   }
 
@@ -335,6 +424,13 @@
     text-align: left;
   }
 
+  /* Arabic text support */
+  .rtl-text {
+    direction: rtl;
+    text-align: right;
+    unicode-bidi: plaintext;
+  }
+
   .ltr-text,
   .data-mono,
   input[type="email"],
@@ -352,8 +448,29 @@
     text-align: left;
   }
 
+  /* Mixed content support */
+  .mixed-content {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
+
+  /* Auto-detect direction for contenteditable and textareas */
+  [contenteditable],
+  textarea:not(.input-ltr),
+  input[type="text"]:not(.input-ltr),
+  input[type="search"]:not(.input-ltr) {
+    unicode-bidi: plaintext;
+    text-align: start;
+  }
+
   .isolate-bidi {
     unicode-bidi: isolate;
+  }
+
+  /* Ensure proper Arabic font rendering */
+  *:lang(ar) {
+    font-family: 'Outfit', 'Segoe UI', 'Noto Sans Arabic', 'Arial', sans-serif;
+    font-feature-settings: 'liga' 1, 'calt' 1;
   }
 
   /* Scrollbar utilities */
