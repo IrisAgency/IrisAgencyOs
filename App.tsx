@@ -461,14 +461,23 @@ const App: React.FC = () => {
       const rawFile = (file as any).file;
 
       if (rawFile) {
-        // Find associated entities for organized storage
-        const project = projects.find(p => p.id === file.projectId);
-        const client = project ? clients.find(c => c.id === project.clientId) : null;
+        // Determine storage path based on file type/category
+        let storagePath: string;
+        
+        // Check if this is a client report
+        if (file.category === 'document' && file.folderId?.startsWith('client_reports_')) {
+          const clientId = file.folderId.replace('client_reports_', '');
+          storagePath = `clients/${clientId}/reports/${file.id}_${rawFile.name}`;
+        } else {
+          // Find associated entities for organized storage
+          const project = projects.find(p => p.id === file.projectId);
+          const client = project ? clients.find(c => c.id === project.clientId) : null;
 
-        // Build organized storage path: clients/{clientId}/projects/{projectId}/assets/{fileName}
-        const clientId = client?.id || 'unknown-client';
-        const projectId = file.projectId || 'unknown-project';
-        const storagePath = `clients/${clientId}/projects/${projectId}/assets/${file.id}_${rawFile.name}`;
+          // Build organized storage path: clients/{clientId}/projects/{projectId}/assets/{fileName}
+          const clientId = client?.id || 'unknown-client';
+          const projectId = file.projectId || 'unknown-project';
+          storagePath = `clients/${clientId}/projects/${projectId}/assets/${file.id}_${rawFile.name}`;
+        }
 
         const storageRef = ref(storage, storagePath);
         const snapshot = await uploadBytes(storageRef, rawFile);
@@ -479,7 +488,7 @@ const App: React.FC = () => {
       }
 
       // Categorize file type
-      const category = categorizeFileType(file.name, file.type);
+      const category = file.category || categorizeFileType(file.name, file.type);
 
       // Find associated entities
       const project = projects.find(p => p.id === file.projectId);
@@ -521,6 +530,8 @@ const App: React.FC = () => {
 
       setToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
       handleNotify('system', 'File Uploaded', `${file.name} was uploaded successfully to ${task ? task.title : 'project'}.`);
+      
+      return fileToSave; // Return the saved file with URL
     } catch (error: any) {
       console.error("Error uploading file:", error);
       console.error("Error details:", error.message, error.code);
@@ -528,6 +539,7 @@ const App: React.FC = () => {
         title: 'Upload Failed',
         message: error.message || 'Failed to upload file to storage. Please check permissions.'
       });
+      throw error; // Re-throw to handle in calling function
     }
   };
 

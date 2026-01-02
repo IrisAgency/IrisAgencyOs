@@ -297,19 +297,39 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     if (!selectedClient || !reportForm.month || !reportForm.title || !reportFile || !onAddMonthlyReport || !currentUser) return;
 
     try {
-      // Upload file first
-      const uploadedFile = await onUploadFile?.({
-        file: reportFile,
-        targetId: selectedClient.id,
-        targetType: 'client_report'
-      });
+      // Create a proper AgencyFile object for upload
+      const fileId = `file_${Date.now()}`;
+      const agencyFile: AgencyFile & { file?: File } = {
+        id: fileId,
+        name: reportFile.name,
+        type: reportFile.type,
+        size: reportFile.size,
+        url: '',
+        uploadedBy: currentUser.id,
+        uploadedAt: new Date().toISOString(),
+        projectId: null,
+        taskId: null,
+        folderId: `client_reports_${selectedClient.id}`,
+        version: 1,
+        tags: ['client-report', reportForm.month],
+        category: 'document',
+        file: reportFile // Attach the raw file for upload
+      };
 
+      // Upload the file and get the result with URL
+      let uploadedFileUrl = '';
+      if (onUploadFile) {
+        const result = await onUploadFile(agencyFile);
+        uploadedFileUrl = (result as any)?.url || '';
+      }
+      
       const newReport: ClientMonthlyReport = {
         id: `cmr${Date.now()}`,
         clientId: selectedClient.id,
         month: reportForm.month,
         title: reportForm.title,
-        fileUrl: (uploadedFile as any)?.url || '',
+        fileId: fileId,
+        fileUrl: uploadedFileUrl,
         fileName: reportFile.name,
         fileSize: reportFile.size,
         notes: reportForm.notes || '',
@@ -325,6 +345,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       setReportFile(null);
     } catch (error) {
       console.error('Error uploading report:', error);
+      alert('Failed to upload report. Please try again.');
     }
   };
 
