@@ -209,12 +209,6 @@ export const PERMISSIONS = {
     VIEW_ALL: 'analytics.view.all',
   },
 
-  // ========== Notifications ==========
-  NOTIFICATIONS: {
-    VIEW: 'notifications.view',
-    MANAGE: 'notifications.manage', // admin rules
-  },
-
   // ========== Admin Branding ==========
   ADMIN_BRANDING: {
     VIEW: 'admin.branding.view',
@@ -531,7 +525,6 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'Finance': Object.values(PERMISSIONS.FINANCE),
     'Reports': Object.values(PERMISSIONS.REPORTS),
     'Analytics': Object.values(PERMISSIONS.ANALYTICS),
-    'Notifications': Object.values(PERMISSIONS.NOTIFICATIONS),
     'Admin Branding': Object.values(PERMISSIONS.ADMIN_BRANDING),
     'System Settings': Object.values(PERMISSIONS.ADMIN_SETTINGS),
     'Dashboard': Object.values(PERMISSIONS.DASHBOARD),

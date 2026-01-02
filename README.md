@@ -45,9 +45,12 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
   - Hub components largely ungated and lack scope-based filtering (own/dept/project/all) for tasks/projects/clients/posts/finance/etc.
   - Firestore security rules not yet updated to mirror the new permission model.
 
-## Notifications
-- Type system with 40+ notification types, severities, categories; Firestore collection `notifications` schema documented here.
-- `services/notificationService.ts` handles creation, dedupe (5-minute window), grouping, and routing; UI via `NotificationsHub` with filters, badges, quick actions.
+## Notifications (plan + FCM wiring + Cloud Function)
+- Scenarios to support: task assigned/status change/due-soon/overdue; approval requested/reminder/escalation; meeting scheduled/reminders; invoice due-soon/overdue and payment recorded; posting scheduled/published; system broadcast/maintenance; manual announcement (console).
+- Data model: `notifications` (per-user in-app cards: userId, title, message, type, severity, category, isRead, createdAt); `notification_tokens` (userId, token, platform, userAgent, timestamps) from FCM registration; `notifications_outbox` (title, body, targetType [user|role|project|all], targetIds, targetUserIds, createdBy, createdAt) for server-side delivery.
+- Manual send: Notifications view now shows a “Manual Notifications” console (visible to users with `admin.settings.view` permission) to enqueue announcements to users/roles/projects/all; writes to `notifications` for immediate in-app visibility and `notifications_outbox` for push/back-end processors.
+- FCM: client requests permission, registers `/firebase-messaging-sw.js`, stores tokens in `notification_tokens`, and listens for foreground/background messages. Set `VITE_FIREBASE_VAPID_KEY` (defaulted to provided key) and keep other Firebase env vars populated.
+- Cloud Function: `functions/index.js` listens to `notifications_outbox/{docId}`, batches tokens in chunks of 500, sends FCM via Admin SDK, drops invalid/expired tokens, mirrors sent entries into `notifications`, and deletes the outbox doc. When `targets` are provided only the first 10 `uid` values are honored (Firestore `in` limit); otherwise it broadcasts to all stored tokens.
 
 ## File Management
 - Client-centric folder hierarchy with auto folder creation for clients/projects/tasks; standardized filenames `[ClientCode]-[TaskName]-v[Version]-[Timestamp].[ext]`.
@@ -73,6 +76,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
   - `VITE_FIREBASE_STORAGE_BUCKET`
   - `VITE_FIREBASE_MESSAGING_SENDER_ID`
   - `VITE_FIREBASE_APP_ID`
+  - `VITE_FIREBASE_VAPID_KEY`
   - `VITE_GEMINI_API_KEY`
 - Run dev: `npm run dev` (serves on 3000, 0.0.0.0)
 - Build: `npm run build`; Preview: `npm run preview`.
@@ -81,6 +85,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 ## Deployment
 - Target: Firebase Hosting (`dist`), SPA rewrite to `index.html`; cache headers set for assets/manifest/service worker.
 - Rebuild after branding config changes; deploy with `firebase deploy --only hosting`.
+- Functions: deploy the notification outbox processor with `firebase deploy --only functions`; requires Node 18 and Firebase CLI logged into the target project. Admin SDK uses the project’s default service account—no extra keys needed.
 - Firestore: rules in `firestore.rules`, indexes in `firestore.indexes.json`; update rules to reflect RBAC scopes before production use.
 
 ## Data & Models

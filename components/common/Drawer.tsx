@@ -64,7 +64,7 @@ const Drawer: React.FC<DrawerProps> = ({
     <>
       {/* Backdrop - Desktop only */}
       <div
-        className={`hidden md:block fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 transition-opacity duration-300 ${
+        className={`hidden md:block fixed inset-0 bg-iris-black/50 backdrop-blur-sm z-40 transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0'
         }`}
         onClick={onClose}
@@ -72,15 +72,15 @@ const Drawer: React.FC<DrawerProps> = ({
 
       {/* Mobile Full Screen Modal */}
       <div className={`md:hidden fixed inset-0 z-50 ${isOpen ? 'block' : 'hidden'}`}>
-        <div className="h-full w-full bg-white flex flex-col">
+        <div className="h-full w-full bg-iris-black flex flex-col">
           {/* Mobile Header */}
           {title && (
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-white sticky top-0 z-10">
-              <div className="text-lg font-bold text-slate-900">{title}</div>
+            <div className="flex items-center justify-between p-4 border-b border-iris-white/10 bg-iris-black/95 backdrop-blur-sm sticky top-0 z-10">
+              <div className="text-lg font-bold text-iris-white">{title}</div>
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
+                  className="p-2 text-iris-white/70 hover:text-iris-white transition-colors rounded-lg hover:bg-iris-white/10"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -96,17 +96,17 @@ const Drawer: React.FC<DrawerProps> = ({
 
       {/* Desktop Drawer */}
       <div
-        className={`hidden md:block fixed top-0 ${slideClasses[side].container} h-full ${sizeClasses[size]} w-full bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${slideClasses[side].translate}`}
+        className={`hidden md:block fixed top-0 ${slideClasses[side].container} h-full ${sizeClasses[size]} w-full bg-iris-black shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${slideClasses[side].translate}`}
       >
         <div className="h-full flex flex-col">
           {/* Desktop Header */}
           {title && (
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-white">
-              <div className="text-lg font-bold text-slate-900">{title}</div>
+            <div className="flex items-center justify-between p-6 border-b border-iris-white/10 bg-iris-black/95 backdrop-blur-sm">
+              <div className="text-lg font-bold text-iris-white">{title}</div>
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-100"
+                  className="p-2 text-iris-white/70 hover:text-iris-white transition-colors rounded-lg hover:bg-iris-white/10"
                 >
                   <X className="w-5 h-5" />
                 </button>

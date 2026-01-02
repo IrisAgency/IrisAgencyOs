@@ -657,27 +657,6 @@ export const VENDOR_SERVICE_ORDERS: VendorServiceOrder[] = [
   { id: 'vso2', projectId: 'p2', vendorId: 'v3', orderNumber: 'VSO-2024-002', date: '2024-05-12', serviceDescription: 'Studio Rental - Stage A', amount: 2500, currency: 'USD', status: 'completed', notes: '', createdBy: 'u5' }
 ];
 
-// --- NOTIFICATIONS MOCK DATA ---
-
-export const NOTIFICATIONS: Notification[] = [
-  { id: 'n1', userId: 'u1', type: 'task_assigned', title: 'New Task Assigned', message: 'You have been assigned to "Concept Sketches" for Le Bon Designs.', link: 'tasks', entityType: 'Task', entityId: 't1', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString() }, // 30 mins ago
-  { id: 'n2', userId: 'u1', type: 'approval_request', title: 'Approval Required', message: 'Task "Budget Approval" is awaiting your review.', link: 'tasks', entityType: 'Task', entityId: 't5', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() }, // 2 hours ago
-  { id: 'n3', userId: 'u1', type: 'comment_mention', title: 'Mentioned in Comment', message: 'Mike Ross mentioned you in "Location Scouting".', link: 'tasks', entityType: 'Task', entityId: 't2', isRead: true, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() }, // 1 day ago
-  { id: 'n4', userId: 'u1', type: 'invoice_overdue', title: 'Invoice Overdue', message: 'Invoice #INV-2024-009 for Box Café is overdue.', link: 'finance', entityType: 'Invoice', entityId: 'inv3', isRead: false, createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString() }, // 2 days ago
-];
-
-export const DEFAULT_PREFERENCES: NotificationPreference = {
-  userId: 'u1',
-  taskAssigned: true,
-  taskStatusChanged: true,
-  approvalRequests: true,
-  commentsMentions: true,
-  financeUpdates: true,
-  productionUpdates: true,
-  emailEnabled: true,
-  inAppEnabled: true
-};
-
 // --- ADMIN & MOCK DATA ---
 
 // Import centralized branding configuration
@@ -816,8 +795,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'finance.record_payment', 'finance.approve_payment', 'finance.export', 'finance.manage_budgets',
       // Analytics & Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
-      // Notifications
-      'notifications.view', 'notifications.manage',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own', 'notes.manage_all',
       // Admin
@@ -854,8 +831,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'finance.view.all', 'finance.create_invoice', 'finance.edit_invoice', 'finance.manage_budgets',
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -891,8 +866,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'production.view', 'production.edit', 'production.assign_crew',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -922,8 +895,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.edit_metadata', 'assets.link_to_task',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -950,8 +921,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'approvals.view.own',
       // Assets
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -978,8 +947,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'approvals.view.own',
       // Assets
       'assets.view.dept', 'assets.upload',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1009,8 +976,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1042,8 +1007,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1067,8 +1030,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'production.view', 'production.edit',
       // Assets
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1092,8 +1053,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'vendors.view', 'vendors.create', 'vendors.edit',
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1114,8 +1073,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'task_files.view', 'task_files.upload',
       // Assets
       'assets.view.own', 'assets.upload',
-      // Notifications
-      'notifications.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1140,8 +1097,6 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'task_files.view',
       // Approvals (client approvals only)
       'approvals.view.own', 'approvals.act',
-      // Notifications
-      'notifications.view'
     ],
     isAdmin: false
   }

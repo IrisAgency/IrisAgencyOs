@@ -15,8 +15,7 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'prompt',
         devOptions: {
-          enabled: true,
-          type: 'module'
+          enabled: false  // Disable PWA in dev to avoid conflict with FCM service worker
         },
         includeAssets: ['icon-192x192.png', 'icon-512x512.png', 'apple-touch-icon.png', 'splash.gif', 'splash.mp4'],
         manifest: {

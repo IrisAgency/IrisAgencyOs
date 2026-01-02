@@ -1,8 +1,12 @@
 {
   "projects": {
     "default": "agency-management-cba4a",
-    "dev": "agency-management-cba4a"
+    "dev": "agency-management-cba4a",
+    "IRIS OS": "iris-os-43718"
   },
-  "targets": {},
-  "etags": {}
+  "targets": {
+      "default": "iris-os-43718",
+      "dev": "iris-os-43718",
+      "legacy": "agency-management-cba4a"
+  }
 }

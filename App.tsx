@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -15,6 +15,7 @@ import ClientsHub from './components/ClientsHub';
 import FilesHub from './components/FilesHub';
 import VendorsHub from './components/VendorsHub';
 import NotificationsHub from './components/NotificationsHub';
+import NotificationConsole, { ManualNotificationPayload } from './components/NotificationConsole';
 import AdminHub from './components/AdminHub';
 import PostingHub from './components/PostingHub';
 import UnifiedCalendar from './components/UnifiedCalendar';
@@ -28,8 +29,7 @@ import { useBranding } from './contexts/BrandingContext';
 import { PERMISSIONS } from './lib/permissions';
 import { X, Bell } from 'lucide-react';
 import { useFirestoreCollection } from './hooks/useFirestore';
-import { useNotifications } from './hooks/useNotifications';
-import { NotificationService } from './services/notificationService';
+import { useMessagingToken } from './hooks/useMessagingToken';
 import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './lib/firebase';
@@ -65,6 +65,7 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ title: string, message: string } | null>(null);
   const [splashFinished, setSplashFinished] = useState(false);
+  const [hidePushPrompt, setHidePushPrompt] = useStickyState<boolean>(false, 'iris_hide_push_prompt');
 
   // -- Application State (Persisted) --
   const { currentUser: user, loading, logout, checkPermission } = useAuth();
@@ -125,8 +126,23 @@ const App: React.FC = () => {
   const [attendanceRecords] = useFirestoreCollection<AttendanceRecord>('attendance_records', ATTENDANCE_RECORDS);
 
   // Notifications State
-  const { notifications } = useNotifications();
-  const [notificationPreferences] = useState<NotificationPreference>(DEFAULT_PREFERENCES);
+  const [fetchedNotifications] = useFirestoreCollection<Notification>('notifications', []);
+  const notifications = useMemo(() => {
+    if (!user) return [] as Notification[];
+    return [...fetchedNotifications.filter(n => n.userId === user.id)].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [fetchedNotifications, user]);
+
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference>({
+    userId: user?.id || 'placeholder',
+    mutedCategories: [],
+    mutedProjects: [],
+    severityThreshold: 'info',
+    inAppEnabled: true,
+    emailEnabled: false,
+    pushEnabled: true,
+  });
 
   // Notes State
   const [notes] = useFirestoreCollection<Note>('notes', NOTES);
@@ -145,9 +161,19 @@ const App: React.FC = () => {
   // Defensive check for users array
   const safeUsers = Array.isArray(users) ? users : [];
   const activeUsers = safeUsers.filter(u => u && u.status !== 'inactive');
+  const canSendNotifications = checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW);
 
   // Show splash screen until both app is ready AND splash animation is done
   const showSplash = !splashFinished || loading || brandingLoading;
+
+  const { requestPermissionAndRegister, permissionState, token: messagingToken } = useMessagingToken(user);
+  const shouldShowPushPrompt = permissionState === 'default' && !hidePushPrompt && permissionState !== 'unsupported';
+
+  useEffect(() => {
+    if (permissionState === 'granted') {
+      setHidePushPrompt(true);
+    }
+  }, [permissionState, setHidePushPrompt]);
 
   if (showSplash) {
     return (
@@ -168,6 +194,21 @@ const App: React.FC = () => {
 
   // --- Handlers ---
 
+  const handleEnablePushNotifications = async () => {
+    try {
+      await requestPermissionAndRegister();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        setHidePushPrompt(true);
+      }
+    } catch (error) {
+      console.error('Failed to enable push notifications', error);
+    }
+  };
+
+  const handleDismissPushPrompt = () => {
+    setHidePushPrompt(true);
+  };
+
   const handleLogout = async () => {
     await logout();
   };
@@ -177,50 +218,104 @@ const App: React.FC = () => {
     setActiveView('tasks');
   };
 
+  const resolveNotificationTargetUserIds = (payload: ManualNotificationPayload): string[] => {
+    switch (payload.targetType) {
+      case 'user':
+        return payload.targetIds;
+      case 'role':
+        return activeUsers.filter(u => payload.targetIds.includes(u.role)).map(u => u.id);
+      case 'project':
+        return projectMembers
+          .filter(pm => payload.targetIds.includes(pm.projectId))
+          .map(pm => pm.userId);
+      case 'all':
+      default:
+        return activeUsers.map(u => u.id);
+    }
+  };
+
+  const handleManualNotificationSend = async (payload: ManualNotificationPayload) => {
+    const recipientIds = Array.from(new Set(resolveNotificationTargetUserIds(payload)));
+    const createdAt = new Date().toISOString();
+
+    await addDoc(collection(db, 'notifications_outbox'), {
+      title: payload.title,
+      body: payload.body,
+      targetType: payload.targetType,
+      targetIds: payload.targetIds,
+      targetUserIds: recipientIds,
+      createdAt,
+      createdBy: user?.id || 'system'
+    });
+
+    if (recipientIds.length > 0) {
+      const batch = writeBatch(db);
+      recipientIds.forEach((uid) => {
+        const notificationRef = doc(collection(db, 'notifications'));
+        batch.set(notificationRef, {
+          userId: uid,
+          type: 'system',
+          title: payload.title,
+          message: payload.body,
+          severity: 'info',
+          category: 'system',
+          isRead: false,
+          createdAt
+        });
+      });
+      await batch.commit();
+    }
+
+    setToast({ title: 'Notification queued', message: `Sent to ${recipientIds.length || activeUsers.length} recipient(s).` });
+  };
+
   // Notification Logic
   const handleNotify = async (type: string, title: string, message: string) => {
-    // Only show toast - persistent notifications are handled by NotificationService
+    // Placeholder: in-app toast only until notifications are reimplemented
     setToast({ title, message });
     setTimeout(() => setToast(null), 4000);
   };
 
   const handleMarkNotificationRead = async (id: string) => {
-    await updateDoc(doc(db, 'notifications', id), { isRead: true, readAt: new Date().toISOString() });
+    try {
+      await updateDoc(doc(db, 'notifications', id), {
+        isRead: true,
+        readAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Failed to mark notification read', error);
+    }
   };
 
   const handleMarkAllNotificationsRead = async () => {
-    notifications.forEach(async (n) => {
-      if (!n.isRead) {
-        await updateDoc(doc(db, 'notifications', n.id), { isRead: true, readAt: new Date().toISOString() });
-      }
-    });
+    if (!user) return;
+    try {
+      const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.docs.forEach((d) => batch.update(d.ref, { isRead: true, readAt: new Date().toISOString() }));
+      await batch.commit();
+    } catch (error) {
+      console.error('Failed to mark all notifications read', error);
+    }
   };
 
   const handleDeleteNotification = async (id: string) => {
-    await deleteDoc(doc(db, 'notifications', id));
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+    } catch (error) {
+      console.error('Failed to delete notification', error);
+    }
   };
 
   const handleUpdatePreferences = (prefs: NotificationPreference) => {
-    // setNotificationPreferences(prefs);
+    setNotificationPreferences(prefs);
   };
 
 
   // -- Task Handlers --
   const handleAddTask = async (newTask: Task) => {
     await setDoc(doc(db, 'tasks', newTask.id), newTask);
-
-    // Notify assignees
-    if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
-      const assigneesToNotify = newTask.assigneeIds.filter(id => id !== user?.id);
-      if (assigneesToNotify.length > 0) {
-        await NotificationService.notifyTaskAssigned(
-          newTask.id,
-          newTask.title,
-          assigneesToNotify,
-          user?.id || 'system'
-        );
-      }
-    }
 
     // Auto-create task folder
     try {
@@ -261,23 +356,6 @@ const App: React.FC = () => {
     const oldTask = tasks.find(t => t.id === updatedTask.id);
     
     await updateDoc(doc(db, 'tasks', updatedTask.id), updatedTask as any);
-
-    // Notifications
-    if (oldTask && oldTask.status !== updatedTask.status) {
-      const assigneesToNotify = updatedTask.assigneeIds.filter(id => id !== user?.id);
-      
-      if (assigneesToNotify.length > 0) {
-        await NotificationService.createForUsers(assigneesToNotify, {
-          type: 'TASK_STATUS_CHANGED',
-          title: 'Task Status Updated',
-          message: `"${updatedTask.title}" is now ${updatedTask.status}`,
-          entityType: 'task',
-          entityId: updatedTask.id,
-          actionUrl: `/tasks/${updatedTask.id}`,
-          groupKey: `task_${updatedTask.id}`
-        });
-      }
-    }
 
     const log: TaskActivityLog = {
       id: `tal${Date.now()}`, taskId: updatedTask.id, userId: user!.id, type: 'status_change', message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString()
@@ -1655,14 +1733,28 @@ const App: React.FC = () => {
         );
       case 'notifications':
         return (
-          <NotificationsHub
-            notifications={notifications}
-            preferences={notificationPreferences}
-            onMarkAsRead={handleMarkNotificationRead}
-            onMarkAllAsRead={handleMarkAllNotificationsRead}
-            onDelete={handleDeleteNotification}
-            onUpdatePreferences={handleUpdatePreferences}
-          />
+          <div className="space-y-6">
+            {canSendNotifications && user && (
+              <NotificationConsole
+                currentUserId={user.id}
+                users={activeUsers}
+                projects={projects}
+                roles={Array.isArray(systemRoles) ? systemRoles : []}
+                onSend={handleManualNotificationSend}
+                onEnablePush={requestPermissionAndRegister}
+                permissionState={permissionState}
+                currentToken={messagingToken}
+              />
+            )}
+            <NotificationsHub
+              notifications={notifications}
+              preferences={notificationPreferences}
+              onMarkAsRead={handleMarkNotificationRead}
+              onMarkAllAsRead={handleMarkAllNotificationsRead}
+              onDelete={handleDeleteNotification}
+              onUpdatePreferences={handleUpdatePreferences}
+            />
+          </div>
         );
       case 'admin':
         // Only GM can access
@@ -1734,6 +1826,29 @@ const App: React.FC = () => {
       />
 
       <main className="main">
+        {shouldShowPushPrompt && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
+            <div className="flex flex-col text-sm text-slate-800">
+              <span className="font-semibold">Enable push notifications</span>
+              <span className="text-slate-600">Stay in the loop for assignments and announcements.</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleEnablePushNotifications}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700"
+              >
+                Allow
+              </button>
+              <button
+                onClick={handleDismissPushPrompt}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        )}
+
         {renderContent()}
 
         {/* Toast Notification */}
@@ -1756,7 +1871,7 @@ const App: React.FC = () => {
       </main>
 
       <AIAssistant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
-      <ReloadPrompt />
+      {/* <ReloadPrompt /> - Disabled to avoid conflict with Firebase messaging SW */}
       <PWAInstallPrompt />
     </div>
   );

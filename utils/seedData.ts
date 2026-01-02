@@ -8,8 +8,7 @@ import {
   AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, 
   EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, 
   VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, 
-  NOTIFICATIONS, DEFAULT_PREFERENCES, DEFAULT_BRANDING, 
-  DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES 
+  DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES 
 } from '../constants';
 
 const clearCollection = async (collectionName: string) => {
@@ -67,7 +66,6 @@ export const seedDatabase = async () => {
     { name: 'vendor_service_orders', data: VENDOR_SERVICE_ORDERS },
     { name: 'leave_requests', data: LEAVE_REQUESTS },
     { name: 'attendance_records', data: ATTENDANCE_RECORDS },
-    { name: 'notifications', data: NOTIFICATIONS },
     { name: 'audit_logs', data: AUDIT_LOGS },
     { name: 'workflow_templates', data: WORKFLOW_TEMPLATES },
     // Singletons or special cases

@@ -17,7 +17,6 @@ import { deleteField } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import Modal from '../common/Modal';
-import { NotificationService } from '../../services/notificationService';
 
 export interface DetailViewProps {
     task: Task;
@@ -530,17 +529,6 @@ const TaskDetailView = ({
         });
 
         trackTimeEvent('task_submitted', oldStatus, TaskStatus.AWAITING_REVIEW, `Revisions submitted by ${currentUser.name}`);
-        
-        // 6. Notify the requester specifically
-        NotificationService.create({
-            userId: task.revisionContext.requestedByUserId,
-            type: 'TASK_SUBMITTED_FOR_REVIEW',
-            title: 'Revisions Submitted',
-            message: `Task "${task.title}" revisions submitted by ${currentUser.name}. Ready for review.`,
-            entityType: 'task',
-            entityId: task.id,
-            actionUrl: `/tasks/${task.id}`
-        });
         
         onNotify('approval_request', 'Revisions Submitted', `Task "${task.title}" revisions submitted for review.`);
     };
