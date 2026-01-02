@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, UserRole, Department, Task, LeaveRequest, AttendanceRecord, UserStatus, RoleDefinition } from '../types';
+import { User, UserRole, Department, Task, LeaveRequest, AttendanceRecord, UserStatus, RoleDefinition, Project } from '../types';
 import {
     Mail, Phone, MapPin, Plus, Search, User as UserIcon, Briefcase,
     Calendar, Clock, CheckCircle, AlertCircle, BarChart2, Activity,

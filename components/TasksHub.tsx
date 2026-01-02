@@ -497,6 +497,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
                     users={users}
                     selectedTaskId={selectedTaskId}
                     onSelectTask={setSelectedTaskId}
+                    onUpdateTask={onUpdateTask}
                     statusTone={statusTone}
                     priorityTone={priorityTone}
                     dueTone={dueTone}
