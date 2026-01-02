@@ -26,9 +26,9 @@ const FilesHub: React.FC<FilesHubProps> = ({
   files, folders, projects, clients, users, currentProjectId,
   onUpload, onDelete, onMove, onCreateFolder, onDeleteFolder 
 }) => {
-  const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
-  const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+  const surface = 'bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+  const elevated = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-sm text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
 
   // State
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -317,18 +317,18 @@ const FilesHub: React.FC<FilesHubProps> = ({
     <PageContainer>
       <div className={`h-full flex flex-col ${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
         {/* Toolbar */}
-        <div className="p-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
+        <div className="p-4 border-b border-iris-white/10 bg-iris-black">
         {/* Breadcrumbs */}
-        <div className="flex items-center space-x-2 mb-3 text-sm text-slate-200">
+        <div className="flex items-center space-x-2 mb-3 text-sm text-iris-white">
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={crumb.id || 'root'}>
-              {idx > 0 && <ChevronRight className="w-4 h-4 text-slate-500" />}
+              {idx > 0 && <ChevronRight className="w-4 h-4 text-iris-white/40" />}
               <button
                 onClick={() => handleBreadcrumbClick(crumb)}
                 className={`px-2 py-1 rounded-lg transition-colors ${
                   idx === breadcrumbs.length - 1
-                    ? 'font-bold text-slate-50 bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)]'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-[color:var(--dash-surface)] border border-transparent'
+                    ? 'font-bold text-iris-white bg-iris-black/95 border border-iris-white/10'
+                    : 'text-iris-white/70 hover:text-iris-white hover:bg-iris-black/80 border border-transparent'
                 }`}
               >
                 {crumb.name}
@@ -338,15 +338,15 @@ const FilesHub: React.FC<FilesHubProps> = ({
         </div>
 
         {/* Actions Row */}
-        <div className="flex items-center justify_between text-slate-100">
+        <div className="flex items-center justify_between text-iris-white">
           {/* File Type Filter */}
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setFilterType('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                 filterType === 'all'
-                  ? 'bg-[color:var(--dash-primary)] text-white border-[color:var(--dash-primary)]/60 shadow-[0_12px_30px_-16px_rgba(230,60,60,0.6)]'
-                  : 'bg-[color:var(--dash-surface)] text-slate-200 hover:bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)]'
+                  ? 'bg-gradient-to-br from-iris-red to-iris-red/80 text-white border-iris-red/60'
+                  : 'bg-iris-black/80 text-iris-white hover:bg-iris-black/95 border-iris-white/10'
               }`}
             >
               All Files
@@ -356,7 +356,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 border ${
                 filterType === 'videos'
                   ? 'bg-rose-500/20 text-rose-100 border-rose-400/40'
-                  : 'bg-[color:var(--dash-surface)] text-slate-200 hover:bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)]'
+                  : 'bg-iris-black/80 text-iris-white hover:bg-iris-black/95 border-iris-white/10'
               }`}
             >
               <Film className="w-3.5 h-3.5" />
@@ -367,7 +367,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 border ${
                 filterType === 'photos'
                   ? 'bg-purple-500/20 text-purple-100 border-purple-400/40'
-                  : 'bg-[color:var(--dash-surface)] text-slate-200 hover:bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)]'
+                  : 'bg-iris-black/80 text-iris-white hover:bg-iris-black/95 border-iris-white/10'
               }`}
             >
               <Camera className="w-3.5 h-3.5" />
@@ -378,7 +378,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 border ${
                 filterType === 'documents'
                   ? 'bg-orange-500/20 text-orange-100 border-orange-400/40'
-                  : 'bg-[color:var(--dash-surface)] text-slate-200 hover:bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)]'
+                  : 'bg-iris-black/80 text-iris-white hover:bg-iris-black/95 border-iris-white/10'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -389,7 +389,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 border ${
                 filterType === 'strategies'
                   ? 'bg-emerald-500/20 text-emerald-100 border-emerald-400/40'
-                  : 'bg-[color:var(--dash-surface)] text-slate-200 hover:bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)]'
+                  : 'bg-iris-black/80 text-iris-white hover:bg-iris-black/95 border-iris-white/10'
               }`}
             >
               <Presentation className="w-3.5 h-3.5" />
@@ -399,7 +399,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
 
           <div className="flex items-center space-x-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-iris-white/40" />
               <input 
                 type="text" 
                 placeholder="Search files..."
@@ -408,26 +408,26 @@ const FilesHub: React.FC<FilesHubProps> = ({
                 className={`${inputClass} pl-9 pr-4 py-2 w-48`}
               />
             </div>
-            <div className="h-8 w-px bg-[color:var(--dash-glass-border)] mx-2"></div>
+            <div className="h-8 w-px bg-iris-white/10 mx-2"></div>
             <button 
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded border border-[color:var(--dash-glass-border)] ${viewMode === 'grid' ? 'bg-[color:var(--dash-surface-elevated)] text-[color:var(--dash-primary)]' : 'text-slate-300 hover:bg-[color:var(--dash-surface)]'}`}
+              className={`p-2 rounded border border-iris-white/10 ${viewMode === 'grid' ? 'bg-iris-black/95 text-iris-red' : 'text-iris-white/70 hover:bg-iris-black/80'}`}
             >
               <Grid className="w-4 h-4" />
             </button>
             <button 
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded border border-[color:var(--dash-glass-border)] ${viewMode === 'list' ? 'bg-[color:var(--dash-surface-elevated)] text-[color:var(--dash-primary)]' : 'text-slate-300 hover:bg-[color:var(--dash-surface)]'}`}
+              className={`p-2 rounded border border-iris-white/10 ${viewMode === 'list' ? 'bg-iris-black/95 text-iris-red' : 'text-iris-white/70 hover:bg-iris-black/80'}`}
             >
               <List className="w-4 h-4" />
             </button>
             <button 
               onClick={handleUploadClick}
               disabled={isReadOnly}
-              className={`ml-2 flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
+              className={`ml-2 flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all border ${
                   isReadOnly 
-                  ? 'bg-[color:var(--dash-surface)] text-slate-500 cursor-not-allowed border-[color:var(--dash-glass-border)]' 
-                  : 'bg-[color:var(--dash-primary)] text-white hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] border-[color:var(--dash-primary)]/60'
+                  ? 'bg-iris-black/80 text-iris-white/40 cursor-not-allowed border-iris-white/10' 
+                  : 'bg-gradient-to-br from-iris-red to-iris-red/80 text-white hover:brightness-110 border-iris-red/60'
               }`}
             >
               <Upload className="w-4 h-4" />
@@ -445,7 +445,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
 
       {/* Main Content */}
       <div 
-        className={`flex-1 overflow-y-auto p-6 ${isDragOver ? 'bg-[color:var(--dash-primary)]/5 border-2 border-dashed border-[color:var(--dash-primary)]/40' : 'bg-[color:var(--dash-surface-elevated)]'}`}
+        className={`flex-1 overflow-y-auto p-6 ${ isDragOver ? 'bg-iris-red/5 border-2 border-dashed border-iris-red/40' : 'bg-iris-black/95'}`}
          onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
          onDragLeave={() => setIsDragOver(false)}
          onDrop={(e) => { 
@@ -458,9 +458,9 @@ const FilesHub: React.FC<FilesHubProps> = ({
         {filteredFolders.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Folders</h3>
+              <h3 className="text-xs font-bold text-iris-white/70 uppercase tracking-wider">Folders</h3>
               {!isReadOnly && (
-                <button onClick={handleCreateNewFolder} className="text-xs text-[color:var(--dash-primary)] hover:underline">+ New Folder</button>
+                <button onClick={handleCreateNewFolder} className="text-xs text-iris-red hover:text-iris-red/80 transition-colors">+ New Folder</button>
               )}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -470,8 +470,8 @@ const FilesHub: React.FC<FilesHubProps> = ({
                   onClick={() => handleFolderClick(folder)}
                   className={`relative p-4 border rounded-xl cursor-pointer transition-all group ${
                     folder.folderType === 'archive' || folder.isArchiveRoot
-                      ? 'bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)]'
-                      : 'bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-glass-border)] hover:border-[color:var(--dash-primary)]/40 hover:shadow-[0_10px_32px_-20px_rgba(0,0,0,0.9)]'
+                      ? 'bg-iris-black/80 border-iris-white/10 hover:bg-iris-black/95'
+                      : 'bg-iris-black/95 border-iris-white/10 hover:border-iris-red/40 hover:shadow-[0_10px_32px_-20px_rgba(0,0,0,0.9)]'
                   }`}
                 >
                   {/* Delete Button (only for non-archive folders) */}
@@ -487,10 +487,10 @@ const FilesHub: React.FC<FilesHubProps> = ({
                   <div className="mb-2">
                     {getFolderIcon(folder)}
                   </div>
-                  <p className="text-sm font-medium text-slate-100 truncate">{folder.name}</p>
-                  <p className="text-xs text-slate-400">{folderFileCounts[folder.id] || 0} files</p>
+                  <p className="text-sm font-medium text-iris-white truncate">{folder.name}</p>
+                  <p className="text-xs text-iris-white/70">{folderFileCounts[folder.id] || 0} files</p>
                   {folder.folderType && (
-                    <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 bg-[color:var(--dash-surface)] text-slate-300 border border-[color:var(--dash-glass-border)] rounded">
+                    <span className="inline-block mt-1 text-[10px] px-1.5 py-0.5 bg-iris-black/80 text-iris-white/70 border border-iris-white/10 rounded">
                       {folder.folderType}
                     </span>
                   )}
@@ -503,15 +503,15 @@ const FilesHub: React.FC<FilesHubProps> = ({
         {/* Files Section */}
         <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Files</h3>
-              <span className="text-xs text-slate-400">{filteredFiles.length} items</span>
+              <h3 className="text-xs font-bold text-iris-white/70 uppercase tracking-wider">Files</h3>
+              <span className="text-xs text-iris-white/70">{filteredFiles.length} items</span>
             </div>
 
             {viewMode === 'grid' ? (
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {filteredFiles.map(file => (
-                  <div key={file.id} className="group relative bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-xl overflow-hidden hover:shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] transition-all">
-                    <div className="aspect-square bg-[color:var(--dash-surface-elevated)] relative overflow-hidden flex items-center justify-center">
+                  <div key={file.id} className="group relative bg-iris-black/80 border border-iris-white/10 rounded-xl overflow-hidden hover:shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] hover:border-iris-red/40 transition-all">
+                    <div className="aspect-square bg-iris-black/95 relative overflow-hidden flex items-center justify-center">
                           {file.type.startsWith('image/') || file.category === 'image' ? (
                               <img src={file.url} alt={file.name} className="w-full h-full object-cover" />
                           ) : (
@@ -548,14 +548,14 @@ const FilesHub: React.FC<FilesHubProps> = ({
                        </div>
                         <div className="p-3">
                           <div className="flex justify-between items-start">
-                            <p className="text-sm font-medium text-slate-100 truncate flex-1" title={file.name}>{file.name}</p>
+                            <p className="text-sm font-medium text-iris-white truncate flex-1" title={file.name}>{file.name}</p>
                             {!isReadOnly && (
-                              <button className="text-slate-400 hover:text-[color:var(--dash-primary)]"><MoreVertical className="w-4 h-4" /></button>
+                              <button className="text-iris-white/70 hover:text-iris-red"><MoreVertical className="w-4 h-4" /></button>
                             )}
                           </div>
                           <div className="flex items-center justify-between mt-1">
-                            <span className="text-xs text-slate-400 ltr-text">{formatSize(file.size)}</span>
-                            <span className="text-[10px] bg-[color:var(--dash-surface)] text-slate-300 px-1.5 py-0.5 rounded ltr-text border border-[color:var(--dash-glass-border)]">v{file.version}</span>
+                            <span className="text-xs text-iris-white/70 ltr-text">{formatSize(file.size)}</span>
+                            <span className="text-[10px] bg-iris-black text-iris-white/70 px-1.5 py-0.5 rounded ltr-text border border-iris-white/10">v{file.version}</span>
                           </div>
                         </div>
                     </div>
@@ -566,7 +566,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
                  {filteredFiles.map(file => {
                     const uploader = users.find(u => u.id === file.uploaderId);
                     return (
-                       <div key={file.id} className="bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)] p-4 hover:shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] group transition-colors">
+                       <div key={file.id} className="bg-iris-black/80 rounded-lg border border-iris-white/10 p-4 hover:shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] hover:border-iris-red/40 group transition-all">
                           <div className="flex items-start justify-between gap-4">
                              <div className="flex items-start gap-3 min-w-0 flex-1">
                                 <div className="flex-shrink-0 mt-1">
@@ -574,7 +574,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
                                 </div>
                                 <div className="min-w-0 flex-1">
                                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                                      <span className="font-semibold text-slate-100 truncate">{file.name}</span>
+                                      <span className="font-semibold text-iris-white truncate">{file.name}</span>
                                       {file.isDeliverable && (
                                          <span className="text-[10px] bg-emerald-500/15 text-emerald-100 px-1.5 py-0.5 rounded border border-emerald-400/40 flex-shrink-0">Final</span>
                                       )}
@@ -583,9 +583,9 @@ const FilesHub: React.FC<FilesHubProps> = ({
                                       )}
                                    </div>
                                    {file.originalName && file.originalName !== file.name && (
-                                      <p className="text-xs text-slate-400 truncate mb-2">Original: <span className="ltr-text">{file.originalName}</span></p>
+                                      <p className="text-xs text-iris-white/70 truncate mb-2">Original: <span className="ltr-text">{file.originalName}</span></p>
                                    )}
-                                   <div className="flex items-center gap-4 text-xs text-slate-400">
+                                   <div className="flex items-center gap-4 text-xs text-iris-white/70">
                                       <span className="ltr-text">{formatSize(file.size)}</span>
                                       <span className="capitalize">{file.type.split('/')[1] || file.category || 'unknown'}</span>
                                       <span className="hidden sm:inline ltr-text">{new Date(file.createdAt).toLocaleDateString()}</span>
@@ -593,20 +593,20 @@ const FilesHub: React.FC<FilesHubProps> = ({
                                    {uploader && (
                                       <div className="flex items-center gap-2 mt-2">
                                          <img src={uploader.avatar} className="w-5 h-5 rounded-full" alt="" />
-                                         <span className="text-xs text-slate-300">{uploader.name}</span>
+                                         <span className="text-xs text-iris-white/70">{uploader.name}</span>
                                       </div>
                                    )}
                                 </div>
                              </div>
                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                <button onClick={() => setPreviewFile(file)} className="text-slate-400 hover:text-[color:var(--dash-primary)] p-2">
+                                <button onClick={() => setPreviewFile(file)} className="text-iris-white/70 hover:text-iris-red p-2">
                                    <Eye className="w-4 h-4"/>
                                 </button>
-                                <button className="text-slate-400 hover:text-[color:var(--dash-primary)] p-2">
+                                <button className="text-iris-white/70 hover:text-iris-red p-2">
                                    <Download className="w-4 h-4"/>
                                 </button>
                                 {!isReadOnly && (
-                                  <button onClick={() => handleDeleteFile(file)} className="text-slate-400 hover:text-rose-200 p-2">
+                                  <button onClick={() => handleDeleteFile(file)} className="text-iris-white/70 hover:text-rose-400 p-2">
                                       <Trash2 className="w-4 h-4"/>
                                    </button>
                                 )}
@@ -619,10 +619,10 @@ const FilesHub: React.FC<FilesHubProps> = ({
            )}
 
             {filteredFiles.length === 0 && (
-              <div className={`${surface} p-12 text-center text-slate-400 border-2 border-dashed border-[color:var(--dash-glass-border)] rounded-xl mt-4`}>
+              <div className={`${surface} p-12 text-center text-iris-white/70 border-2 border-dashed border-iris-white/10 rounded-xl mt-4`}>
                 <Upload className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="font-medium text-slate-100">No files found</p>
-                <p className="text-sm text-slate-400">Upload a file or drag and drop here</p>
+                <p className="font-medium text-iris-white">No files found</p>
+                <p className="text-sm text-iris-white/70">Upload a file or drag and drop here</p>
               </div>
             )}
         </div>
@@ -630,63 +630,63 @@ const FilesHub: React.FC<FilesHubProps> = ({
 
       {/* Preview Modal */}
       {previewFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4">
-          <div className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/80 backdrop-blur-sm p-4">
+          <div className="bg-iris-black/95 border border-iris-white/10 rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex overflow-hidden animate-in fade-in zoom-in duration-200">
               {/* Preview Content */}
-            <div className="flex-1 bg-[color:var(--dash-surface)] flex items-center justify-center relative">
+            <div className="flex-1 bg-iris-black flex items-center justify-center relative">
                  {previewFile.type.startsWith('image/') ? (
                     <img src={previewFile.url} alt={previewFile.name} className="max-w-full max-h-full object-contain" />
                  ) : (
-                      <div className="text-center text-slate-300">
+                      <div className="text-center text-iris-white/70">
                         <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
                         <p>Preview not available for this file type.</p>
-                        <button className="mt-4 px-4 py-2 bg-[color:var(--dash-surface-elevated)] rounded-lg hover:bg-[color:var(--dash-surface)] text-white text-sm border border-[color:var(--dash-glass-border)]">Download to View</button>
+                        <button className="mt-4 px-4 py-2 bg-iris-black/95 rounded-lg hover:bg-iris-black/80 text-white text-sm border border-iris-white/10">Download to View</button>
                     </div>
                  )}
                  <button onClick={() => setPreviewFile(null)} className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"><X className="w-5 h-5"/></button>
               </div>
 
               {/* Sidebar Info */}
-                  <div className="w-80 bg-[color:var(--dash-surface)] border-l border-[color:var(--dash-glass-border)] flex flex-col">
-                    <div className="p-6 border-b border-[color:var(--dash-glass-border)]">
-                      <h2 className="font-bold text-slate-50 break-words">{previewFile.name}</h2>
+                  <div className="w-80 bg-iris-black border-l border-iris-white/10 flex flex-col">
+                    <div className="p-6 border-b border-iris-white/10">
+                      <h2 className="font-bold text-iris-white break-words">{previewFile.name}</h2>
                       <div className="flex items-center space-x-2 mt-2">
-                        <span className="text-xs bg-[color:var(--dash-surface-elevated)] px-2 py-0.5 rounded text-slate-200 uppercase font-bold border border-[color:var(--dash-glass-border)]">{previewFile.type.split('/')[1]}</span>
-                        <span className="text-xs text-slate-400">{formatSize(previewFile.size)}</span>
+                        <span className="text-xs bg-iris-black/95 px-2 py-0.5 rounded text-iris-white uppercase font-bold border border-iris-white/10">{previewFile.type.split('/')[1]}</span>
+                        <span className="text-xs text-iris-white/70">{formatSize(previewFile.size)}</span>
                       </div>
                     </div>
 
-                 <div className="flex-1 overflow-y-auto p-6 space-y-6 text-slate-200">
+                 <div className="flex-1 overflow-y-auto p-6 space-y-6 text-iris-white">
                     <div>
-                        <h3 className="text-xs font-bold text-slate-300 uppercase mb-2">Details</h3>
+                        <h3 className="text-xs font-bold text-iris-white/70 uppercase mb-2">Details</h3>
                         <div className="space-y-3 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-slate-500">Uploaded</span>
-                            <span className="text-slate-100">{new Date(previewFile.createdAt).toLocaleDateString()}</span>
+                            <span className="text-iris-white/70">Uploaded</span>
+                            <span className="text-iris-white">{new Date(previewFile.createdAt).toLocaleDateString()}</span>
                           </div>
                           <div className="flex justify-between">
-                             <span className="text-slate-500">By</span>
-                             <span className="text-slate-100">{users.find(u => u.id === previewFile.uploaderId)?.name}</span>
+                             <span className="text-iris-white/70">By</span>
+                             <span className="text-iris-white">{users.find(u => u.id === previewFile.uploaderId)?.name}</span>
                           </div>
                           <div className="flex justify-between">
-                             <span className="text-slate-500">Version</span>
-                             <span className="text-slate-100">v{previewFile.version}</span>
+                             <span className="text-iris-white/70">Version</span>
+                             <span className="text-iris-white">v{previewFile.version}</span>
                           </div>
                        </div>
                     </div>
 
                       <div>
-                        <h3 className="text-xs font-bold text-slate-300 uppercase mb-2">Version History</h3>
+                        <h3 className="text-xs font-bold text-iris-white/70 uppercase mb-2">Version History</h3>
                         <div className="space-y-2">
                           {[...Array(previewFile.version)].map((_, i) => {
                             const v = previewFile.version - i;
                             return (
-                              <div key={v} className={`flex items-center justify-between p-2 rounded border ${v === previewFile.version ? 'bg-[color:var(--dash-surface-elevated)] border-[color:var(--dash-primary)]/40' : 'hover:bg-[color:var(--dash-surface)] border-[color:var(--dash-glass-border)]'}`}>
+                              <div key={v} className={`flex items-center justify-between p-2 rounded border ${v === previewFile.version ? 'bg-iris-black/95 border-iris-red/40' : 'hover:bg-iris-black/80 border-iris-white/10'}`}>
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-xs font-bold text-slate-100">v{v}</span>
-                                  <span className="text-xs text-slate-400">{v === previewFile.version ? '(Current)' : new Date().toLocaleDateString()}</span>
+                                  <span className="text-xs font-bold text-iris-white">v{v}</span>
+                                  <span className="text-xs text-iris-white/70">{v === previewFile.version ? '(Current)' : new Date().toLocaleDateString()}</span>
                                 </div>
-                                {v !== previewFile.version && <button className="text-xs text-[color:var(--dash-primary)] hover:underline">Revert</button>}
+                                {v !== previewFile.version && <button className="text-xs text-iris-red hover:text-iris-red/80">Revert</button>}
                               </div>
                             );
                           })}
@@ -694,8 +694,8 @@ const FilesHub: React.FC<FilesHubProps> = ({
                       </div>
                  </div>
 
-                    <div className="p-4 border-t border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
-                      <button className="w-full bg-[color:var(--dash-primary)] text-white py-2 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] flex items-center justify-center space-x-2">
+                    <div className="p-4 border-t border-iris-white/10 bg-iris-black">
+                      <button className="w-full bg-gradient-to-br from-iris-red to-iris-red/80 text-white py-2 rounded-lg font-medium hover:brightness-110 flex items-center justify-center space-x-2">
                        <Download className="w-4 h-4" />
                        <span>Download File</span>
                     </button>
