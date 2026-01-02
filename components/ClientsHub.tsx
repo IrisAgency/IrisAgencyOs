@@ -1063,17 +1063,15 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
           {activeTab === 'reports' && (
             <div className="space-y-4">
-              {checkPermission('client.reports.create') && (
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setIsReportModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 text-sm font-medium"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Upload Report
-                  </button>
-                </div>
-              )}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 text-sm font-medium"
+                >
+                  <Upload className="w-4 h-4" />
+                  Upload Report
+                </button>
+              </div>
 
               {/* Reports List */}
               <div className="grid grid-cols-1 gap-3">
@@ -1081,14 +1079,12 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                   <div className={`${elevatedSurface} rounded-lg p-8 text-center`}>
                     <Calendar className="w-12 h-12 text-slate-500 mx-auto mb-3" />
                     <p className="text-slate-400">No monthly reports yet</p>
-                    {checkPermission('client.reports.create') && (
-                      <button
-                        onClick={() => setIsReportModalOpen(true)}
-                        className="mt-4 px-4 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100 hover:border-[color:var(--dash-outline)] text-sm"
-                      >
-                        Upload First Report
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setIsReportModalOpen(true)}
+                      className="mt-4 px-4 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100 hover:border-[color:var(--dash-outline)] text-sm"
+                    >
+                      Upload First Report
+                    </button>
                   </div>
                 ) : (
                   monthlyReports
@@ -1134,15 +1130,13 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                                 <Download className="w-4 h-4" />
                               </a>
                             )}
-                            {checkPermission('client.reports.delete') && (
-                              <button
-                                onClick={() => handleDeleteReport(report.id)}
-                                className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            <button
+                              onClick={() => handleDeleteReport(report.id)}
+                              className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       </div>
