@@ -153,6 +153,22 @@ export interface ClientBrandAsset {
   updatedBy: string;
 }
 
+export interface ClientMonthlyReport {
+  id: string;
+  clientId: string;
+  month: string; // Format: "YYYY-MM" (e.g., "2026-01")
+  title: string; // e.g., "January 2026 Report"
+  fileId?: string;
+  fileUrl?: string;
+  fileName?: string;
+  fileSize?: number;
+  notes?: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Client {
   id: string;
   name: string;

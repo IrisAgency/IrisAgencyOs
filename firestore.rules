@@ -18,6 +18,12 @@ service cloud.firestore {
       allow write: if hasPermission('clients.manage') || hasPermission('clients.manage_strategies');
     }
 
+    match /client_monthly_reports/{report} {
+      allow read: if hasPermission('clients.view');
+      allow write: if hasPermission('clients.manage') || hasPermission('client.reports.create');
+      allow delete: if hasPermission('clients.manage') || hasPermission('client.reports.delete');
+    }
+
     match /{document=**} {
       allow read, write: if true;
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
+import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -87,6 +87,7 @@ const App: React.FC = () => {
   const [clientNotes] = useFirestoreCollection<ClientNote>('client_notes', CLIENT_NOTES);
   const [clientMeetings] = useFirestoreCollection<ClientMeeting>('client_meetings', CLIENT_MEETINGS);
   const [clientBrandAssets] = useFirestoreCollection<ClientBrandAsset>('client_brand_assets', CLIENT_BRAND_ASSETS);
+  const [clientMonthlyReports] = useFirestoreCollection<ClientMonthlyReport>('client_monthly_reports', CLIENT_MONTHLY_REPORTS);
 
   // Finance State
   const [invoices] = useFirestoreCollection<Invoice>('invoices', INVOICES);
@@ -172,7 +173,7 @@ const App: React.FC = () => {
   const activeUsers = safeUsers.filter(u => u && u.status !== 'inactive');
   const canSendNotifications = checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW);
 
-  // Show splash screen until both app is ready AND splash animation is done
+  // Show splash screen during initial load, hide loading states behind splash
   const showSplash = !splashFinished || loading || brandingLoading;
 
   const { requestPermissionAndRegister, permissionState, token: messagingToken } = useMessagingToken(user);
@@ -188,7 +189,7 @@ const App: React.FC = () => {
     return (
       <SplashScreen 
         onFinish={() => setSplashFinished(true)} 
-        minimumDisplayDuration={6000} // Set to match your GIF length (e.g., 6000ms = 6 seconds)
+        minimumDisplayDuration={3000}
       />
     );
   }
@@ -1058,6 +1059,18 @@ const App: React.FC = () => {
     await deleteDoc(doc(db, 'client_brand_assets', assetId));
   };
 
+  const handleAddMonthlyReport = async (report: ClientMonthlyReport) => {
+    await setDoc(doc(db, 'client_monthly_reports', report.id), report);
+  };
+
+  const handleUpdateMonthlyReport = async (report: ClientMonthlyReport) => {
+    await updateDoc(doc(db, 'client_monthly_reports', report.id), report as any);
+  };
+
+  const handleDeleteMonthlyReport = async (reportId: string) => {
+    await deleteDoc(doc(db, 'client_monthly_reports', reportId));
+  };
+
   const handleDeleteClient = async (clientId: string) => {
     try {
       const batch = writeBatch(db);
@@ -1509,6 +1522,7 @@ const App: React.FC = () => {
             notes={clientNotes}
             meetings={clientMeetings}
             brandAssets={clientBrandAssets}
+            monthlyReports={clientMonthlyReports}
             files={getVisibleFiles()}
             folders={folders}
             users={activeUsers}
@@ -1531,6 +1545,9 @@ const App: React.FC = () => {
             onAddBrandAsset={handleAddBrandAsset}
             onUpdateBrandAsset={handleUpdateBrandAsset}
             onDeleteBrandAsset={handleDeleteBrandAsset}
+            onAddMonthlyReport={handleAddMonthlyReport}
+            onUpdateMonthlyReport={handleUpdateMonthlyReport}
+            onDeleteMonthlyReport={handleDeleteMonthlyReport}
             onUploadFile={handleUploadFile}
             checkPermission={checkPermission}
             currentUser={user}

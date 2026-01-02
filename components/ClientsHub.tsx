@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Client, ClientContact, Project, Invoice, User, Task, ProjectMilestone, ClientSocialLink, SocialPlatform, ClientNote, ClientMeeting, FileFolder, ClientBrandAsset, AgencyFile } from '../types';
-import { Plus, Search, MapPin, Globe, Phone, Mail, FileText, ArrowLeft, MoreHorizontal, Building2, User as UserIcon, Archive, Edit2, Folder, DollarSign, Trash2, RotateCcw, BarChart3, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, Video, StickyNote, Palette, Upload, X, ExternalLink, Download, ChevronDown } from 'lucide-react';
+import { Client, ClientContact, Project, Invoice, User, Task, ProjectMilestone, ClientSocialLink, SocialPlatform, ClientNote, ClientMeeting, FileFolder, ClientBrandAsset, ClientMonthlyReport, AgencyFile } from '../types';
+import { Plus, Search, MapPin, Globe, Phone, Mail, FileText, ArrowLeft, MoreHorizontal, Building2, User as UserIcon, Archive, Edit2, Folder, DollarSign, Trash2, RotateCcw, BarChart3, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, Video, StickyNote, Palette, Upload, X, ExternalLink, Download, ChevronDown, Calendar } from 'lucide-react';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageControls from './layout/PageControls';
@@ -20,6 +20,7 @@ interface ClientsHubProps {
   notes?: ClientNote[];
   meetings?: ClientMeeting[];
   brandAssets?: ClientBrandAsset[];
+  monthlyReports?: ClientMonthlyReport[];
   files?: AgencyFile[];
   folders?: FileFolder[];
   users?: User[];
@@ -42,6 +43,9 @@ interface ClientsHubProps {
   onAddBrandAsset?: (asset: ClientBrandAsset) => void;
   onUpdateBrandAsset?: (asset: ClientBrandAsset) => void;
   onDeleteBrandAsset?: (assetId: string) => void;
+  onAddMonthlyReport?: (report: ClientMonthlyReport) => void;
+  onUpdateMonthlyReport?: (report: ClientMonthlyReport) => void;
+  onDeleteMonthlyReport?: (reportId: string) => void;
   onUploadFile?: (file: any) => Promise<void>;
   checkPermission?: (permission: string) => boolean;
   currentUser?: User | null;
@@ -57,6 +61,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   notes = [],
   meetings = [],
   brandAssets = [],
+  monthlyReports = [],
   files = [],
   folders = [],
   users = [],
@@ -79,13 +84,16 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   onAddBrandAsset,
   onUpdateBrandAsset,
   onDeleteBrandAsset,
+  onAddMonthlyReport,
+  onUpdateMonthlyReport,
+  onDeleteMonthlyReport,
   onUploadFile,
   checkPermission = (p: string) => false,
   currentUser
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'meetings' | 'brand' | 'strategies' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'meetings' | 'brand' | 'strategies' | 'reports' | 'notes'>('overview');
   
   // Search and Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -102,6 +110,16 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
   // Notes State
   const [newNoteText, setNewNoteText] = useState('');
+
+  // Monthly Reports State
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportForm, setReportForm] = useState<Partial<ClientMonthlyReport>>({
+    month: '',
+    title: '',
+    notes: ''
+  });
+  const [reportFile, setReportFile] = useState<File | null>(null);
+  const reportFileInputRef = useRef<HTMLInputElement>(null);
 
   // Theming helpers to align with dashboard surfaces and tokens
   const inputClass = 'w-full px-4 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)] focus:border-[color:var(--dash-primary)]';
@@ -272,6 +290,62 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
     onAddNote(newNote);
     setNewNoteText('');
+  };
+
+  const handleAddReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient || !reportForm.month || !reportForm.title || !reportFile || !onAddMonthlyReport || !currentUser) return;
+
+    try {
+      // Upload file first
+      const uploadedFile = await onUploadFile?.({
+        file: reportFile,
+        targetId: selectedClient.id,
+        targetType: 'client_report'
+      });
+
+      const newReport: ClientMonthlyReport = {
+        id: `cmr${Date.now()}`,
+        clientId: selectedClient.id,
+        month: reportForm.month,
+        title: reportForm.title,
+        fileUrl: (uploadedFile as any)?.url || '',
+        fileName: reportFile.name,
+        fileSize: reportFile.size,
+        notes: reportForm.notes || '',
+        createdBy: currentUser.id,
+        createdByName: currentUser.name,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      onAddMonthlyReport(newReport);
+      setIsReportModalOpen(false);
+      setReportForm({ month: '', title: '', notes: '' });
+      setReportFile(null);
+    } catch (error) {
+      console.error('Error uploading report:', error);
+    }
+  };
+
+  const handleReportFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReportFile(file);
+      // Auto-generate title from month if not set
+      if (!reportForm.title && reportForm.month) {
+        const date = new Date(reportForm.month + '-01');
+        const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+        setReportForm({ ...reportForm, title: `${monthName} Report` });
+      }
+    }
+  };
+
+  const handleDeleteReport = (reportId: string) => {
+    if (!onDeleteMonthlyReport) return;
+    if (confirm('Are you sure you want to delete this report?')) {
+      onDeleteMonthlyReport(reportId);
+    }
   };
 
   // Render Client Modal
@@ -788,6 +862,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               { id: 'meetings', label: 'Meetings' },
               { id: 'brand', label: 'Brand Assets' },
               { id: 'strategies', label: 'Marketing' },
+              { id: 'reports', label: 'Reports' },
               { id: 'notes', label: 'Notes' }
             ].map(tab => (
               <button
@@ -965,6 +1040,97 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
             />
           )}
 
+          {activeTab === 'reports' && (
+            <div className="space-y-4">
+              {checkPermission('client.reports.create') && (
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 text-sm font-medium"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Report
+                  </button>
+                </div>
+              )}
+
+              {/* Reports List */}
+              <div className="grid grid-cols-1 gap-3">
+                {monthlyReports.filter(r => r.clientId === selectedClient.id).length === 0 ? (
+                  <div className={`${elevatedSurface} rounded-lg p-8 text-center`}>
+                    <Calendar className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                    <p className="text-slate-400">No monthly reports yet</p>
+                    {checkPermission('client.reports.create') && (
+                      <button
+                        onClick={() => setIsReportModalOpen(true)}
+                        className="mt-4 px-4 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100 hover:border-[color:var(--dash-outline)] text-sm"
+                      >
+                        Upload First Report
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  monthlyReports
+                    .filter(r => r.clientId === selectedClient.id)
+                    .sort((a, b) => b.month.localeCompare(a.month))
+                    .map(report => (
+                      <div key={report.id} className={`${cardSurface} rounded-lg p-4`}>
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3 flex-1">
+                            <div className="p-2 rounded-lg bg-[color:var(--dash-primary)]/10">
+                              <FileText className="w-5 h-5 text-[color:var(--dash-primary)]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-semibold text-white mb-1">{report.title}</h4>
+                              <p className="text-sm text-slate-400 mb-2">
+                                {new Date(report.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                              </p>
+                              {report.notes && (
+                                <p className="text-sm text-slate-300 mb-2 wrap-anywhere">{report.notes}</p>
+                              )}
+                              {report.fileName && (
+                                <div className="flex items-center gap-2 text-xs text-slate-500">
+                                  <span>{report.fileName}</span>
+                                  {report.fileSize && (
+                                    <span>• {(report.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                                  )}
+                                </div>
+                              )}
+                              <p className="text-xs text-slate-500 mt-2">
+                                Uploaded by {report.createdByName} • {new Date(report.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {report.fileUrl && (
+                              <a
+                                href={report.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 rounded-lg hover:bg-[color:var(--dash-surface-elevated)] text-slate-400 hover:text-white transition-colors"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            )}
+                            {checkPermission('client.reports.delete') && (
+                              <button
+                                onClick={() => handleDeleteReport(report.id)}
+                                className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                                title="Delete"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'notes' && (
             <div className="space-y-4">
               {checkPermission('client.notes.create') && (
@@ -1017,6 +1183,127 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       </div>
 
       {renderClientModal()}
+
+      {/* Monthly Report Upload Modal */}
+      {isReportModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setIsReportModalOpen(false)}>
+          <div className={`${cardSurface} rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto text-slate-100`} onClick={(e) => e.stopPropagation()}>
+            <div className={`p-6 border-b ${softDivider} flex items-center justify-between`}>
+              <h2 className="text-xl font-bold text-white">Upload Monthly Report</h2>
+              <button
+                onClick={() => setIsReportModalOpen(false)}
+                className="p-2 rounded-lg hover:bg-[color:var(--dash-surface-elevated)] text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddReport} className="p-6 space-y-4">
+              <div>
+                <label className={mutedLabel}>Month *</label>
+                <input
+                  type="month"
+                  value={reportForm.month || ''}
+                  onChange={(e) => {
+                    const month = e.target.value;
+                    setReportForm({ ...reportForm, month });
+                    // Auto-generate title
+                    if (month && !reportForm.title) {
+                      const date = new Date(month + '-01');
+                      const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                      setReportForm({ ...reportForm, month, title: `${monthName} Report` });
+                    }
+                  }}
+                  required
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={mutedLabel}>Report Title *</label>
+                <input
+                  type="text"
+                  value={reportForm.title || ''}
+                  onChange={(e) => setReportForm({ ...reportForm, title: e.target.value })}
+                  placeholder="e.g., January 2026 Report"
+                  required
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={mutedLabel}>Report File *</label>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => reportFileInputRef.current?.click()}
+                    className="w-full px-4 py-3 rounded-lg border-2 border-dashed border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-300 hover:border-[color:var(--dash-outline)] transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Upload className="w-5 h-5" />
+                    {reportFile ? reportFile.name : 'Choose PDF or Document'}
+                  </button>
+                  <input
+                    ref={reportFileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                    onChange={handleReportFileSelect}
+                    className="hidden"
+                    required
+                  />
+                  {reportFile && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-[color:var(--dash-surface-elevated)]">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-[color:var(--dash-primary)]" />
+                        <span className="text-sm text-slate-300">{reportFile.name}</span>
+                        <span className="text-xs text-slate-500">({(reportFile.size / 1024 / 1024).toFixed(2)} MB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReportFile(null)}
+                        className="p-1 rounded hover:bg-[color:var(--dash-surface)] text-slate-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className={mutedLabel}>Notes (Optional)</label>
+                <textarea
+                  value={reportForm.notes || ''}
+                  onChange={(e) => setReportForm({ ...reportForm, notes: e.target.value })}
+                  placeholder="Add any notes about this report..."
+                  rows={3}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsReportModalOpen(false);
+                    setReportForm({ month: '', title: '', notes: '' });
+                    setReportFile(null);
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-100 hover:border-[color:var(--dash-outline)] transition-colors text-sm font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!reportForm.month || !reportForm.title || !reportFile}
+                  className="flex-1 px-4 py-2 rounded-lg bg-[color:var(--dash-primary)] text-white hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+                >
+                  Upload Report
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };

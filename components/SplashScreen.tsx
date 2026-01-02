@@ -11,7 +11,6 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
   source = '/splash.gif', // Default changed to GIF as requested
   minimumDisplayDuration = 3000 // Increased slightly for GIFs to ensure visibility
 }) => {
-  const [loadError, setLoadError] = useState(false);
   const [startTime] = useState(Date.now());
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -53,35 +52,22 @@ const SplashScreen: React.FC<SplashScreenProps> = ({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black">
-      {!loadError ? (
-        isVideo ? (
-          <video
-            ref={videoRef}
-            muted
-            playsInline
-            className="w-full h-full object-cover"
-            onEnded={handleFinish}
-            onError={(e) => {
-              console.error("Video load error:", e);
-              setLoadError(true);
-            }}
-          >
-            <source src={source} type="video/mp4" />
-          </video>
-        ) : (
-          <img 
-            src={source} 
-            alt="Splash" 
-            className="w-full h-full object-cover"
-            onError={() => setLoadError(true)}
-          />
-        )
+      {isVideo ? (
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          onEnded={handleFinish}
+        >
+          <source src={source} type="video/mp4" />
+        </video>
       ) : (
-        // Fallback if asset missing/error
-        <div className="text-center">
-           <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-           <p className="text-white font-medium">Loading IRIS OS...</p>
-        </div>
+        <img 
+          src={source} 
+          alt="Splash" 
+          className="w-full h-full object-cover"
+        />
       )}
     </div>
   );

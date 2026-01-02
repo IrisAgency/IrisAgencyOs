@@ -1,4 +1,4 @@
-import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, Note } from './types';
+import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, Note } from './types';
 
 export const USERS: User[] = [
   {
@@ -184,6 +184,8 @@ export const CLIENT_MEETINGS: any[] = [
 ];
 
 export const CLIENT_BRAND_ASSETS: ClientBrandAsset[] = [];
+
+export const CLIENT_MONTHLY_REPORTS: ClientMonthlyReport[] = [];
 
 export const PROJECT_MARKETING_ASSETS: ProjectMarketingAsset[] = [];
 

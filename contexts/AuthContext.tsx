@@ -347,21 +347,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       hasAnyPermission,
       hasAllPermissions
     }}>
-      {(loading || checkingUsers) ? (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          flexDirection: 'column',
-          gap: '16px'
-        }}>
-          <div style={{ fontSize: '24px' }}>Loading...</div>
-          <div style={{ fontSize: '14px', color: '#666' }}>
-            Loading: {loading ? 'Yes' : 'No'} | Checking Users: {checkingUsers ? 'Yes' : 'No'}
-          </div>
-        </div>
-      ) : children}
+      {children}
     </AuthContext.Provider>
   );
 };
