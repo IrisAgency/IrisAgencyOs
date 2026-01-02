@@ -171,13 +171,13 @@ const TeamHub: React.FC<TeamHubProps> = ({
             <>
                 <div className="flex items-center justify-between mb-6">
                     <div className="relative max-w-md flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-iris-white/40" />
                         <input
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             placeholder="Search employees by name or role..."
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full pl-10 pr-4 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50"
                         />
                     </div>
                     <div className="ml-4 flex items-center gap-2">
@@ -186,31 +186,31 @@ const TeamHub: React.FC<TeamHubProps> = ({
                             id="showInactive"
                             checked={showInactive}
                             onChange={(e) => setShowInactive(e.target.checked)}
-                            className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                            className="rounded border-iris-white/10 text-iris-red focus:ring-iris-red bg-iris-black/80"
                         />
-                        <label htmlFor="showInactive" className="text-sm text-slate-600 cursor-pointer select-none">Show Inactive</label>
+                        <label htmlFor="showInactive" className="text-sm text-iris-white/70 cursor-pointer select-none">Show Inactive</label>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 animate-in fade-in duration-300">
                     {filteredUsers.map((user) => (
-                        <div key={user.id} className={`bg-white rounded-xl border border-slate-200 p-4 md:p-6 shadow-sm hover:shadow-md transition-all flex flex-col items-center text-center group relative ${user.status === 'inactive' ? 'opacity-60 grayscale' : ''}`}>
+                        <div key={user.id} className={`bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 p-4 md:p-6 shadow-sm hover:shadow-md hover:border-iris-red/40 transition-all flex flex-col items-center text-center group relative ${user.status === 'inactive' ? 'opacity-60 grayscale' : ''}`}>
                             <div className={`absolute top-4 right-4 ${activeMenuUserId === user.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
                                 <div className="relative">
-                                    <button onClick={() => setActiveMenuUserId(activeMenuUserId === user.id ? null : user.id)} className="text-slate-400 hover:text-indigo-600"><MoreHorizontal className="w-5 h-5" /></button>
+                                    <button onClick={() => setActiveMenuUserId(activeMenuUserId === user.id ? null : user.id)} className="text-iris-white/70 hover:text-iris-red"><MoreHorizontal className="w-5 h-5" /></button>
                                     {activeMenuUserId === user.id && (
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-100 py-1 z-10 text-left">
+                                        <div className="absolute right-0 mt-2 w-48 bg-iris-black/95 backdrop-blur-sm rounded-lg shadow-lg border border-iris-white/10 py-1 z-10 text-left">
                                             {user.status !== 'inactive' ? (
                                                 <button
                                                     onClick={() => handleRemoveUser(user)}
-                                                    className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                                                    className="w-full text-left px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/10 flex items-center gap-2"
                                                 >
                                                     <Trash2 className="w-4 h-4" /> Remove User
                                                 </button>
                                             ) : (
                                                 <button
                                                     onClick={() => { onUpdateUser({ ...user, status: 'active' }); setActiveMenuUserId(null); }}
-                                                    className="w-full text-left px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
+                                                    className="w-full text-left px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2"
                                                 >
                                                     <CheckCircle className="w-4 h-4" /> Reactivate User
                                                 </button>
@@ -219,28 +219,28 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                     )}
                                 </div>
                             </div>
-                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 md:mb-4 ring-4 ring-slate-50 relative">
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden mb-3 md:mb-4 ring-4 ring-iris-white/10 relative">
                                 <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                             </div>
-                            <h3 className="font-bold text-slate-900 text-sm md:text-base">{user.name}</h3>
-                            <p className="text-indigo-600 text-xs md:text-sm font-medium mb-1">{user.jobTitle || user.role || 'No Role'}</p>
+                            <h3 className="font-bold text-iris-white text-sm md:text-base">{user.name}</h3>
+                            <p className="text-iris-red text-xs md:text-sm font-medium mb-1">{user.jobTitle || user.role || 'No Role'}</p>
                             <div className="flex gap-2 mb-4">
-                                <span className="bg-slate-100 text-slate-500 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">{user.department}</span>
+                                <span className="bg-iris-black/95 text-iris-white/70 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold border border-iris-white/10">{user.department}</span>
                                 <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${getStatusColor(user.status)}`}>
                                     {user.status || 'active'}
                                 </span>
                             </div>
 
-                            <div className="w-full border-t border-slate-100 pt-4 mt-auto space-y-2">
-                                <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                                    <Mail className="w-3.5 h-3.5 text-slate-400" /> <span className="ltr-text">{user.email || 'No email'}</span>
+                            <div className="w-full border-t border-iris-white/10 pt-4 mt-auto space-y-2">
+                                <div className="flex items-center justify-center gap-2 text-sm text-iris-white/70">
+                                    <Mail className="w-3.5 h-3.5 text-iris-white/40" /> <span className="ltr-text">{user.email || 'No email'}</span>
                                 </div>
-                                <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                                    <Phone className="w-3.5 h-3.5 text-slate-400" /> <span className="ltr-text">{user.phone || 'No phone'}</span>
+                                <div className="flex items-center justify-center gap-2 text-sm text-iris-white/70">
+                                    <Phone className="w-3.5 h-3.5 text-iris-white/40" /> <span className="ltr-text">{user.phone || 'No phone'}</span>
                                 </div>
                                 {user.location && (
-                                    <div className="flex items-center justify-center gap-2 text-sm text-slate-600">
-                                        <MapPin className="w-3.5 h-3.5 text-slate-400" /> {user.location}
+                                    <div className="flex items-center justify-center gap-2 text-sm text-iris-white/70">
+                                        <MapPin className="w-3.5 h-3.5 text-iris-white/40" /> {user.location}
                                     </div>
                                 )}
                             </div>
@@ -261,10 +261,10 @@ const TeamHub: React.FC<TeamHubProps> = ({
 
         return (
             <div className="space-y-6 animate-in fade-in duration-300">
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100">
-                        <h3 className="font-bold text-slate-900">Current Workload Distribution</h3>
-                        <p className="text-sm text-slate-500">Active tasks per team member</p>
+                <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-iris-white/10">
+                        <h3 className="font-bold text-iris-white">Current Workload Distribution</h3>
+                        <p className="text-sm text-iris-white/70">Active tasks per team member</p>
                     </div>
                     <div className="p-6 space-y-6">
                         {workloadData.map(item => (
@@ -273,17 +273,17 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                     <div className="flex items-center gap-3">
                                         <img src={item.user.avatar} className="w-8 h-8 rounded-full" />
                                         <div>
-                                            <p className="font-medium text-slate-900 text-sm">{item.user.name}</p>
-                                            <p className="text-xs text-slate-500">{item.user.jobTitle}</p>
+                                            <p className="font-medium text-iris-white text-sm">{item.user.name}</p>
+                                            <p className="text-xs text-iris-white/70">{item.user.jobTitle}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-sm font-bold ${item.active > 5 ? 'text-rose-600' : 'text-slate-700'}`}><span className="ltr-text">{item.active}</span> Tasks</span>
+                                        <span className={`text-sm font-bold ${item.active > 5 ? 'text-rose-400' : 'text-iris-white'}`}><span className="ltr-text">{item.active}</span> Tasks</span>
                                     </div>
                                 </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                                <div className="w-full bg-iris-black/95 rounded-full h-2.5 overflow-hidden">
                                     <div
-                                        className={`h-2.5 rounded-full ${item.active > 5 ? 'bg-rose-500' : item.active > 2 ? 'bg-indigo-500' : 'bg-emerald-500'}`}
+                                        className={`h-2.5 rounded-full ${item.active > 5 ? 'bg-rose-500' : item.active > 2 ? 'bg-iris-red' : 'bg-emerald-500'}`}
                                         style={{ width: `${Math.min((item.active / 10) * 100, 100)}%` }}
                                     ></div>
                                 </div>
@@ -308,18 +308,18 @@ const TeamHub: React.FC<TeamHubProps> = ({
         });
 
         return (
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 animate-in fade-in duration-300">
+            <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 shadow-sm p-4 animate-in fade-in duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {performanceData.map(data => (
-                        <div key={data.user.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div key={data.user.id} className="p-4 bg-iris-black/95 rounded-lg border border-iris-white/10">
                             <div className="flex items-center gap-3 mb-4">
                                 <img src={data.user.avatar} className="w-10 h-10 rounded-full flex-shrink-0" alt="" />
                                 <div className="min-w-0 flex-1">
-                                    <p className="font-semibold text-slate-900 truncate">{data.user.name}</p>
-                                    <p className="text-xs text-slate-500">{data.user.department}</p>
+                                    <p className="font-semibold text-iris-white truncate">{data.user.name}</p>
+                                    <p className="text-xs text-iris-white/70">{data.user.department}</p>
                                 </div>
                                 {data.completionRate > 80 && (
-                                    <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-200">
+                                    <span className="flex-shrink-0 inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-1 rounded-full border border-emerald-400/40">
                                         <Activity className="w-3 h-3" /> Top
                                     </span>
                                 )}
@@ -328,27 +328,27 @@ const TeamHub: React.FC<TeamHubProps> = ({
                             <div className="space-y-3">
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-slate-600">Tasks Assigned</span>
-                                        <span className="text-sm font-mono font-semibold text-slate-900 ltr-text">{data.totalAssigned}</span>
+                                        <span className="text-xs text-iris-white/70">Tasks Assigned</span>
+                                        <span className="text-sm font-mono font-semibold text-iris-white ltr-text">{data.totalAssigned}</span>
                                     </div>
                                 </div>
                                 
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-slate-600">Completion Rate</span>
-                                        <span className="text-xs font-semibold text-slate-900 ltr-text">{data.completionRate}%</span>
+                                        <span className="text-xs text-iris-white/70">Completion Rate</span>
+                                        <span className="text-xs font-semibold text-iris-white ltr-text">{data.completionRate}%</span>
                                     </div>
-                                    <div className="bg-slate-200 rounded-full h-2">
-                                        <div className="bg-indigo-500 h-2 rounded-full transition-all" style={{ width: `${data.completionRate}%` }}></div>
+                                    <div className="bg-iris-black rounded-full h-2">
+                                        <div className="bg-iris-red h-2 rounded-full transition-all" style={{ width: `${data.completionRate}%` }}></div>
                                     </div>
                                 </div>
                                 
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs text-slate-600">On-Time Delivery</span>
-                                        <span className="text-xs font-semibold text-slate-900 ltr-text">{data.onTimeRate}%</span>
+                                        <span className="text-xs text-iris-white/70">On-Time Delivery</span>
+                                        <span className="text-xs font-semibold text-iris-white ltr-text">{data.onTimeRate}%</span>
                                     </div>
-                                    <div className="bg-slate-200 rounded-full h-2">
+                                    <div className="bg-iris-black rounded-full h-2">
                                         <div className="bg-emerald-500 h-2 rounded-full transition-all" style={{ width: `${data.onTimeRate}%` }}></div>
                                     </div>
                                 </div>
@@ -371,31 +371,31 @@ const TeamHub: React.FC<TeamHubProps> = ({
         return (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 animate-in fade-in duration-300">
                 <div className="lg:col-span-2 space-y-4 md:space-y-6">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                            <h3 className="font-bold text-slate-900">Leave Requests</h3>
-                            <button onClick={() => { setModalType('Leave'); setIsModalOpen(true); }} className="text-xs text-indigo-600 font-medium hover:underline">+ Request Leave</button>
+                    <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-iris-white/10 flex justify-between items-center bg-iris-black/95">
+                            <h3 className="font-bold text-iris-white">Leave Requests</h3>
+                            <button onClick={() => { setModalType('Leave'); setIsModalOpen(true); }} className="text-xs text-iris-red font-medium hover:text-iris-red/80">+ Request Leave</button>
                         </div>
-                        <div className="divide-y divide-slate-100">
+                        <div className="divide-y divide-iris-white/10">
                             {leaveRequests.map(req => {
                                 const user = users.find(u => u.id === req.userId);
                                 return (
-                                    <div key={req.id} className="p-4 hover:bg-slate-50 flex justify-between items-center">
+                                    <div key={req.id} className="p-4 hover:bg-iris-white/5 flex justify-between items-center">
                                         <div className="flex items-center gap-4">
-                                            <div className="text-center w-12 bg-slate-100 rounded p-1">
-                                                <p className="text-xs text-slate-500 uppercase font-bold ltr-text">{new Date(req.startDate).toLocaleString('default', { month: 'short' })}</p>
-                                                <p className="text-lg font-bold text-slate-800 leading-none ltr-text">{new Date(req.startDate).getDate()}</p>
+                                            <div className="text-center w-12 bg-iris-black/95 rounded p-1 border border-iris-white/10">
+                                                <p className="text-xs text-iris-white/70 uppercase font-bold ltr-text">{new Date(req.startDate).toLocaleString('default', { month: 'short' })}</p>
+                                                <p className="text-lg font-bold text-iris-white leading-none ltr-text">{new Date(req.startDate).getDate()}</p>
                                             </div>
                                             <div>
-                                                <p className="font-bold text-slate-900 text-sm">{user?.name} <span className="font-normal text-slate-500">requested {req.type} leave</span></p>
-                                                <p className="text-xs text-slate-500"><span className="ltr-text">{new Date(req.startDate).toLocaleDateString()}</span> - <span className="ltr-text">{new Date(req.endDate).toLocaleDateString()}</span> • "{req.reason}"</p>
+                                                <p className="font-bold text-iris-white text-sm">{user?.name} <span className="font-normal text-iris-white/70">requested {req.type} leave</span></p>
+                                                <p className="text-xs text-iris-white/70"><span className="ltr-text">{new Date(req.startDate).toLocaleDateString()}</span> - <span className="ltr-text">{new Date(req.endDate).toLocaleDateString()}</span> • "{req.reason}"</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {req.status === 'pending' ? (
                                                 <>
-                                                    <button onClick={() => handleApprove(req)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded"><CheckCircle className="w-5 h-5" /></button>
-                                                    <button className="p-1.5 text-rose-600 hover:bg-rose-50 rounded"><X className="w-5 h-5" /></button>
+                                                    <button onClick={() => handleApprove(req)} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded"><CheckCircle className="w-5 h-5" /></button>
+                                                    <button className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded"><X className="w-5 h-5" /></button>
                                                 </>
                                             ) : (
                                                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded ${req.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -406,24 +406,24 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                     </div>
                                 );
                             })}
-                            {leaveRequests.length === 0 && <div className="p-8 text-center text-slate-400">No active leave requests.</div>}
+                            {leaveRequests.length === 0 && <div className="p-8 text-center text-iris-white/70">No active leave requests.</div>}
                         </div>
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 h-fit">
-                    <h3 className="font-bold text-slate-900 mb-4">Who's Out Today?</h3>
+                <div className="bg-iris-black/80 backdrop-blur-sm rounded-xl border border-iris-white/10 shadow-sm p-4 h-fit">
+                    <h3 className="font-bold text-iris-white mb-4">Who's Out Today?</h3>
                     <div className="space-y-3">
                         {users.filter(u => u.status === 'on_leave').map(u => (
                             <div key={u.id} className="flex items-center gap-3">
                                 <img src={u.avatar} className="w-8 h-8 rounded-full grayscale" />
                                 <div>
-                                    <p className="text-sm font-medium text-slate-700">{u.name}</p>
-                                    <p className="text-xs text-slate-500">Return: TBD</p>
+                                    <p className="text-sm font-medium text-iris-white">{u.name}</p>
+                                    <p className="text-xs text-iris-white/70">Return: TBD</p>
                                 </div>
                             </div>
                         ))}
-                        {users.filter(u => u.status === 'on_leave').length === 0 && <p className="text-sm text-slate-400 italic">Everyone is present.</p>}
+                        {users.filter(u => u.status === 'on_leave').length === 0 && <p className="text-sm text-iris-white/70 italic">Everyone is present.</p>}
                     </div>
                 </div>
             </div>
@@ -438,7 +438,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
                 actions={
                     <button
                         onClick={() => { setModalType('User'); setInviteError(''); setAdminPassword(''); setIsModalOpen(true); }}
-                        className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                        className="flex items-center space-x-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Add Employee</span>
@@ -446,13 +446,13 @@ const TeamHub: React.FC<TeamHubProps> = ({
                 }
             />
 
-            <div className="border-b border-slate-200">
+            <div className="border-b border-iris-white/10">
                 <nav className="flex space-x-6">
                     {['Directory', 'Workload', 'Performance', 'Time & Leaves'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
-                            className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+                            className={`py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${activeTab === tab ? 'border-iris-red text-iris-red' : 'border-transparent text-iris-white/70 hover:text-iris-white'
                                 }`}
                         >
                             {tab === 'Directory' && <UserIcon className="w-4 h-4" />}
@@ -469,13 +469,13 @@ const TeamHub: React.FC<TeamHubProps> = ({
                 {activeTab === 'Directory' && (
                     <>
                         <div className="relative max-w-md mb-6">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-iris-white/40" />
                             <input
                                 type="text"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Search employees by name or role..."
-                                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full pl-10 pr-4 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50"
                             />
                         </div>
                         <DirectoryView />
@@ -497,16 +497,16 @@ const TeamHub: React.FC<TeamHubProps> = ({
                 {modalType === 'User' ? (
                     pendingInvite ? (
                         <div className="p-1 space-y-6 text-center">
-                            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <CheckCircleIcon className="w-8 h-8" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-bold text-slate-900">User Created Successfully</h3>
-                                <p className="text-sm text-slate-500 mt-1">Share these credentials with {pendingInvite.name}</p>
+                                <h3 className="text-lg font-bold text-iris-white">User Created Successfully</h3>
+                                <p className="text-sm text-iris-white/70 mt-1">Share these credentials with {pendingInvite.name}</p>
                             </div>
 
                             {inviteError && (
-                                <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-lg p-3 text-sm flex items-start gap-2 text-left">
+                                <div className="bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-lg p-3 text-sm flex items-start gap-2 text-left">
                                     <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                                     <div>
                                         <p className="font-bold">Attention:</p>
@@ -515,26 +515,26 @@ const TeamHub: React.FC<TeamHubProps> = ({
                                 </div>
                             )}
 
-                            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left">
+                            <div className="bg-iris-black/80 border border-iris-white/10 rounded-xl p-4 text-left">
                                 <div className="mb-3">
-                                    <p className="text-xs text-slate-500 uppercase font-bold mb-1">Email</p>
-                                    <p className="font-medium text-slate-900">{pendingInvite.email}</p>
+                                    <p className="text-xs text-iris-white/40 uppercase font-bold mb-1">Email</p>
+                                    <p className="font-medium text-iris-white">{pendingInvite.email}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-slate-500 uppercase font-bold mb-1">Temporary Password</p>
+                                    <p className="text-xs text-iris-white/40 uppercase font-bold mb-1">Temporary Password</p>
                                     <div className="flex items-center gap-2">
-                                        <code className="bg-white border border-slate-200 px-3 py-1.5 rounded text-lg font-mono text-indigo-600 font-bold flex-1">
+                                        <code className="bg-iris-black/95 border border-iris-white/10 px-3 py-1.5 rounded text-lg font-mono text-iris-red font-bold flex-1">
                                             {pendingInvite.password}
                                         </code>
                                         <button
                                             onClick={handleCopyPassword}
-                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            className="p-2 text-iris-white/40 hover:text-iris-red hover:bg-iris-red/10 rounded-lg transition-colors"
                                             title="Copy Password"
                                         >
                                             {copiedPassword ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" /> : <Copy className="w-5 h-5" />}
                                         </button>
                                     </div>
-                                    <p className="text-[11px] text-slate-400 mt-2">
+                                    <p className="text-[11px] text-iris-white/40 mt-2">
                                         This password is valid for first login only. The user will be required to change it immediately.
                                     </p>
                                 </div>
@@ -542,7 +542,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
 
                             <button
                                 onClick={() => { setPendingInvite(null); setIsModalOpen(false); }}
-                                className="w-full bg-slate-900 text-white py-2.5 rounded-lg font-medium hover:bg-slate-800 transition-colors"
+                                className="w-full bg-gradient-to-br from-iris-red to-iris-red/80 text-iris-white py-2.5 rounded-lg font-medium hover:brightness-110 transition-all"
                             >
                                 Done
                             </button>
@@ -550,36 +550,36 @@ const TeamHub: React.FC<TeamHubProps> = ({
                     ) : (
                         <form onSubmit={handleCreateUser} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                                <input required value={userName} onChange={e => setUserName(e.target.value)} type="text" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                                <label className="block text-sm font-medium text-iris-white mb-1">Full Name</label>
+                                <input required value={userName} onChange={e => setUserName(e.target.value)} type="text" className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                                <input required value={userEmail} onChange={e => setUserEmail(e.target.value)} type="email" className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                                <label className="block text-sm font-medium text-iris-white mb-1">Email</label>
+                                <input required value={userEmail} onChange={e => setUserEmail(e.target.value)} type="email" className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                                    <select value={userRole} onChange={e => setUserRole(e.target.value as UserRole)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                    <label className="block text-sm font-medium text-iris-white mb-1">Role</label>
+                                    <select value={userRole} onChange={e => setUserRole(e.target.value as UserRole)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none">
                                         {roles.map(role => (
                                             <option key={role.id} value={role.name}>{role.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
-                                    <select value={userDept} onChange={e => setUserDept(e.target.value as Department)} className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                    <label className="block text-sm font-medium text-iris-white mb-1">Department</label>
+                                    <select value={userDept} onChange={e => setUserDept(e.target.value as Department)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none">
                                         {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
                                     </select>
                                 </div>
                             </div>
                             {inviteError && (
-                                <div className="bg-rose-50 border border-rose-200 text-rose-600 rounded-lg p-3 text-sm">
+                                <div className="bg-rose-500/20 border border-rose-500/30 text-rose-400 rounded-lg p-3 text-sm">
                                     {inviteError}
                                 </div>
                             )}
                             <div className="pt-2">
-                                <button type="submit" disabled={inviteLoading} className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center justify-center gap-2">
+                                <button type="submit" disabled={inviteLoading} className="w-full bg-gradient-to-br from-iris-red to-iris-red/80 text-iris-white py-2.5 rounded-lg font-medium hover:brightness-110 transition-all disabled:opacity-70 flex items-center justify-center gap-2">
                                     {inviteLoading && <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>}
                                     <span>{inviteLoading ? 'Creating user...' : 'Create & Generate Password'}</span>
                                 </button>
@@ -589,8 +589,8 @@ const TeamHub: React.FC<TeamHubProps> = ({
                 ) : (
                     <form onSubmit={handleRequestLeave} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Leave Type</label>
-                            <select value={leaveType} onChange={e => setLeaveType(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg">
+                            <label className="block text-sm font-medium text-iris-white mb-1">Leave Type</label>
+                            <select value={leaveType} onChange={e => setLeaveType(e.target.value)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none">
                                 <option value="annual">Annual Leave</option>
                                 <option value="sick">Sick Leave</option>
                                 <option value="unpaid">Unpaid Leave</option>
@@ -599,20 +599,20 @@ const TeamHub: React.FC<TeamHubProps> = ({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Start Date</label>
-                                <input type="date" required value={leaveStart} onChange={e => setLeaveStart(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                                <label className="block text-sm font-medium text-iris-white mb-1">Start Date</label>
+                                <input type="date" required value={leaveStart} onChange={e => setLeaveStart(e.target.value)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">End Date</label>
-                                <input type="date" required value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" />
+                                <label className="block text-sm font-medium text-iris-white mb-1">End Date</label>
+                                <input type="date" required value={leaveEnd} onChange={e => setLeaveEnd(e.target.value)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none" />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Reason</label>
-                            <input type="text" required value={leaveReason} onChange={e => setLeaveReason(e.target.value)} className="w-full px-3 py-2 border border-slate-300 rounded-lg" placeholder="e.g. Family vacation" />
+                            <label className="block text-sm font-medium text-iris-white mb-1">Reason</label>
+                            <input type="text" required value={leaveReason} onChange={e => setLeaveReason(e.target.value)} className="w-full px-3 py-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-iris-white placeholder:text-iris-white/40 focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none" placeholder="e.g. Family vacation" />
                         </div>
                         <div className="pt-2">
-                            <button type="submit" className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Submit Request</button>
+                            <button type="submit" className="w-full bg-gradient-to-br from-iris-red to-iris-red/80 text-iris-white py-2.5 rounded-lg font-medium hover:brightness-110 transition-all">Submit Request</button>
                         </div>
                     </form>
                 )}
