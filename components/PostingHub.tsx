@@ -557,7 +557,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
             {/* Mobile: Tabbed Status View */}
             <div className="md:hidden h-full flex flex-col overflow-hidden">
               {/* Status Tabs */}
-              <div className="flex overflow-x-auto border-b border-slate-200 bg-white px-2 py-2 gap-2">
+              <div className="flex overflow-x-auto border-b border-iris-white/10 bg-iris-white/5 px-2 py-2 gap-2 backdrop-blur-sm">
                 {columns.map(col => {
                   const colPosts = filteredPosts.filter(p => getNormalizedStatus(p.status) === col.id);
                   return (
@@ -566,8 +566,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
                       onClick={() => setFilterStatus(filterStatus === col.id ? 'all' : col.id)}
                       className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all shrink-0 ${
                         filterStatus === col.id || filterStatus === 'all'
-                          ? `${col.color} ${col.color.replace('bg-', 'text-').replace('50', '700')} border-2 ${col.color.replace('bg-', 'border-').replace('50', '300')}`
-                          : 'bg-slate-100 text-slate-500 border-2 border-transparent'
+                          ? `bg-gradient-to-r ${col.id === 'PENDING' ? 'from-iris-white/10 to-iris-white/5' : col.id === 'READY' ? 'from-blue-500/20 to-blue-600/20' : col.id === 'SCHEDULED' ? 'from-purple-500/20 to-purple-600/20' : col.id === 'PUBLISHED' ? 'from-emerald-500/20 to-emerald-600/20' : 'from-rose-500/20 to-rose-600/20'} text-iris-white border-2 border-iris-white/20`
+                          : 'bg-iris-white/5 text-iris-white/50 border-2 border-transparent'
                       }`}
                     >
                       {col.label} ({colPosts.length})
@@ -580,79 +580,78 @@ const PostingHub: React.FC<PostingHubProps> = ({
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
                 {filteredPosts.length === 0 ? (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-200 flex items-center justify-center">
-                      <MessageSquare className="w-8 h-8 text-slate-400" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-iris-white/5 flex items-center justify-center">
+                      <MessageSquare className="w-8 h-8 text-iris-white/40" />
                     </div>
-                    <p className="text-slate-500 font-medium">No posts found</p>
+                    <p className="text-iris-white/70 font-medium">No posts found</p>
                   </div>
                 ) : (
                   filteredPosts.map(post => {
                     const client = clients.find(c => c.id === post.clientId);
                     const manager = users.find(u => u.id === post.socialManagerId);
                     const normalizedStatus = getNormalizedStatus(post.status);
-                    const statusColor = columns.find(c => c.id === normalizedStatus)?.color || 'bg-slate-100';
 
                     return (
                       <div
                         key={post.id}
                         onClick={() => setSelectedPostId(post.id)}
-                        className="bg-white p-4 rounded-xl border-2 border-slate-200 hover:shadow-lg transition-all cursor-pointer"
+                        className="bg-iris-black/80 p-4 rounded-2xl border-2 border-iris-white/10 hover:shadow-2xl transition-all cursor-pointer backdrop-blur-sm hover:border-iris-red/50"
                       >
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase px-2 py-1 bg-slate-100 rounded">
+                            <span className="text-[10px] font-bold text-iris-white/70 uppercase px-2 py-1 bg-iris-white/5 rounded">
                               {client?.name || 'Unknown'}
                             </span>
-                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${statusColor} ${statusColor.replace('bg-', 'text-').replace('50', '700')}`}>
+                            <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${normalizedStatus === 'PENDING' ? 'bg-iris-white/10 text-iris-white/70' : normalizedStatus === 'READY' ? 'bg-blue-500/20 text-blue-400' : normalizedStatus === 'SCHEDULED' ? 'bg-purple-500/20 text-purple-400' : normalizedStatus === 'PUBLISHED' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
                               {post.status}
                             </span>
                           </div>
                           {post.platforms && post.platforms.length > 0 && (
                             <div className="flex gap-1 flex-wrap">
                               {post.platforms.slice(0, 3).map(p => (
-                                <div key={p} className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-50 to-blue-50 flex items-center justify-center border border-slate-200 text-indigo-600">
+                                <div key={p} className="w-6 h-6 rounded-full bg-gradient-to-br from-iris-red/20 to-iris-red/10 flex items-center justify-center border border-iris-white/10 text-iris-red">
                                   {getPlatformIcon(p)}
                                 </div>
                               ))}
                               {post.platforms.length > 3 && (
-                                <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
-                                  <span className="text-[10px] font-bold text-slate-600">+{post.platforms.length - 3}</span>
+                                <div className="w-6 h-6 rounded-full bg-iris-white/5 flex items-center justify-center border border-iris-white/10">
+                                  <span className="text-[10px] font-bold text-iris-white/70">+{post.platforms.length - 3}</span>
                                 </div>
                               )}
                             </div>
                           )}
                         </div>
 
-                        <h3 className="text-base font-bold text-slate-900 mb-2">
-                          {post.title || <span className="italic text-slate-400 font-normal">Untitled Post</span>}
+                        <h3 className="text-base font-bold text-iris-white mb-2">
+                          {post.title || <span className="italic text-iris-white/40 font-normal">Untitled Post</span>}
                         </h3>
 
                         {post.caption && (
-                          <p className="text-sm text-slate-600 mb-3 line-clamp-2 bg-slate-50 p-2 rounded border border-slate-100">
+                          <p className="text-sm text-iris-white/70 mb-3 line-clamp-2 bg-iris-white/5 p-2 rounded border border-iris-white/10">
                             {post.caption}
                           </p>
                         )}
 
                         {post.publishAt && (
-                          <div className="flex items-center text-xs text-slate-600 bg-amber-50 px-2 py-1.5 rounded mb-3 border border-amber-100">
-                            <Clock className="w-3 h-3 mr-1.5 text-amber-600" />
+                          <div className="flex items-center text-xs text-amber-300 bg-amber-500/10 px-2 py-1.5 rounded mb-3 border border-amber-500/20">
+                            <Clock className="w-3 h-3 mr-1.5 text-amber-400" />
                             <span className="font-medium">{new Date(post.publishAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         )}
 
-                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                        <div className="flex justify-between items-center pt-2 border-t border-iris-white/10">
                           <div className="flex items-center gap-2">
                             {manager ? (
                               <>
-                                <img src={manager.avatar} className="w-6 h-6 rounded-full border border-white shadow-sm" title={manager.name} alt={manager.name} />
-                                <span className="text-xs text-slate-600 font-medium">{manager.name.split(' ')[0]}</span>
+                                <img src={manager.avatar} className="w-6 h-6 rounded-full border border-iris-white/20 shadow-sm" title={manager.name} alt={manager.name} />
+                                <span className="text-xs text-iris-white/70 font-medium">{manager.name.split(' ')[0]}</span>
                               </>
                             ) : (
                               <>
-                                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center">
-                                  <UserIcon className="w-3 h-3 text-slate-400" />
+                                <div className="w-6 h-6 rounded-full bg-iris-white/5 flex items-center justify-center">
+                                  <UserIcon className="w-3 h-3 text-iris-white/40" />
                                 </div>
-                                <span className="text-xs text-slate-400">Unassigned</span>
+                                <span className="text-xs text-iris-white/40">Unassigned</span>
                               </>
                             )}
                           </div>
@@ -663,7 +662,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               {getNormalizedStatus(post.status) === 'PENDING' && (
                                 <button
                                   onClick={() => handleStatusChange(post, 'READY')}
-                                  className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                                  className="text-[10px] font-bold bg-blue-500/10 text-blue-400 px-2 py-1 rounded hover:bg-blue-500/20 transition-colors border border-blue-500/20"
                                 >
                                   Mark Ready
                                 </button>
@@ -671,7 +670,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               {getNormalizedStatus(post.status) === 'READY' && (
                                 <button
                                   onClick={() => handleStatusChange(post, 'SCHEDULED')}
-                                  className="text-[10px] font-bold bg-purple-50 text-purple-600 px-2 py-1 rounded hover:bg-purple-100 transition-colors"
+                                  className="text-[10px] font-bold bg-purple-500/10 text-purple-400 px-2 py-1 rounded hover:bg-purple-500/20 transition-colors border border-purple-500/20"
                                 >
                                   Schedule
                                 </button>
@@ -679,7 +678,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               {getNormalizedStatus(post.status) === 'SCHEDULED' && (
                                 <button
                                   onClick={() => handleStatusChange(post, 'PUBLISHED')}
-                                  className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded hover:bg-emerald-100 transition-colors"
+                                  className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 px-2 py-1 rounded hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"
                                 >
                                   Publish
                                 </button>
@@ -695,19 +694,19 @@ const PostingHub: React.FC<PostingHubProps> = ({
             </div>
           </div>
         ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 h-full flex flex-col">
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-slate-900">Calendar View</h3>
+          <div className="bg-iris-white/5 rounded-2xl shadow-sm border border-iris-white/10 h-full flex flex-col backdrop-blur-sm">
+            <div className="p-4 border-b border-iris-white/10 flex justify-between items-center">
+              <h3 className="font-bold text-iris-white">Calendar View</h3>
               <div className="flex gap-2 items-center">
-                <button className="p-1 hover:bg-slate-100 rounded"><ChevronLeft className="w-5 h-5 text-slate-500" /></button>
-                <span className="font-bold text-slate-700">May 2024</span>
-                <button className="p-1 hover:bg-slate-100 rounded"><ChevronRight className="w-5 h-5 text-slate-500" /></button>
+                <button className="p-1 hover:bg-iris-white/10 rounded"><ChevronLeft className="w-5 h-5 text-iris-white/70" /></button>
+                <span className="font-bold text-iris-white">May 2024</span>
+                <button className="p-1 hover:bg-iris-white/10 rounded"><ChevronRight className="w-5 h-5 text-iris-white/70" /></button>
               </div>
             </div>
-            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-px bg-slate-200 overflow-hidden">
+            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-px bg-iris-white/10 overflow-hidden">
               {/* Days Header */}
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                <div key={d} className="bg-slate-50 p-2 text-center text-xs font-bold text-slate-500 uppercase">{d}</div>
+                <div key={d} className="bg-iris-white/5 p-2 text-center text-xs font-bold text-iris-white/70 uppercase">{d}</div>
               ))}
 
               {/* Calendar Cells (Mocked for May 2024 - Starts on Wed) */}
@@ -717,18 +716,18 @@ const PostingHub: React.FC<PostingHubProps> = ({
                 const postsForDay = date ? filteredPosts.filter(p => p.publishAt && new Date(p.publishAt).getDate() === date) : [];
 
                 return (
-                  <div key={i} className={`bg-white p-2 min-h-[80px] ${!date ? 'bg-slate-50' : ''}`}>
+                  <div key={i} className={`bg-iris-black/80 p-2 min-h-[80px] backdrop-blur-sm ${!date ? 'bg-iris-white/5' : ''}`}>
                     {date && (
                       <>
-                        <span className={`text-xs font-bold ${postsForDay.length > 0 ? 'text-indigo-600' : 'text-slate-400'}`}>{date}</span>
+                        <span className={`text-xs font-bold ${postsForDay.length > 0 ? 'text-iris-red' : 'text-iris-white/40'}`}>{date}</span>
                         <div className="mt-1 space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar">
                           {postsForDay.map(p => (
                             <div
                               key={p.id}
                               onClick={() => setSelectedPostId(p.id)}
-                              className={`text-[10px] p-1 rounded truncate cursor-pointer border ${getNormalizedStatus(p.status) === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' :
-                                getNormalizedStatus(p.status) === 'SCHEDULED' ? 'bg-purple-50 text-purple-800 border-purple-100' :
-                                  'bg-slate-50 text-slate-600 border-slate-100'
+                              className={`text-[10px] p-1 rounded truncate cursor-pointer border ${getNormalizedStatus(p.status) === 'PUBLISHED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                getNormalizedStatus(p.status) === 'SCHEDULED' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' :
+                                  'bg-iris-white/5 text-iris-white/70 border-iris-white/10'
                                 }`}
                               title={p.title}
                             >
@@ -755,12 +754,12 @@ const PostingHub: React.FC<PostingHubProps> = ({
         title={
           selectedPost && (
             <div className="flex-1 mr-4">
-              <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+              <div className="flex items-center gap-2 text-xs text-iris-white/70 mb-1">
                 <span className="font-bold uppercase">{clients.find(c => c.id === selectedPost.clientId)?.name || 'Unknown Client'}</span>
                 <span>/</span>
                 <span>{projects.find(p => p.id === selectedPost.projectId)?.name || 'Unknown Project'}</span>
               </div>
-              <div className="text-lg font-bold text-slate-900">
+              <div className="text-lg font-bold text-iris-white">
                 {selectedPost.title || 'Untitled Post'}
               </div>
             </div>
@@ -771,9 +770,9 @@ const PostingHub: React.FC<PostingHubProps> = ({
           <div className="p-4 md:p-6 space-y-6">
             {/* Permission Badge - Professional */}
             {!canManage && canView && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                <span className="text-xs font-medium text-amber-800">
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs font-medium text-amber-300">
                   Read-only access – Contact admin for edit permissions
                 </span>
               </div>
@@ -781,15 +780,15 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Revision Banner */}
             {selectedPost.status === 'REVISION_REQUESTED' && selectedPost.revisionContext?.active && (
-              <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 animate-in slide-in-from-top-2">
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 animate-in slide-in-from-top-2 backdrop-blur-sm">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                    <RotateCcw className="w-4 h-4 text-rose-600" />
+                  <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0">
+                    <RotateCcw className="w-4 h-4 text-rose-400" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-sm font-bold text-rose-900 mb-1">Revisions Requested</h4>
-                    <p className="text-sm text-rose-800 mb-2">{selectedPost.revisionContext.message}</p>
-                    <div className="flex items-center gap-2 text-xs text-rose-600">
+                    <h4 className="text-sm font-bold text-rose-400 mb-1">Revisions Requested</h4>
+                    <p className="text-sm text-rose-300/90 mb-2">{selectedPost.revisionContext.message}</p>
+                    <div className="flex items-center gap-2 text-xs text-rose-400/80">
                       <span className="font-medium">Requested by {users.find(u => u.id === selectedPost.revisionContext?.requestedByUserId)?.name || 'Unknown'}</span>
                       <span>•</span>
                       <span>{new Date(selectedPost.revisionContext.requestedAt).toLocaleString()}</span>
@@ -799,7 +798,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                   {(currentUser.id === selectedPost.socialManagerId || canManage) && (
                     <button
                       onClick={handleSubmitRevision}
-                      className="px-3 py-1.5 bg-rose-600 text-white text-xs font-bold rounded-lg hover:bg-rose-700 shadow-sm whitespace-nowrap"
+                      className="px-3 py-1.5 bg-gradient-to-r from-rose-500 to-rose-600 text-white text-xs font-bold rounded-lg hover:from-rose-600 hover:to-rose-700 shadow-lg whitespace-nowrap"
                     >
                       Submit Revisions
                     </button>
@@ -810,12 +809,12 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Editable Title (Mobile visible) */}
             <div className="md:hidden">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Post Title</label>
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Post Title</label>
               <input
                 type="text"
                 value={selectedPost.title || ''}
                 onChange={e => onUpdatePost({ ...selectedPost, title: e.target.value })}
-                className="w-full text-lg font-bold text-slate-900 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-500"
+                className="w-full text-lg font-bold text-iris-white bg-iris-white/5 border border-iris-white/10 rounded-lg px-3 py-2 focus:ring-2 focus:ring-iris-red focus:outline-none disabled:bg-iris-white/5 disabled:text-iris-white/40 placeholder:text-iris-white/40"
                 placeholder="Enter Post Title"
                 disabled={!canManage}
                 title={!canManage ? "You don't have permission to edit" : ""}
@@ -833,27 +832,27 @@ const PostingHub: React.FC<PostingHubProps> = ({
               const taskComments = comments.filter(c => c.taskId === originalTask.id);
 
               return (
-                <div className="bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-xl p-4">
+                <div className="bg-gradient-to-br from-iris-red/10 to-iris-red/5 border-2 border-iris-red/20 rounded-2xl p-4 backdrop-blur-sm">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-iris-red to-iris-red/80 flex items-center justify-center shrink-0 shadow-lg">
                       <MessageSquare className="w-5 h-5 text-white" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-indigo-600 uppercase">Original Task</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${originalTask.priority === 'critical' ? 'bg-rose-100 text-rose-700' :
-                          originalTask.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                            originalTask.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
-                              'bg-slate-100 text-slate-600'
+                        <span className="text-xs font-bold text-iris-red uppercase">Original Task</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${originalTask.priority === 'critical' ? 'bg-rose-500/20 text-rose-400' :
+                          originalTask.priority === 'high' ? 'bg-orange-500/20 text-orange-400' :
+                            originalTask.priority === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                              'bg-iris-white/10 text-iris-white/70'
                           }`}>
                           {originalTask.priority}
                         </span>
                       </div>
-                      <h4 className="font-bold text-slate-900 text-sm mb-1 line-clamp-2">
+                      <h4 className="font-bold text-iris-white text-sm mb-1 line-clamp-2">
                         {originalTask.title}
                       </h4>
                       {taskProject && (
-                        <p className="text-xs text-slate-600 mb-2">
+                        <p className="text-xs text-iris-white/70 mb-2">
                           📁 {taskProject.name}
                         </p>
                       )}
@@ -861,9 +860,9 @@ const PostingHub: React.FC<PostingHubProps> = ({
                   </div>
 
                   {originalTask.description && (
-                    <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                      <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Task Description</label>
-                      <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                    <div className="bg-iris-black/80 rounded-lg p-3 mb-3 border border-iris-white/10 backdrop-blur-sm">
+                      <label className="text-xs font-bold text-iris-white/70 uppercase mb-1 block">Task Description</label>
+                      <p className="text-sm text-iris-white/90 whitespace-pre-wrap">
                         {originalTask.description}
                       </p>
                     </div>
@@ -871,12 +870,12 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     {originalTask.dueDate && (
-                      <div className="bg-white rounded-lg p-2 border border-indigo-100">
-                        <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+                      <div className="bg-iris-black/80 rounded-lg p-2 border border-iris-white/10 backdrop-blur-sm">
+                        <div className="flex items-center gap-1 text-xs text-iris-white/70 mb-1">
                           <Clock className="w-3 h-3" />
                           <span className="font-medium">Due Date</span>
                         </div>
-                        <p className="text-sm font-bold text-slate-900">
+                        <p className="text-sm font-bold text-iris-white">
                           {new Date(originalTask.dueDate).toLocaleDateString(undefined, {
                             month: 'short',
                             day: 'numeric',
@@ -887,8 +886,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
                     )}
 
                     {assignees.length > 0 && (
-                      <div className="bg-white rounded-lg p-2 border border-indigo-100">
-                        <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+                      <div className="bg-iris-black/80 rounded-lg p-2 border border-iris-white/10 backdrop-blur-sm">
+                        <div className="flex items-center gap-1 text-xs text-iris-white/70 mb-1">
                           <UserIcon className="w-3 h-3" />
                           <span className="font-medium">Assigned To</span>
                         </div>
@@ -899,12 +898,12 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               src={u.avatar}
                               alt={u.name}
                               title={u.name}
-                              className="w-6 h-6 rounded-full border-2 border-white"
+                              className="w-6 h-6 rounded-full border-2 border-iris-black"
                             />
                           ))}
                           {assignees.length > 3 && (
-                            <div className="w-6 h-6 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center">
-                              <span className="text-[10px] font-bold text-indigo-700">+{assignees.length - 3}</span>
+                            <div className="w-6 h-6 rounded-full bg-iris-red/20 border-2 border-iris-black flex items-center justify-center">
+                              <span className="text-[10px] font-bold text-iris-red">+{assignees.length - 3}</span>
                             </div>
                           )}
                         </div>
@@ -914,8 +913,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                   {/* Task Files */}
                   {taskFiles.length > 0 && (
-                    <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                      <div className="flex items-center gap-1 text-xs text-slate-500 uppercase font-bold mb-2">
+                    <div className="bg-iris-black/80 rounded-lg p-3 mb-3 border border-iris-white/10 backdrop-blur-sm">
+                      <div className="flex items-center gap-1 text-xs text-iris-white/70 uppercase font-bold mb-2">
                         <Paperclip className="w-3 h-3" />
                         <span>Attached Files ({taskFiles.length})</span>
                       </div>
@@ -926,9 +925,9 @@ const PostingHub: React.FC<PostingHubProps> = ({
                             href={file.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-2 p-2 rounded hover:bg-indigo-50 transition-colors group"
+                            className="flex items-center gap-2 p-2 rounded hover:bg-iris-white/5 transition-colors group"
                           >
-                            <div className="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                            <div className="w-8 h-8 rounded bg-gradient-to-br from-iris-red to-iris-red/80 flex items-center justify-center shrink-0">
                               {file.type.includes('image') ? (
                                 <ImageIcon className="w-4 h-4 text-white" />
                               ) : file.type.includes('video') ? (
@@ -938,14 +937,14 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 truncate group-hover:text-indigo-600">
+                              <p className="text-sm font-medium text-iris-white truncate group-hover:text-iris-red">
                                 {file.name}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-xs text-iris-white/70">
                                 {(file.size / 1024).toFixed(0)} KB
                               </p>
                             </div>
-                            <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-indigo-600 shrink-0" />
+                            <ExternalLink className="w-3 h-3 text-iris-white/40 group-hover:text-iris-red shrink-0" />
                           </a>
                         ))}
                       </div>
@@ -954,8 +953,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
                   {/* Task Comments & Notes */}
                   {taskComments.length > 0 && (
-                    <div className="bg-white rounded-lg p-3 mb-3 border border-indigo-100">
-                      <div className="flex items-center gap-1 text-xs text-slate-500 uppercase font-bold mb-2">
+                    <div className="bg-iris-black/80 rounded-lg p-3 mb-3 border border-iris-white/10 backdrop-blur-sm">
+                      <div className="flex items-center gap-1 text-xs text-iris-white/70 uppercase font-bold mb-2">
                         <MessageSquare className="w-3 h-3" />
                         <span>Comments & Notes ({taskComments.length})</span>
                       </div>
@@ -963,7 +962,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                         {taskComments.map(comment => {
                           const commenter = users.find(u => u.id === comment.userId);
                           return (
-                            <div key={comment.id} className="flex gap-2 p-2 rounded bg-slate-50">
+                            <div key={comment.id} className="flex gap-2 p-2 rounded bg-iris-white/5">
                               <img
                                 src={commenter?.avatar || '/default-avatar.png'}
                                 alt={commenter?.name || 'User'}
@@ -971,14 +970,14 @@ const PostingHub: React.FC<PostingHubProps> = ({
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-baseline gap-2 mb-1">
-                                  <span className="text-xs font-bold text-slate-900">
+                                  <span className="text-xs font-bold text-iris-white">
                                     {commenter?.name || 'Unknown'}
                                   </span>
-                                  <span className="text-[10px] text-slate-500">
+                                  <span className="text-[10px] text-iris-white/70">
                                     {new Date(comment.createdAt).toLocaleDateString()}
                                   </span>
                                 </div>
-                                <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                                <p className="text-sm text-iris-white/90 whitespace-pre-wrap">
                                   {comment.message}
                                 </p>
                               </div>
@@ -990,12 +989,12 @@ const PostingHub: React.FC<PostingHubProps> = ({
                   )}
 
                   {selectedPost.notesFromTask && (
-                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                      <div className="flex items-center gap-1 text-xs text-amber-800 font-bold uppercase mb-1">
+                    <div className="bg-amber-500/10 rounded-lg p-3 border border-amber-500/20">
+                      <div className="flex items-center gap-1 text-xs text-amber-400 font-bold uppercase mb-1">
                         <MessageSquare className="w-3 h-3" />
                         <span>Special Instructions</span>
                       </div>
-                      <p className="text-sm text-amber-900 font-medium">
+                      <p className="text-sm text-amber-300/90 font-medium">
                         {selectedPost.notesFromTask}
                       </p>
                     </div>
@@ -1005,15 +1004,15 @@ const PostingHub: React.FC<PostingHubProps> = ({
             })()}
 
             {/* Status & Actions */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Current Status</label>
+            <div className="bg-iris-black/80 backdrop-blur-sm p-4 rounded-xl border border-iris-white/10">
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Current Status</label>
               <div className="flex items-center gap-3">
                 <div className={`flex-1 px-3 py-2 rounded-lg border flex items-center justify-between ${
-                  getNormalizedStatus(selectedPost.status) === 'PUBLISHED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-                  getNormalizedStatus(selectedPost.status) === 'SCHEDULED' ? 'bg-purple-50 border-purple-200 text-purple-700' :
-                  getNormalizedStatus(selectedPost.status) === 'READY' ? 'bg-blue-50 border-blue-200 text-blue-700' :
-                  getNormalizedStatus(selectedPost.status) === 'REVISION_REQUESTED' ? 'bg-rose-50 border-rose-200 text-rose-700' :
-                  'bg-slate-100 border-slate-200 text-slate-700'
+                  getNormalizedStatus(selectedPost.status) === 'PUBLISHED' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                  getNormalizedStatus(selectedPost.status) === 'SCHEDULED' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                  getNormalizedStatus(selectedPost.status) === 'READY' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                  getNormalizedStatus(selectedPost.status) === 'REVISION_REQUESTED' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' :
+                  'bg-iris-white/5 border-iris-white/10 text-iris-white/70'
                 }`}>
                   <span className="font-bold capitalize">{getNormalizedStatus(selectedPost.status).replace('_', ' ')}</span>
                   {getNormalizedStatus(selectedPost.status) === 'PUBLISHED' && <CheckCircle className="w-4 h-4" />}
@@ -1026,7 +1025,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                     {getNormalizedStatus(selectedPost.status) !== 'REVISION_REQUESTED' && (
                       <button
                         onClick={() => setShowRevisionModal(true)}
-                        className="px-3 py-2 bg-white border border-rose-200 text-rose-600 rounded-lg text-sm font-bold hover:bg-rose-50 transition-colors"
+                        className="px-3 py-2 bg-iris-black/80 border border-rose-500/20 text-rose-400 rounded-lg text-sm font-bold hover:bg-rose-500/10 transition-colors"
                         title="Request Revisions"
                       >
                         <RotateCcw className="w-4 h-4" />
@@ -1039,7 +1038,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
                         onChange={(e) => {
                           if (e.target.value) handleStatusChange(selectedPost, e.target.value as SocialPost['status']);
                         }}
-                        className="appearance-none bg-indigo-600 text-white pl-4 pr-8 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        className="appearance-none bg-gradient-to-br from-iris-red to-iris-red/80 text-white pl-4 pr-8 py-2 rounded-lg text-sm font-bold hover:brightness-110 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-iris-red focus:ring-offset-2 focus:ring-offset-iris-black"
                       >
                         <option value="">Change Status...</option>
                         {getNormalizedStatus(selectedPost.status) === 'PENDING' && <option value="READY">Mark as Ready</option>}
@@ -1059,7 +1058,7 @@ const PostingHub: React.FC<PostingHubProps> = ({
               </div>
               
               {/* Helper Text */}
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-iris-white/70 mt-2">
                 {getNormalizedStatus(selectedPost.status) === 'PENDING' && "Draft your post. Mark as Ready when caption is done."}
                 {getNormalizedStatus(selectedPost.status) === 'READY' && "Post is ready. Set a date and Schedule it."}
                 {getNormalizedStatus(selectedPost.status) === 'SCHEDULED' && "Post is scheduled. Mark Published when live."}
@@ -1069,15 +1068,15 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Notes from Task */}
             {selectedPost.notesFromTask && (
-              <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
-                <label className="block text-xs font-bold text-amber-800 uppercase mb-1">Notes from Task</label>
-                <p className="text-sm text-amber-900">{selectedPost.notesFromTask}</p>
+              <div className="bg-amber-500/10 p-3 rounded-lg border border-amber-500/20">
+                <label className="block text-xs font-bold text-amber-400 uppercase mb-1">Notes from Task</label>
+                <p className="text-sm text-amber-300/90">{selectedPost.notesFromTask}</p>
               </div>
             )}
 
             {/* Platforms */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Platforms</label>
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Platforms</label>
               <div className="flex flex-wrap gap-2">
                 {['instagram', 'facebook', 'linkedin', 'tiktok', 'youtube', 'twitter'].map((p) => (
                   <button
@@ -1090,8 +1089,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
                       onUpdatePost({ ...selectedPost, platforms: newPlatforms });
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 transition-colors ${selectedPost.platforms.includes(p as SocialPlatform)
-                      ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                      : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                      ? 'bg-iris-red/10 border-iris-red/20 text-iris-red'
+                      : 'bg-iris-black/80 border-iris-white/10 text-iris-white/70 hover:border-iris-white/20'
                       } ${!canManage ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title={!canManage ? "You don't have permission to edit" : ""}
                   >
@@ -1104,9 +1103,9 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Caption */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Caption</label>
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Caption</label>
               <textarea
-                className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[150px] disabled:bg-slate-50 disabled:text-slate-500"
+                className="w-full p-3 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 min-h-[150px] disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm"
                 placeholder="Write your caption here..."
                 value={selectedPost.caption || ''}
                 onChange={e => onUpdatePost({ ...selectedPost, caption: e.target.value })}
@@ -1117,10 +1116,10 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Scheduling */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Publish Date & Time</label>
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Publish Date & Time</label>
               <input
                 type="datetime-local"
-                className="w-full p-2 border border-slate-200 rounded-lg text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm [color-scheme:dark]"
                 value={selectedPost.publishAt ? new Date(selectedPost.publishAt).toISOString().slice(0, 16) : ''}
                 onChange={e => onUpdatePost({ ...selectedPost, publishAt: new Date(e.target.value).toISOString() })}
                 disabled={!canManage}
@@ -1130,9 +1129,9 @@ const PostingHub: React.FC<PostingHubProps> = ({
 
             {/* Owner */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Assigned To</label>
+              <label className="block text-xs font-bold text-iris-white/70 uppercase mb-2">Assigned To</label>
               <select
-                className="w-full p-2 border border-slate-200 rounded-lg text-sm disabled:bg-slate-50 disabled:text-slate-500 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full p-2 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-sm [&>option]:bg-iris-black [&>option]:text-iris-white"
                 value={selectedPost.socialManagerId || ''}
                 onChange={e => onUpdatePost({ ...selectedPost, socialManagerId: e.target.value || null })}
                 disabled={!canManage}
@@ -1155,13 +1154,13 @@ const PostingHub: React.FC<PostingHubProps> = ({
         title="Request Revisions"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-iris-white/70">
             Please describe what changes are needed. The post status will be changed to "Revisions Requested".
           </p>
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Revision Instructions</label>
+            <label className="block text-xs font-bold text-iris-white/70 uppercase mb-1">Revision Instructions</label>
             <textarea
-              className="w-full p-3 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[120px]"
+              className="w-full p-3 bg-iris-black/80 border border-iris-white/10 rounded-lg text-sm text-iris-white placeholder:text-iris-white/40 focus:ring-2 focus:ring-iris-red focus:border-iris-red/50 min-h-[120px] backdrop-blur-sm"
               placeholder="e.g. Please shorten the caption and add more hashtags..."
               value={revisionMessage}
               onChange={e => setRevisionMessage(e.target.value)}
@@ -1171,14 +1170,14 @@ const PostingHub: React.FC<PostingHubProps> = ({
           <div className="flex justify-end gap-2 pt-2">
             <button
               onClick={() => setShowRevisionModal(false)}
-              className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium"
+              className="px-4 py-2 text-iris-white/70 hover:bg-iris-white/5 rounded-lg text-sm font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={handleRequestRevision}
               disabled={!revisionMessage.trim()}
-              className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gradient-to-br from-rose-500 to-rose-600 text-white rounded-lg text-sm font-medium hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Request Revisions
             </button>
