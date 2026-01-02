@@ -101,8 +101,9 @@
     width: 100%;
     max-width: 1440px;
     margin: 0 auto;
-    padding: clamp(12px, 2vw, 24px);
+    padding: 24px;
     overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 header {
@@ -143,10 +144,12 @@ header {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 40px;
+    width: 100%;
 }
 
 .grid-container > * {
     min-width: 0; /* Prevent grid blowout */
+    max-width: 100%;
 }
 
 .widget-title {

@@ -168,8 +168,8 @@
     padding-top: var(--header-h);
     min-height: 100vh;
     background-color: #050505;
-    width: 100%;
-    max-width: 100%;
+    width: calc(100% - var(--sidebar-w));
+    max-width: calc(100vw - var(--sidebar-w));
     overflow-x: hidden;
     position: relative;
   }
@@ -180,6 +180,7 @@
     padding: var(--page-pad);
     width: 100%;
     overflow-x: hidden;
+    box-sizing: border-box;
   }
 
   /* Header Internal Layout */
@@ -190,8 +191,10 @@
     align-items: center;
     gap: 12px;
     padding: 0 var(--page-pad);
-    max-width: calc(var(--page-max) + (var(--page-pad) * 2));
+    max-width: var(--page-max);
     margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .header-left {
