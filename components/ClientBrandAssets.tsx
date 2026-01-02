@@ -23,10 +23,10 @@ const ASSET_CATEGORIES = [
   { id: 'other', label: 'Other Assets', icon: FileText },
 ];
 
-// Dashboard-aligned theming
-const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
-const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
-const inputClass = 'w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[color:var(--dash-primary)]';
+// Iris dark theme aligned
+const surface = 'bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+const elevated = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
+const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
 const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide';
 
 const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
@@ -50,7 +50,7 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
 
   if (!canView) {
     return (
-      <div className={`${surface} p-8 text-center text-slate-400 rounded-xl`}>
+      <div className={`${surface} p-8 text-center text-iris-white/70 rounded-xl`}>
         <p>You do not have permission to view brand assets.</p>
       </div>
     );
@@ -68,12 +68,12 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
   };
 
   return (
-    <div className="space-y-8 text-slate-100">
+    <div className="space-y-8 text-iris-white">
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-3">
-          <h3 className="text-lg font-semibold text-slate-50">Brand Guidelines & Assets</h3>
+          <h3 className="text-lg font-semibold text-iris-white">Brand Guidelines & Assets</h3>
           {clientAssets.length > 0 && (
-            <span className={`${pill} bg-[color:var(--dash-primary)]/15 text-[color:var(--dash-primary)] border border-[color:var(--dash-primary)]/40 normal-case`}>
+            <span className={`${pill} bg-iris-red/10 text-iris-red border border-iris-red/20 normal-case`}>
               {clientAssets.length}
             </span>
           )}
@@ -81,7 +81,7 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
         {canManage && (
           <button
             onClick={() => { setEditingAsset(null); setIsAddModalOpen(true); }}
-            className="flex items-center space-x-2 px-3 py-2 bg-[color:var(--dash-primary)] text-white rounded-md hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] text-sm"
+            className="flex items-center space-x-2 px-3 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-md hover:brightness-110 text-sm transition-all"
           >
             <Plus className="w-4 h-4" />
             <span>Add Asset</span>
@@ -90,14 +90,14 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
       </div>
 
       {clientAssets.length === 0 ? (
-        <div className={`${surface} text-center py-12 rounded-lg border-2 border-dashed border-[color:var(--dash-glass-border)]/60 bg-[color:var(--dash-surface)] shadow-[0_20px_50px_-30px_rgba(0,0,0,0.8)]`}>
-          <Palette className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-          <h3 className="text-sm font-medium text-slate-50">No Brand Assets</h3>
-          <p className="text-sm text-slate-400 mt-1">Upload logos, colors, and guidelines for this client.</p>
+        <div className={`${surface} text-center py-12 rounded-lg border-2 border-dashed border-iris-white/10`}>
+          <Palette className="w-12 h-12 text-iris-white/40 mx-auto mb-3" />
+          <h3 className="text-sm font-medium text-iris-white">No Brand Assets</h3>
+          <p className="text-sm text-iris-white/70 mt-1">Upload logos, colors, and guidelines for this client.</p>
           {canManage && (
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="mt-4 text-[color:var(--dash-primary)] hover:text-white text-sm font-medium"
+              className="mt-4 text-iris-red hover:text-iris-red/80 text-sm font-medium transition-colors"
             >
               Add First Asset
             </button>
@@ -111,8 +111,8 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
 
             return (
               <div key={category.id} className="space-y-4">
-                <div className="flex items-center space-x-2 text-slate-200 border-b border-[color:var(--dash-glass-border)] pb-2">
-                  <category.icon className="w-5 h-5 text-[color:var(--dash-primary)]" />
+                <div className="flex items-center space-x-2 text-iris-white border-b border-iris-white/10 pb-2">
+                  <category.icon className="w-5 h-5 text-iris-red" />
                   <h4 className="font-medium">{category.label}</h4>
                 </div>
 
@@ -183,16 +183,16 @@ const AssetCard: React.FC<{
   const isVideo = file?.type?.startsWith('video/') || fileUrl?.match(/\.(mp4|webm|mov|avi)$/i);
 
   return (
-    <div className={`${elevated} rounded-lg p-4 hover:shadow-[0_18px_45px_-30px_rgba(0,0,0,0.9)] transition-shadow group relative`}>
+    <div className={`${elevated} rounded-lg p-4 hover:shadow-lg transition-shadow group relative`}>
       {/* Preview Thumbnail */}
       {(isImage || isVideo) && fileUrl && (
-        <div className="mb-3 relative rounded-lg overflow-hidden bg-[color:var(--dash-surface)] cursor-pointer" onClick={onPreview}>
+        <div className="mb-3 relative rounded-lg overflow-hidden bg-iris-black cursor-pointer" onClick={onPreview}>
           {isImage ? (
             <img src={fileUrl} alt={asset.name} className="w-full h-32 object-cover" />
           ) : (
-            <div className="w-full h-32 flex items-center justify-center bg-slate-800">
+            <div className="w-full h-32 flex items-center justify-center bg-iris-black/80">
               <video src={fileUrl} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="absolute inset-0 flex items-center justify-center bg-iris-black/30">
                 <Eye className="w-8 h-8 text-white" />
               </div>
             </div>
@@ -204,17 +204,17 @@ const AssetCard: React.FC<{
         <div className="flex items-center space-x-3 overflow-hidden">
           {isColor ? (
             <div 
-              className="w-10 h-10 rounded-full border border-[color:var(--dash-glass-border)] shadow-sm shrink-0"
+              className="w-10 h-10 rounded-full border border-iris-white/20 shadow-sm shrink-0"
               style={{ backgroundColor: asset.value || '#ccc' }}
             />
           ) : (
-            <div className="w-10 h-10 rounded-lg bg-[color:var(--dash-surface)] flex items-center justify-center shrink-0 text-slate-200 border border-[color:var(--dash-glass-border)]">
+            <div className="w-10 h-10 rounded-lg bg-iris-black flex items-center justify-center shrink-0 text-iris-white/70 border border-iris-white/10">
               {asset.type === 'file' ? <FileText className="w-5 h-5" /> : <LinkIcon className="w-5 h-5" />}
             </div>
           )}
           <div className="min-w-0">
-            <h5 className="font-medium text-slate-50 truncate" title={asset.name}>{asset.name}</h5>
-            <p className="text-xs text-slate-400 truncate">
+            <h5 className="font-medium text-iris-white truncate" title={asset.name}>{asset.name}</h5>
+            <p className="text-xs text-iris-white/70 truncate">
               {isColor ? asset.value : (asset.type === 'file' ? 'File Attachment' : 'External Link')}
             </p>
           </div>
@@ -222,10 +222,10 @@ const AssetCard: React.FC<{
         
         {canManage && (
           <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
-            <button onClick={onEdit} className="p-1 text-slate-400 hover:text-[color:var(--dash-primary)] rounded">
+            <button onClick={onEdit} className="p-1 text-iris-white/70 hover:text-iris-red rounded transition-colors">
               <Edit2 className="w-4 h-4" />
             </button>
-            <button onClick={onDelete} className="p-1 text-slate-400 hover:text-rose-400 rounded">
+            <button onClick={onDelete} className="p-1 text-iris-white/70 hover:text-rose-400 rounded transition-colors">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -233,17 +233,17 @@ const AssetCard: React.FC<{
       </div>
 
       {asset.notes && (
-        <p className="text-xs text-slate-300 mt-2 line-clamp-2">{asset.notes}</p>
+        <p className="text-xs text-iris-white/70 mt-2 line-clamp-2">{asset.notes}</p>
       )}
 
-      <div className="mt-3 pt-3 border-t border-[color:var(--dash-glass-border)] flex justify-between items-center">
-        <span className="text-xs text-slate-400 capitalize">{asset.category.replace('_', ' ')}</span>
+      <div className="mt-3 pt-3 border-t border-iris-white/10 flex justify-between items-center">
+        <span className="text-xs text-iris-white/70 capitalize">{asset.category.replace('_', ' ')}</span>
         {asset.url && (
           <a 
             href={asset.url} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-xs text-[color:var(--dash-primary)] hover:text-white flex items-center space-x-1"
+            className="text-xs text-iris-red hover:text-iris-red/80 flex items-center space-x-1 transition-colors"
           >
             <span>{asset.type === 'file' ? 'Download' : 'Visit'}</span>
             <ExternalLink className="w-3 h-3" />
@@ -252,7 +252,7 @@ const AssetCard: React.FC<{
         {isColor && (
            <button 
              onClick={() => { navigator.clipboard.writeText(asset.value || ''); }}
-             className="text-xs text-slate-300 hover:text-white"
+             className="text-xs text-iris-white/70 hover:text-iris-white transition-colors"
              title="Copy Hex Code"
            >
              Copy Hex
@@ -343,18 +343,18 @@ const AssetModal: React.FC<{
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-slate-950/70 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-iris-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className={`${elevated} rounded-lg shadow-2xl w-full max-w-md`}>
-        <div className="flex justify-between items-center p-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
-          <h3 className="font-semibold text-slate-50">{asset ? 'Edit Asset' : 'Add Brand Asset'}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+        <div className="flex justify-between items-center p-4 border-b border-iris-white/10 bg-iris-black">
+          <h3 className="font-semibold text-iris-white">{asset ? 'Edit Asset' : 'Add Brand Asset'}</h3>
+          <button onClick={onClose} className="text-iris-white/70 hover:text-iris-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-1">Asset Name</label>
+            <label className="block text-sm font-semibold text-iris-white/70 mb-1">Asset Name</label>
             <input
               type="text"
               required
@@ -367,7 +367,7 @@ const AssetModal: React.FC<{
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-1">Category</label>
+              <label className="block text-sm font-semibold text-iris-white/70 mb-1">Category</label>
               <select
                 value={formData.category}
                 onChange={e => setFormData({ ...formData, category: e.target.value as any })}
@@ -379,7 +379,7 @@ const AssetModal: React.FC<{
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-1">Type</label>
+              <label className="block text-sm font-semibold text-iris-white/70 mb-1">Type</label>
               <select
                 value={formData.type}
                 onChange={e => setFormData({ ...formData, type: e.target.value as any })}
@@ -394,13 +394,13 @@ const AssetModal: React.FC<{
 
           {formData.category === 'colors' && (
             <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-1">Color Value (Hex)</label>
+              <label className="block text-sm font-semibold text-iris-white/70 mb-1">Color Value (Hex)</label>
               <div className="flex space-x-2">
                 <input
                   type="color"
                   value={formData.value || '#000000'}
                   onChange={e => setFormData({ ...formData, value: e.target.value })}
-                  className="h-10 w-10 p-1 border border-[color:var(--dash-glass-border)] rounded cursor-pointer bg-[color:var(--dash-surface-elevated)]"
+                  className="h-10 w-10 p-1 border border-iris-white/10 rounded cursor-pointer bg-iris-black/80"
                 />
                 <input
                   type="text"
@@ -415,7 +415,7 @@ const AssetModal: React.FC<{
 
           {formData.type === 'link' && (
             <div>
-              <label className="block text-sm font-semibold text-slate-200 mb-1">URL</label>
+              <label className="block text-sm font-semibold text-iris-white/70 mb-1">URL</label>
               <input
                 type="url"
                 value={formData.url}
@@ -428,21 +428,21 @@ const AssetModal: React.FC<{
 
           {formData.type === 'file' && (
              <div>
-               <label className="block text-sm font-semibold text-slate-200 mb-1">Upload File</label>
-               <div className="border-2 border-dashed border-[color:var(--dash-glass-border)] rounded-lg p-4 text-center hover:bg-[color:var(--dash-surface)] transition-colors bg-[color:var(--dash-surface-elevated)]">
+               <label className="block text-sm font-semibold text-iris-white/70 mb-1">Upload File</label>
+               <div className="border-2 border-dashed border-iris-white/20 rounded-lg p-4 text-center hover:bg-iris-white/5 transition-colors bg-iris-black/80">
                   <input 
                       type="file" 
                       required={!asset?.fileId} // Required only if new
                       onChange={e => setSelectedFile(e.target.files ? e.target.files[0] : null)} 
-                      className="w-full text-sm text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border border-[color:var(--dash-glass-border)] file:text-xs file:font-semibold file:bg-[color:var(--dash-surface)] file:text-[color:var(--dash-primary)] hover:file:bg-[color:var(--dash-surface-elevated)]"
+                      className="w-full text-sm text-iris-white/70 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border border-iris-white/10 file:text-xs file:font-semibold file:bg-iris-black file:text-iris-red hover:file:bg-iris-white/5"
                   />
-                  <p className="text-xs text-slate-400 mt-2">Max size 10MB.</p>
+                  <p className="text-xs text-iris-white/70 mt-2">Max size 10MB.</p>
                </div>
              </div>
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-slate-200 mb-1">Notes</label>
+            <label className="block text-sm font-semibold text-iris-white/70 mb-1">Notes</label>
             <textarea
               value={formData.notes || ''}
               onChange={e => setFormData({ ...formData, notes: e.target.value })}
@@ -456,14 +456,14 @@ const AssetModal: React.FC<{
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-200 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] rounded-md text-sm font-medium"
+              className="px-4 py-2 text-iris-white/70 bg-iris-black border border-iris-white/10 hover:bg-iris-white/5 rounded-md text-sm font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isUploading}
-              className="px-4 py-2 bg-[color:var(--dash-primary)] text-white hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)] rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white hover:brightness-110 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {isUploading ? 'Uploading...' : (asset ? 'Save Changes' : 'Add Asset')}
             </button>
@@ -484,21 +484,21 @@ const AssetPreviewModal: React.FC<{
   const isVideo = file?.type?.startsWith('video/') || fileUrl?.match(/\.(mp4|webm|mov|avi)$/i);
 
   return (
-    <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-iris-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className={`${elevated} rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`} onClick={e => e.stopPropagation()}>
-        <div className="flex justify-between items-center p-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
+        <div className="flex justify-between items-center p-4 border-b border-iris-white/10 bg-iris-black">
           <div>
-            <h3 className="font-semibold text-slate-50">{asset.name}</h3>
-            <p className="text-sm text-slate-400 capitalize">{asset.category.replace('_', ' ')}</p>
+            <h3 className="font-semibold text-iris-white">{asset.name}</h3>
+            <p className="text-sm text-iris-white/70 capitalize">{asset.category.replace('_', ' ')}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-200">
+          <button onClick={onClose} className="text-iris-white/70 hover:text-iris-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 overflow-auto max-h-[calc(90vh-120px)]">
           {isImage && fileUrl && (
-            <div className="flex items-center justify-center bg-[color:var(--dash-surface)] rounded-lg p-4">
+            <div className="flex items-center justify-center bg-iris-black rounded-lg p-4">
               <img 
                 src={fileUrl} 
                 alt={asset.name} 
@@ -508,7 +508,7 @@ const AssetPreviewModal: React.FC<{
           )}
 
           {isVideo && fileUrl && (
-            <div className="flex items-center justify-center bg-black rounded-lg overflow-hidden">
+            <div className="flex items-center justify-center bg-iris-black rounded-lg overflow-hidden">
               <video 
                 src={fileUrl} 
                 controls 
@@ -521,13 +521,13 @@ const AssetPreviewModal: React.FC<{
 
           {!isImage && !isVideo && fileUrl && (
             <div className="text-center py-12">
-              <FileText className="w-16 h-16 text-slate-500 mx-auto mb-4" />
-              <p className="text-slate-300 mb-4">Preview not available for this file type</p>
+              <FileText className="w-16 h-16 text-iris-white/40 mx-auto mb-4" />
+              <p className="text-iris-white/70 mb-4">Preview not available for this file type</p>
               <a 
                 href={fileUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center space-x-2 px-4 py-2 bg-[color:var(--dash-primary)] text-white rounded-md hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.7)]"
+                className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-md hover:brightness-110 transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 <span>Open File</span>
@@ -536,21 +536,21 @@ const AssetPreviewModal: React.FC<{
           )}
 
           {asset.notes && (
-            <div className="mt-6 p-4 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)]">
-              <h4 className="text-sm font-medium text-slate-200 mb-2">Notes</h4>
-              <p className="text-sm text-slate-300">{asset.notes}</p>
+            <div className="mt-6 p-4 bg-iris-black rounded-lg border border-iris-white/10">
+              <h4 className="text-sm font-medium text-iris-white/70 mb-2">Notes</h4>
+              <p className="text-sm text-iris-white/90">{asset.notes}</p>
             </div>
           )}
 
           {file && (
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-slate-300">
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-iris-white/70">
               <div>
-                <span className="text-slate-400">File Type:</span>
-                <span className="ml-2 text-slate-200">{file.type}</span>
+                <span className="text-iris-white/50">File Type:</span>
+                <span className="ml-2 text-iris-white">{file.type}</span>
               </div>
               <div>
-                <span className="text-slate-400">Size:</span>
-                <span className="ml-2 text-slate-200">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                <span className="text-iris-white/50">Size:</span>
+                <span className="ml-2 text-iris-white">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
               </div>
             </div>
           )}
