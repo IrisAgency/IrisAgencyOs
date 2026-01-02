@@ -41,14 +41,14 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   dueTone
 }) => {
   return (
-    <div className="w-full overflow-x-auto pb-2">
-      <div className="grid grid-flow-col auto-cols-[260px] sm:auto-cols-[320px] gap-3 sm:gap-4 min-w-full">
+    <div className="w-full overflow-x-auto pb-2 -mx-2 px-2">
+      <div className="flex gap-3 sm:gap-4 min-w-max">
         {statusColumns.map((status) => {
           const columnTasks = tasks.filter(t => t.status === status);
           return (
             <div
               key={status}
-              className="rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 backdrop-blur-sm shadow-[0_15px_45px_-28px_rgba(0,0,0,0.8)] flex flex-col min-h-[420px]"
+              className="w-[280px] sm:w-[340px] rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 backdrop-blur-sm shadow-[0_15px_45px_-28px_rgba(0,0,0,0.8)] flex flex-col min-h-[420px] flex-shrink-0"
             >
               <div className="px-4 py-3 flex items-center justify-between sticky top-0 bg-[color:var(--dash-surface-elevated)]/95 rounded-t-2xl border-b border-[color:var(--dash-glass-border)]">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-300">
@@ -78,24 +78,24 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                       >
                         <div className="p-3 flex flex-col gap-2">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex flex-col gap-1 flex-1 min-w-0">
                               <div className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold truncate">{task.client}</div>
-                              <div className="text-sm font-semibold text-slate-50 leading-tight truncate" title={task.title}>{task.title}</div>
+                              <div className="text-sm font-semibold text-slate-50 leading-tight line-clamp-2 break-words" title={task.title}>{task.title}</div>
                             </div>
-                            <span className={`text-[10px] px-2 py-1 rounded-full border ${statusTone(task.status)}`}>
+                            <span className={`text-[10px] px-2 py-1 rounded-full border whitespace-nowrap flex-shrink-0 ${statusTone(task.status)}`}>
                               {task.status.replace(/_/g, ' ')}
                             </span>
                           </div>
 
-                          <div className="flex items-center gap-2 text-[11px] text-slate-300">
-                            <span className={`px-2 py-0.5 rounded-full border ${priorityTone(task.priority)}`}>{task.priority}</span>
+                          <div className="flex items-center flex-wrap gap-2 text-[11px] text-slate-300">
+                            <span className={`px-2 py-0.5 rounded-full border whitespace-nowrap ${priorityTone(task.priority)}`}>{task.priority}</span>
                             {task.taskType && (
-                              <span className="px-2 py-0.5 rounded-full border border-[color:var(--dash-glass-border)] text-slate-200 uppercase">
+                              <span className="px-2 py-0.5 rounded-full border border-[color:var(--dash-glass-border)] text-slate-200 uppercase whitespace-nowrap">
                                 {task.taskType.replace(/_/g, ' ')}
                               </span>
                             )}
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${dueMeta.className}`}>
-                              <Clock className="w-3 h-3" />
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap ${dueMeta.className}`}>
+                              <Clock className="w-3 h-3 flex-shrink-0" />
                               {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </span>
                           </div>
