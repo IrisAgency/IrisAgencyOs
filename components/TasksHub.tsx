@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { PERMISSIONS } from '../lib/permissions';
 import { archiveTask } from '../utils/archiveUtils';
+import { countTasksNeedingMyApproval } from '../utils/approvalUtils';
 import TaskDetailView from './tasks/TaskDetailView';
 import CreateTaskModal from './tasks/CreateTaskModal';
 import PageContainer from './layout/PageContainer';
@@ -290,6 +291,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
     return (t.status !== TaskStatus.COMPLETED && !t.isArchived) && due < today;
   }).length;
   const completedCount = filteredTasks.filter(t => t.status === TaskStatus.COMPLETED || t.isArchived).length;
+  const myApprovalsCount = countTasksNeedingMyApproval(filteredTasks, currentUser, approvalSteps);
 
   return (
     <PageContainer className="px-0 sm:px-2 lg:px-4">
@@ -330,6 +332,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
             <TaskStatsRow
               stats={[
                 { label: 'Active', value: activeCount, hint: 'Excludes completed/archived' },
+                { label: 'Needs My Approval', value: myApprovalsCount, hint: 'Tasks waiting for your approval' },
                 { label: 'In Review', value: reviewCount },
                 { label: 'Overdue', value: overdueCount },
                 { label: 'Completed/Archived', value: completedCount }
@@ -494,6 +497,8 @@ const TasksHub: React.FC<TasksHubProps> = ({
                 <TaskBoardDark
                   tasks={filteredTasks}
                   users={users}
+                  currentUser={currentUser}
+                  approvalSteps={approvalSteps}
                   onSelectTask={setSelectedTaskId}
                   statusTone={statusTone}
                   priorityTone={priorityTone}

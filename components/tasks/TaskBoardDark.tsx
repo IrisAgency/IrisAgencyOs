@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Task, TaskStatus, Priority, User } from '../../types';
-import { Clock } from 'lucide-react';
+import { Task, TaskStatus, Priority, User, ApprovalStep } from '../../types';
+import { Clock, AlertCircle } from 'lucide-react';
+import { taskNeedsMyApproval, getCurrentApprovalStepInfo } from '../../utils/approvalUtils';
 
 export type ToneFn<T> = (value: T) => string;
 export type DueTone = (date: string) => { label: string; className: string };
@@ -8,13 +9,16 @@ export type DueTone = (date: string) => { label: string; className: string };
 interface TaskBoardDarkProps {
   tasks: Task[];
   users: User[];
+  currentUser: User;
+  approvalSteps: ApprovalStep[];
   onSelectTask: (taskId: string) => void;
   statusTone: ToneFn<TaskStatus>;
   priorityTone: ToneFn<Priority>;
   dueTone: DueTone;
 }
 
-const statusColumns: { status: TaskStatus; label: string }[] = [
+const statusColumns: { status: TaskStatus | 'NEEDS_MY_APPROVAL'; label: string }[] = [
+  { status: 'NEEDS_MY_APPROVAL', label: 'Needs My Approval' },
   { status: TaskStatus.NEW, label: 'New' },
   { status: TaskStatus.ASSIGNED, label: 'Assigned' },
   { status: TaskStatus.IN_PROGRESS, label: 'In Progress' },
@@ -32,20 +36,27 @@ const getInitials = (name: string) => {
 const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   tasks,
   users,
+  currentUser,
+  approvalSteps,
   onSelectTask,
   statusTone,
   priorityTone,
   dueTone
 }) => {
-  const [activeStatus, setActiveStatus] = useState<TaskStatus>(TaskStatus.NEW);
+  const [activeStatus, setActiveStatus] = useState<TaskStatus | 'NEEDS_MY_APPROVAL'>('NEEDS_MY_APPROVAL');
 
   // Get counts for each status
-  const getStatusCount = (status: TaskStatus) => {
+  const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL') => {
+    if (status === 'NEEDS_MY_APPROVAL') {
+      return tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps)).length;
+    }
     return tasks.filter(t => t.status === status).length;
   };
 
   // Get tasks for active status
-  const activeTasks = tasks.filter(t => t.status === activeStatus);
+  const activeTasks = activeStatus === 'NEEDS_MY_APPROVAL'
+    ? tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps))
+    : tasks.filter(t => t.status === activeStatus);
 
   return (
     <div className="w-full max-w-[1280px] mx-auto overflow-x-hidden px-1 sm:px-0">
@@ -55,25 +66,35 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
           {statusColumns.map(({ status, label }) => {
             const count = getStatusCount(status);
             const isActive = activeStatus === status;
+            const isApprovalTab = status === 'NEEDS_MY_APPROVAL';
             
             return (
               <button
                 key={status}
                 onClick={() => setActiveStatus(status)}
                 className={`
-                  flex-shrink-0 min-w-[110px] sm:min-w-[130px] h-[44px] px-2 sm:px-3 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 flex items-center justify-between gap-1.5 sm:gap-2
+                  flex-shrink-0 min-w-[110px] sm:min-w-[140px] h-[44px] px-2 sm:px-3 py-2.5 rounded-xl font-medium text-xs sm:text-sm transition-all duration-200 flex items-center justify-between gap-1.5 sm:gap-2
                   ${isActive 
-                    ? 'bg-[color:var(--dash-primary)] text-white shadow-lg shadow-[color:var(--dash-primary)]/20 border-2 border-[color:var(--dash-primary)]' 
-                    : 'bg-[color:var(--dash-surface-elevated)]/80 text-slate-300 border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] hover:text-white hover:border-[color:var(--dash-primary)]/30'
+                    ? isApprovalTab
+                      ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-2 border-amber-500'
+                      : 'bg-[color:var(--dash-primary)] text-white shadow-lg shadow-[color:var(--dash-primary)]/20 border-2 border-[color:var(--dash-primary)]'
+                    : isApprovalTab
+                      ? 'bg-amber-500/10 text-amber-100 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50'
+                      : 'bg-[color:var(--dash-surface-elevated)]/80 text-slate-300 border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] hover:text-white hover:border-[color:var(--dash-primary)]/30'
                   }
                 `}
               >
-                <span className="truncate">{label}</span>
+                <span className="truncate flex items-center gap-1.5">
+                  {isApprovalTab && <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />}
+                  {label}
+                </span>
                 <span className={`
                   px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold min-w-[20px] sm:min-w-[24px] text-center flex-shrink-0
                   ${isActive 
                     ? 'bg-white/20 text-white' 
-                    : 'bg-white/5 text-slate-400'
+                    : isApprovalTab
+                      ? 'bg-amber-500/30 text-amber-200'
+                      : 'bg-white/5 text-slate-400'
                   }
                 `}>
                   {count}
@@ -97,6 +118,9 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
         ) : (
           activeTasks.map(task => {
             const dueMeta = dueTone(task.dueDate);
+            const approvalInfo = activeStatus === 'NEEDS_MY_APPROVAL' 
+              ? getCurrentApprovalStepInfo(task, approvalSteps)
+              : null;
             
             return (
               <div
@@ -105,6 +129,16 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                 className="min-h-[120px] p-3 sm:p-4 rounded-xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 backdrop-blur-sm shadow-[0_10px_30px_-24px_rgba(0,0,0,1)] hover:shadow-[0_18px_35px_-22px_rgba(0,0,0,0.9)] hover:border-[color:var(--dash-primary)]/40 transition-all duration-200 cursor-pointer group overflow-hidden"
               >
                 <div className="flex flex-col gap-3 min-w-0">
+                  {/* Approval Banner - Only show in "Needs My Approval" tab */}
+                  {approvalInfo && (
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                      <span className="text-[10px] text-amber-200 font-medium">
+                        Waiting for your approval • {approvalInfo.stepName}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Header */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-col gap-1 flex-1 min-w-0">
