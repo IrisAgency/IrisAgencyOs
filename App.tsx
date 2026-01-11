@@ -1509,6 +1509,7 @@ const App: React.FC = () => {
             meetings={clientMeetings}
             notes={notes}
             milestones={projectMilestones}
+            approvalSteps={approvalSteps}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
@@ -1516,6 +1517,7 @@ const App: React.FC = () => {
             onNavigateToMeeting={() => setActiveView('clients')}
             onNavigateToPost={() => setActiveView('posting')}
             onViewAllTasks={() => setActiveView('tasks')}
+            onViewAllApprovals={() => setActiveView('tasks')}
             onNavigateToUserTasks={() => setActiveView('tasks')}
             onNavigateToClient={() => setActiveView('clients')}
             onScheduleMeeting={() => setActiveView('clients')}

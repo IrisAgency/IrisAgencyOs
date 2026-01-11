@@ -9,9 +9,11 @@ import {
   ClientMeeting,
   Note,
   ProjectMilestone,
+  ApprovalStep,
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { usePermission } from '../hooks/usePermissions';
+import NeedsMyApprovalCard from './dashboard/NeedsMyApprovalCard';
 import './dashboard/DashboardTheme.css';
 
 interface DashboardProps {
@@ -25,6 +27,7 @@ interface DashboardProps {
   meetings?: ClientMeeting[];
   notes: Note[];
   milestones?: ProjectMilestone[];
+  approvalSteps: ApprovalStep[];
   onAddNote: (note: Note) => void;
   onUpdateNote: (note: Note) => void;
   onDeleteNote: (id: string) => void;
@@ -32,6 +35,7 @@ interface DashboardProps {
   onNavigateToMeeting?: (meetingId: string) => void;
   onNavigateToPost?: (postId: string) => void;
   onViewAllTasks?: () => void;
+  onViewAllApprovals?: () => void;
   onNavigateToUserTasks?: (userId: string) => void;
   onNavigateToClient?: (clientId: string) => void;
   onScheduleMeeting?: () => void;
@@ -49,6 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   meetings = [],
   notes = [],
   milestones = [],
+  approvalSteps = [],
   onAddNote,
   onUpdateNote,
   onDeleteNote,
@@ -56,6 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigateToMeeting,
   onNavigateToPost,
   onViewAllTasks,
+  onViewAllApprovals,
   onNavigateToUserTasks,
   onNavigateToClient,
   onScheduleMeeting,
@@ -74,7 +80,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // -- Drag and Drop Logic --
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
-    'my-tasks', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
+    'my-tasks', 'needs-my-approval', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
   ]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
@@ -432,6 +438,19 @@ const Dashboard: React.FC<DashboardProps> = ({
                         </div>
                       )}
                     </div>
+                  </section>
+                );
+
+              case 'needs-my-approval':
+                return (
+                  <section key={widgetId} className="glass-panel animate-reveal" {...dragProps}>
+                    <NeedsMyApprovalCard
+                      tasks={tasks}
+                      approvalSteps={approvalSteps}
+                      currentUser={currentUser}
+                      onNavigateToTask={onNavigateToTask}
+                      onViewAll={onViewAllApprovals}
+                    />
                   </section>
                 );
 
