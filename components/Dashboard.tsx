@@ -443,7 +443,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
               case 'needs-my-approval':
                 return (
-                  <section key={widgetId} className="glass-panel animate-reveal" {...dragProps}>
+                  <section key={widgetId} className="needs-my-approval glass-panel animate-reveal" {...dragProps}>
                     <NeedsMyApprovalCard
                       tasks={tasks}
                       approvalSteps={approvalSteps}

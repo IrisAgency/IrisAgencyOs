@@ -178,6 +178,16 @@ header {
     min-height: 400px;
 }
 
+/* Widget 1.5: Needs My Approval */
+.needs-my-approval {
+    grid-column: span 4;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+    background: linear-gradient(145deg, rgba(251, 191, 36, 0.03), transparent);
+}
+
 .task-list {
     flex: 1;
     overflow-y: auto;
@@ -425,6 +435,7 @@ button {
     }
 
     .my-tasks { grid-column: span 8; }
+    .needs-my-approval { grid-column: span 4; }
     .gm-urgent { grid-column: span 4; }
     .team-progress { grid-column: span 4; }
     .calendar-widget { grid-column: span 4; }
@@ -441,6 +452,7 @@ button {
     }
 
     .my-tasks { grid-column: span 4; min-height: 320px; }
+    .needs-my-approval { grid-column: span 4; }
     .gm-urgent { grid-column: span 4; }
     .team-progress { grid-column: span 2; }
     .calendar-widget { grid-column: span 2; }
@@ -462,6 +474,7 @@ button {
     }
 
     .my-tasks, 
+    .needs-my-approval,
     .gm-urgent, 
     .team-progress, 
     .calendar-widget, 
