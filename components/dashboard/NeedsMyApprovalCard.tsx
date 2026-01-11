@@ -47,97 +47,82 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
   const displayTasks = sortedTasks.slice(0, 5);
   const count = needsApprovalTasks.length;
 
-  const formatDueDate = (dueDate: string) => {
-    const due = new Date(dueDate);
-    const now = new Date();
-    const isOverdue = due < now;
-    
-    const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
-    
-    if (isOverdue) {
-      return { text: 'Overdue', className: 'bg-rose-500/15 text-rose-200 border-rose-400/30' };
-    }
-    
-    const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays <= 2) {
-      return { text: `Due ${formatter.format(due)}`, className: 'bg-amber-500/15 text-amber-200 border-amber-400/30' };
-    }
-    
-    return { text: `Due ${formatter.format(due)}`, className: 'bg-blue-500/15 text-blue-200 border-blue-400/30' };
-  };
-
   return (
-    <section className="glass-panel animate-reveal">
+    <>
       {/* Header */}
       <div className="widget-title">
-        <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AlertCircle style={{ width: '16px', height: '16px', color: 'rgb(251 191 36)', flexShrink: 0 }} />
           <span>Needs My Approval</span>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {count > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 text-xs font-semibold border border-amber-400/30">
+            <span className="data-mono ltr-text" style={{ color: 'rgb(251 191 36)' }}>
               {count}
             </span>
           )}
         </div>
-        {count > 0 && (
-          <button
-            onClick={onViewAll}
-            className="text-xs text-slate-300 hover:text-white transition-colors flex items-center gap-1"
-          >
-            View All <ArrowRight className="w-3 h-3" />
-          </button>
-        )}
       </div>
 
       {/* Content */}
-      <div className="space-y-2">
+      <div className="task-list">
         {count === 0 ? (
           // Empty State
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500/40 mb-3" />
-            <p className="text-sm text-slate-400">No approvals waiting</p>
-            <p className="text-xs text-slate-500 mt-1">You're all caught up!</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', textAlign: 'center' }}>
+            <CheckCircle2 style={{ width: '48px', height: '48px', color: 'rgba(16, 185, 129, 0.3)', marginBottom: '12px' }} />
+            <p style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '4px' }}>No approvals waiting</p>
+            <p style={{ fontSize: '0.75rem', color: '#64748b' }}>You're all caught up!</p>
           </div>
         ) : (
           // Task List
           displayTasks.map((task) => {
-            const dueMeta = formatDueDate(task.dueDate);
+            const dueDate = new Date(task.dueDate);
+            const now = new Date();
+            const isOverdue = dueDate < now;
+            const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const isUrgent = diffDays <= 2 && !isOverdue;
             
             return (
-              <div
-                key={task.id}
+              <div 
+                key={task.id} 
+                className="task-item" 
                 onClick={() => onNavigateToTask?.(task.id)}
-                className="p-3 rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/60 hover:bg-[color:var(--dash-surface-elevated)] hover:border-amber-500/30 transition-all cursor-pointer group"
+                style={{ 
+                  borderLeftColor: isOverdue ? 'var(--dash-error)' : 'rgb(251 191 36)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
+                }}
               >
-                <div className="flex flex-col gap-2">
-                  {/* Task Title & Client */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-slate-100 truncate group-hover:text-white transition-colors">
-                        {task.title}
-                      </h4>
-                      {task.client && (
-                        <p className="text-xs text-slate-400 truncate mt-0.5">
-                          {task.client}
-                        </p>
-                      )}
-                    </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, marginBottom: '4px' }}>{task.title}</div>
+                  <div className="data-mono" style={{ fontSize: '0.7rem', opacity: 0.6 }}>
+                    {task.client?.toUpperCase() || 'GENERAL'}
+                    {task.dueDate && (
+                      <>
+                        <span className="mx-1">·</span>
+                        <span className="ltr-text inline-block">
+                          {isOverdue && '⚠️ '}
+                          {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }).toUpperCase()}
+                        </span>
+                      </>
+                    )}
                   </div>
-
-                  {/* Metadata Row */}
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    {/* Approval Label */}
-                    <div className="flex items-center gap-1.5 text-[10px] text-amber-200 bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/30">
-                      <AlertCircle className="w-3 h-3 flex-shrink-0" />
-                      <span className="whitespace-nowrap">Your approval needed</span>
-                    </div>
-
-                    {/* Due Date Badge */}
-                    <span className={`text-[10px] px-2 py-1 rounded-md border font-medium flex items-center gap-1 whitespace-nowrap ${dueMeta.className}`}>
-                      <Clock className="w-3 h-3 flex-shrink-0" />
-                      {dueMeta.text}
-                    </span>
-                  </div>
+                </div>
+                <div style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '4px',
+                  fontSize: '0.65rem',
+                  color: 'rgb(253 224 71)',
+                  background: 'rgba(251, 191, 36, 0.1)',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  border: '1px solid rgba(251, 191, 36, 0.2)',
+                  alignSelf: 'flex-start'
+                }}>
+                  <AlertCircle style={{ width: '10px', height: '10px', flexShrink: 0 }} />
+                  <span>YOUR APPROVAL NEEDED</span>
                 </div>
               </div>
             );
@@ -147,16 +132,32 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
 
       {/* Show More Indicator */}
       {count > 5 && (
-        <div className="mt-3 pt-3 border-t border-[color:var(--dash-glass-border)]">
+        <div style={{ 
+          marginTop: '12px', 
+          paddingTop: '12px', 
+          borderTop: '1px solid var(--dash-glass-border)',
+          textAlign: 'center'
+        }}>
           <button
             onClick={onViewAll}
-            className="w-full text-xs text-slate-400 hover:text-amber-200 transition-colors text-center"
+            style={{
+              width: '100%',
+              fontSize: '0.75rem',
+              color: '#94a3b8',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(251 191 36)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
           >
-            +{count - 5} more approval{count - 5 !== 1 ? 's' : ''} waiting
+            +{count - 5} more approval{count - 5 !== 1 ? 's' : ''} waiting · Click to view all
           </button>
         </div>
       )}
-    </section>
+    </>
   );
 };
 
