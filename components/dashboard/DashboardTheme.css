@@ -333,7 +333,7 @@ header {
 
 /* Widget 6: Project Milestones */
 .milestones { 
-    grid-column: span 6; 
+    grid-column: span 4; 
     padding: 24px;
     min-height: 280px;
 }
@@ -355,9 +355,9 @@ header {
 
 /* Widget 7: Quick Notes */
 .quick-notes { 
-    grid-column: span 6; 
+    grid-column: span 4; 
     padding: 24px;
-    min-height: 280px;
+    min-height: 400px;
     display: flex;
     flex-direction: column;
 }
