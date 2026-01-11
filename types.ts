@@ -1089,3 +1089,50 @@ export interface ReferenceImage {
   uploadedBy: string;
   uploadedAt: string;
 }
+
+// ============================================================================
+// CALENDAR DEPARTMENT
+// ============================================================================
+
+export type CalendarContentType = 'VIDEO' | 'PHOTO' | 'MOTION';
+
+export interface CalendarReferenceLink {
+  title: string;
+  url: string;
+}
+
+export interface CalendarReferenceFile {
+  fileName: string;
+  storagePath: string;
+  downloadURL: string;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface CalendarMonth {
+  id: string;
+  clientId: string;
+  monthKey: string; // "YYYY-MM"
+  title: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CalendarItem {
+  id: string;
+  calendarMonthId: string;
+  clientId: string;
+  monthKey: string;
+  type: CalendarContentType;
+  seqNumber: number;
+  autoName: string;
+  primaryBrief: string;
+  notes: string;
+  referenceLinks: CalendarReferenceLink[];
+  referenceFiles: CalendarReferenceFile[];
+  publishAt: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}

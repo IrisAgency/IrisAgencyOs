@@ -234,6 +234,22 @@ export const PERMISSIONS = {
     DELETE_OWN: 'notes.delete_own',
     MANAGE_ALL: 'notes.manage_all',
   },
+
+  // ========== Calendar ==========
+  CALENDAR: {
+    VIEW: 'calendar.view',
+    MANAGE: 'calendar.manage',
+  },
+  CALENDAR_MONTHS: {
+    CREATE: 'calendar.months.create',
+    EDIT: 'calendar.months.edit',
+    DELETE: 'calendar.months.delete',
+  },
+  CALENDAR_ITEMS: {
+    CREATE: 'calendar.items.create',
+    EDIT: 'calendar.items.edit',
+    DELETE: 'calendar.items.delete',
+  },
 } as const;
 
 // ============================================================================
@@ -529,5 +545,6 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'System Settings': Object.values(PERMISSIONS.ADMIN_SETTINGS),
     'Dashboard': Object.values(PERMISSIONS.DASHBOARD),
     'Notes': Object.values(PERMISSIONS.NOTES),
+    'Calendar': [...Object.values(PERMISSIONS.CALENDAR), ...Object.values(PERMISSIONS.CALENDAR_MONTHS), ...Object.values(PERMISSIONS.CALENDAR_ITEMS)],
   };
 }

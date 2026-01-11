@@ -799,6 +799,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'reports.view.all', 'reports.export', 'analytics.view.all',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own', 'notes.manage_all',
+      // Calendar (full access)
+      'calendar.view', 'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Admin
       'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
       'admin.settings.view', 'admin.settings.edit'
@@ -833,6 +837,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'finance.view.all', 'finance.create_invoice', 'finance.edit_invoice', 'finance.manage_budgets',
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
+      // Calendar (full management)
+      'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -868,6 +876,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'production.view', 'production.edit', 'production.assign_crew',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
+      // Calendar (full management)
+      'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -897,6 +909,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.edit_metadata', 'assets.link_to_task',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
+      // Calendar (full management)
+      'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -923,6 +939,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'approvals.view.own',
       // Assets
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Calendar (view only)
+      'calendar.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -949,6 +967,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'approvals.view.own',
       // Assets
       'assets.view.dept', 'assets.upload',
+      // Calendar (full management for copywriter)
+      'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1009,6 +1031,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
       // Reports
       'reports.view.dept', 'analytics.view.dept',
+      // Calendar (full management)
+      'calendar.manage',
+      'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
+      'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1032,6 +1058,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'production.view', 'production.edit',
       // Assets
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
+      // Calendar (view only)
+      'calendar.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],

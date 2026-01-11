@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -19,6 +19,7 @@ import NotificationConsole, { ManualNotificationPayload } from './components/Not
 import AdminHub from './components/AdminHub';
 import PostingHub from './components/PostingHub';
 import UnifiedCalendar from './components/UnifiedCalendar';
+import CalendarHub from './components/CalendarHub';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import SplashScreen from './components/SplashScreen';
@@ -156,6 +157,10 @@ const App: React.FC = () => {
 
   // Notes State
   const [notes] = useFirestoreCollection<Note>('notes', NOTES);
+
+  // Calendar State
+  const [calendarMonths] = useFirestoreCollection<CalendarMonth>('calendar_months', []);
+  const [calendarItems] = useFirestoreCollection<CalendarItem>('calendar_items', []);
 
   // Admin & Settings State
   // const [appBranding, setAppBranding] = useStickyState<AppBranding>(DEFAULT_BRANDING, 'iris_branding');
@@ -1657,6 +1662,20 @@ const App: React.FC = () => {
             comments={taskComments}
           />
         );
+      case 'calendar':
+        if (!checkPermission(PERMISSIONS.CALENDAR.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
+        return (
+          <CalendarHub
+            clients={clients}
+            calendarMonths={calendarMonths}
+            calendarItems={calendarItems}
+            currentUser={user}
+            onRefresh={() => {
+              // Force re-render by updating state
+              window.location.reload();
+            }}
+          />
+        );
       case 'assets':
         return (
           <FilesHub
@@ -1747,7 +1766,7 @@ const App: React.FC = () => {
             onDeleteDepartment={handleDeleteDepartment}
           />
         );
-      case 'calendar':
+      case 'schedule':
         return (
           <UnifiedCalendar
             tasks={activeTasks}
