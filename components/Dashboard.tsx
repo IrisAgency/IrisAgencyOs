@@ -283,7 +283,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder);
-        const defaultOrder = ['my-tasks', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'];
+        const defaultOrder = ['my-tasks', 'needs-my-approval', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'];
         // Ensure we have all widgets and no duplicates
         const merged = Array.from(new Set([...parsed, ...defaultOrder])).filter(id => defaultOrder.includes(id));
         setWidgetOrder(merged);
