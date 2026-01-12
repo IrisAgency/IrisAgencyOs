@@ -252,6 +252,39 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
     // Step 1: Create the project
     onAddProject(newProject);
+    console.log(`✅ Project created: ${newProject.id} with ${formMemberIds.length} selected members`);
+
+    // Step 1.5: Create ProjectMember records for team members
+    if (formMemberIds.length > 0) {
+      console.log(`📝 Creating ProjectMember records for ${formMemberIds.length} members...`);
+      console.log('Selected member IDs:', formMemberIds);
+      console.log('onAddMember handler exists:', !!onAddMember);
+      
+      if (!onAddMember) {
+        console.error('❌ onAddMember handler is missing! Members will not be created.');
+      } else {
+        try {
+          const memberPromises = formMemberIds.map((userId, index) => {
+            const user = users.find(u => u.id === userId);
+            console.log(`Creating member ${index + 1}:`, { userId, userName: user?.name, role: user?.role });
+            const projectMember: ProjectMember = {
+              id: `pm_${newProject.id}_${userId}_${Date.now() + index}`,
+              projectId: newProject.id,
+              userId: userId,
+              roleInProject: user?.role || 'Team Member',
+              addedAt: new Date().toISOString()
+            };
+            return onAddMember(projectMember);
+          });
+          await Promise.all(memberPromises);
+          console.log(`✅ Successfully created ${formMemberIds.length} team members for project ${newProject.id}`);
+        } catch (error) {
+          console.error('❌ Error creating team members:', error);
+        }
+      }
+    } else {
+      console.log('ℹ️ No team members selected for this project');
+    }
 
     // Step 2 & 3: Generate milestones and tasks if calendar month selected
     if (formCalendarMonthId && selectedMonthItems.length > 0 && onAddDynamicMilestone && onAddTask) {
@@ -1152,7 +1185,7 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
           />
         )}
         {activeTab === 'Team' && <TeamTab project={project} members={members} users={users} freelancers={freelancers} assignments={assignments} onAddMember={onAddMember} onAddFreelancerAssignment={onAddFreelancerAssignment} onRemoveMember={onRemoveMember} onRemoveFreelancerAssignment={onRemoveFreelancerAssignment} />}
-        {activeTab === 'Milestones' && <MilestonesTab project={project} milestones={milestones} users={users} tasks={tasks} approvalSteps={approvalSteps} onAdd={onAddMilestone} onUpdate={onUpdateMilestone} checkPermission={checkPermission} />}
+        {activeTab === 'Milestones' && <MilestonesTab project={project} milestones={milestones} dynamicMilestones={dynamicMilestones} users={users} tasks={tasks} approvalSteps={approvalSteps} onAdd={onAddMilestone} onUpdate={onUpdateMilestone} checkPermission={checkPermission} />}
         {activeTab === 'Calendar' && (
           <div className="h-[800px]">
             <ProjectCalendar
@@ -1820,6 +1853,16 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
   onRemoveMember: (memberId: string) => void,
   onRemoveFreelancerAssignment: (assignmentId: string) => void
 }) => {
+  // Debug logging
+  useEffect(() => {
+    console.log('🔍 TeamTab Debug Info:');
+    console.log('  Project ID:', project.id);
+    console.log('  Project.memberIds:', project.memberIds);
+    console.log('  ProjectMember records count:', members.length);
+    console.log('  ProjectMember records:', members);
+    console.log('  Total users available:', users.length);
+  }, [project, members, users]);
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [role, setRole] = useState('');
@@ -1935,6 +1978,22 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
         )}
 
         <div className="p-4 space-y-3">
+          {members.length === 0 && project.memberIds && project.memberIds.length > 0 && (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mb-3">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-amber-200 mb-1">Team Members Detected</p>
+                  <p className="text-xs text-amber-300/80">
+                    This project has {project.memberIds.length} team member(s) from Smart Project Setup, but no ProjectMember records exist. 
+                    Showing members from project data below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Display ProjectMember records */}
           {members.map(m => {
             const user = users.find(u => u.id === m.userId);
             if (!user) return null;
@@ -1945,12 +2004,16 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-50 truncate">{user.name}</p>
                     <p className="text-sm text-slate-400">{m.roleInProject}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Added {m.addedAt ? new Date(m.addedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Recently'}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <div className="text-right hidden sm:block">
                     <p className="text-xs text-slate-400">{user.department}</p>
-                    <span className="text-xs px-2 py-1 rounded-full bg-[color:var(--dash-surface-elevated)] text-slate-200 border border-[color:var(--dash-glass-border)]">Internal</span>
+                    <p className="text-xs text-slate-500 mt-0.5">{user.jobTitle || user.role}</p>
+                    <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 mt-1 inline-block">Internal</span>
                   </div>
                   <button onClick={() => onRemoveMember(m.id)} className="text-slate-400 hover:text-rose-200 transition-colors p-2">
                     <Trash2 className="w-4 h-4" />
@@ -1959,7 +2022,38 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
               </div>
             );
           })}
-          {members.length === 0 && (
+          
+          {/* Display members from project.memberIds if no ProjectMember records exist */}
+          {members.length === 0 && project.memberIds && project.memberIds.length > 0 && (
+            <>
+              {project.memberIds.map(userId => {
+                const user = users.find(u => u.id === userId);
+                if (!user) return null;
+                return (
+                  <div key={userId} className="flex items-center justify-between p-4 bg-[color:var(--dash-surface)] rounded-lg border border-[color:var(--dash-glass-border)] border-l-4 border-l-amber-500">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <img src={user.avatar} className="w-10 h-10 rounded-full flex-shrink-0" alt="" />
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-slate-50 truncate">{user.name}</p>
+                        <p className="text-sm text-slate-400">{user.role}</p>
+                        <p className="text-xs text-amber-400 mt-0.5">From Smart Project Setup</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right hidden sm:block">
+                        <p className="text-xs text-slate-400">{user.department}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{user.jobTitle}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{user.email}</p>
+                        <span className="text-xs px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20 mt-1 inline-block">Internal</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
+          
+          {members.length === 0 && (!project.memberIds || project.memberIds.length === 0) && (
             <div className="p-6 text-center text-slate-400">No members assigned.</div>
           )}
         </div>
@@ -2057,7 +2151,17 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
   );
 };
 
-const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd, onUpdate, checkPermission }: { project: Project, milestones: ProjectMilestone[], users: User[], tasks: Task[], approvalSteps: ApprovalStep[], onAdd: any, onUpdate: any, checkPermission: (p: string) => boolean }) => {
+const MilestonesTab = ({ project, milestones, dynamicMilestones, users, tasks, approvalSteps, onAdd, onUpdate, checkPermission }: { 
+  project: Project, 
+  milestones: ProjectMilestone[], 
+  dynamicMilestones?: Milestone[],
+  users: User[], 
+  tasks: Task[], 
+  approvalSteps: ApprovalStep[], 
+  onAdd: any, 
+  onUpdate: any, 
+  checkPermission: (p: string) => boolean 
+}) => {
   const [view, setView] = useState<'list' | 'timeline'>('list');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -2262,7 +2366,99 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
       {/* List View */}
       {view === 'list' && (
         <div className="grid grid-cols-1 gap-4">
-          {milestones.map(m => {
+          {/* Dynamic Milestones from Smart Project Creation */}
+          {dynamicMilestones && dynamicMilestones.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-px bg-[color:var(--dash-glass-border)] flex-1" />
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide px-2">Smart Project Milestones</span>
+                <div className="h-px bg-[color:var(--dash-glass-border)] flex-1" />
+              </div>
+              {dynamicMilestones.map(dm => {
+                const dmTasks = tasks.filter(t => t.dynamicMilestoneId === dm.id && !t.isDeleted);
+                const completedCount = dmTasks.filter(t => ['completed', 'approved', 'client_approved'].includes(t.status)).length;
+                const progress = dm.targetCount > 0 ? Math.round((completedCount / dm.targetCount) * 100) : 0;
+                const progressText = `${completedCount} / ${dm.targetCount} tasks`;
+
+                // Type-specific styling
+                const typeColors = {
+                  VIDEO: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
+                  PHOTO: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
+                  MOTION: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
+                  POSTING: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20'
+                };
+
+                return (
+                  <div key={dm.id} className={`${elevated} p-5 rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] hover:shadow-[0_22px_60px_-26px_rgba(0,0,0,0.9)] transition-shadow flex flex-col gap-4 border-l-4 ${dm.type === 'VIDEO' ? 'border-blue-500' : dm.type === 'PHOTO' ? 'border-purple-500' : dm.type === 'MOTION' ? 'border-yellow-500' : 'border-emerald-500'}`}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-1">
+                          <h4 className="font-bold text-slate-50 text-lg">{dm.title}</h4>
+                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${typeColors[dm.type]}`}>
+                            {dm.type}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full capitalize border ${progress >= 100 ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/40' : progress > 0 ? 'bg-blue-500/15 text-blue-100 border-blue-400/40' : 'bg-slate-500/15 text-slate-200 border-slate-400/40'}`}>
+                            {progress >= 100 ? 'Completed' : progress > 0 ? 'In Progress' : 'Not Started'}
+                          </span>
+                        </div>
+                        <p className="text-slate-400 text-xs mb-3">Auto-generated from calendar content • {dmTasks.length} tasks linked</p>
+                        <div className="flex items-center space-x-4 text-xs text-slate-400">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="w-3.5 h-3.5" />
+                            <span>Created {new Date(dm.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-6 min-w-[200px]">
+                        <div className="flex-1">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="font-medium text-slate-200">Progress</span>
+                            <span className="text-slate-400">{progressText}</span>
+                          </div>
+                          <div className="w-full bg-[color:var(--dash-surface)] rounded-full h-2 border border-[color:var(--dash-glass-border)]">
+                            <div className="bg-[color:var(--dash-primary)] h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Linked Tasks Preview */}
+                    {dmTasks.length > 0 && (
+                      <div className="pt-3 border-t border-[color:var(--dash-glass-border)]">
+                        <div className="text-xs font-semibold text-slate-400 mb-2">LINKED TASKS ({dmTasks.length})</div>
+                        <div className="grid grid-cols-1 gap-2">
+                          {dmTasks.slice(0, 3).map(task => (
+                            <div key={task.id} className="flex items-center justify-between text-xs bg-[color:var(--dash-surface)] p-2 rounded border border-[color:var(--dash-glass-border)]">
+                              <span className="text-slate-200 truncate flex-1">{task.title}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${['completed', 'approved', 'client_approved'].includes(task.status) ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'}`}>
+                                {task.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          ))}
+                          {dmTasks.length > 3 && (
+                            <div className="text-center text-xs text-slate-500 py-1">
+                              +{dmTasks.length - 3} more tasks
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
+
+          {/* Legacy/Manual Milestones */}
+          {milestones.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 mb-2 mt-6">
+                <div className="h-px bg-[color:var(--dash-glass-border)] flex-1" />
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide px-2">Manual Milestones</span>
+                <div className="h-px bg-[color:var(--dash-glass-border)] flex-1" />
+              </div>
+              {milestones.map(m => {
             const owner = users.find(u => u.id === m.ownerId);
             const milestoneTasks = tasks.filter(t => t.milestoneId === m.id && !t.isDeleted);
 
@@ -2370,7 +2566,14 @@ const MilestonesTab = ({ project, milestones, users, tasks, approvalSteps, onAdd
               </div>
             );
           })}
-          {milestones.length === 0 && <div className={`${surface} text-center py-12 rounded-xl border border-dashed border-[color:var(--dash-glass-border)] text-slate-400`}>No milestones defined yet. Start planning your roadmap!</div>}
+            </>
+          )}
+          
+          {milestones.length === 0 && (!dynamicMilestones || dynamicMilestones.length === 0) && (
+            <div className={`${surface} text-center py-12 rounded-xl border border-dashed border-[color:var(--dash-glass-border)] text-slate-400`}>
+              No milestones defined yet. Start planning your roadmap!
+            </div>
+          )}
         </div>
       )}
 

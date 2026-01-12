@@ -240,7 +240,8 @@ export interface ProjectMember {
   projectId: string;
   userId: string;        // User in the system
   roleInProject: string; // e.g. "Account Manager", "Creative Lead", "Producer"
-  isExternal: boolean;   // true if freelancer
+  isExternal?: boolean;   // true if freelancer
+  addedAt?: string;      // ISO date string when member was added
 }
 
 // Smart Project Creation - Dynamic Milestones
