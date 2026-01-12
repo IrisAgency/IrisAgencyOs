@@ -157,11 +157,13 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       monthKey: selectedMonth?.monthKey,
       calendarMonthId: formCalendarMonthId || undefined,
       memberIds: formMemberIds.length > 0 ? formMemberIds : undefined,
-      workflowByType: {
-        VIDEO: formWorkflowVideo || undefined,
-        PHOTO: formWorkflowPhoto || undefined,
-        MOTION: formWorkflowMotion || undefined
-      },
+      workflowByType: (() => {
+        const workflows: any = {};
+        if (formWorkflowVideo) workflows.VIDEO = formWorkflowVideo;
+        if (formWorkflowPhoto) workflows.PHOTO = formWorkflowPhoto;
+        if (formWorkflowMotion) workflows.MOTION = formWorkflowMotion;
+        return Object.keys(workflows).length > 0 ? workflows : undefined;
+      })(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
