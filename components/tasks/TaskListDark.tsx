@@ -1,6 +1,6 @@
 import React from 'react';
-import { Task, User, TaskStatus, Priority } from '../../types';
-import { Clock } from 'lucide-react';
+import { Task, User, TaskStatus, Priority, ArchiveReason } from '../../types';
+import { Clock, Archive } from 'lucide-react';
 import { DueTone, ToneFn } from './TaskBoardDark';
 
 interface TaskListDarkProps {
@@ -22,6 +22,25 @@ const TaskListDark: React.FC<TaskListDarkProps> = ({
   priorityTone,
   dueTone
 }) => {
+  const getArchiveReasonLabel = (reason?: ArchiveReason | null): { text: string; color: string } => {
+    if (!reason) return { text: 'Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
+    
+    switch (reason) {
+      case ArchiveReason.MANUAL_APPROVED:
+        return { text: 'Manually Approved', color: 'bg-green-500/20 border-green-500/30 text-green-300' };
+      case ArchiveReason.MANUAL_REJECTED:
+        return { text: 'Manually Rejected', color: 'bg-red-500/20 border-red-500/30 text-red-300' };
+      case ArchiveReason.WORKFLOW_COMPLETED:
+        return { text: 'Workflow Completed', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' };
+      case ArchiveReason.USER_ARCHIVED:
+        return { text: 'User Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
+      case ArchiveReason.PROJECT_ARCHIVED:
+        return { text: 'Project Archived', color: 'bg-purple-500/20 border-purple-500/30 text-purple-300' };
+      default:
+        return { text: 'Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
+    }
+  };
+  
   return (
     <div className="overflow-hidden rounded-2xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 shadow-[0_18px_48px_-32px_rgba(0,0,0,0.85)]">
       <div className="hidden md:grid grid-cols-[2fr,1fr,1fr,1fr,0.7fr] text-[11px] uppercase tracking-wide text-slate-400 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]/70 px-4 py-2">
@@ -49,7 +68,13 @@ const TaskListDark: React.FC<TaskListDarkProps> = ({
               <div className="flex flex-col gap-1 w-full">
                 <div className="text-[11px] uppercase tracking-wide text-slate-400 font-semibold">{task.client}</div>
                 <div className="text-sm font-semibold text-slate-50 leading-tight break-words">{task.title}</div>
-                <div className="flex items-center gap-2 md:hidden text-[11px] text-slate-300">
+                <div className="flex items-center gap-2 md:hidden text-[11px] text-slate-300 flex-wrap">
+                  {task.isArchived && task.archiveReason && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${getArchiveReasonLabel(task.archiveReason).color}`}>
+                      <Archive className="w-3 h-3 flex-shrink-0" />
+                      {getArchiveReasonLabel(task.archiveReason).text}
+                    </span>
+                  )}
                   <span className={`px-2 py-0.5 rounded-full border ${statusTone(task.status)}`}>{task.status.replace(/_/g, ' ')}</span>
                   <span className={`px-2 py-0.5 rounded-full border ${priorityTone(task.priority)}`}>{task.priority}</span>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${dueMeta.className}`}>
@@ -59,7 +84,13 @@ const TaskListDark: React.FC<TaskListDarkProps> = ({
                 </div>
               </div>
 
-              <div className="hidden md:flex items-center">
+              <div className="hidden md:flex items-center flex-wrap gap-1">
+                {task.isArchived && task.archiveReason && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${getArchiveReasonLabel(task.archiveReason).color}`}>
+                    <Archive className="w-3 h-3 flex-shrink-0" />
+                    {getArchiveReasonLabel(task.archiveReason).text}
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded-full border text-[11px] ${statusTone(task.status)}`}>
                   {task.status.replace(/_/g, ' ')}
                 </span>

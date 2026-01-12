@@ -80,6 +80,25 @@ export enum Priority {
   CRITICAL = 'critical'
 }
 
+export enum ArchiveReason {
+  WORKFLOW_COMPLETED = 'workflow_completed',
+  MANUAL_APPROVED = 'manual_approved',
+  MANUAL_REJECTED = 'manual_rejected',
+  USER_ARCHIVED = 'user_archived',
+  PROJECT_ARCHIVED = 'project_archived'
+}
+
+export enum ClosureMode {
+  WORKFLOW = 'workflow',
+  MANUAL = 'manual'
+}
+
+export enum FinalOutcome {
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+  COMPLETED = 'completed'
+}
+
 export type TaskType = 'design' | 'video' | 'photo' | 'motion' | 'post_production' | 'copywriting' | 'meeting' | 'production' | 'social_content' | 'social_publishing' | 'other';
 
 export interface ClientContact {
@@ -357,6 +376,14 @@ export interface Task {
   // Archival Fields
   isArchived: boolean;
   archivedAt?: string | null;
+  archivedBy?: string | null; // User ID who archived the task
+  archiveReason?: ArchiveReason | null; // Reason for archiving
+
+  // Manual Closure Fields
+  closedAt?: string | null; // When the task was closed (manual or workflow)
+  closedBy?: string | null; // User ID who closed the task
+  closureMode?: ClosureMode | null; // How the task was closed
+  finalOutcome?: FinalOutcome | null; // Final outcome of the task
 
   // Soft Delete Fields
   isDeleted?: boolean;

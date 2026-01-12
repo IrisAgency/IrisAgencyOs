@@ -119,6 +119,10 @@ export const PERMISSIONS = {
     MANAGE_PUBLISHING: 'tasks.manage_publishing',
     REOPEN: 'tasks.reopen',
     EDIT_COMPLETED: 'tasks.edit_completed',
+    ARCHIVE: 'tasks.archive',
+    ARCHIVE_VIEW: 'tasks.archive.view',
+    MANUAL_CLOSE_APPROVE: 'tasks.manual_close.approve',
+    MANUAL_CLOSE_REJECT: 'tasks.manual_close.reject',
     
     // References
     REFERENCES_VIEW: 'tasks.references.view',

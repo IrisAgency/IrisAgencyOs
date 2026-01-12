@@ -745,6 +745,9 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'tasks.reject', module: 'Tasks', name: 'Reject Tasks', description: 'Can reject task submissions' },
   { code: 'tasks.reopen', module: 'Tasks', name: 'Reopen Tasks', description: 'Can reopen completed or archived tasks' },
   { code: 'tasks.archive', module: 'Tasks', name: 'Archive Tasks', description: 'Can archive tasks' },
+  { code: 'tasks.archive.view', module: 'Tasks', name: 'View Archived Tasks', description: 'Can view archived/completed tasks' },
+  { code: 'tasks.manual_close.approve', module: 'Tasks', name: 'Manual Close as Approved', description: 'Can manually close and approve tasks bypassing workflow' },
+  { code: 'tasks.manual_close.reject', module: 'Tasks', name: 'Manual Close as Rejected', description: 'Can manually close and reject tasks bypassing workflow' },
   { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can permanently delete tasks' },
   { code: 'tasks.references.view', module: 'Tasks', name: 'View Task References', description: 'Can view task reference materials' },
   { code: 'tasks.references.add', module: 'Tasks', name: 'Add Task References', description: 'Can add reference materials to tasks' },
@@ -894,7 +897,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Tasks (full access)
       'tasks.view.all', 'tasks.create', 'tasks.edit.all', 'tasks.assign.all', 'tasks.reassign.all',
       'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve', 'tasks.reject',
-      'tasks.archive', 'tasks.delete', 'tasks.reopen', 'tasks.edit_completed',
+      'tasks.archive', 'tasks.archive.view', 'tasks.manual_close.approve', 'tasks.manual_close.reject',
+      'tasks.delete', 'tasks.reopen', 'tasks.edit_completed',
       'task_files.upload', 'task_files.delete', 'task_files.view',
       // Approvals
       'approvals.view.all', 'approvals.act', 'approvals.configure',
@@ -944,7 +948,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Tasks (dept level management)
       'tasks.view.all', 'tasks.create', 'tasks.edit.dept', 'tasks.assign.dept', 'tasks.reassign.dept',
       'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve',
-      'tasks.reopen', 'tasks.edit_completed',
+      'tasks.reopen', 'tasks.edit_completed', 'tasks.archive.view', 'tasks.manual_close.approve', 'tasks.manual_close.reject',
       'task_files.view', 'task_files.upload',
       // Approvals
       'approvals.view.all', 'approvals.act', 'approvals.configure',

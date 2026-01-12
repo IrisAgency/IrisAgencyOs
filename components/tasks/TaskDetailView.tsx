@@ -3,7 +3,8 @@ import {
     Task, Project, User, TaskStatus, Priority, Department, TaskComment,
     TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval,
     AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember,
-    RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole
+    RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole,
+    ArchiveReason, ClosureMode, FinalOutcome
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import {
@@ -69,6 +70,10 @@ const TaskDetailView = ({
     const [showRevisionModal, setShowRevisionModal] = useState(false);
     const [revisionMessage, setRevisionMessage] = useState('');
     const [revisionAssignee, setRevisionAssignee] = useState('');
+    
+    // Manual Close State
+    const [showManualCloseModal, setShowManualCloseModal] = useState(false);
+    const [manualCloseAction, setManualCloseAction] = useState<'approve' | 'reject' | null>(null);
     
     // Edit state for description and voiceOver
     const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -631,6 +636,43 @@ const TaskDetailView = ({
         }
     };
 
+    const handleManualClose = (action: 'approve' | 'reject') => {
+        setManualCloseAction(action);
+        setShowManualCloseModal(true);
+    };
+
+    const confirmManualClose = () => {
+        if (!manualCloseAction) return;
+
+        const now = new Date().toISOString();
+        const finalOutcome = manualCloseAction === 'approve' ? FinalOutcome.APPROVED : FinalOutcome.REJECTED;
+        const archiveReason = manualCloseAction === 'approve' ? ArchiveReason.MANUAL_APPROVED : ArchiveReason.MANUAL_REJECTED;
+        const newStatus = manualCloseAction === 'approve' ? TaskStatus.COMPLETED : TaskStatus.ARCHIVED;
+
+        onUpdateTask({
+            ...task,
+            isArchived: true,
+            archivedAt: now,
+            archivedBy: currentUser.id,
+            archiveReason,
+            closedAt: now,
+            closedBy: currentUser.id,
+            closureMode: ClosureMode.MANUAL,
+            finalOutcome,
+            status: newStatus,
+            updatedAt: now
+        });
+
+        onNotify(
+            'success',
+            'Task Closed',
+            `Task has been manually closed as ${manualCloseAction === 'approve' ? 'approved' : 'rejected'}.`
+        );
+
+        setShowManualCloseModal(false);
+        setManualCloseAction(null);
+    };
+
     return (
         <div className="flex flex-col h-full bg-white">
             {/* Hidden file input */}
@@ -748,6 +790,30 @@ const TaskDetailView = ({
                             <ShieldCheck className="w-4 h-4" />
                             <span>Waiting for Client</span>
                         </div>
+                    )}
+
+                    {/* Manual Close Actions */}
+                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.ARCHIVED && (
+                        <>
+                            {checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_APPROVE) && (
+                                <button
+                                    onClick={() => handleManualClose('approve')}
+                                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-green-700 shadow-sm transition-colors"
+                                >
+                                    <CheckCircle className="w-4 h-4" />
+                                    <span>Close as Approved</span>
+                                </button>
+                            )}
+                            {checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_REJECT) && (
+                                <button
+                                    onClick={() => handleManualClose('reject')}
+                                    className="flex items-center space-x-2 bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 shadow-sm transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                    <span>Close as Rejected</span>
+                                </button>
+                            )}
+                        </>
                     )}
 
                     {/* Archive Action */}
@@ -1678,6 +1744,63 @@ const TaskDetailView = ({
                             className="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-bold hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Request Revisions
+                        </button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Manual Close Confirmation Modal */}
+            <Modal
+                isOpen={showManualCloseModal}
+                onClose={() => {
+                    setShowManualCloseModal(false);
+                    setManualCloseAction(null);
+                }}
+                title={`Manually Close Task as ${manualCloseAction === 'approve' ? 'Approved' : 'Rejected'}`}
+                size="md"
+            >
+                <div className="p-4 space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div className="flex items-start space-x-3">
+                            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div className="text-sm text-amber-800">
+                                <p className="font-semibold mb-1">Bypass Workflow Warning</p>
+                                <p>
+                                    This will manually close the task and mark it as{' '}
+                                    <strong>{manualCloseAction === 'approve' ? 'APPROVED' : 'REJECTED'}</strong>,
+                                    bypassing all remaining approval steps.
+                                </p>
+                                <p className="mt-2">The task will be archived and removed from active task lists for all users.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                        <h4 className="text-sm font-semibold text-slate-700">Task Details:</h4>
+                        <p className="text-sm text-slate-600"><strong>Title:</strong> {task.title}</p>
+                        <p className="text-sm text-slate-600"><strong>Current Status:</strong> {task.status.replace(/_/g, ' ').toUpperCase()}</p>
+                        <p className="text-sm text-slate-600"><strong>Assignees:</strong> {(task.assigneeIds || []).map(id => users.find(u => u.id === id)?.name).filter(Boolean).join(', ') || 'None'}</p>
+                    </div>
+
+                    <div className="flex justify-end space-x-2 pt-4">
+                        <button
+                            onClick={() => {
+                                setShowManualCloseModal(false);
+                                setManualCloseAction(null);
+                            }}
+                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={confirmManualClose}
+                            className={`px-4 py-2 text-white rounded-lg text-sm font-bold ${
+                                manualCloseAction === 'approve' 
+                                    ? 'bg-green-600 hover:bg-green-700' 
+                                    : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                        >
+                            Confirm {manualCloseAction === 'approve' ? 'Approve' : 'Reject'} & Close
                         </button>
                     </div>
                 </div>
