@@ -979,6 +979,9 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       users={users}
       members={members.filter(m => m.projectId === selectedProject.id)}
       milestones={milestones.filter(m => m.projectId === selectedProject.id)}
+      dynamicMilestones={dynamicMilestones?.filter(m => m.projectId === selectedProject.id) || []}
+      calendarMonths={calendarMonths || []}
+      calendarItems={calendarItems || []}
       logs={activityLogs.filter(l => l.projectId === selectedProject.id)}
       marketingAssets={marketingAssets.filter(a => a.projectId === selectedProject.id)} // Filter here
       files={files}
@@ -1014,6 +1017,9 @@ interface ProjectDetailProps {
   users: User[];
   members: ProjectMember[];
   milestones: ProjectMilestone[];
+  dynamicMilestones: Milestone[];
+  calendarMonths: CalendarMonth[];
+  calendarItems: CalendarItem[];
   logs: ProjectActivityLog[];
   marketingAssets: ProjectMarketingAsset[];
   files: AgencyFile[];
@@ -1042,7 +1048,7 @@ interface ProjectDetailProps {
 }
 
 const ProjectDetailView: React.FC<ProjectDetailProps> = ({
-  project, users, members, milestones, logs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps, onBack,
+  project, users, members, milestones, dynamicMilestones, calendarMonths, calendarItems, logs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps, onBack,
   onUpdateProject, onDeleteProject, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, getStatusColor, checkPermission, onNavigateToTask
 }) => {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Team' | 'Milestones' | 'Calendar' | 'Files' | 'Activity'>('Overview');
@@ -1130,6 +1136,9 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
           <OverviewTab
             project={project}
             milestones={milestones}
+            dynamicMilestones={dynamicMilestones}
+            calendarMonths={calendarMonths}
+            calendarItems={calendarItems}
             tasks={tasks}
             members={members}
             users={users}
@@ -1177,7 +1186,23 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
 
 // --- Tabs Components ---
 
-const OverviewTab = ({ project, milestones, tasks, members, users, marketingAssets, files, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, checkPermission }: { project: Project, milestones: ProjectMilestone[], tasks: Task[], members: ProjectMember[], users: User[], marketingAssets: ProjectMarketingAsset[], files: AgencyFile[], onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, onDeleteMarketingAsset: (assetId: string) => Promise<void>, onUploadFile: (f: AgencyFile) => Promise<void>, checkPermission: (p: string) => boolean }) => {
+const OverviewTab = ({ project, milestones, dynamicMilestones, calendarMonths, calendarItems, tasks, members, users, marketingAssets, files, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, checkPermission }: { 
+  project: Project, 
+  milestones: ProjectMilestone[], 
+  dynamicMilestones: Milestone[],
+  calendarMonths: CalendarMonth[],
+  calendarItems: CalendarItem[],
+  tasks: Task[], 
+  members: ProjectMember[], 
+  users: User[], 
+  marketingAssets: ProjectMarketingAsset[], 
+  files: AgencyFile[], 
+  onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, 
+  onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>, 
+  onDeleteMarketingAsset: (assetId: string) => Promise<void>, 
+  onUploadFile: (f: AgencyFile) => Promise<void>, 
+  checkPermission: (p: string) => boolean 
+}) => {
 
   // Local theming helpers for detail cards
   const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
@@ -1278,13 +1303,14 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
     setIsAssetModalOpen(true);
   };
 
-  // 1. Milestones Graph Data
+  // 1. Milestones Graph Data - Merge Legacy and Dynamic Milestones
   const currentMonthMilestones = useMemo(() => {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    return milestones.filter(m => {
+    // Process Legacy ProjectMilestones
+    const legacyData = milestones.filter(m => {
       if (!m || m.projectId !== project.id) return false;
       const d = new Date(m.endDate || m.dueDate);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
@@ -1311,10 +1337,33 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
         remaining: Math.max(0, displayTotal - displayCompleted),
         total: displayTotal,
         actualTotal: totalCount,
-        actualCompleted: completedCount
+        actualCompleted: completedCount,
+        type: 'legacy'
       };
     });
-  }, [milestones, tasks, project.id]);
+
+    // Process Dynamic Milestones (from Smart Project Creation)
+    const dynamicData = dynamicMilestones.map(dm => {
+      // Find tasks linked to this dynamic milestone via dynamicMilestoneId
+      const dmTasks = tasks.filter(t => t && t.dynamicMilestoneId === dm.id && !t.isDeleted);
+      const completedCount = dmTasks.filter(t => {
+        if (!t || !t.status) return false;
+        return ['completed', 'approved', 'client_approved'].includes(t.status);
+      }).length;
+
+      return {
+        name: dm.title,
+        completed: Math.min(completedCount, dm.targetCount),
+        remaining: Math.max(0, dm.targetCount - completedCount),
+        total: dm.targetCount,
+        actualTotal: dmTasks.length,
+        actualCompleted: completedCount,
+        type: 'dynamic'
+      };
+    });
+
+    return [...legacyData, ...dynamicData];
+  }, [milestones, dynamicMilestones, tasks, project.id]);
 
   // 2. Team Progress Data
   const teamProgress = useMemo(() => {
@@ -1359,6 +1408,110 @@ const OverviewTab = ({ project, milestones, tasks, members, users, marketingAsse
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
       <div className="md:col-span-2 space-y-4 md:space-y-6">
+        {/* Smart Project Creation Info Card */}
+        {(project.memberIds || project.calendarMonthId || project.workflowByType) && (
+          <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
+            <div className="p-3 md:p-5 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface)]">
+              <h3 className="text-sm md:text-base font-bold text-slate-50 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[color:var(--dash-primary)]" />
+                Smart Project Setup
+              </h3>
+            </div>
+            <div className="p-3 md:p-5 space-y-3">
+              {/* Team Members */}
+              {project.memberIds && project.memberIds.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 block">Team Members</label>
+                  <div className="flex flex-wrap gap-2">
+                    {project.memberIds.map(userId => {
+                      const user = users.find(u => u.id === userId);
+                      if (!user) return null;
+                      return (
+                        <div key={userId} className={`${pill} bg-[color:var(--dash-primary)]/10 text-[color:var(--dash-primary)] border-[color:var(--dash-primary)]/20 flex items-center gap-1.5`}>
+                          <Users className="w-3 h-3" />
+                          <span>{user.name}</span>
+                          {user.role && <span className="text-[10px] opacity-70">• {user.role}</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Calendar Month Link */}
+              {project.calendarMonthId && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 block">Linked Calendar Month</label>
+                  {(() => {
+                    const linkedMonth = calendarMonths.find(m => m.id === project.calendarMonthId);
+                    if (!linkedMonth) {
+                      return <span className="text-xs text-slate-500">Calendar month not found (ID: {project.calendarMonthId})</span>;
+                    }
+                    const itemCount = calendarItems.filter(item => item.calendarMonthId === linkedMonth.id).length;
+                    return (
+                      <div className={`${pill} bg-blue-500/10 text-blue-400 border-blue-500/20 inline-flex items-center gap-2`}>
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span className="font-medium">{linkedMonth.title || `${linkedMonth.monthKey}`}</span>
+                        <span className="text-[10px] opacity-70">• {itemCount} items</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* Workflow Assignments */}
+              {project.workflowByType && Object.keys(project.workflowByType).length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 block">Content Workflows</label>
+                  <div className="flex flex-wrap gap-2">
+                    {project.workflowByType.VIDEO && (
+                      <div className={`${pill} bg-blue-500/10 text-blue-400 border-blue-500/20 flex items-center gap-1.5`}>
+                        <Video className="w-3 h-3" />
+                        <span>VIDEO</span>
+                      </div>
+                    )}
+                    {project.workflowByType.PHOTO && (
+                      <div className={`${pill} bg-purple-500/10 text-purple-400 border-purple-500/20 flex items-center gap-1.5`}>
+                        <ImageIcon className="w-3 h-3" />
+                        <span>PHOTO</span>
+                      </div>
+                    )}
+                    {project.workflowByType.MOTION && (
+                      <div className={`${pill} bg-yellow-500/10 text-yellow-400 border-yellow-500/20 flex items-center gap-1.5`}>
+                        <Zap className="w-3 h-3" />
+                        <span>MOTION</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Dynamic Milestones Summary */}
+              {dynamicMilestones.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 block">Generated Milestones</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {dynamicMilestones.map(dm => (
+                      <div key={dm.id} className="bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg p-2">
+                        <div className="text-xs font-medium text-slate-200">{dm.title}</div>
+                        <div className="text-[10px] text-slate-400 mt-1">
+                          {dm.completedCount} / {dm.targetCount} completed
+                        </div>
+                        <div className="w-full bg-[color:var(--dash-surface-elevated)] rounded-full h-1.5 mt-1.5">
+                          <div 
+                            className="bg-[color:var(--dash-primary)] h-1.5 rounded-full transition-all"
+                            style={{ width: `${Math.min(100, (dm.completedCount / dm.targetCount) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Milestones Graph */}
         <div className={`${elevated} rounded-xl shadow-[0_18px_48px_-28px_rgba(0,0,0,0.85)] overflow-hidden`}>
           <div className="p-3 md:p-5 border-b border-[color:var(--dash-glass-border)] flex flex-wrap justify-between items-center gap-2 bg-[color:var(--dash-surface)]">
