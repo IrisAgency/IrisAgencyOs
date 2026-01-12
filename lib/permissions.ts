@@ -88,7 +88,10 @@ export const PERMISSIONS = {
     VIEW_DEPT: 'projects.view.dept',
     VIEW_ALL: 'projects.view.all',
     CREATE: 'projects.create',
-    EDIT: 'projects.edit',
+    EDIT_OWN: 'projects.edit.own',
+    EDIT_DEPT: 'projects.edit.dept',
+    EDIT_ALL: 'projects.edit.all',
+    EDIT: 'projects.edit', // Kept for backward compatibility
     ARCHIVE: 'projects.archive',
     DELETE: 'projects.delete',
   },
