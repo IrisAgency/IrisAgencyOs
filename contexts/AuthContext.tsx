@@ -308,6 +308,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const permissions = userRoleDef.permissions || [];
     console.log(`🔐 Loading permissions for ${userRole}:`, permissions.length, 'permissions');
     console.log('📋 Task permissions:', permissions.filter(p => p.startsWith('tasks.')));
+    console.log('📋 Project permissions:', permissions.filter(p => p.startsWith('projects.')));
+    console.log('📋 Client permissions:', permissions.filter(p => p.startsWith('clients.')));
     setUserPermissions(permissions);
   };
 
