@@ -373,7 +373,12 @@ const App: React.FC = () => {
   const handleUpdateTask = async (updatedTask: Task) => {
     const oldTask = tasks.find(t => t.id === updatedTask.id);
     
-    await updateDoc(doc(db, 'tasks', updatedTask.id), updatedTask as any);
+    // Remove undefined fields to avoid Firestore errors
+    const taskToSave = Object.fromEntries(
+      Object.entries(updatedTask).filter(([_, value]) => value !== undefined)
+    );
+    
+    await updateDoc(doc(db, 'tasks', updatedTask.id), taskToSave as any);
 
     const log: TaskActivityLog = {
       id: `tal${Date.now()}`, taskId: updatedTask.id, userId: user!.id, type: 'status_change', message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString()

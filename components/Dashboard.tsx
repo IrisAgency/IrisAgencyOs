@@ -540,7 +540,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div style={{ marginBottom: '12px' }}>
                                 <div className="data-mono" style={{ fontSize: '0.65rem', opacity: 0.5, marginBottom: '8px', textTransform: 'uppercase' }}>Due Today</div>
                                 {selectedDateTasks.map(task => (
-                                    <div key={task.id} className="meeting-card" onClick={() => onNavigateToTask?.(task.id)} style={{ borderLeft: '3px solid var(--dash-primary)' }}>
+                                    <div key={task.id} className="meeting-card" onClick={() => onNavigateToTask?.(task.id)} style={{ borderLeft: '3px solid var(--dash-primary)', cursor: 'pointer' }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{task.title}</div>
                                         <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
                                             {projects.find(p => p.id === task.projectId)?.name || 'General'}
@@ -553,22 +553,30 @@ const Dashboard: React.FC<DashboardProps> = ({
                         {/* Meetings Section */}
                         {selectedDateMeetings.length > 0 && (
                             <div>
-                                <div className="data-mono" style={{ fontSize: '0.65rem', opacity: 0.5, marginBottom: '8px', textTransform: 'uppercase' }}>Events</div>
+                                <div className="data-mono" style={{ fontSize: '0.65rem', opacity: 0.5, marginBottom: '8px', textTransform: 'uppercase' }}>Meetings</div>
                                 {selectedDateMeetings.map(meeting => (
-                                    <div key={meeting.id} className="meeting-card" onClick={() => onNavigateToMeeting?.(meeting.id)} style={{ borderLeft: '3px solid var(--dash-tertiary)' }}>
+                                    <div key={meeting.id} className="meeting-card" onClick={() => onNavigateToMeeting?.(meeting.id)} style={{ borderLeft: '3px solid var(--dash-tertiary)', cursor: 'pointer' }}>
                                         <div className="time-label">
                                         {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{meeting.title}</div>
-                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>{meeting.locationType}</div>
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
+                                          {clients.find(c => c.id === meeting.clientId)?.name || meeting.locationType}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {selectedDateTasks.length === 0 && selectedDateMeetings.length === 0 && (
-                            <div className="text-slate-500 text-xs py-8 text-center">
-                                No schedule for {selectedDate.toLocaleDateString(undefined, { weekday: 'long' })}
+                            <div className="text-center" style={{ padding: '32px 16px' }}>
+                                <div style={{ fontSize: '2rem', opacity: 0.3, marginBottom: '8px' }}>📅</div>
+                                <div style={{ fontSize: '0.85rem', opacity: 0.6, marginBottom: '4px' }}>
+                                    No events on {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </div>
+                                <div style={{ fontSize: '0.7rem', opacity: 0.4 }}>
+                                    Select another day or schedule a meeting
+                                </div>
                             </div>
                         )}
                     </div>

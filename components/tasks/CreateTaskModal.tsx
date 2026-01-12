@@ -300,7 +300,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 }
                 const workflow = workflowTemplates.find(w => w.id === finalWorkflowId);
 
-                const canAssign = 
+                const canAssignOthers = 
                     checkPermission('tasks.manage_assignees') || 
                     checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || 
                     checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT);
