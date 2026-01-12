@@ -319,7 +319,7 @@ export interface Task {
   calendarItemId?: string | null; // Link to CalendarItem
   publishAt?: string | null; // Publish date from calendar
   deliveryDueAt?: string | null; // Delivery deadline (separate from publish)
-  milestoneId?: string | null; // Link to Milestone (for dynamic tracking)
+  dynamicMilestoneId?: string | null; // Link to Milestone (for dynamic tracking)
 
   // Social Handover
   requiresSocialPost?: boolean;

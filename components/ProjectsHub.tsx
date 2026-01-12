@@ -247,7 +247,6 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           const task: Task = {
             id: `t${Date.now()}_${item.id}`,
             projectId: newProject.id,
-            milestoneId: milestone?.id,
             title: item.autoName,
             description: item.primaryBrief || null,
             voiceOver: null,
@@ -269,6 +268,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             calendarItemId: item.id,
             publishAt: item.publishAt,
             deliveryDueAt: null, // Will be set in Task Planning Modal
+            dynamicMilestoneId: milestone?.id, // Link to dynamic milestone
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
