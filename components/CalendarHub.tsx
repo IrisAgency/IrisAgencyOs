@@ -139,6 +139,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       alert('Please fill in required fields');
       return;
     }
+    
+    // Validate publishAt date
+    const publishDate = new Date(itemForm.publishAt);
+    const currentYear = new Date().getFullYear();
+    if (publishDate.getFullYear() < currentYear - 1 || publishDate.getFullYear() > currentYear + 10) {
+      alert(`Invalid publish date year (${publishDate.getFullYear()}). Please check the date and try again.`);
+      return;
+    }
 
     const selectedMonth = filteredMonths.find(m => m.id === selectedMonthId);
     if (!selectedMonth) return;
@@ -221,6 +229,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const handleUpdateItem = async () => {
     if (!editingItem || !itemForm.primaryBrief || !itemForm.publishAt) {
       alert('Please fill in required fields');
+      return;
+    }
+    
+    // Validate publishAt date
+    const publishDate = new Date(itemForm.publishAt);
+    const currentYear = new Date().getFullYear();
+    if (publishDate.getFullYear() < currentYear - 1 || publishDate.getFullYear() > currentYear + 10) {
+      alert(`Invalid publish date year (${publishDate.getFullYear()}). Please check the date and try again.`);
       return;
     }
 

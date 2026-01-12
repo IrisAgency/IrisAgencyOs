@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribeRoles = onSnapshot(collection(db, 'roles'), (snapshot) => {
       if (snapshot.empty) {
+        console.warn('⚠️ Roles collection is EMPTY - seeding with defaults');
         const batch = writeBatch(db);
         DEFAULT_ROLES.forEach(role => {
           const roleRef = doc(db, 'roles', role.id);
@@ -93,6 +94,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRoles(DEFAULT_ROLES);
       } else {
         const loadedRoles = snapshot.docs.map(d => d.data() as RoleDefinition);
+        console.log('✅ Loaded roles from Firestore:', loadedRoles.map(r => r.name));
         setRoles(loadedRoles);
       }
     }, (error) => {
@@ -288,22 +290,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     const userRoleDef = roles.find(r => r && r.name === userRole);
-    const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
     
     if (!userRoleDef) {
       console.warn('⚠️ No role definition found for:', userRole);
+      // Fallback to default role if Firestore role doesn't exist (first-time setup)
+      const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
+      if (defaultRoleDef) {
+        setUserPermissions(defaultRoleDef.permissions || []);
+        return;
+      }
       setUserPermissions([]);
       return;
     }
     
-    // Merge with default permissions to ensure new system permissions are available immediately
-    // This fixes issues where deployed Firestore data is stale compared to code constants
-    let finalPermissions = userRoleDef.permissions || [];
-    if (defaultRoleDef) {
-        finalPermissions = Array.from(new Set([...finalPermissions, ...defaultRoleDef.permissions]));
-    }
-    
-    setUserPermissions(finalPermissions);
+    // Use Firestore role as the single source of truth
+    // Admin panel changes are now respected immediately
+    const permissions = userRoleDef.permissions || [];
+    console.log(`🔐 Loading permissions for ${userRole}:`, permissions.length, 'permissions');
+    console.log('📋 Task permissions:', permissions.filter(p => p.startsWith('tasks.')));
+    setUserPermissions(permissions);
   };
 
   // Reload permissions whenever roles update (admin changes permissions)

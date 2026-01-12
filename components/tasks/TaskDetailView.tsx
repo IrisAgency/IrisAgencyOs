@@ -703,7 +703,7 @@ const TaskDetailView = ({
                                     return u ? <img key={uid} src={u.avatar} className="w-8 h-8 rounded-full border-2 border-white" title={u.name} /> : null;
                                 })
                             ) : <span className="text-xs text-slate-400 italic px-2">Unassigned</span>}
-                            {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER) && (
+                            {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
                                 <button
                                     onClick={() => setShowAssignModal(true)}
                                     className="w-8 h-8 rounded-full bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300"

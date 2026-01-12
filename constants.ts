@@ -679,77 +679,191 @@ export const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const PERMISSIONS_LIST: Permission[] = [
-  // Tasks
-  { code: 'tasks.view.all', module: 'Tasks', name: 'View All Tasks', description: 'Can view all tasks in the system' },
-  { code: 'tasks.view.dept', module: 'Tasks', name: 'View Department Tasks', description: 'Can view tasks in own department' },
-  { code: 'tasks.view.project', module: 'Tasks', name: 'View Project Tasks', description: 'Can view tasks in assigned projects' },
-  { code: 'tasks.view.own', module: 'Tasks', name: 'View Own Tasks', description: 'Can only view assigned tasks' },
-  { code: 'tasks.create', module: 'Tasks', name: 'Create Tasks', description: 'Can create new tasks' },
-  { code: 'tasks.edit.all', module: 'Tasks', name: 'Edit All Tasks', description: 'Can edit any task regardless of assignment' },
-  { code: 'tasks.edit.dept', module: 'Tasks', name: 'Edit Department Tasks', description: 'Can edit tasks in own department' },
-  { code: 'tasks.edit.own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
-  { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can delete tasks (soft delete)' },
-  { code: 'tasks.approve', module: 'Tasks', name: 'Approve Tasks', description: 'Can approve tasks' },
-  { code: 'tasks.assign.all', module: 'Tasks', name: 'Assign Any User', description: 'Can assign any user to a task' },
-  { code: 'tasks.assign.dept', module: 'Tasks', name: 'Assign Department', description: 'Can assign department members to a task' },
-  { code: 'tasks.manage_assignees', module: 'Tasks', name: 'Manage Assignees', description: 'Can assign or reassign people on a task' },
-  { code: 'tasks.manage_publishing', module: 'Tasks', name: 'Manage Publishing', description: 'Can assign social managers and publishing notes' },
-  { code: 'workflows.override_task_workflow', module: 'Tasks', name: 'Override Task Workflow', description: 'Can manually select a workflow for a task' },
+  // ==================== AUTHENTICATION ====================
+  { code: 'auth.login', module: 'Authentication', name: 'Login', description: 'Can log into the system' },
 
-  // Projects
-  { code: 'projects.view_all', module: 'Projects', name: 'View All Projects', description: 'Can view all projects' },
-  { code: 'projects.view_own', module: 'Projects', name: 'View Own Projects', description: 'Can view only assigned projects' },
+  // ==================== CLIENTS (Sidebar: "Clients") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Clients" from sidebar
+  { code: 'clients.view.own', module: 'Clients', name: 'View Own Clients', description: '⭐ Controls sidebar visibility - Can view only assigned clients' },
+  { code: 'clients.view.dept', module: 'Clients', name: 'View Department Clients', description: '⭐ Controls sidebar visibility - Can view clients in own department' },
+  { code: 'clients.view.all', module: 'Clients', name: 'View All Clients', description: '⭐ Controls sidebar visibility - Can view all clients' },
+  { code: 'clients.create', module: 'Clients', name: 'Create Clients', description: 'Can create new clients' },
+  { code: 'clients.edit', module: 'Clients', name: 'Edit Clients', description: 'Can edit client information' },
+  { code: 'clients.archive', module: 'Clients', name: 'Archive Clients', description: 'Can archive clients' },
+  { code: 'clients.delete', module: 'Clients', name: 'Delete Clients', description: 'Can delete clients' },
+  { code: 'client.notes.view', module: 'Clients', name: 'View Client Notes', description: 'Can view client notes' },
+  { code: 'client.notes.create', module: 'Clients', name: 'Create Client Notes', description: 'Can create new client notes' },
+  { code: 'client.notes.edit', module: 'Clients', name: 'Edit Client Notes', description: 'Can edit client notes' },
+  { code: 'client.notes.delete', module: 'Clients', name: 'Delete Client Notes', description: 'Can delete client notes' },
+  { code: 'client.meetings.view', module: 'Clients', name: 'View Client Meetings', description: 'Can view client meetings' },
+  { code: 'client.meetings.create', module: 'Clients', name: 'Create Client Meetings', description: 'Can schedule new meetings' },
+  { code: 'client.meetings.edit', module: 'Clients', name: 'Edit Client Meetings', description: 'Can edit meeting details' },
+  { code: 'client.meetings.delete', module: 'Clients', name: 'Delete Client Meetings', description: 'Can delete meetings' },
+  { code: 'client.brand_assets.view', module: 'Clients', name: 'View Brand Assets', description: 'Can view brand guidelines and assets' },
+  { code: 'client.brand_assets.manage', module: 'Clients', name: 'Manage Brand Assets', description: 'Can add/edit/delete brand assets' },
+  { code: 'client.marketing_strategies.view', module: 'Clients', name: 'View Marketing Strategies', description: 'Can view marketing strategies' },
+  { code: 'client.marketing_strategies.manage', module: 'Clients', name: 'Manage Marketing Strategies', description: 'Can create/edit/delete marketing strategies' },
+
+  // ==================== PROJECTS (Sidebar: "Projects") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Projects" from sidebar
+  { code: 'projects.view.own', module: 'Projects', name: 'View Own Projects', description: '⭐ Controls sidebar visibility - Can view only assigned projects' },
+  { code: 'projects.view.dept', module: 'Projects', name: 'View Department Projects', description: '⭐ Controls sidebar visibility - Can view projects in own department' },
+  { code: 'projects.view.all', module: 'Projects', name: 'View All Projects', description: '⭐ Controls sidebar visibility - Can view all projects' },
   { code: 'projects.create', module: 'Projects', name: 'Create Projects', description: 'Can create new projects' },
-  { code: 'projects.edit_all', module: 'Projects', name: 'Edit All Projects', description: 'Can edit any project' },
-  { code: 'projects.edit_own', module: 'Projects', name: 'Edit Own Projects', description: 'Can edit only assigned projects' },
+  { code: 'projects.edit', module: 'Projects', name: 'Edit Projects', description: 'Can edit project information' },
   { code: 'projects.archive', module: 'Projects', name: 'Archive Projects', description: 'Can archive projects' },
-  { code: 'projects.marketing_assets_manage', module: 'Projects', name: 'Manage Marketing Assets', description: 'Can add/edit/delete project marketing assets' },
+  { code: 'projects.delete', module: 'Projects', name: 'Delete Projects', description: 'Can delete projects' },
+  { code: 'milestones.view', module: 'Projects', name: 'View Milestones', description: 'Can view project milestones' },
+  { code: 'milestones.create', module: 'Projects', name: 'Create Milestones', description: 'Can create new milestones' },
+  { code: 'milestones.edit', module: 'Projects', name: 'Edit Milestones', description: 'Can edit milestone details' },
+  { code: 'milestones.delete', module: 'Projects', name: 'Delete Milestones', description: 'Can delete milestones' },
 
-  // Admin
-  { code: 'admin.view_console', module: 'Admin', name: 'View Admin Console', description: 'Access to admin dashboard' },
-  { code: 'admin.manage_users', module: 'Admin', name: 'Manage Users', description: 'Can add/edit/delete users' },
-  { code: 'admin.manage_roles', module: 'Admin', name: 'Manage Roles', description: 'Can add/edit/delete roles' },
-  { code: 'admin.manage_settings', module: 'Admin', name: 'Manage Settings', description: 'Can change system settings' },
+  // ==================== TASKS (Sidebar: "Tasks & Workflow") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Tasks & Workflow" from sidebar
+  { code: 'tasks.view.own', module: 'Tasks', name: 'View Own Tasks', description: '⭐ Controls sidebar visibility - Can view only assigned tasks' },
+  { code: 'tasks.view.dept', module: 'Tasks', name: 'View Department Tasks', description: '⭐ Controls sidebar visibility - Can view tasks in own department' },
+  { code: 'tasks.view.project', module: 'Tasks', name: 'View Project Tasks', description: '⭐ Controls sidebar visibility - Can view tasks in assigned projects' },
+  { code: 'tasks.view.all', module: 'Tasks', name: 'View All Tasks', description: '⭐ Controls sidebar visibility - Can view all tasks in the system' },
+  { code: 'tasks.create', module: 'Tasks', name: 'Create Tasks', description: 'Can create new tasks' },
+  { code: 'tasks.edit.own', module: 'Tasks', name: 'Edit Own Tasks', description: 'Can edit only assigned tasks' },
+  { code: 'tasks.edit.dept', module: 'Tasks', name: 'Edit Department Tasks', description: 'Can edit tasks in own department' },
+  { code: 'tasks.edit.all', module: 'Tasks', name: 'Edit All Tasks', description: 'Can edit any task regardless of assignment' },
+  { code: 'tasks.edit_completed', module: 'Tasks', name: 'Edit Completed Tasks', description: 'Can edit tasks marked as completed' },
+  { code: 'tasks.assign.dept', module: 'Tasks', name: 'Assign Department Users', description: 'Can assign department members to tasks' },
+  { code: 'tasks.assign.all', module: 'Tasks', name: 'Assign Any User', description: 'Can assign any user to tasks' },
+  { code: 'tasks.reassign.dept', module: 'Tasks', name: 'Reassign Department Tasks', description: 'Can reassign department tasks' },
+  { code: 'tasks.reassign.all', module: 'Tasks', name: 'Reassign Any Task', description: 'Can reassign any task to different users' },
+  { code: 'tasks.manage_assignees', module: 'Tasks', name: 'Manage Task Assignees', description: 'Can assign or reassign people on a task' },
+  { code: 'tasks.manage_publishing', module: 'Tasks', name: 'Manage Publishing', description: 'Can assign social managers and publishing notes' },
+  { code: 'tasks.advance', module: 'Tasks', name: 'Advance Task Status', description: 'Can move task to next workflow step' },
+  { code: 'tasks.submit_for_review', module: 'Tasks', name: 'Submit for Review', description: 'Can submit task for review' },
+  { code: 'tasks.request_revision', module: 'Tasks', name: 'Request Revision', description: 'Can request revisions on tasks' },
+  { code: 'tasks.approve', module: 'Tasks', name: 'Approve Tasks', description: 'Can approve task submissions' },
+  { code: 'tasks.reject', module: 'Tasks', name: 'Reject Tasks', description: 'Can reject task submissions' },
+  { code: 'tasks.reopen', module: 'Tasks', name: 'Reopen Tasks', description: 'Can reopen completed or archived tasks' },
+  { code: 'tasks.archive', module: 'Tasks', name: 'Archive Tasks', description: 'Can archive tasks' },
+  { code: 'tasks.delete', module: 'Tasks', name: 'Delete Tasks', description: 'Can permanently delete tasks' },
+  { code: 'tasks.references.view', module: 'Tasks', name: 'View Task References', description: 'Can view task reference materials' },
+  { code: 'tasks.references.add', module: 'Tasks', name: 'Add Task References', description: 'Can add reference materials to tasks' },
+  { code: 'tasks.references.delete', module: 'Tasks', name: 'Delete Task References', description: 'Can remove reference materials from tasks' },
+  { code: 'task_files.view', module: 'Tasks', name: 'View Task Files', description: 'Can view files attached to tasks' },
+  { code: 'task_files.upload', module: 'Tasks', name: 'Upload Task Files', description: 'Can upload files to tasks' },
+  { code: 'task_files.delete', module: 'Tasks', name: 'Delete Task Files', description: 'Can delete files from tasks' },
 
-  // Finance
-  { code: 'finance.view', module: 'Finance', name: 'View Financials', description: 'Can view invoices and budgets' },
-  { code: 'finance.manage', module: 'Finance', name: 'Manage Financials', description: 'Can create/edit invoices and payments' },
+  // ==================== POSTING & SOCIAL MEDIA (Sidebar: "Posting & Captions") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Posting & Captions" from sidebar
+  { code: 'posting.view.dept', module: 'Social Media', name: 'View Department Posts', description: '⭐ Controls sidebar visibility - Can view posts for own department' },
+  { code: 'posting.view.all', module: 'Social Media', name: 'View All Posts', description: '⭐ Controls sidebar visibility - Can view all social media posts' },
+  { code: 'posting.create', module: 'Social Media', name: 'Create Posts', description: 'Can create social media posts' },
+  { code: 'posting.edit', module: 'Social Media', name: 'Edit Posts', description: 'Can edit social media posts' },
+  { code: 'posting.assign', module: 'Social Media', name: 'Assign Posts', description: 'Can assign posts to social managers' },
+  { code: 'posting.submit_for_review', module: 'Social Media', name: 'Submit for Review', description: 'Can submit posts for approval' },
+  { code: 'posting.request_revision', module: 'Social Media', name: 'Request Revision', description: 'Can request post revisions' },
+  { code: 'posting.approve', module: 'Social Media', name: 'Approve Posts', description: 'Can approve posts for publishing' },
+  { code: 'posting.schedule', module: 'Social Media', name: 'Schedule Posts', description: 'Can schedule posts for future publishing' },
+  { code: 'posting.mark_published', module: 'Social Media', name: 'Mark Published', description: 'Can mark posts as published' },
+  { code: 'posting.archive', module: 'Social Media', name: 'Archive Posts', description: 'Can archive social media posts' },
+  { code: 'posting.delete', module: 'Social Media', name: 'Delete Posts', description: 'Can delete social media posts' },
 
-  // Production
-  { code: 'production.view', module: 'Production', name: 'View Production', description: 'Can view production assets' },
-  { code: 'production.manage', module: 'Production', name: 'Manage Production', description: 'Can manage production assets' },
+  // ==================== CALENDAR (Sidebar: "Calendar") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Calendar" from sidebar
+  { code: 'calendar.view', module: 'Calendar', name: 'View Calendar', description: '⭐ Controls sidebar visibility - Can view calendar' },
+  { code: 'calendar.manage', module: 'Calendar', name: 'Manage Calendar', description: 'Can create and edit calendar entries' },
+  { code: 'calendar.months.create', module: 'Calendar', name: 'Create Calendar Months', description: 'Can create calendar months' },
+  { code: 'calendar.months.edit', module: 'Calendar', name: 'Edit Calendar Months', description: 'Can edit calendar months' },
+  { code: 'calendar.months.delete', module: 'Calendar', name: 'Delete Calendar Months', description: 'Can delete calendar months' },
+  { code: 'calendar.items.create', module: 'Calendar', name: 'Create Calendar Items', description: 'Can add calendar items' },
+  { code: 'calendar.items.edit', module: 'Calendar', name: 'Edit Calendar Items', description: 'Can edit calendar items' },
+  { code: 'calendar.items.delete', module: 'Calendar', name: 'Delete Calendar Items', description: 'Can delete calendar items' },
 
-  // Files
-  { code: 'files.view_all', module: 'Files', name: 'View All Files', description: 'Can view all files' },
-  { code: 'files.view_own', module: 'Files', name: 'View Own Files', description: 'Can view only assigned files' },
-  { code: 'files.upload', module: 'Files', name: 'Upload Files', description: 'Can upload new files' },
-  { code: 'files.delete', module: 'Files', name: 'Delete Files', description: 'Can delete files' },
+  // ==================== ASSETS (Sidebar: "Assets") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Assets" from sidebar
+  { code: 'assets.view.dept', module: 'Assets', name: 'View Department Assets', description: '⭐ Controls sidebar visibility - Can view department assets' },
+  { code: 'assets.view.all', module: 'Assets', name: 'View All Assets', description: '⭐ Controls sidebar visibility - Can view all production assets' },
+  { code: 'assets.upload', module: 'Assets', name: 'Upload Assets', description: 'Can upload new assets' },
+  { code: 'assets.edit_metadata', module: 'Assets', name: 'Edit Asset Metadata', description: 'Can edit asset information' },
+  { code: 'assets.delete', module: 'Assets', name: 'Delete Assets', description: 'Can delete assets' },
+  { code: 'assets.link_to_task', module: 'Assets', name: 'Link to Task', description: 'Can link assets to tasks' },
+  { code: 'assets.archive', module: 'Assets', name: 'Archive Assets', description: 'Can archive assets' },
 
-  // Analytics
-  { code: 'analytics.view', module: 'Analytics', name: 'View Analytics', description: 'Can view analytics dashboard' },
-  // Social
-  { code: 'social_posts.view', module: 'Social', name: 'View Social Posts', description: 'Can view the Posting Hub' },
-  { code: 'social_posts.manage', module: 'Social', name: 'Manage Social Posts', description: 'Can create, edit, and publish social posts' },
-  { code: 'social.manage', module: 'Social', name: 'Manage Social Posts', description: 'Can create, edit, and publish social posts' },
+  // ==================== PRODUCTION (Sidebar: "Production Hub" - Currently Hidden) ====================
+  // 🔹 Uncheck ALL permissions below to hide "Production Hub" from sidebar
+  { code: 'production.view', module: 'Production', name: 'View Production', description: '⭐ Controls sidebar visibility - Can view production schedules and assets' },
+  { code: 'production.create', module: 'Production', name: 'Create Production', description: 'Can create production items' },
+  { code: 'production.edit', module: 'Production', name: 'Edit Production', description: 'Can edit production details' },
+  { code: 'production.assign_crew', module: 'Production', name: 'Assign Crew', description: 'Can assign crew to productions' },
+  { code: 'production.schedule', module: 'Production', name: 'Schedule Production', description: 'Can schedule production dates' },
+  { code: 'production.close_job', module: 'Production', name: 'Close Production', description: 'Can close completed productions' },
+  { code: 'production.delete', module: 'Production', name: 'Delete Production', description: 'Can delete production items' },
 
-  // Departments
-  { code: 'departments.view', module: 'Admin', name: 'View Departments', description: 'Can view department list' },
-  { code: 'departments.manage', module: 'Admin', name: 'Manage Departments', description: 'Can create/edit/delete departments' },
+  // ==================== VENDORS (Sidebar: "Network") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Network" from sidebar
+  { code: 'vendors.view', module: 'Vendors', name: 'View Vendors', description: '⭐ Controls sidebar visibility - Can view vendor list' },
+  { code: 'vendors.create', module: 'Vendors', name: 'Create Vendors', description: 'Can add new vendors' },
+  { code: 'vendors.edit', module: 'Vendors', name: 'Edit Vendors', description: 'Can edit vendor information' },
+  { code: 'vendors.delete', module: 'Vendors', name: 'Delete Vendors', description: 'Can delete vendors' },
+  { code: 'vendors.assign_to_project', module: 'Vendors', name: 'Assign to Projects', description: 'Can assign vendors to projects' },
 
-  // Clients
-  { code: 'clients.view', module: 'Clients', name: 'View Clients', description: 'Can view client profiles' },
-  { code: 'clients.manage', module: 'Clients', name: 'Manage Clients', description: 'Can create/edit/delete clients' },
-  { code: 'clients.manage_strategies', module: 'Clients', name: 'Manage Strategies', description: 'Can add/edit/delete marketing strategies' },
-  { code: 'clients.manage_links', module: 'Clients', name: 'Manage Social Links', description: 'Can add/edit/delete social media links' },
-  { code: 'clients.notes_view', module: 'Clients', name: 'View Notes', description: 'Can view client notes' },
-  { code: 'clients.notes_create', module: 'Clients', name: 'Create Notes', description: 'Can create new client notes' },
-  { code: 'clients.notes_manage', module: 'Clients', name: 'Manage Notes', description: 'Can edit/delete any client note' },
-  { code: 'client.meetings.view', module: 'Clients', name: 'View Meetings', description: 'Can view client meetings' },
-  { code: 'client.meetings.create', module: 'Clients', name: 'Create Meetings', description: 'Can schedule new meetings' },
-  { code: 'client.meetings.edit', module: 'Clients', name: 'Edit Meetings', description: 'Can edit meetings' },
-  { code: 'client.meetings.delete', module: 'Clients', name: 'Delete Meetings', description: 'Can delete meetings' },
-  { code: 'clients.brand_view', module: 'Clients', name: 'View Brand Assets', description: 'Can view brand guidelines and assets' },
-  { code: 'clients.brand_manage', module: 'Clients', name: 'Manage Brand Assets', description: 'Can add/edit/delete brand assets' }
+  // ==================== FINANCE (Sidebar: "Finance") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Finance" from sidebar
+  { code: 'finance.view.own', module: 'Finance', name: 'View Own Finances', description: '⭐ Controls sidebar visibility - Can view own financial records' },
+  { code: 'finance.view.project', module: 'Finance', name: 'View Project Finances', description: '⭐ Controls sidebar visibility - Can view project finances' },
+  { code: 'finance.view.all', module: 'Finance', name: 'View All Finances', description: '⭐ Controls sidebar visibility - Can view all financial data' },
+  { code: 'finance.create_invoice', module: 'Finance', name: 'Create Invoices', description: 'Can create client invoices' },
+  { code: 'finance.edit_invoice', module: 'Finance', name: 'Edit Invoices', description: 'Can edit invoices' },
+  { code: 'finance.delete_invoice', module: 'Finance', name: 'Delete Invoices', description: 'Can delete invoices' },
+  { code: 'finance.record_payment', module: 'Finance', name: 'Record Payments', description: 'Can record payment receipts' },
+  { code: 'finance.approve_payment', module: 'Finance', name: 'Approve Payments', description: 'Can approve payment requests' },
+  { code: 'finance.export', module: 'Finance', name: 'Export Financial Data', description: 'Can export financial reports' },
+  { code: 'finance.manage_budgets', module: 'Finance', name: 'Manage Budgets', description: 'Can create and manage budgets' },
+
+  // ==================== TEAM & HR (Sidebar: "Team & HR") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Team & HR" from sidebar
+  { code: 'users.view.all', module: 'Team & HR', name: 'View All Users', description: '⭐ Controls sidebar visibility - Can view all users in the system' },
+  { code: 'users.create', module: 'Team & HR', name: 'Create Users', description: 'Can create new user accounts' },
+  { code: 'users.edit', module: 'Team & HR', name: 'Edit Users', description: 'Can edit user information' },
+  { code: 'users.disable', module: 'Team & HR', name: 'Disable Users', description: 'Can deactivate user accounts' },
+  { code: 'users.force_password_reset', module: 'Team & HR', name: 'Force Password Reset', description: 'Can force users to reset their password' },
+  { code: 'departments.view', module: 'Team & HR', name: 'View Departments', description: 'Can view department list' },
+  { code: 'departments.create', module: 'Team & HR', name: 'Create Departments', description: 'Can create new departments' },
+  { code: 'departments.edit', module: 'Team & HR', name: 'Edit Departments', description: 'Can edit department information' },
+  { code: 'departments.delete', module: 'Team & HR', name: 'Delete Departments', description: 'Can delete departments' },
+  { code: 'departments.assign_members', module: 'Team & HR', name: 'Assign Members', description: 'Can assign users to departments' },
+
+  // ==================== REPORTS & ANALYTICS (Sidebar: "Reports") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Reports" from sidebar
+  { code: 'reports.view.dept', module: 'Reports & Analytics', name: 'View Department Reports', description: '⭐ Controls sidebar visibility - Can view department reports' },
+  { code: 'reports.view.all', module: 'Reports & Analytics', name: 'View All Reports', description: '⭐ Controls sidebar visibility - Can view all reports' },
+  { code: 'reports.export', module: 'Reports & Analytics', name: 'Export Reports', description: 'Can export report data' },
+  { code: 'analytics.view.dept', module: 'Reports & Analytics', name: 'View Department Analytics', description: '⭐ Controls sidebar visibility - Can view department analytics' },
+  { code: 'analytics.view.all', module: 'Reports & Analytics', name: 'View All Analytics', description: '⭐ Controls sidebar visibility - Can view system-wide analytics' },
+
+  // ==================== ADMIN PANEL (Sidebar: "Admin Panel") ====================
+  // 🔹 Uncheck ALL permissions below to hide "Admin Panel" from sidebar
+  { code: 'roles.view', module: 'Admin', name: 'View Roles', description: '⭐ Controls sidebar visibility - Can view role definitions' },
+  { code: 'roles.create', module: 'Admin', name: 'Create Roles', description: 'Can create new roles' },
+  { code: 'roles.edit', module: 'Admin', name: 'Edit Roles', description: 'Can edit role permissions' },
+  { code: 'roles.delete', module: 'Admin', name: 'Delete Roles', description: 'Can delete roles' },
+  { code: 'roles.assign', module: 'Admin', name: 'Assign Roles', description: 'Can assign roles to users' },
+  { code: 'permissions.view', module: 'Admin', name: 'View Permissions', description: 'Can view permission matrix' },
+  { code: 'permissions.manage', module: 'Admin', name: 'Manage Permissions', description: 'Can modify permission assignments' },
+  { code: 'admin.branding.view', module: 'Admin', name: 'View Branding', description: '⭐ Controls sidebar visibility - Can view branding settings' },
+  { code: 'admin.branding.edit', module: 'Admin', name: 'Edit Branding', description: 'Can customize branding' },
+  { code: 'admin.branding.upload_assets', module: 'Admin', name: 'Upload Branding Assets', description: 'Can upload logos and brand assets' },
+  { code: 'admin.settings.view', module: 'Admin', name: 'View System Settings', description: '⭐ Controls sidebar visibility - Can view system configuration' },
+  { code: 'admin.settings.edit', module: 'Admin', name: 'Edit System Settings', description: 'Can change system settings' },
+
+  // ==================== OTHER PERMISSIONS ====================
+  { code: 'approvals.view.own', module: 'Approvals', name: 'View Own Approvals', description: 'Can view approvals assigned to self' },
+  { code: 'approvals.view.dept', module: 'Approvals', name: 'View Department Approvals', description: 'Can view department approval workflows' },
+  { code: 'approvals.view.all', module: 'Approvals', name: 'View All Approvals', description: 'Can view all approval workflows' },
+  { code: 'approvals.act', module: 'Approvals', name: 'Act on Approvals', description: 'Can approve or reject assigned approvals' },
+  { code: 'approvals.configure', module: 'Approvals', name: 'Configure Approvals', description: 'Can set up approval workflows' },
+  { code: 'notes.create', module: 'Notes', name: 'Create Notes', description: 'Can create notes' },
+  { code: 'notes.edit_own', module: 'Notes', name: 'Edit Own Notes', description: 'Can edit own notes' },
+  { code: 'notes.delete_own', module: 'Notes', name: 'Delete Own Notes', description: 'Can delete own notes' },
+  { code: 'notes.manage_all', module: 'Notes', name: 'Manage All Notes', description: 'Can edit and delete any notes' },
+  { code: 'dashboard.view_gm_urgent', module: 'Dashboard', name: 'View GM Urgent Panel', description: 'Can view GM urgent items on dashboard' },
 ];
 
 export const DEFAULT_ROLES: RoleDefinition[] = [

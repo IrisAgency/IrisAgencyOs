@@ -79,10 +79,17 @@ const TaskPlanningModal: React.FC<TaskPlanningModalProps> = ({
     setIsSaving(true);
     try {
       // Update tasks with delivery due dates
+      // IMPORTANT: Update BOTH deliveryDueAt (for workflow) AND dueDate (for calendar display)
       const updatedTasks = tasks.map(task => ({
         ...task,
-        deliveryDueAt: taskDueDates[task.id] || null
+        deliveryDueAt: taskDueDates[task.id] || null,
+        dueDate: taskDueDates[task.id] || task.dueDate // Update dueDate so calendar displays correctly
       }));
+
+      console.log('💾 Saving tasks with updated due dates:');
+      updatedTasks.forEach(t => {
+        console.log(`  "${t.title}": deliveryDueAt=${t.deliveryDueAt}, dueDate=${t.dueDate}`);
+      });
 
       await onSave(updatedTasks);
       onClose();

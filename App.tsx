@@ -1613,6 +1613,7 @@ const App: React.FC = () => {
             onUpdateMarketingAsset={handleUpdateProjectMarketingAsset}
             onDeleteMarketingAsset={handleDeleteProjectMarketingAsset}
             onUploadFile={handleUploadFile}
+            onDeleteFile={handleDeleteFile}
             onCreateFolder={handleCreateFolder}
             initialSelectedProjectId={targetProjectId}
             checkPermission={checkPermission}

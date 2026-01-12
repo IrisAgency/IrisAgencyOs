@@ -53,14 +53,28 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
   // --- Group Tasks by Date ---
   const tasksByDate = useMemo(() => {
     const map: Record<string, Task[]> = {};
+    console.log(`📅 ProjectCalendar: Processing ${filteredTasks.length} filtered tasks for project ${project.id}`);
+    
     filteredTasks.forEach(task => {
-      if (!task.dueDate) return;
-      const dateStr = new Date(task.dueDate).toISOString().split('T')[0]; // YYYY-MM-DD
+      if (!task.dueDate) {
+        console.log(`⚠️ Task ${task.id} (${task.title}) has no dueDate`);
+        return;
+      }
+      
+      // Handle both Date objects and ISO strings
+      const dueDate = new Date(task.dueDate);
+      const dateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}`;
+      
+      console.log(`📌 Task "${task.title}" dueDate: ${task.dueDate} → ${dateStr}`);
+      
       if (!map[dateStr]) map[dateStr] = [];
       map[dateStr].push(task);
     });
+    
+    console.log('📊 Tasks grouped by date:', Object.keys(map).length, 'unique dates');
+    console.log('📊 tasksByDate:', map);
     return map;
-  }, [filteredTasks]);
+  }, [filteredTasks, project.id]);
 
   // --- Render Helpers ---
   const getStatusColor = (status: TaskStatus) => {

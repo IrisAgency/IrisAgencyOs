@@ -300,11 +300,10 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 }
                 const workflow = workflowTemplates.find(w => w.id === finalWorkflowId);
 
-                const canAssignOthers = 
+                const canAssign = 
                     checkPermission('tasks.manage_assignees') || 
                     checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || 
-                    checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || 
-                    currentUser.role === UserRole.GENERAL_MANAGER;
+                    checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT);
 
                 const finalAssignees = canAssignOthers ? assigneeIds : [currentUser.id];
 
@@ -638,7 +637,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     </div>
 
                     {/* Assignees Selection */}
-                    {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER) && (
+                    {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
                         <div>
                             <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Assign Team Members</label>
                             <div className="border border-[#49454F] rounded-lg p-2 max-h-48 overflow-y-auto space-y-1 custom-scrollbar bg-[#121212]">

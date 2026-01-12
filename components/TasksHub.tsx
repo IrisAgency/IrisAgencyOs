@@ -62,6 +62,12 @@ const TasksHub: React.FC<TasksHubProps> = ({
   onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, checkPermission, onDeleteTask,
   initialSelectedTaskId, onAddSocialPost, leaveRequests = []
 }) => {
+  // Permission Check - Must have at least one task view permission
+  const canAccessTasks = checkPermission(PERMISSIONS.TASKS.VIEW_ALL) || 
+                         checkPermission(PERMISSIONS.TASKS.VIEW_DEPT) || 
+                         checkPermission(PERMISSIONS.TASKS.VIEW_PROJECT) || 
+                         checkPermission(PERMISSIONS.TASKS.VIEW_OWN);
+
   // State
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(initialSelectedTaskId || null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -293,6 +299,30 @@ const TasksHub: React.FC<TasksHubProps> = ({
   const completedCount = filteredTasks.filter(t => t.status === TaskStatus.COMPLETED || t.isArchived).length;
   const myApprovalsCount = countTasksNeedingMyApproval(filteredTasks, currentUser, approvalSteps);
 
+  // Access Control: Show denied message if user doesn't have task view permissions
+  if (!canAccessTasks) {
+    return (
+      <PageContainer>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4 p-8 max-w-md">
+            <div className="w-16 h-16 mx-auto bg-rose-100 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900">Access Denied</h2>
+            <p className="text-slate-600">
+              You don't have permission to view tasks. Please contact your administrator if you believe this is an error.
+            </p>
+            <p className="text-sm text-slate-500 mt-4">
+              Required permissions: tasks.view.all, tasks.view.dept, tasks.view.project, or tasks.view.own
+            </p>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
+
   return (
     <PageContainer className="px-0 sm:px-2 lg:px-4">
       <div className="bg-[color:var(--dash-bg)] text-slate-100 rounded-3xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden">
@@ -417,7 +447,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
                       <label className="text-[11px] text-slate-400 uppercase tracking-wide">Assignee</label>
                       <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
                         <option value="all">Anyone</option>
-                        {((checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT) || currentUser.role === UserRole.GENERAL_MANAGER)
+                        {((checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT))
                           ? users
                           : users.filter(u => projectMembers.some(pm => pm.userId === u.id && projects.some(p => p.id === pm.projectId)))
                         ).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}

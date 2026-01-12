@@ -11,6 +11,7 @@ import ProjectCalendar from './ProjectCalendar';
 import TaskPlanningModal from './TaskPlanningModal';
 import Modal from './common/Modal';
 import DropdownMenu from './common/DropdownMenu';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProjectsHubProps {
   projects: Project[];
@@ -36,6 +37,7 @@ interface ProjectsHubProps {
   onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>; // New
   onDeleteMarketingAsset: (assetId: string) => Promise<void>; // New
   onUploadFile: (file: AgencyFile) => Promise<void>;
+  onDeleteFile: (fileId: string) => Promise<void>;
   onCreateFolder: (folder: FileFolder) => void;
   onAddFreelancerAssignment: (assignment: FreelancerAssignment) => void;
   onRemoveMember: (memberId: string) => void;
@@ -55,7 +57,7 @@ interface ProjectsHubProps {
 
 const ProjectsHub: React.FC<ProjectsHubProps> = ({
   projects, clients, users, members, milestones, activityLogs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps,
-  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone: onAddProjectMilestone, onUpdateMilestone: onUpdateProjectMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, onAddFreelancerAssignment,
+  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone: onAddProjectMilestone, onUpdateMilestone: onUpdateProjectMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onDeleteFile, onCreateFolder, onAddFreelancerAssignment,
   onRemoveMember, onRemoveFreelancerAssignment, initialSelectedProjectId, checkPermission = (_permission: string) => true, onNavigateToTask,
   // Smart Project Creation Props
   workflowTemplates = [],
@@ -66,6 +68,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   onUpdateDynamicMilestone,
   onAddTask
 }) => {
+  const { user: currentUser } = useAuth();
   const [viewMode, setViewMode] = useState<'list' | 'detail'>(initialSelectedProjectId ? 'detail' : 'list');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId || null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -255,39 +258,55 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     console.log(`✅ Project created: ${newProject.id} with ${formMemberIds.length} selected members`);
 
     // Step 1.5: Create ProjectMember records for team members
+    // NOTE: App.tsx auto-creates creator and account manager, so filter them out
     if (formMemberIds.length > 0) {
-      console.log(`📝 Creating ProjectMember records for ${formMemberIds.length} members...`);
+      // Filter out creator and account manager as they're auto-created in App.tsx
+      const membersToCreate = formMemberIds.filter(userId => 
+        userId !== currentUser?.id && userId !== formManager
+      );
+      
+      console.log(`📝 Creating ProjectMember records for ${membersToCreate.length} members (excluding auto-created creator/manager)...`);
       console.log('Selected member IDs:', formMemberIds);
+      console.log('Filtered member IDs (to create):', membersToCreate);
       console.log('onAddMember handler exists:', !!onAddMember);
       
       if (!onAddMember) {
         console.error('❌ onAddMember handler is missing! Members will not be created.');
-      } else {
+      } else if (membersToCreate.length > 0) {
         try {
-          const memberPromises = formMemberIds.map((userId, index) => {
-            const user = users.find(u => u.id === userId);
-            console.log(`Creating member ${index + 1}:`, { userId, userName: user?.name, role: user?.role });
+          const memberPromises = membersToCreate.map((userId, index) => {
+            const userObj = users.find(u => u.id === userId);
+            console.log(`Creating member ${index + 1}:`, { userId, userName: userObj?.name, role: userObj?.role });
             const projectMember: ProjectMember = {
               id: `pm_${newProject.id}_${userId}_${Date.now() + index}`,
               projectId: newProject.id,
               userId: userId,
-              roleInProject: user?.role || 'Team Member',
+              roleInProject: userObj?.role || 'Team Member',
               addedAt: new Date().toISOString()
             };
             return onAddMember(projectMember);
           });
           await Promise.all(memberPromises);
-          console.log(`✅ Successfully created ${formMemberIds.length} team members for project ${newProject.id}`);
+          console.log(`✅ Successfully created ${membersToCreate.length} team members for project ${newProject.id}`);
         } catch (error) {
           console.error('❌ Error creating team members:', error);
         }
+      } else {
+        console.log('ℹ️ No additional members to create (all selected members are auto-created)');
       }
     } else {
       console.log('ℹ️ No team members selected for this project');
     }
 
     // Step 2 & 3: Generate milestones and tasks if calendar month selected
+    console.log('🔍 Checking if should show Task Planning Modal:');
+    console.log('  formCalendarMonthId:', formCalendarMonthId);
+    console.log('  selectedMonthItems.length:', selectedMonthItems.length);
+    console.log('  onAddDynamicMilestone exists:', !!onAddDynamicMilestone);
+    console.log('  onAddTask exists:', !!onAddTask);
+    
     if (formCalendarMonthId && selectedMonthItems.length > 0 && onAddDynamicMilestone && onAddTask) {
+      console.log('✅ Conditions met! Generating milestones and tasks...');
       try {
         // Generate dynamic milestones
         const createdMilestones: Milestone[] = [];
@@ -357,9 +376,50 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         // Generate delivery tasks
         const tasksToGenerate: Task[] = [];
         
+        console.log('📅 Generating tasks from calendar items:');
         for (const item of selectedMonthItems) {
           const milestone = createdMilestones.find(m => m.type === item.type);
           const workflowId = newProject.workflowByType?.[item.type];
+
+          // Validate publishAt date - check if it's reasonable
+          const publishDate = item.publishAt ? new Date(item.publishAt) : null;
+          const currentYear = new Date().getFullYear();
+          const isValidDate = publishDate && publishDate.getFullYear() >= currentYear - 1 && publishDate.getFullYear() <= currentYear + 10;
+          
+          if (!isValidDate && item.publishAt) {
+            console.warn(`⚠️ Calendar item "${item.autoName}" has invalid publishAt date: ${item.publishAt} (year ${publishDate?.getFullYear()})`);
+            console.warn('   This will cause the task to not appear in the calendar view. Please fix the calendar item date.');
+          }
+
+          // Map calendar item references to task format
+          console.log(`   📦 Calendar item "${item.autoName}" has:`, {
+            referenceLinks: item.referenceLinks?.length || 0,
+            referenceFiles: item.referenceFiles?.length || 0
+          });
+
+          const taskReferenceLinks = (item.referenceLinks || []).map((link, idx) => ({
+            id: `rl_${item.id}_${idx}_${Date.now()}`,
+            title: link.title,
+            url: link.url,
+            note: '',
+            createdBy: item.createdBy,
+            createdAt: item.createdAt
+          }));
+
+          const taskReferenceImages = (item.referenceFiles || []).map((file, idx) => ({
+            id: `ri_${item.id}_${idx}_${Date.now()}`,
+            title: file.fileName,
+            fileName: file.fileName,
+            fileType: file.fileName.split('.').pop() || 'unknown',
+            fileSize: 0, // Not available from CalendarReferenceFile
+            storageProvider: "firebase" as const,
+            storagePath: file.storagePath,
+            downloadUrl: file.downloadURL,
+            uploadedBy: file.uploadedBy,
+            uploadedAt: file.createdAt
+          }));
+
+          console.log(`   ✅ Mapped to task: ${taskReferenceLinks.length} links, ${taskReferenceImages.length} files`);
 
           const task: Task = {
             id: `t${Date.now()}_${item.id}`,
@@ -386,6 +446,9 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             publishAt: item.publishAt,
             deliveryDueAt: null, // Will be set in Task Planning Modal
             dynamicMilestoneId: milestone?.id, // Link to dynamic milestone
+            // Copy calendar item references to task
+            referenceLinks: taskReferenceLinks,
+            referenceImages: taskReferenceImages,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           };
@@ -395,18 +458,24 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
         // Save generated tasks for the planning modal
         setGeneratedTasks(tasksToGenerate);
+        console.log(`📋 Generated ${tasksToGenerate.length} tasks, showing Task Planning Modal...`);
 
         // Show Task Planning Modal
         setShowTaskPlanningModal(true);
       } catch (error) {
         console.error('Error generating milestones/tasks:', error);
       }
+    } else {
+      console.log('❌ Conditions not met for Task Planning Modal');
     }
 
     // Reset form if not showing planning modal
     if (!formCalendarMonthId || selectedMonthItems.length === 0) {
+      console.log('🔄 Resetting form (no calendar month selected)');
       setIsModalOpen(false);
       resetForm();
+    } else {
+      console.log('⏸️ Not resetting form (waiting for Task Planning Modal)');
     }
   };
 
@@ -432,10 +501,18 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     if (!onAddTask) return;
 
     try {
+      console.log('💾 Saving tasks to Firestore...');
       // Save all tasks to Firestore
       for (const task of tasksWithDueDates) {
+        console.log(`   💾 Saving task "${task.title}":`, {
+          referenceLinks: task.referenceLinks?.length || 0,
+          referenceImages: task.referenceImages?.length || 0,
+          hasData: !!(task.referenceLinks || task.referenceImages)
+        });
         await onAddTask(task);
       }
+
+      console.log('✅ All tasks saved successfully');
 
       // Link tasks back to calendar items (update calendarItems with taskId)
       // This would typically be done in App.tsx or via a separate handler
@@ -1017,8 +1094,8 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       calendarItems={calendarItems || []}
       logs={activityLogs.filter(l => l.projectId === selectedProject.id)}
       marketingAssets={marketingAssets.filter(a => a.projectId === selectedProject.id)} // Filter here
-      files={files}
-      folders={folders}
+      files={files.filter(f => f.projectId === selectedProject.id)}
+      folders={folders.filter(folder => folder.projectId === selectedProject.id)}
       freelancers={freelancers}
       assignments={assignments.filter(a => a.projectId === selectedProject.id)}
       tasks={tasks.filter(t => t && t.projectId === selectedProject.id)}
@@ -1035,6 +1112,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       onUpdateMarketingAsset={onUpdateMarketingAsset}
       onDeleteMarketingAsset={onDeleteMarketingAsset}
       onUploadFile={onUploadFile}
+      onDeleteFile={onDeleteFile}
       onCreateFolder={onCreateFolder}
       getStatusColor={getStatusColor}
       checkPermission={checkPermission}
@@ -1074,6 +1152,7 @@ interface ProjectDetailProps {
   onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>;
   onDeleteMarketingAsset: (assetId: string) => Promise<void>;
   onUploadFile: (f: AgencyFile) => Promise<void>;
+  onDeleteFile: (fileId: string) => Promise<void>;
   onCreateFolder: (f: FileFolder) => void;
   getStatusColor: (s: string) => string;
   checkPermission: (permission: string) => boolean;
@@ -1082,7 +1161,7 @@ interface ProjectDetailProps {
 
 const ProjectDetailView: React.FC<ProjectDetailProps> = ({
   project, users, members, milestones, dynamicMilestones, calendarMonths, calendarItems, logs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps, onBack,
-  onUpdateProject, onDeleteProject, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, getStatusColor, checkPermission, onNavigateToTask
+  onUpdateProject, onDeleteProject, onAddMember, onAddFreelancerAssignment, onRemoveMember, onRemoveFreelancerAssignment, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onDeleteFile, onCreateFolder, getStatusColor, checkPermission, onNavigateToTask
 }) => {
   const [activeTab, setActiveTab] = useState<'Overview' | 'Team' | 'Milestones' | 'Calendar' | 'Files' | 'Activity'>('Overview');
 
@@ -1205,7 +1284,7 @@ const ProjectDetailView: React.FC<ProjectDetailProps> = ({
               users={users}
               currentProjectId={project.id}
               onUpload={onUploadFile}
-              onDelete={() => { }}
+              onDelete={onDeleteFile}
               onMove={() => { }}
               onCreateFolder={onCreateFolder}
             />
@@ -1882,14 +1961,17 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
     
     selectedUsers.forEach((userId, index) => {
       // Check if already a member
-      if (members.some(m => m.userId === userId)) return;
+      const exists = members.some(m => m.userId === userId);
+      console.log(`👤 Attempting to add user ${userId}, exists: ${exists}`);
+      if (exists) return;
 
       onAddMember({
-        id: `pm${Date.now()}_${index}`,
+        id: `pm_${project.id}_${userId}_${Date.now() + index}`,
         projectId: project.id,
         userId: userId,
         roleInProject: role,
-        isExternal: false
+        isExternal: false,
+        addedAt: new Date().toISOString()
       });
     });
 
