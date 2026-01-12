@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset } from '../types';
-import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive } from 'lucide-react';
+import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType } from '../types';
+import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
@@ -8,6 +8,7 @@ import PageControls from './layout/PageControls';
 import PageContent from './layout/PageContent';
 import FilesHub from './FilesHub';
 import ProjectCalendar from './ProjectCalendar';
+import TaskPlanningModal from './TaskPlanningModal';
 import Modal from './common/Modal';
 import DropdownMenu from './common/DropdownMenu';
 
@@ -42,12 +43,28 @@ interface ProjectsHubProps {
   initialSelectedProjectId?: string | null;
   checkPermission?: (permission: string) => boolean;
   onNavigateToTask?: (taskId: string) => void;
+  // Smart Project Creation Props
+  workflowTemplates?: WorkflowTemplate[];
+  calendarMonths?: CalendarMonth[];
+  calendarItems?: CalendarItem[];
+  dynamicMilestones?: Milestone[];
+  onAddDynamicMilestone?: (milestone: Milestone) => Promise<void>;
+  onUpdateDynamicMilestone?: (milestone: Milestone) => Promise<void>;
+  onAddTask?: (task: Task) => Promise<void>;
 }
 
 const ProjectsHub: React.FC<ProjectsHubProps> = ({
   projects, clients, users, members, milestones, activityLogs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps,
-  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone, onUpdateMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, onAddFreelancerAssignment,
-  onRemoveMember, onRemoveFreelancerAssignment, initialSelectedProjectId, checkPermission = (_permission: string) => true, onNavigateToTask
+  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone: onAddProjectMilestone, onUpdateMilestone: onUpdateProjectMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onCreateFolder, onAddFreelancerAssignment,
+  onRemoveMember, onRemoveFreelancerAssignment, initialSelectedProjectId, checkPermission = (_permission: string) => true, onNavigateToTask,
+  // Smart Project Creation Props
+  workflowTemplates = [],
+  calendarMonths = [],
+  calendarItems = [],
+  dynamicMilestones = [],
+  onAddDynamicMilestone,
+  onUpdateDynamicMilestone,
+  onAddTask
 }) => {
   const [viewMode, setViewMode] = useState<'list' | 'detail'>(initialSelectedProjectId ? 'detail' : 'list');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId || null);
@@ -67,6 +84,15 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   const [formManager, setFormManager] = useState('');
   const [formBrief, setFormBrief] = useState('');
 
+  // Smart Project Creation Form State
+  const [formCalendarMonthId, setFormCalendarMonthId] = useState('');
+  const [formMemberIds, setFormMemberIds] = useState<string[]>([]);
+  const [formWorkflowVideo, setFormWorkflowVideo] = useState('');
+  const [formWorkflowPhoto, setFormWorkflowPhoto] = useState('');
+  const [formWorkflowMotion, setFormWorkflowMotion] = useState('');
+  const [showTaskPlanningModal, setShowTaskPlanningModal] = useState(false);
+  const [generatedTasks, setGeneratedTasks] = useState<Task[]>([]);
+
   // Theming helpers for dashboard palette
   const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
   const elevated = 'bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] text-slate-100';
@@ -75,12 +101,39 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
 
+  // Smart Project Creation - Computed Values
+  const clientCalendarMonths = useMemo(() => {
+    if (!formClientId) return [];
+    return calendarMonths.filter(m => m.clientId === formClientId);
+  }, [formClientId, calendarMonths]);
+
+  const selectedMonthItems = useMemo(() => {
+    if (!formCalendarMonthId) return [];
+    return calendarItems.filter(item => item.calendarMonthId === formCalendarMonthId);
+  }, [formCalendarMonthId, calendarItems]);
+
+  const contentCounts = useMemo(() => {
+    const counts = { VIDEO: 0, PHOTO: 0, MOTION: 0 };
+    selectedMonthItems.forEach(item => {
+      if (item.type in counts) counts[item.type]++;
+    });
+    return counts;
+  }, [selectedMonthItems]);
+
+  const videoWorkflows = useMemo(() => {
+    return workflowTemplates.filter(wf => 
+      wf.status === 'active' || wf.status === 'available'
+    );
+  }, [workflowTemplates]);
+
   // --- Handlers ---
 
-  const handleCreateProject = (e: React.FormEvent) => {
+  const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     const client = clients.find(c => c.id === formClientId);
     if (!client) return;
+
+    const selectedMonth = calendarMonths.find(m => m.id === formCalendarMonthId);
 
     const newProject: Project = {
       id: `p${Date.now()}`,
@@ -100,21 +153,184 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       objectives: '',
       notes: '',
       thumbnail: `https://picsum.photos/seed/${Date.now()}/400/300`,
+      // Smart Project Creation Fields
+      monthKey: selectedMonth?.monthKey,
+      calendarMonthId: formCalendarMonthId || undefined,
+      memberIds: formMemberIds.length > 0 ? formMemberIds : undefined,
+      workflowByType: {
+        VIDEO: formWorkflowVideo || undefined,
+        PHOTO: formWorkflowPhoto || undefined,
+        MOTION: formWorkflowMotion || undefined
+      },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    // Step 1: Create the project
     onAddProject(newProject);
-    setIsModalOpen(false);
-    resetForm();
+
+    // Step 2 & 3: Generate milestones and tasks if calendar month selected
+    if (formCalendarMonthId && selectedMonthItems.length > 0 && onAddDynamicMilestone && onAddTask) {
+      try {
+        // Generate dynamic milestones
+        const createdMilestones: Milestone[] = [];
+        
+        if (contentCounts.VIDEO > 0) {
+          const milestone: Milestone = {
+            id: `m${Date.now()}_video`,
+            projectId: newProject.id,
+            title: 'Video Production',
+            type: 'VIDEO',
+            targetCount: contentCounts.VIDEO,
+            completedCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await onAddDynamicMilestone(milestone);
+          createdMilestones.push(milestone);
+        }
+
+        if (contentCounts.PHOTO > 0) {
+          const milestone: Milestone = {
+            id: `m${Date.now()}_photo`,
+            projectId: newProject.id,
+            title: 'Design / Photography',
+            type: 'PHOTO',
+            targetCount: contentCounts.PHOTO,
+            completedCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await onAddDynamicMilestone(milestone);
+          createdMilestones.push(milestone);
+        }
+
+        if (contentCounts.MOTION > 0) {
+          const milestone: Milestone = {
+            id: `m${Date.now()}_motion`,
+            projectId: newProject.id,
+            title: 'Motion Design',
+            type: 'MOTION',
+            targetCount: contentCounts.MOTION,
+            completedCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await onAddDynamicMilestone(milestone);
+          createdMilestones.push(milestone);
+        }
+
+        // Optional: Create POSTING milestone if any items have publishAt
+        const hasPublishDates = selectedMonthItems.some(item => item.publishAt);
+        if (hasPublishDates) {
+          const milestone: Milestone = {
+            id: `m${Date.now()}_posting`,
+            projectId: newProject.id,
+            title: 'Posting & Captions',
+            type: 'POSTING',
+            targetCount: selectedMonthItems.length,
+            completedCount: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          await onAddDynamicMilestone(milestone);
+          createdMilestones.push(milestone);
+        }
+
+        // Generate delivery tasks
+        const tasksToGenerate: Task[] = [];
+        
+        for (const item of selectedMonthItems) {
+          const milestone = createdMilestones.find(m => m.type === item.type);
+          const workflowId = newProject.workflowByType?.[item.type];
+
+          const task: Task = {
+            id: `t${Date.now()}_${item.id}`,
+            projectId: newProject.id,
+            milestoneId: milestone?.id,
+            title: item.autoName,
+            description: item.primaryBrief || null,
+            voiceOver: null,
+            department: item.type === 'VIDEO' ? 'Production' : item.type === 'PHOTO' ? 'Creative' : 'Creative',
+            priority: 'medium',
+            taskType: item.type === 'VIDEO' ? 'video' : item.type === 'PHOTO' ? 'photo' : 'motion',
+            status: 'new',
+            startDate: newProject.startDate,
+            dueDate: item.publishAt || newProject.endDate,
+            assigneeIds: formMemberIds.length > 0 ? formMemberIds : [],
+            createdBy: users[0]?.id || 'system',
+            approvalPath: [],
+            workflowTemplateId: workflowId || null,
+            currentApprovalLevel: 0,
+            isClientApprovalRequired: false,
+            isArchived: false,
+            attachments: [],
+            // Smart Project Creation fields
+            calendarItemId: item.id,
+            publishAt: item.publishAt,
+            deliveryDueAt: null, // Will be set in Task Planning Modal
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+
+          tasksToGenerate.push(task);
+        }
+
+        // Save generated tasks for the planning modal
+        setGeneratedTasks(tasksToGenerate);
+
+        // Show Task Planning Modal
+        setShowTaskPlanningModal(true);
+      } catch (error) {
+        console.error('Error generating milestones/tasks:', error);
+      }
+    }
+
+    // Reset form if not showing planning modal
+    if (!formCalendarMonthId || selectedMonthItems.length === 0) {
+      setIsModalOpen(false);
+      resetForm();
+    }
   };
 
   const resetForm = () => {
     setFormName('');
     setFormClientId('');
+    setFormType('campaign');
     setFormBudget('');
     setFormStart('');
     setFormEnd('');
+    setFormManager('');
     setFormBrief('');
+    // Smart Project Creation fields
+    setFormCalendarMonthId('');
+    setFormMemberIds([]);
+    setFormWorkflowVideo('');
+    setFormWorkflowPhoto('');
+    setFormWorkflowMotion('');
+  };
+
+  const handleSaveTaskDeliveryDates = async (tasksWithDueDates: Task[]) => {
+    if (!onAddTask) return;
+
+    try {
+      // Save all tasks to Firestore
+      for (const task of tasksWithDueDates) {
+        await onAddTask(task);
+      }
+
+      // Link tasks back to calendar items (update calendarItems with taskId)
+      // This would typically be done in App.tsx or via a separate handler
+
+      // Close modals and reset form
+      setShowTaskPlanningModal(false);
+      setIsModalOpen(false);
+      setGeneratedTasks([]);
+      resetForm();
+    } catch (error) {
+      console.error('Error saving tasks:', error);
+      throw error;
+    }
   };
 
   const filteredProjects = projects.filter(p => {
@@ -371,11 +587,171 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
               </select>
             </div>
 
+            {/* Smart Project Creation Section */}
+            {checkPermission('calendar.view') && formClientId && (
+              <div className="border-t border-[color:var(--dash-glass-border)] pt-4 mt-4 space-y-4">
+                <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Smart Project Setup
+                </h3>
+                
+                {/* Calendar Month Selector */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-1">Calendar Month (Optional)</label>
+                  <select 
+                    value={formCalendarMonthId} 
+                    onChange={e => setFormCalendarMonthId(e.target.value)} 
+                    className={inputClass}
+                  >
+                    <option value="">No calendar link</option>
+                    {clientCalendarMonths.map(month => (
+                      <option key={month.id} value={month.id}>{month.title}</option>
+                    ))}
+                  </select>
+                  {clientCalendarMonths.length === 0 && formClientId && (
+                    <p className="text-xs text-slate-500 mt-1">No calendar months found for this client</p>
+                  )}
+                </div>
+
+                {/* Show content counts when month is selected */}
+                {formCalendarMonthId && selectedMonthItems.length > 0 && (
+                  <div className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg p-3 space-y-3">
+                    <div className="flex items-center gap-2 text-xs text-slate-300">
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <span className="font-medium">{selectedMonthItems.length} content items found</span>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2">
+                      {contentCounts.VIDEO > 0 && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Video className="w-3.5 h-3.5 text-blue-400" />
+                          <span className="text-slate-300">{contentCounts.VIDEO} Video</span>
+                        </div>
+                      )}
+                      {contentCounts.PHOTO > 0 && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <ImageIcon className="w-3.5 h-3.5 text-purple-400" />
+                          <span className="text-slate-300">{contentCounts.PHOTO} Photo</span>
+                        </div>
+                      )}
+                      {contentCounts.MOTION > 0 && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                          <span className="text-slate-300">{contentCounts.MOTION} Motion</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-xs text-slate-400">
+                      {selectedMonthItems.length} delivery tasks will be auto-generated
+                    </p>
+                  </div>
+                )}
+
+                {/* Team Members Multi-Select */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-200 mb-1">Team Members</label>
+                  <select
+                    multiple
+                    value={formMemberIds}
+                    onChange={e => {
+                      const selected = Array.from(e.target.selectedOptions, option => option.value);
+                      setFormMemberIds(selected);
+                    }}
+                    className={`${inputClass} min-h-[100px]`}
+                  >
+                    {users.map(u => (
+                      <option key={u.id} value={u.id}>{u.name} - {u.role || 'Member'}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-slate-500 mt-1">Hold Cmd/Ctrl to select multiple members</p>
+                </div>
+
+                {/* Workflow Selectors */}
+                {formCalendarMonthId && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Workflow Templates</h4>
+                    
+                    {contentCounts.VIDEO > 0 && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                          <Video className="w-3 h-3 text-blue-400" />
+                          Video Workflow
+                        </label>
+                        <select
+                          value={formWorkflowVideo}
+                          onChange={e => setFormWorkflowVideo(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">No workflow</option>
+                          {videoWorkflows.map(wf => (
+                            <option key={wf.id} value={wf.id}>{wf.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {contentCounts.PHOTO > 0 && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                          <ImageIcon className="w-3 h-3 text-purple-400" />
+                          Photo Workflow
+                        </label>
+                        <select
+                          value={formWorkflowPhoto}
+                          onChange={e => setFormWorkflowPhoto(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">No workflow</option>
+                          {videoWorkflows.map(wf => (
+                            <option key={wf.id} value={wf.id}>{wf.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {contentCounts.MOTION > 0 && (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-300 mb-1 flex items-center gap-1.5">
+                          <Zap className="w-3 h-3 text-yellow-400" />
+                          Motion Workflow
+                        </label>
+                        <select
+                          value={formWorkflowMotion}
+                          onChange={e => setFormWorkflowMotion(e.target.value)}
+                          className={inputClass}
+                        >
+                          <option value="">No workflow</option>
+                          {videoWorkflows.map(wf => (
+                            <option key={wf.id} value={wf.id}>{wf.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="pt-2">
               <button type="submit" className="w-full bg-[color:var(--dash-primary)] text-white py-2.5 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all">Create Project</button>
             </div>
           </form>
         </Modal>
+
+        {/* Task Planning Modal */}
+        <TaskPlanningModal
+          isOpen={showTaskPlanningModal}
+          onClose={() => {
+            setShowTaskPlanningModal(false);
+            setGeneratedTasks([]);
+            setIsModalOpen(false);
+            resetForm();
+          }}
+          tasks={generatedTasks}
+          workflowTemplates={workflowTemplates}
+          onSave={handleSaveTaskDeliveryDates}
+        />
       </PageContainer>
     );
   }

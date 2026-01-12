@@ -216,6 +216,16 @@ export interface Project {
 
   thumbnail?: string; // For visual flair
 
+  // Smart Project Creation Fields
+  monthKey?: string; // "YYYY-MM" - linked calendar month
+  calendarMonthId?: string; // Reference to CalendarMonth
+  memberIds?: string[]; // Team member user IDs
+  workflowByType?: {
+    VIDEO?: string; // WorkflowTemplate ID for video tasks
+    PHOTO?: string; // WorkflowTemplate ID for photo tasks
+    MOTION?: string; // WorkflowTemplate ID for motion tasks
+  };
+
   // Archive Fields
   isArchived?: boolean;
   archivedAt?: string | null;
@@ -231,6 +241,20 @@ export interface ProjectMember {
   userId: string;        // User in the system
   roleInProject: string; // e.g. "Account Manager", "Creative Lead", "Producer"
   isExternal: boolean;   // true if freelancer
+}
+
+// Smart Project Creation - Dynamic Milestones
+export type MilestoneType = 'VIDEO' | 'PHOTO' | 'MOTION' | 'POSTING';
+
+export interface Milestone {
+  id: string;
+  projectId: string;
+  title: string;
+  type: MilestoneType; // Content type for dynamic tracking
+  targetCount: number; // Total tasks expected
+  completedCount: number; // Tasks completed
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProjectMilestone {
@@ -290,6 +314,12 @@ export interface Task {
   isClientApprovalRequired: boolean;
 
   estimatedHours?: number;
+
+  // Smart Project Creation - Calendar & Delivery
+  calendarItemId?: string | null; // Link to CalendarItem
+  publishAt?: string | null; // Publish date from calendar
+  deliveryDueAt?: string | null; // Delivery deadline (separate from publish)
+  milestoneId?: string | null; // Link to Milestone (for dynamic tracking)
 
   // Social Handover
   requiresSocialPost?: boolean;
@@ -1132,6 +1162,10 @@ export interface CalendarItem {
   referenceLinks: CalendarReferenceLink[];
   referenceFiles: CalendarReferenceFile[];
   publishAt: string;
+  
+  // Smart Project Creation - Task Link
+  taskId?: string | null; // Link to generated delivery task
+  
   createdBy: string;
   createdAt: string;
   updatedAt: string;

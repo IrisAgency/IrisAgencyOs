@@ -162,6 +162,9 @@ const App: React.FC = () => {
   const [calendarMonths] = useFirestoreCollection<CalendarMonth>('calendar_months', []);
   const [calendarItems] = useFirestoreCollection<CalendarItem>('calendar_items', []);
 
+  // Smart Project Creation - Dynamic Milestones
+  const [milestones] = useFirestoreCollection<Milestone>('milestones', []);
+
   // Admin & Settings State
   // const [appBranding, setAppBranding] = useStickyState<AppBranding>(DEFAULT_BRANDING, 'iris_branding');
   // const [appSettings, setAppSettings] = useStickyState<AppSettings>(DEFAULT_SETTINGS, 'iris_settings');
@@ -838,6 +841,15 @@ const App: React.FC = () => {
       };
       await setDoc(doc(db, 'project_activity_logs', log.id), log);
     }
+  };
+
+  // Smart Project Creation - Milestone Handlers
+  const handleAddMilestone = async (milestone: Milestone) => {
+    await setDoc(doc(db, 'milestones', milestone.id), milestone);
+  };
+
+  const handleUpdateMilestone = async (milestone: Milestone) => {
+    await updateDoc(doc(db, 'milestones', milestone.id), milestone as any);
   };
 
   const handleAddProjectMarketingAsset = async (asset: ProjectMarketingAsset) => {
@@ -1605,6 +1617,14 @@ const App: React.FC = () => {
             initialSelectedProjectId={targetProjectId}
             checkPermission={checkPermission}
             onNavigateToTask={handleNavigateToTask}
+            // Smart Project Creation Props
+            workflowTemplates={workflowTemplates}
+            calendarMonths={calendarMonths}
+            calendarItems={calendarItems}
+            dynamicMilestones={milestones}
+            onAddDynamicMilestone={handleAddMilestone}
+            onUpdateDynamicMilestone={handleUpdateMilestone}
+            onAddTask={handleAddTask}
           />
         );
       case 'tasks':
@@ -1670,10 +1690,6 @@ const App: React.FC = () => {
             calendarMonths={calendarMonths}
             calendarItems={calendarItems}
             currentUser={user}
-            onRefresh={() => {
-              // Force re-render by updating state
-              window.location.reload();
-            }}
           />
         );
       case 'assets':
