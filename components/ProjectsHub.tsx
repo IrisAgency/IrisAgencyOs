@@ -92,6 +92,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   const [formWorkflowMotion, setFormWorkflowMotion] = useState('');
   const [showTaskPlanningModal, setShowTaskPlanningModal] = useState(false);
   const [generatedTasks, setGeneratedTasks] = useState<Task[]>([]);
+  const [memberSearchTerm, setMemberSearchTerm] = useState('');
 
   // Theming helpers for dashboard palette
   const surface = 'bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-slate-100';
@@ -125,6 +126,87 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       wf.status === 'active' || wf.status === 'available'
     );
   }, [workflowTemplates]);
+
+  // Compute planned workload assignments for team members
+  const plannedAssignments = useMemo(() => {
+    if (!formCalendarMonthId || selectedMonthItems.length === 0 || formMemberIds.length === 0) {
+      return {};
+    }
+
+    const assignments: Record<string, { VIDEO: number; PHOTO: number; MOTION: number }> = {};
+    const selectedUsers = users.filter(u => formMemberIds.includes(u.id));
+
+    // Initialize all selected members with zero counts
+    selectedUsers.forEach(user => {
+      assignments[user.id] = { VIDEO: 0, PHOTO: 0, MOTION: 0 };
+    });
+
+    // Helper to distribute workload by role
+    const distributeByRole = (contentType: 'VIDEO' | 'PHOTO' | 'MOTION', roleKeyword: string) => {
+      const matchingUsers = selectedUsers.filter(u => 
+        u.role?.toLowerCase().includes(roleKeyword.toLowerCase())
+      );
+      
+      const count = contentCounts[contentType];
+      if (count === 0) return;
+
+      if (matchingUsers.length > 0) {
+        // Distribute among role-matching users
+        const perUser = Math.floor(count / matchingUsers.length);
+        const remainder = count % matchingUsers.length;
+        matchingUsers.forEach((user, idx) => {
+          assignments[user.id][contentType] = perUser + (idx < remainder ? 1 : 0);
+        });
+      } else {
+        // Distribute evenly among all selected members
+        const perUser = Math.floor(count / selectedUsers.length);
+        const remainder = count % selectedUsers.length;
+        selectedUsers.forEach((user, idx) => {
+          assignments[user.id][contentType] = perUser + (idx < remainder ? 1 : 0);
+        });
+      }
+    };
+
+    // Distribute VIDEO to videographers
+    distributeByRole('VIDEO', 'videographer');
+    
+    // Distribute PHOTO to designers
+    distributeByRole('PHOTO', 'designer');
+    
+    // Distribute MOTION to motion designers or anyone with "motion" in role
+    distributeByRole('MOTION', 'motion');
+
+    return assignments;
+  }, [formCalendarMonthId, selectedMonthItems, formMemberIds, users, contentCounts]);
+
+  // Filter users by search term
+  const filteredUsers = useMemo(() => {
+    if (!memberSearchTerm.trim()) return users;
+    const term = memberSearchTerm.toLowerCase();
+    return users.filter(u => 
+      u.name.toLowerCase().includes(term) || 
+      (u.role || '').toLowerCase().includes(term)
+    );
+  }, [users, memberSearchTerm]);
+
+  // Toggle member selection
+  const toggleMember = (userId: string) => {
+    setFormMemberIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   // --- Handlers ---
 
@@ -310,6 +392,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     setFormWorkflowVideo('');
     setFormWorkflowPhoto('');
     setFormWorkflowMotion('');
+    setMemberSearchTerm('');
   };
 
   const handleSaveTaskDeliveryDates = async (tasksWithDueDates: Task[]) => {
@@ -650,23 +733,128 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                   </div>
                 )}
 
-                {/* Team Members Multi-Select */}
+                {/* Team Members Checklist */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-1">Team Members</label>
-                  <select
-                    multiple
-                    value={formMemberIds}
-                    onChange={e => {
-                      const selected = Array.from(e.target.selectedOptions, option => option.value);
-                      setFormMemberIds(selected);
-                    }}
-                    className={`${inputClass} min-h-[100px]`}
-                  >
-                    {users.map(u => (
-                      <option key={u.id} value={u.id}>{u.name} - {u.role || 'Member'}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-slate-500 mt-1">Hold Cmd/Ctrl to select multiple members</p>
+                  <label className="block text-sm font-medium text-slate-200 mb-2">Team Members</label>
+                  
+                  {/* Selected Members Pills */}
+                  {formMemberIds.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3 p-2 bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-lg">
+                      {formMemberIds.map(memberId => {
+                        const user = users.find(u => u.id === memberId);
+                        if (!user) return null;
+                        return (
+                          <div 
+                            key={memberId}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 bg-[color:var(--dash-primary)]/10 text-[color:var(--dash-primary)] rounded-full text-xs font-medium border border-[color:var(--dash-primary)]/20"
+                          >
+                            <span>{user.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => toggleMember(memberId)}
+                              className="hover:bg-[color:var(--dash-primary)]/20 rounded-full p-0.5"
+                            >
+                              <XCircle className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Search Input */}
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search team members..."
+                      value={memberSearchTerm}
+                      onChange={e => setMemberSearchTerm(e.target.value)}
+                      className={`${inputClass} pl-9`}
+                    />
+                  </div>
+
+                  {/* Members Checklist */}
+                  <div className="max-h-[240px] overflow-y-auto overflow-x-hidden border border-[color:var(--dash-glass-border)] rounded-lg bg-[color:var(--dash-surface-elevated)]">
+                    {filteredUsers.length === 0 ? (
+                      <div className="p-4 text-center text-sm text-slate-400">
+                        No team members found
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-[color:var(--dash-glass-border)]">
+                        {filteredUsers.map(user => {
+                          const isSelected = formMemberIds.includes(user.id);
+                          const workload = plannedAssignments[user.id];
+                          
+                          return (
+                            <label
+                              key={user.id}
+                              className="flex items-center gap-3 p-3 hover:bg-[color:var(--dash-surface)] cursor-pointer transition-colors w-full min-w-0"
+                            >
+                              {/* Checkbox */}
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleMember(user.id)}
+                                className="w-4 h-4 rounded border-slate-600 text-[color:var(--dash-primary)] focus:ring-2 focus:ring-[color:var(--dash-primary)] focus:ring-offset-0 bg-[color:var(--dash-surface-elevated)]"
+                              />
+                              
+                              {/* Avatar */}
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-[color:var(--dash-primary)]/20 to-[color:var(--dash-primary)]/5 flex items-center justify-center text-xs font-semibold text-[color:var(--dash-primary)] border border-[color:var(--dash-primary)]/20">
+                                {getUserInitials(user.name)}
+                              </div>
+                              
+                              {/* User Info */}
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-slate-200 truncate">
+                                  {user.name}
+                                </div>
+                                <div className="text-xs text-slate-400 truncate">
+                                  {user.role || 'Team Member'}
+                                </div>
+                              </div>
+                              
+                              {/* Planned Workload Chips */}
+                              {isSelected && workload && formCalendarMonthId && (
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  {workload.VIDEO > 0 && (
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px] font-medium border border-blue-500/20">
+                                      <Video className="w-2.5 h-2.5" />
+                                      <span>{workload.VIDEO}</span>
+                                    </div>
+                                  )}
+                                  {workload.PHOTO > 0 && (
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-500/10 text-purple-400 rounded text-[10px] font-medium border border-purple-500/20">
+                                      <ImageIcon className="w-2.5 h-2.5" />
+                                      <span>{workload.PHOTO}</span>
+                                    </div>
+                                  )}
+                                  {workload.MOTION > 0 && (
+                                    <div className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 rounded text-[10px] font-medium border border-yellow-500/20">
+                                      <Zap className="w-2.5 h-2.5" />
+                                      <span>{workload.MOTION}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {!formCalendarMonthId && formMemberIds.length > 0 && (
+                    <p className="text-xs text-slate-500 mt-2">
+                      Select a calendar month to see planned workload distribution
+                    </p>
+                  )}
+                  
+                  {formMemberIds.length === 0 && (
+                    <p className="text-xs text-slate-500 mt-2">
+                      Select at least one team member to continue
+                    </p>
+                  )}
                 </div>
 
                 {/* Workflow Selectors */}
@@ -736,7 +924,13 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             )}
 
             <div className="pt-2">
-              <button type="submit" className="w-full bg-[color:var(--dash-primary)] text-white py-2.5 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all">Create Project</button>
+              <button 
+                type="submit" 
+                disabled={formMemberIds.length === 0}
+                className="w-full bg-[color:var(--dash-primary)] text-white py-2.5 rounded-lg font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none"
+              >
+                Create Project
+              </button>
             </div>
           </form>
         </Modal>
