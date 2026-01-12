@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType } from '../types';
-import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap } from 'lucide-react';
+import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap, Lock } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
@@ -12,6 +12,7 @@ import TaskPlanningModal from './TaskPlanningModal';
 import Modal from './common/Modal';
 import DropdownMenu from './common/DropdownMenu';
 import { useAuth } from '../contexts/AuthContext';
+import { PERMISSIONS } from '../lib/permissions';
 
 interface ProjectsHubProps {
   projects: Project[];
@@ -68,7 +69,15 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   onUpdateDynamicMilestone,
   onAddTask
 }) => {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasAnyPermission } = useAuth();
+  
+  // Check if user has any project view permissions
+  const canAccessProjects = hasAnyPermission([
+    PERMISSIONS.PROJECTS.VIEW_OWN,
+    PERMISSIONS.PROJECTS.VIEW_DEPT,
+    PERMISSIONS.PROJECTS.VIEW_ALL
+  ]);
+
   const [viewMode, setViewMode] = useState<'list' | 'detail'>(initialSelectedProjectId ? 'detail' : 'list');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(initialSelectedProjectId || null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -544,6 +553,33 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       default: return 'bg-slate-500/15 text-slate-100 border-slate-500/40';
     }
   };
+
+  // Check if user has permission to access projects
+  if (!canAccessProjects) {
+    return (
+      <PageContainer>
+        <PageContent>
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+              <Lock className="w-8 h-8 text-red-500" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-100 mb-2">Access Denied</h2>
+            <p className="text-slate-400 max-w-md mb-6">
+              You don't have permission to view projects. Contact your administrator to request access.
+            </p>
+            <div className="text-sm text-slate-500 bg-slate-800/50 rounded-lg px-4 py-3 max-w-md">
+              <strong>Required permissions:</strong>
+              <ul className="mt-2 space-y-1 text-left">
+                <li>• View Own Projects, or</li>
+                <li>• View Department Projects, or</li>
+                <li>• View All Projects</li>
+              </ul>
+            </div>
+          </div>
+        </PageContent>
+      </PageContainer>
+    );
+  }
 
   // --- Render List View ---
   if (viewMode === 'list') {
