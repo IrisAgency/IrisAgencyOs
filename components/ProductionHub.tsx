@@ -83,9 +83,12 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     onAddClientApproval, onUploadFile, checkPermission, onNotify,
     onArchiveTask, onDeleteTask, onAddSocialPost
 }) => {
-    const [activeTab, setActiveTab] = useState<'Overview' | 'Planning' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
+    const [activeTab, setActiveTab] = useState<'Overview' | 'Planning' | 'Calendar' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<string>('');
+    
+    // Calendar state
+    const [calendarDate, setCalendarDate] = useState(new Date());
 
     // Call Sheet Form State
     const [csDate, setCsDate] = useState('');
@@ -952,6 +955,192 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
         );
     };
 
+    const CalendarView = () => {
+        // Get production plans with dates
+        const productionDays = productionPlans
+            .filter(p => !p.isArchived)
+            .map(p => ({
+                date: new Date(p.productionDate),
+                plan: p
+            }));
+
+        // Calendar navigation
+        const year = calendarDate.getFullYear();
+        const month = calendarDate.getMonth();
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startingDayOfWeek = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+
+        const previousMonth = () => {
+            setCalendarDate(new Date(year, month - 1, 1));
+        };
+
+        const nextMonth = () => {
+            setCalendarDate(new Date(year, month + 1, 1));
+        };
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Generate calendar days
+        const calendarDays = [];
+        
+        // Add empty cells for days before the first day of the month
+        for (let i = 0; i < startingDayOfWeek; i++) {
+            calendarDays.push(null);
+        }
+        
+        // Add all days of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            calendarDays.push(day);
+        }
+
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+        // Check if a day has production
+        const getDayProductions = (day: number) => {
+            const dayDate = new Date(year, month, day);
+            dayDate.setHours(0, 0, 0, 0);
+            
+            return productionDays.filter(pd => {
+                const prodDate = new Date(pd.date);
+                prodDate.setHours(0, 0, 0, 0);
+                return prodDate.getTime() === dayDate.getTime();
+            });
+        };
+
+        const isToday = (day: number) => {
+            const dayDate = new Date(year, month, day);
+            dayDate.setHours(0, 0, 0, 0);
+            return dayDate.getTime() === today.getTime();
+        };
+
+        return (
+            <div className="space-y-6 animate-in fade-in duration-300">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    {/* Calendar Header */}
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-slate-900">
+                            {monthNames[month]} {year}
+                        </h2>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={previousMonth}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <ChevronRight className="w-5 h-5 rotate-180 text-slate-600" />
+                            </button>
+                            <button
+                                onClick={() => setCalendarDate(new Date())}
+                                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                Today
+                            </button>
+                            <button
+                                onClick={nextMonth}
+                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                <ChevronRight className="w-5 h-5 text-slate-600" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Day Names */}
+                    <div className="grid grid-cols-7 gap-2 mb-2">
+                        {dayNames.map(day => (
+                            <div key={day} className="text-center text-sm font-semibold text-slate-600 py-2">
+                                {day}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Calendar Grid */}
+                    <div className="grid grid-cols-7 gap-2">
+                        {calendarDays.map((day, index) => {
+                            if (day === null) {
+                                return <div key={`empty-${index}`} className="aspect-square" />;
+                            }
+
+                            const dayProductions = getDayProductions(day);
+                            const hasProduction = dayProductions.length > 0;
+                            const isTodayDate = isToday(day);
+
+                            return (
+                                <div
+                                    key={day}
+                                    className={`aspect-square border rounded-lg p-2 transition-all ${
+                                        isTodayDate 
+                                            ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5' 
+                                            : hasProduction
+                                                ? 'border-green-300 bg-green-50 hover:bg-green-100 cursor-pointer'
+                                                : 'border-slate-200 hover:bg-slate-50'
+                                    }`}
+                                    onClick={() => {
+                                        if (hasProduction) {
+                                            setActiveTab('Planning');
+                                        }
+                                    }}
+                                >
+                                    <div className="flex flex-col h-full">
+                                        <div className={`text-sm font-medium mb-1 ${
+                                            isTodayDate 
+                                                ? 'text-[color:var(--dash-primary)]' 
+                                                : hasProduction 
+                                                    ? 'text-green-700'
+                                                    : 'text-slate-700'
+                                        }`}>
+                                            {day}
+                                        </div>
+                                        {hasProduction && (
+                                            <div className="flex-1 flex flex-col gap-1">
+                                                {dayProductions.slice(0, 2).map((prod, idx) => (
+                                                    <div
+                                                        key={idx}
+                                                        className="text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-1.5 py-0.5 rounded truncate font-medium"
+                                                        title={prod.plan.name}
+                                                    >
+                                                        🎬 {prod.plan.name}
+                                                    </div>
+                                                ))}
+                                                {dayProductions.length > 2 && (
+                                                    <div className="text-[10px] text-green-600 font-medium">
+                                                        +{dayProductions.length - 2} more
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-6 text-sm">
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded border-2 border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/10"></div>
+                            <span className="text-slate-600">Today</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-4 h-4 rounded bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                            <span className="text-slate-600">Production Day</span>
+                        </div>
+                        <div className="flex items-center gap-2 ml-auto">
+                            <Film className="w-4 h-4 text-slate-400" />
+                            <span className="text-slate-600 font-medium">
+                                {productionDays.length} productions scheduled
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <PageContainer>
             <PageHeader
@@ -961,7 +1150,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
             <div className="border-b border-slate-200">
                 <nav className="flex space-x-6">
-                    {['Overview', 'Planning', 'Shot Lists', 'Call Sheets', 'Equipment', 'Locations'].map(tab => (
+                    {['Overview', 'Planning', 'Calendar', 'Shot Lists', 'Call Sheets', 'Equipment', 'Locations'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
@@ -977,6 +1166,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
             <PageContent>
                 {activeTab === 'Overview' && <OverviewView />}
                 {activeTab === 'Planning' && <PlanningView />}
+                {activeTab === 'Calendar' && <CalendarView />}
                 {activeTab === 'Shot Lists' && <ShotListsView />}
                 {activeTab === 'Call Sheets' && <CallSheetsView />}
                 {activeTab === 'Equipment' && <EquipmentView />}
