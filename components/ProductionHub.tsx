@@ -5,7 +5,7 @@ import {
     MapPin, Camera, ClipboardList, FileText, ChevronRight, X, Plus,
     Calendar, Clock, User as UserIcon, CheckCircle, AlertCircle, Video,
     Search, Film, MoreHorizontal, Settings, CheckCircle as CheckCircleIcon,
-    Briefcase, Eye, Edit, Copy, Archive, RotateCcw, Trash2, ImageIcon, Zap
+    Briefcase, Eye, Edit, Copy, Archive, RotateCcw, Trash2, ImageIcon, Zap, Check
 } from 'lucide-react';
 import Modal from './common/Modal';
 import PageContainer from './layout/PageContainer';
