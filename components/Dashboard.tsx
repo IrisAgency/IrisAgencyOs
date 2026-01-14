@@ -488,8 +488,8 @@ const Dashboard: React.FC<DashboardProps> = ({
 
               case 'production-planning':
                 return (
-                  <section key={widgetId} className="production-planning glass-panel animate-reveal" {...dragProps}>
-                    <div className="widget-title">
+                  <section key={widgetId} className="production-planning glass-panel animate-reveal" {...dragProps} style={{ height: '300px', display: 'flex', flexDirection: 'column' }}>
+                    <div className="widget-title" style={{ flexShrink: 0 }}>
                       <span>Upcoming Productions</span>
                       <Briefcase width={16} height={16} strokeWidth={2} />
                     </div>
@@ -499,97 +499,108 @@ const Dashboard: React.FC<DashboardProps> = ({
                         No productions scheduled in the next 7 days
                       </div>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {upcomingProductions.map(plan => {
-                          const countdown = getProductionCountdown(plan.productionDate);
-                          return (
-                            <div
-                              key={plan.id}
-                              onClick={() => setViewingPlanId(plan.id)}
-                              style={{
-                                background: 'rgba(255,255,255,0.02)',
-                                border: '1px solid rgba(255,255,255,0.08)',
-                                borderRadius: '10px',
-                                padding: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                e.currentTarget.style.borderColor = 'var(--dash-primary)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                              }}
-                            >
-                              <div style={{ marginBottom: '8px' }}>
-                                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }} dir="auto">
-                                  {plan.name}
+                      <>
+                        <div style={{ 
+                          flex: 1,
+                          overflowY: 'auto',
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '12px',
+                          paddingRight: '4px',
+                          marginBottom: '8px'
+                        }}>
+                          {upcomingProductions.map(plan => {
+                            const countdown = getProductionCountdown(plan.productionDate);
+                            return (
+                              <div
+                                key={plan.id}
+                                onClick={() => setViewingPlanId(plan.id)}
+                                style={{
+                                  background: 'rgba(255,255,255,0.02)',
+                                  border: '1px solid rgba(255,255,255,0.08)',
+                                  borderRadius: '10px',
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s',
+                                  flexShrink: 0
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                  e.currentTarget.style.borderColor = 'var(--dash-primary)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                }}
+                              >
+                                <div style={{ marginBottom: '8px' }}>
+                                  <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }} dir="auto">
+                                    {plan.name}
+                                  </div>
+                                  <div style={{ fontSize: '0.75rem', opacity: 0.7 }} dir="auto">
+                                    {plan.clientName}
+                                  </div>
                                 </div>
-                                <div style={{ fontSize: '0.75rem', opacity: 0.7 }} dir="auto">
-                                  {plan.clientName}
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
+                                    <Calendar width={12} height={12} />
+                                    <span className="ltr-text">{new Date(plan.productionDate).toLocaleDateString()}</span>
+                                  </div>
+                                  <span className={`font-semibold ${countdown.color}`}>
+                                    {countdown.label}
+                                  </span>
+                                </div>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.7rem', opacity: 0.7 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <Calendar width={12} height={12} />
+                                    <span className="ltr-text">{plan.calendarItemIds.length}</span>
+                                  </div>
+                                  <span>+</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    <ClipboardList width={12} height={12} />
+                                    <span className="ltr-text">{plan.manualTaskIds.length}</span>
+                                  </div>
+                                  <span>=</span>
+                                  <span className="font-semibold ltr-text">
+                                    {plan.calendarItemIds.length + plan.manualTaskIds.length} items
+                                  </span>
                                 </div>
                               </div>
-                              
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
-                                  <Calendar width={12} height={12} />
-                                  <span className="ltr-text">{new Date(plan.productionDate).toLocaleDateString()}</span>
-                                </div>
-                                <span className={`font-semibold ${countdown.color}`}>
-                                  {countdown.label}
-                                </span>
-                              </div>
-                              
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.7rem', opacity: 0.7 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <Calendar width={12} height={12} />
-                                  <span className="ltr-text">{plan.calendarItemIds.length}</span>
-                                </div>
-                                <span>+</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                  <ClipboardList width={12} height={12} />
-                                  <span className="ltr-text">{plan.manualTaskIds.length}</span>
-                                </div>
-                                <span>=</span>
-                                <span className="font-semibold ltr-text">
-                                  {plan.calendarItemIds.length + plan.manualTaskIds.length} items
-                                </span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    
-                    {upcomingProductions.length > 0 && onNavigateToProduction && (
-                      <button
-                        onClick={onNavigateToProduction}
-                        style={{
-                          width: '100%',
-                          marginTop: '12px',
-                          padding: '8px',
-                          background: 'transparent',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '8px',
-                          color: 'var(--dash-primary)',
-                          fontSize: '0.75rem',
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(230,60,60,0.1)';
-                          e.currentTarget.style.borderColor = 'var(--dash-primary)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                        }}
-                      >
-                        View All Productions
-                      </button>
+                            );
+                          })}
+                        </div>
+                        
+                        {onNavigateToProduction && (
+                          <button
+                            onClick={onNavigateToProduction}
+                            style={{
+                              width: '100%',
+                              padding: '8px',
+                              background: 'transparent',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '8px',
+                              color: 'var(--dash-primary)',
+                              fontSize: '0.75rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              flexShrink: 0
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(230,60,60,0.1)';
+                              e.currentTarget.style.borderColor = 'var(--dash-primary)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                            }}
+                          >
+                            View All Productions
+                          </button>
+                        )}
+                      </>
                     )}
                   </section>
                 );
