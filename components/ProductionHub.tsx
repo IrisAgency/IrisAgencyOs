@@ -1436,21 +1436,86 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
             {viewingPlanId && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingPlanId(null)}>
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-6 flex items-center justify-between">
-                            <div>
-                                <h2 className="text-2xl font-bold mb-1">
-                                    {productionPlans.find(p => p.id === viewingPlanId)?.name}
-                                </h2>
-                                <p className="text-white/80 text-sm">
-                                    {productionPlans.find(p => p.id === viewingPlanId)?.clientName} • {new Date(productionPlans.find(p => p.id === viewingPlanId)?.productionDate || '').toLocaleDateString()}
-                                </p>
+                        <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold mb-1">
+                                        {productionPlans.find(p => p.id === viewingPlanId)?.name}
+                                    </h2>
+                                    <p className="text-white/80 text-sm">
+                                        {productionPlans.find(p => p.id === viewingPlanId)?.clientName} • {new Date(productionPlans.find(p => p.id === viewingPlanId)?.productionDate || '').toLocaleDateString()}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setViewingPlanId(null)}
+                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                >
+                                    <X className="w-6 h-6" />
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setViewingPlanId(null)}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                            >
-                                <X className="w-6 h-6" />
-                            </button>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const plan = productionPlans.find(p => p.id === viewingPlanId);
+                                        if (plan) {
+                                            setSelectedPlan(plan);
+                                            setIsPlanningModalOpen(true);
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-white font-medium"
+                                >
+                                    <Edit className="w-4 h-4" />
+                                    Edit Plan
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        const plan = productionPlans.find(p => p.id === viewingPlanId);
+                                        if (!plan) return;
+                                        
+                                        const relatedTasks = tasks.filter(t => t.productionPlanId === plan.id);
+                                        
+                                        const confirmed = window.confirm(
+                                            `⚠️ Delete "${plan.name}"?\n\n` +
+                                            `This will permanently delete:\n` +
+                                            `• The production plan\n` +
+                                            `• ${relatedTasks.length} related task(s)\n\n` +
+                                            `This action CANNOT be undone!\n\n` +
+                                            `Are you sure?`
+                                        );
+                                        
+                                        if (confirmed) {
+                                            try {
+                                                // Delete all related tasks
+                                                for (const task of relatedTasks) {
+                                                    if (onDeleteTask) {
+                                                        // Use soft delete if available
+                                                        await updateDoc(doc(db, 'tasks', task.id), {
+                                                            isDeleted: true,
+                                                            deletedAt: new Date().toISOString(),
+                                                            deletedBy: currentUserId
+                                                        });
+                                                    }
+                                                }
+                                                
+                                                // Delete the production plan
+                                                await archiveProductionPlan(plan.id, currentUserId, 'user_deleted');
+                                                await loadProductionPlans();
+                                                setViewingPlanId(null);
+                                                alert('🗑️ Production plan and all related tasks deleted successfully.');
+                                            } catch (error) {
+                                                console.error('Error deleting production plan:', error);
+                                                alert('Failed to delete production plan.');
+                                            }
+                                        }
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg transition-all text-white font-medium"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete Plan
+                                </button>
+                            </div>
                         </div>
 
                         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
