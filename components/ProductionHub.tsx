@@ -13,7 +13,7 @@ import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
 import ProductionPlanningModal from './production/ProductionPlanningModal';
 import MyProductionWidget from './production/MyProductionWidget';
-import PermissionGate from './PermissionGate';
+import { PermissionGate } from './PermissionGate';
 import { PERMISSIONS } from '../lib/permissions';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';

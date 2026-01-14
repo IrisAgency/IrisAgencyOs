@@ -84,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
       id: 'production', 
       label: 'Production Hub', 
       icon: Clapperboard, 
-      visible: false // Temporarily hidden: checkPermission(PERMISSIONS.PRODUCTION.VIEW)
+      visible: checkPermission(PERMISSIONS.PRODUCTION.VIEW)
     },
     { 
       id: 'network', 

@@ -1717,19 +1717,30 @@ const App: React.FC = () => {
         if (!checkPermission(PERMISSIONS.PRODUCTION.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
         return (
           <ProductionHub
-            assets={productionAssets} // Passing legacy just in case, though component uses specific props
+            assets={productionAssets}
             shotLists={shotLists}
             callSheets={callSheets}
             locations={locations}
             equipment={equipment}
             projects={getVisibleProjects()}
             users={activeUsers}
+            clients={clients}
             leaveRequests={leaveRequests}
+            currentUserId={user.uid}
             onAddShotList={handleAddShotList}
             onAddCallSheet={handleAddCallSheet}
             onAddLocation={handleAddLocation}
             onAddEquipment={handleAddEquipment}
             onUpdateEquipment={handleUpdateEquipment}
+            onTaskClick={(task) => {
+              setActiveView('tasks');
+              setTimeout(() => {
+                const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
+                if (taskElement) {
+                  taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }, 100);
+            }}
             projectMembers={projectMembers}
           />
         );
