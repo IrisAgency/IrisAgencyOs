@@ -1097,9 +1097,37 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
                         <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
                             <div className="mb-6">
+                                {/* Progress Summary */}
+                                {viewingPlanTasks.length > 0 && (() => {
+                                    const completedCount = viewingPlanTasks.filter(t => t.status === 'completed').length;
+                                    const totalCount = viewingPlanTasks.length;
+                                    const progressPercent = Math.round((completedCount / totalCount) * 100);
+                                    
+                                    return (
+                                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                                                    <span className="font-semibold text-green-900">Production Progress</span>
+                                                </div>
+                                                <span className="text-2xl font-bold text-green-600">{progressPercent}%</span>
+                                            </div>
+                                            <div className="w-full bg-green-100 rounded-full h-3 mb-2 overflow-hidden">
+                                                <div 
+                                                    className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500"
+                                                    style={{ width: `${progressPercent}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-sm text-green-700">
+                                                {completedCount} of {totalCount} tasks completed
+                                            </p>
+                                        </div>
+                                    );
+                                })()}
+
                                 <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                     <Film className="w-5 h-5 text-[color:var(--dash-primary)]" />
-                                    Production Tasks ({viewingPlanTasks.length})
+                                    Production Tasks Checklist
                                 </h3>
 
                                 {viewingPlanTasks.length === 0 ? (
@@ -1118,22 +1146,59 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                 'BLOCKED': 'bg-rose-50 text-rose-700 border-rose-200'
                                             };
 
+                                            const isCompleted = task.status === 'completed';
+
+                                            const handleCheckboxClick = async (e: React.MouseEvent) => {
+                                                e.stopPropagation();
+                                                
+                                                // Toggle completion status
+                                                const newStatus = isCompleted ? 'in_progress' : 'completed';
+                                                
+                                                // Update task status
+                                                if (onUpdateTask) {
+                                                    await onUpdateTask({
+                                                        ...task,
+                                                        status: newStatus as any,
+                                                        completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
+                                                    });
+                                                }
+                                            };
+
                                             return (
                                                 <div
                                                     key={task.id}
-                                                    onClick={() => setSelectedTaskId(task.id)}
-                                                    className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group"
+                                                    className={`bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all group ${isCompleted ? 'opacity-60' : ''}`}
                                                 >
-                                                    <div className="flex items-start justify-between gap-3">
-                                                        <div className="flex-1 min-w-0">
+                                                    <div className="flex items-start gap-3">
+                                                        {/* Checkbox */}
+                                                        <button
+                                                            onClick={handleCheckboxClick}
+                                                            className="flex-shrink-0 mt-1"
+                                                        >
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                                                                isCompleted 
+                                                                    ? 'bg-green-500 border-green-500' 
+                                                                    : 'border-slate-300 hover:border-[color:var(--dash-primary)] hover:bg-slate-50'
+                                                            }`}>
+                                                                {isCompleted && (
+                                                                    <Check className="w-3.5 h-3.5 text-white" />
+                                                                )}
+                                                            </div>
+                                                        </button>
+
+                                                        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedTaskId(task.id)}>
                                                             <div className="flex items-center gap-2 mb-2">
                                                                 <span className="text-lg">🎬</span>
-                                                                <h4 className="font-semibold text-slate-900 group-hover:text-[color:var(--dash-primary)] transition-colors truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                                <h4 className={`font-semibold group-hover:text-[color:var(--dash-primary)] transition-colors truncate ${
+                                                                    isCompleted ? 'text-slate-500 line-through' : 'text-slate-900'
+                                                                }`} dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
                                                                     {task.title}
                                                                 </h4>
                                                             </div>
                                                             {task.description && (
-                                                                <p className="text-sm text-slate-600 line-clamp-2 mb-3" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                                <p className={`text-sm line-clamp-2 mb-3 ${
+                                                                    isCompleted ? 'text-slate-400' : 'text-slate-600'
+                                                                }`} dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
                                                                     {task.description}
                                                                 </p>
                                                             )}
