@@ -12,7 +12,6 @@ import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
 import ProductionPlanningModal from './production/ProductionPlanningModal';
-import MyProductionWidget from './production/MyProductionWidget';
 import TaskDetailView from './tasks/TaskDetailView';
 import { PermissionGate } from './PermissionGate';
 import { PERMISSIONS } from '../lib/permissions';
@@ -896,14 +895,6 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                         );
                     })()}
                 </div>
-
-                {/* My Production Widget */}
-                {currentUserId && (
-                    <MyProductionWidget 
-                        currentUserId={currentUserId} 
-                        onTaskClick={onTaskClick}
-                    />
-                )}
 
                 {/* Production Plans Grid */}
                 {loadingPlans ? (
