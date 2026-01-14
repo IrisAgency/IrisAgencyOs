@@ -359,10 +359,10 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                 </div>
 
                 {/* Monthly Calendar */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-                    <div className="flex items-center justify-between mb-4">
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 sm:gap-0">
                         <h3 className="text-lg font-semibold text-slate-900">Production Calendar</h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                             <button
                                 onClick={() => {
                                     const newDate = new Date(calendarDate);
@@ -446,15 +446,16 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     {monthNames[month]} {year}
                                 </div>
 
-                                <div className="grid grid-cols-7 gap-1 mb-1">
+                                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
                                     {dayNames.map(day => (
-                                        <div key={day} className="text-center text-xs font-semibold text-slate-600 py-2">
-                                            {day}
+                                        <div key={day} className="text-center text-xs sm:text-sm font-semibold text-slate-600 py-1 sm:py-2">
+                                            <span className="hidden sm:inline">{day}</span>
+                                            <span className="sm:hidden">{day.slice(0, 1)}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="grid grid-cols-7 gap-1">
+                                <div className="grid grid-cols-7 gap-1 sm:gap-2">
                                     {calendarDays.map((day, index) => {
                                         if (day === null) {
                                             return <div key={`empty-${index}`} className="aspect-square" />;
@@ -467,7 +468,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                         return (
                                             <div
                                                 key={day}
-                                                className={`aspect-square border rounded-lg p-1 text-center transition-all ${
+                                                className={`aspect-square border rounded-md sm:rounded-lg p-0.5 sm:p-1 text-center transition-all ${
                                                     isTodayDate 
                                                         ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5 font-bold' 
                                                         : hasProduction
@@ -475,7 +476,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                             : 'border-slate-200 hover:bg-slate-50'
                                                 }`}
                                             >
-                                                <div className={`text-xs font-medium ${
+                                                <div className={`text-[10px] sm:text-xs font-medium ${
                                                     isTodayDate 
                                                         ? 'text-[color:var(--dash-primary)]' 
                                                         : hasProduction 
@@ -491,9 +492,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                                 key={idx}
                                                                 onClick={() => {
                                                                     setViewingPlanId(prod.plan.id);
-                                                                    setActiveTab('Planning');
                                                                 }}
-                                                                className="text-[8px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-1 py-0.5 rounded truncate hover:from-green-600 hover:to-emerald-600 transition-all"
+                                                                className="text-[6px] sm:text-[8px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-0.5 sm:px-1 py-0.5 rounded truncate hover:from-green-600 hover:to-emerald-600 transition-all"
                                                                 title={prod.plan.name}
                                                             >
                                                                 {prod.plan.name.length > 12 ? prod.plan.name.substring(0, 12) + '...' : prod.plan.name}
@@ -506,8 +506,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     })}
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-xs">
-                                    <div className="flex items-center gap-4">
+                                <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 sm:gap-0">
+                                    <div className="flex items-center gap-3 sm:gap-4">
                                         <div className="flex items-center gap-1.5">
                                             <div className="w-3 h-3 rounded border-2 border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/10"></div>
                                             <span className="text-slate-600">Today</span>
@@ -909,7 +909,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                     </div>
 
                     {/* Legend */}
-                    <div className="mt-6 pt-4 border-t border-slate-200 flex items-center gap-6 text-sm">
+                    <div className="mt-6 pt-4 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
                         <div className="flex items-center gap-2">
                             <div className="w-4 h-4 rounded border-2 border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/10"></div>
                             <span className="text-slate-600">Today</span>
@@ -918,10 +918,10 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                             <div className="w-4 h-4 rounded bg-gradient-to-r from-green-500 to-emerald-500"></div>
                             <span className="text-slate-600">Production Day</span>
                         </div>
-                        <div className="flex items-center gap-2 ml-auto">
+                        <div className="flex items-center gap-2 sm:ml-auto">
                             <Film className="w-4 h-4 text-slate-400" />
                             <span className="text-slate-600 font-medium">
-                                {productionDays.length} productions scheduled
+                                {productionDays.length} production{productionDays.length !== 1 ? 's' : ''} scheduled
                             </span>
                         </div>
                     </div>
@@ -958,28 +958,28 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
             {/* Plan Details Drawer */}
             {viewingPlanId && (
-                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingPlanId(null)}>
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-6">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4" onClick={() => setViewingPlanId(null)}>
+                    <div className="bg-white rounded-none sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-4 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold mb-1">
+                                <div className="flex-1 pr-2">
+                                    <h2 className="text-xl sm:text-2xl font-bold mb-1">
                                         {productionPlans.find(p => p.id === viewingPlanId)?.name}
                                     </h2>
-                                    <p className="text-white/80 text-sm">
+                                    <p className="text-white/80 text-xs sm:text-sm">
                                         {productionPlans.find(p => p.id === viewingPlanId)?.clientName} • {new Date(productionPlans.find(p => p.id === viewingPlanId)?.productionDate || '').toLocaleDateString()}
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setViewingPlanId(null)}
-                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                                    className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
                                 >
-                                    <X className="w-6 h-6" />
+                                    <X className="w-5 h-5 sm:w-6 sm:h-6" />
                                 </button>
                             </div>
                             
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                 <button
                                     onClick={() => {
                                         const plan = productionPlans.find(p => p.id === viewingPlanId);
@@ -988,10 +988,10 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             setIsPlanningModalOpen(true);
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-white font-medium"
+                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-white font-medium text-sm"
                                 >
                                     <Edit className="w-4 h-4" />
-                                    Edit Plan
+                                    <span>Edit Plan</span>
                                 </button>
                                 <button
                                     onClick={async () => {
@@ -1034,15 +1034,15 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             }
                                         }
                                     }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg transition-all text-white font-medium"
+                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg transition-all text-white font-medium text-sm"
                                 >
                                     <Trash2 className="w-4 h-4" />
-                                    Delete Plan
+                                    <span>Delete Plan</span>
                                 </button>
                             </div>
                         </div>
 
-                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                        <div className="p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-180px)] sm:max-h-[calc(90vh-120px)]">
                             <div className="mb-6">
                                 {/* Progress Summary */}
                                 {viewingPlanTasks.length > 0 && (() => {
@@ -1097,7 +1097,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                                 }
                                                             }
                                                         }}
-                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold"
+                                                        className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold text-sm"
                                                     >
                                                         <CheckCircle className="w-4 h-4" />
                                                         Finish Production
