@@ -53,6 +53,7 @@ export interface DetailViewProps {
     resolveApprover: (step: WorkflowStepTemplate, task: Task) => string | null;
     onAddSocialPost: (post: SocialPost) => void;
     leaveRequests?: any[];
+    calendarItems?: any[];
 }
 
 const TaskDetailView = ({
@@ -60,7 +61,7 @@ const TaskDetailView = ({
     taskFiles, allTasks, currentUser, workflowTemplates, milestones,
     onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
     onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, onArchiveTask, onDeleteTask, onEditTask, onReopenTask, checkPermission,
-    getStatusColor, resolveApprover, onAddSocialPost, leaveRequests
+    getStatusColor, resolveApprover, onAddSocialPost, leaveRequests, calendarItems = []
 }: DetailViewProps) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [newComment, setNewComment] = useState('');
@@ -89,6 +90,25 @@ const TaskDetailView = ({
     };
 
     const usedTemplate = workflowTemplates.find(w => w.id === task.workflowTemplateId);
+
+    // Get source calendar item for production tasks
+    const sourceCalendarItem = task.isProductionCopy && task.sourceCalendarItemId 
+        ? calendarItems.find(item => item.id === task.sourceCalendarItemId)
+        : null;
+
+    // Combine task references with calendar item references
+    const displayReferenceLinks = task.referenceLinks || [];
+    const displayReferenceImages = task.referenceImages || [];
+    
+    // If this is a production task with a source calendar item, add its references
+    if (sourceCalendarItem) {
+        if (sourceCalendarItem.referenceLinks) {
+            displayReferenceLinks.push(...sourceCalendarItem.referenceLinks);
+        }
+        if (sourceCalendarItem.referenceImages) {
+            displayReferenceImages.push(...sourceCalendarItem.referenceImages);
+        }
+    }
 
     // Helper: Auto-track task lifecycle events
     const trackTimeEvent = (
@@ -1076,9 +1096,14 @@ const TaskDetailView = ({
                         <div>
                             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                                 <Link className="w-4 h-4" /> Reference Links
+                                {sourceCalendarItem && (
+                                    <span className="text-xs font-normal text-slate-500 ml-2">
+                                        (Including source calendar item links)
+                                    </span>
+                                )}
                             </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {task.referenceLinks?.map(link => (
+                                {displayReferenceLinks.map(link => (
                                     <div key={link.id} className="bg-white p-3 rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors group relative">
                                         <div className="flex items-start gap-3">
                                             <div className="w-8 h-8 bg-slate-50 rounded flex items-center justify-center shrink-0">
@@ -1128,8 +1153,8 @@ const TaskDetailView = ({
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
-                                ))}
-                                {(!task.referenceLinks || task.referenceLinks.length === 0) && (
+                                ))}  
+                                {displayReferenceLinks.length === 0 && (
                                     <div className="col-span-full text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                                         <p className="text-sm text-slate-500">No reference links added.</p>
                                     </div>
@@ -1141,9 +1166,14 @@ const TaskDetailView = ({
                         <div>
                             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> Reference Images
+                                {sourceCalendarItem && (
+                                    <span className="text-xs font-normal text-slate-500 ml-2">
+                                        (Including source calendar item images)
+                                    </span>
+                                )}
                             </h3>
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                                {task.referenceImages?.map(img => (
+                                {displayReferenceImages.map(img => (
                                     <div key={img.id} className="group relative aspect-square bg-slate-100 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                                         <img src={img.downloadUrl} alt={img.title || img.fileName} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
                                         
@@ -1185,7 +1215,7 @@ const TaskDetailView = ({
                                         </button>
                                     </div>
                                 ))}
-                                {(!task.referenceImages || task.referenceImages.length === 0) && (
+                                {displayReferenceImages.length === 0 && (
                                     <div className="col-span-full text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                                         <p className="text-sm text-slate-500">No reference images uploaded.</p>
                                     </div>

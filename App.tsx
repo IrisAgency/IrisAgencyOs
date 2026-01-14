@@ -1734,6 +1734,7 @@ const App: React.FC = () => {
             onUpdateEquipment={handleUpdateEquipment}
             projectMembers={projectMembers}
             tasks={getVisibleTasks()}
+            calendarItems={calendarItems}
             comments={taskComments}
             timeLogs={taskTimeLogs}
             dependencies={taskDependencies}

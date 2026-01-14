@@ -43,6 +43,7 @@ interface ProductionHubProps {
     currentUserId?: string;
     // Task detail props from App.tsx
     tasks?: Task[];
+    calendarItems?: any[];
     comments?: any[];
     timeLogs?: any[];
     dependencies?: any[];
@@ -74,7 +75,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
     onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = [],
     currentUserId = 'current_user', onTaskClick,
-    tasks = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [],
+    tasks = [], calendarItems = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [],
     approvalSteps = [], clientApprovals = [], files = [], milestones = [],
     workflowTemplates = [], roles = [], currentUser,
     onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
@@ -1231,6 +1232,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                         taskFiles={files?.filter(f => f.taskId === selectedTask.id) || []}
                                         allTasks={tasks || []}
                                         currentUser={currentUser}
+                                        calendarItems={calendarItems}
                                         workflowTemplates={workflowTemplates || []}
                                         milestones={milestones || []}
                                         onUpdateTask={onUpdateTask || (async () => {})}
