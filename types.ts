@@ -1248,6 +1248,9 @@ export interface CalendarMonth {
   clientId: string;
   monthKey: string; // "YYYY-MM"
   title: string;
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;

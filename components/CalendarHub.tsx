@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2 } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical } from 'lucide-react';
 import { Client, CalendarMonth, CalendarItem, CalendarContentType, User, CalendarReferenceLink } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
@@ -66,7 +66,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const filteredMonths = useMemo(() => {
     if (!selectedClientId) return [];
     return calendarMonths
-      .filter(m => m.clientId === selectedClientId)
+      .filter(m => m.clientId === selectedClientId && !m.isArchived)
+      .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+  }, [calendarMonths, selectedClientId]);
+
+  const archivedMonths = useMemo(() => {
+    if (!selectedClientId) return [];
+    return calendarMonths
+      .filter(m => m.clientId === selectedClientId && m.isArchived)
       .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [calendarMonths, selectedClientId]);
 
@@ -323,6 +330,75 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     }
   };
 
+  const handleDeleteMonth = async (monthId: string) => {
+    const month = calendarMonths.find(m => m.id === monthId);
+    if (!month) return;
+
+    const itemsCount = calendarItems.filter(i => i.calendarMonthId === monthId).length;
+    const confirmMessage = `Are you sure you want to delete "${month.title}"?\n\n` +
+      `⚠️ Warning: This will permanently delete:\n` +
+      `• The calendar month\n` +
+      `• All ${itemsCount} content items in this month\n` +
+      `• All associated files\n\n` +
+      `This action CANNOT be undone!`;
+
+    if (!confirm(confirmMessage)) return;
+
+    setIsLoading(true);
+    try {
+      // Delete all items in this month
+      const itemsQuery = query(collection(db, 'calendar_items'), where('calendarMonthId', '==', monthId));
+      const itemsSnapshot = await getDocs(itemsQuery);
+      
+      const batch = writeBatch(db);
+      itemsSnapshot.docs.forEach(doc => {
+        batch.delete(doc.ref);
+      });
+      
+      // Delete the month itself
+      batch.delete(doc(db, 'calendar_months', monthId));
+      
+      await batch.commit();
+      
+      setSelectedMonthId('');
+      onRefresh?.();
+      alert(`Month "${month.title}" and all ${itemsCount} items deleted successfully`);
+    } catch (error) {
+      console.error('Error deleting month:', error);
+      alert('Failed to delete month');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleArchiveMonth = async (monthId: string) => {
+    const month = calendarMonths.find(m => m.id === monthId);
+    if (!month) return;
+
+    const isArchived = month.isArchived || false;
+    const action = isArchived ? 'unarchive' : 'archive';
+    
+    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} "${month.title}"?`)) return;
+
+    setIsLoading(true);
+    try {
+      await updateDoc(doc(db, 'calendar_months', monthId), {
+        isArchived: !isArchived,
+        archivedAt: isArchived ? null : new Date().toISOString(),
+        archivedBy: isArchived ? null : currentUser.id,
+        updatedAt: new Date().toISOString()
+      });
+      
+      onRefresh?.();
+      alert(`Month ${action}d successfully`);
+    } catch (error) {
+      console.error('Error archiving month:', error);
+      alert('Failed to ' + action + ' month');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const resetItemForm = () => {
     setItemForm({
       type: 'VIDEO',
@@ -429,11 +505,24 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white disabled:opacity-50"
           >
             <option value="">Choose a month...</option>
-            {filteredMonths.map(month => (
-              <option key={month.id} value={month.id}>
-                {month.title} ({month.monthKey})
-              </option>
-            ))}
+            {filteredMonths.length > 0 && (
+              <optgroup label="Active Months">
+                {filteredMonths.map(month => (
+                  <option key={month.id} value={month.id}>
+                    {month.title} ({month.monthKey})
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {archivedMonths.length > 0 && (
+              <optgroup label="Archived Months">
+                {archivedMonths.map(month => (
+                  <option key={month.id} value={month.id}>
+                    📦 {month.title} ({month.monthKey})
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
         </div>
 
@@ -454,6 +543,32 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       {selectedMonthId && (
         <>
           <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">
+                {calendarMonths.find(m => m.id === selectedMonthId)?.title}
+                {calendarMonths.find(m => m.id === selectedMonthId)?.isArchived && (
+                  <span className="ml-2 text-sm text-yellow-400">(Archived)</span>
+                )}
+              </h2>
+              <div className="flex items-center gap-2">
+                <PermissionGate permission={PERMISSIONS.CALENDAR_MONTHS.DELETE}>
+                  <button
+                    onClick={() => handleArchiveMonth(selectedMonthId)}
+                    className="p-2 text-slate-400 hover:text-yellow-400 transition-colors"
+                    title={calendarMonths.find(m => m.id === selectedMonthId)?.isArchived ? 'Unarchive Month' : 'Archive Month'}
+                  >
+                    <Archive className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMonth(selectedMonthId)}
+                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                    title="Delete Month"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </PermissionGate>
+              </div>
+            </div>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex gap-4">
                 <div className="text-center">
