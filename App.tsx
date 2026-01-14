@@ -1757,6 +1757,9 @@ const App: React.FC = () => {
             onUploadFile={handleUploadFile}
             checkPermission={checkPermission}
             onNotify={handleNotify}
+            onArchiveTask={handleArchiveTask}
+            onDeleteTask={handleDeleteTask}
+            onAddSocialPost={handleAddSocialPost}
           />
         );
       case 'network':

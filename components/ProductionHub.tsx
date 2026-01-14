@@ -66,6 +66,9 @@ interface ProductionHubProps {
     onUploadFile?: (file: any) => void;
     checkPermission?: (permission: string) => boolean;
     onNotify?: (type: string, title: string, message: string) => void;
+    onArchiveTask?: (task: Task) => void;
+    onDeleteTask?: (task: Task) => void;
+    onAddSocialPost?: (post: any) => void;
 }
 const ProductionHub: React.FC<ProductionHubProps> = ({
     assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
@@ -76,7 +79,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     workflowTemplates = [], roles = [], currentUser,
     onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
     onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval,
-    onAddClientApproval, onUploadFile, checkPermission, onNotify
+    onAddClientApproval, onUploadFile, checkPermission, onNotify,
+    onArchiveTask, onDeleteTask, onAddSocialPost
 }) => {
     const [activeTab, setActiveTab] = useState<'Overview' | 'Planning' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -99,6 +103,46 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     const [viewingPlanId, setViewingPlanId] = useState<string | null>(null);
     const [viewingPlanTasks, setViewingPlanTasks] = useState<Task[]>([]);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+    // Helper functions for TaskDetailView
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'not_started': return 'bg-slate-500/10 text-slate-300 border-slate-500/30';
+            case 'in_progress': return 'bg-blue-500/10 text-blue-300 border-blue-500/30';
+            case 'in_review': return 'bg-purple-500/10 text-purple-300 border-purple-500/30';
+            case 'blocked': return 'bg-rose-500/10 text-rose-300 border-rose-500/30';
+            case 'completed': return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30';
+            default: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
+        }
+    };
+
+    const resolveApprover = (step: any, task: Task): string | null => {
+        if (step.specificUserId) return step.specificUserId;
+        if (step.projectRoleKey) {
+            const member = projectMembers.find((pm: any) => pm.projectId === task.projectId && pm.roleInProject === step.projectRoleKey);
+            return member ? member.userId : null;
+        }
+        if (step.roleId) {
+            const roleDef = roles.find((r: any) => r.id === step.roleId);
+            if (roleDef) {
+                const projectUserIds = projectMembers.filter((pm: any) => pm.projectId === task.projectId).map((pm: any) => pm.userId);
+                const projectApprover = users.find(u => u.role === roleDef.name && projectUserIds.includes(u.id));
+                if (projectApprover) return projectApprover.id;
+                const deptApprover = users.find(u => u.role === roleDef.name && u.department === task.department);
+                if (deptApprover) return deptApprover.id;
+                const anyApprover = users.find(u => u.role === roleDef.name);
+                if (anyApprover) return anyApprover.id;
+            }
+        }
+        return null;
+    };
+
+    const handleEditTask = (task: Task) => {
+        // For production tasks, just show a notification that editing is not available here
+        if (onNotify) {
+            onNotify('info', 'Edit Task', 'To edit this task, please go to the Tasks department.');
+        }
+    };
 
     // Load production plans
     useEffect(() => {
@@ -1199,10 +1243,15 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                         onUpdateClientApproval={onUpdateClientApproval || (async () => {})}
                                         onAddClientApproval={onAddClientApproval || (async () => {})}
                                         onUploadFile={onUploadFile || (async () => {})}
-                                        onNotify={onNotify || (async () => {})}
+                                        onNotify={onNotify || (() => {})}
+                                        onArchiveTask={onArchiveTask || (async () => {})}
+                                        onDeleteTask={onDeleteTask || (async () => {})}
+                                        onEditTask={handleEditTask}
+                                        getStatusColor={getStatusColor}
+                                        resolveApprover={resolveApprover}
+                                        onAddSocialPost={onAddSocialPost || (async () => {})}
                                         checkPermission={checkPermission || (() => false)}
-                                        projectMembers={projectMembers || []}
-                                        roles={roles || []}
+                                        leaveRequests={leaveRequests}
                                     />
                                 )}
                             </div>
