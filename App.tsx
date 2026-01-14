@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -125,6 +125,7 @@ const App: React.FC = () => {
   const [callSheets] = useFirestoreCollection<CallSheet>('call_sheets', CALL_SHEETS);
   const [locations] = useFirestoreCollection<AgencyLocation>('agency_locations', AGENCY_LOCATIONS);
   const [equipment] = useFirestoreCollection<AgencyEquipment>('agency_equipment', AGENCY_EQUIPMENT);
+  const [productionPlans] = useFirestoreCollection<ProductionPlan>('production_plans', []);
 
   // Vendors & Freelancers Module State
   const [vendors] = useFirestoreCollection<Vendor>('vendors', VENDORS);
@@ -1532,6 +1533,7 @@ const App: React.FC = () => {
             notes={notes}
             milestones={projectMilestones}
             approvalSteps={approvalSteps}
+            productionPlans={productionPlans}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
@@ -1544,6 +1546,7 @@ const App: React.FC = () => {
             onNavigateToClient={() => setActiveView('clients')}
             onScheduleMeeting={() => setActiveView('clients')}
             onNavigateToCalendar={() => setActiveView('calendar')}
+            onNavigateToProduction={() => setActiveView('production')}
           />
         );
       case 'clients':

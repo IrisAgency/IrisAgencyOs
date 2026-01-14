@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   Task,
   Project,
@@ -10,10 +10,13 @@ import {
   Note,
   ProjectMilestone,
   ApprovalStep,
+  ProductionPlan,
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { usePermission } from '../hooks/usePermissions';
 import NeedsMyApprovalCard from './dashboard/NeedsMyApprovalCard';
+import { Calendar, Clock, ClipboardList, X, Eye, Briefcase } from 'lucide-react';
+import { getProductionCountdown } from '../utils/productionUtils';
 import './dashboard/DashboardTheme.css';
 
 interface DashboardProps {
@@ -28,6 +31,7 @@ interface DashboardProps {
   notes: Note[];
   milestones?: ProjectMilestone[];
   approvalSteps: ApprovalStep[];
+  productionPlans?: ProductionPlan[];
   onAddNote: (note: Note) => void;
   onUpdateNote: (note: Note) => void;
   onDeleteNote: (id: string) => void;
@@ -40,6 +44,7 @@ interface DashboardProps {
   onNavigateToClient?: (clientId: string) => void;
   onScheduleMeeting?: () => void;
   onNavigateToCalendar?: () => void;
+  onNavigateToProduction?: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -54,6 +59,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   notes = [],
   milestones = [],
   approvalSteps = [],
+  productionPlans = [],
   onAddNote,
   onUpdateNote,
   onDeleteNote,
@@ -66,6 +72,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   onNavigateToClient,
   onScheduleMeeting,
   onNavigateToCalendar,
+  onNavigateToProduction,
 }) => {
   
   const canViewGmUrgent = usePermission(PERMISSIONS.DASHBOARD.VIEW_GM_URGENT);
@@ -80,9 +87,20 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // -- Drag and Drop Logic --
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
-    'my-tasks', 'needs-my-approval', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
+    'my-tasks', 'needs-my-approval', 'production-planning', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
   ]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
+  
+  // Production Planning Modal State
+  const [viewingPlanId, setViewingPlanId] = useState<string | null>(null);
+  const viewingPlan = useMemo(() => {
+    return productionPlans.find(p => p.id === viewingPlanId);
+  }, [productionPlans, viewingPlanId]);
+  
+  const viewingPlanTasks = useMemo(() => {
+    if (!viewingPlanId) return [];
+    return tasks.filter(t => t.productionPlanId === viewingPlanId);
+  }, [viewingPlanId, tasks]);
 
   // Pre-calculate user tasks for filter population
   const userTasksAll = tasks.filter(t => 
@@ -154,6 +172,19 @@ const Dashboard: React.FC<DashboardProps> = ({
   const urgentTasks = tasks
     .filter(t => t.priority === 'high' || t.priority === 'urgent')
     .filter(t => t.status !== 'completed')
+    .slice(0, 3);
+
+  // Upcoming Production Plans (next 7 days)
+  const upcomingProductions = productionPlans
+    .filter(p => {
+      if (p.isArchived) return false;
+      const prodDate = new Date(p.productionDate);
+      const now = new Date();
+      const sevenDaysFromNow = new Date();
+      sevenDaysFromNow.setDate(now.getDate() + 7);
+      return prodDate >= now && prodDate <= sevenDaysFromNow;
+    })
+    .sort((a, b) => new Date(a.productionDate).getTime() - new Date(b.productionDate).getTime())
     .slice(0, 3);
 
   // Calculate Client Health & Activity
@@ -320,6 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
+    <>
     <div className="dashboard-theme-wrapper" dir="ltr">
       <div className="dot-pattern"></div>
       
@@ -451,6 +483,114 @@ const Dashboard: React.FC<DashboardProps> = ({
                       onNavigateToTask={onNavigateToTask}
                       onViewAll={onViewAllApprovals}
                     />
+                  </section>
+                );
+
+              case 'production-planning':
+                return (
+                  <section key={widgetId} className="production-planning glass-panel animate-reveal" {...dragProps}>
+                    <div className="widget-title">
+                      <span>Upcoming Productions</span>
+                      <Briefcase width={16} height={16} strokeWidth={2} />
+                    </div>
+                    
+                    {upcomingProductions.length === 0 ? (
+                      <div className="text-center py-6 text-slate-500 text-sm">
+                        No productions scheduled in the next 7 days
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {upcomingProductions.map(plan => {
+                          const countdown = getProductionCountdown(plan.productionDate);
+                          return (
+                            <div
+                              key={plan.id}
+                              onClick={() => setViewingPlanId(plan.id)}
+                              style={{
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px solid rgba(255,255,255,0.08)',
+                                borderRadius: '10px',
+                                padding: '12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                e.currentTarget.style.borderColor = 'var(--dash-primary)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                              }}
+                            >
+                              <div style={{ marginBottom: '8px' }}>
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '4px' }} dir="auto">
+                                  {plan.name}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', opacity: 0.7 }} dir="auto">
+                                  {plan.clientName}
+                                </div>
+                              </div>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.7rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', opacity: 0.8 }}>
+                                  <Calendar width={12} height={12} />
+                                  <span className="ltr-text">{new Date(plan.productionDate).toLocaleDateString()}</span>
+                                </div>
+                                <span className={`font-semibold ${countdown.color}`}>
+                                  {countdown.label}
+                                </span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', fontSize: '0.7rem', opacity: 0.7 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Calendar width={12} height={12} />
+                                  <span className="ltr-text">{plan.calendarItemIds.length}</span>
+                                </div>
+                                <span>+</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <ClipboardList width={12} height={12} />
+                                  <span className="ltr-text">{plan.manualTaskIds.length}</span>
+                                </div>
+                                <span>=</span>
+                                <span className="font-semibold ltr-text">
+                                  {plan.calendarItemIds.length + plan.manualTaskIds.length} items
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    
+                    {upcomingProductions.length > 0 && onNavigateToProduction && (
+                      <button
+                        onClick={onNavigateToProduction}
+                        style={{
+                          width: '100%',
+                          marginTop: '12px',
+                          padding: '8px',
+                          background: 'transparent',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          borderRadius: '8px',
+                          color: 'var(--dash-primary)',
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(230,60,60,0.1)';
+                          e.currentTarget.style.borderColor = 'var(--dash-primary)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
+                        }}
+                      >
+                        View All Productions
+                      </button>
+                    )}
                   </section>
                 );
 
@@ -790,6 +930,249 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
     </div>
+    
+    {/* Production Plan Detail Modal */}
+    {viewingPlan && (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}
+        onClick={() => setViewingPlanId(null)}
+      >
+        <div
+          style={{
+            background: 'var(--dash-background)',
+            borderRadius: '16px',
+            maxWidth: '900px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            border: '1px solid var(--dash-glass-border)',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.4)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Modal Header */}
+          <div
+            style={{
+              padding: '24px',
+              borderBottom: '1px solid var(--dash-glass-border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+            }}
+          >
+            <div style={{ flex: 1 }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px' }} dir="auto">
+                {viewingPlan.name}
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', fontSize: '0.875rem', opacity: 0.8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Briefcase width={14} height={14} />
+                  <span dir="auto">{viewingPlan.clientName}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Calendar width={14} height={14} />
+                  <span className="ltr-text">{new Date(viewingPlan.productionDate).toLocaleDateString()}</span>
+                </div>
+                <span className={`font-semibold ${getProductionCountdown(viewingPlan.productionDate).color}`}>
+                  {getProductionCountdown(viewingPlan.productionDate).label}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => setViewingPlanId(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--dash-text)',
+                cursor: 'pointer',
+                padding: '8px',
+                opacity: 0.6,
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.6')}
+            >
+              <X width={20} height={20} />
+            </button>
+          </div>
+
+          {/* Modal Content */}
+          <div style={{ padding: '24px' }}>
+            {/* Team Members */}
+            <div style={{ marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '12px', opacity: 0.8 }}>Team Members</h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {users
+                  .filter(u => viewingPlan.teamMemberIds.includes(u.id))
+                  .map(user => (
+                    <div
+                      key={user.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        background: 'rgba(255,255,255,0.05)',
+                        borderRadius: '8px',
+                        fontSize: '0.8rem',
+                      }}
+                    >
+                      <img
+                        src={user.avatar}
+                        alt={user.name}
+                        style={{ width: '24px', height: '24px', borderRadius: '50%' }}
+                      />
+                      <span>{user.name}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Tasks */}
+            <div>
+              <h3 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '12px', opacity: 0.8 }}>
+                Production Tasks ({viewingPlanTasks.length})
+              </h3>
+              {viewingPlanTasks.length === 0 ? (
+                <div
+                  style={{
+                    textAlign: 'center',
+                    padding: '32px',
+                    background: 'rgba(255,255,255,0.02)',
+                    borderRadius: '12px',
+                    color: 'rgba(255,255,255,0.5)',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  No tasks generated for this production plan yet
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {viewingPlanTasks.map(task => {
+                    const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => {
+                          setViewingPlanId(null);
+                          onNavigateToTask?.(task.id);
+                        }}
+                        style={{
+                          padding: '12px 16px',
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          borderLeftWidth: '3px',
+                          borderLeftColor: isOverdue ? 'var(--dash-error)' : task.status === 'completed' ? 'var(--dash-success)' : 'var(--dash-primary)',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 600, marginBottom: '4px', fontSize: '0.9rem' }} dir="auto">
+                              {task.title}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.7rem', opacity: 0.7 }}>
+                              {task.dueDate && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Clock width={12} height={12} />
+                                  <span className="ltr-text">{new Date(task.dueDate).toLocaleDateString()}</span>
+                                </div>
+                              )}
+                              <span style={{
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                background: task.status === 'completed' ? 'rgba(34,197,94,0.2)' : task.status === 'in_progress' ? 'rgba(59,130,246,0.2)' : 'rgba(148,163,184,0.2)',
+                                textTransform: 'capitalize',
+                              }}>
+                                {task.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </div>
+                          {task.assigneeIds && task.assigneeIds.length > 0 && (
+                            <div style={{ display: 'flex', flexShrink: 0 }}>
+                              {users
+                                .filter(u => task.assigneeIds?.includes(u.id))
+                                .slice(0, 3)
+                                .map(user => (
+                                  <img
+                                    key={user.id}
+                                    src={user.avatar}
+                                    alt={user.name}
+                                    title={user.name}
+                                    style={{
+                                      width: '28px',
+                                      height: '28px',
+                                      borderRadius: '50%',
+                                      border: '2px solid var(--dash-background)',
+                                      marginLeft: '-8px',
+                                    }}
+                                  />
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* View All Button */}
+            {onNavigateToProduction && (
+              <button
+                onClick={() => {
+                  setViewingPlanId(null);
+                  onNavigateToProduction();
+                }}
+                style={{
+                  width: '100%',
+                  marginTop: '24px',
+                  padding: '12px',
+                  background: 'var(--dash-primary)',
+                  border: 'none',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 12px 30px -16px rgba(230,60,60,0.8)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                Go to Production Hub
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 

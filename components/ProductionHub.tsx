@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User, ProductionPlan, Client, CalendarItem, Task } from '../types';
 import {
-    MapPin, Camera, ClipboardList, FileText, ChevronRight, X, Plus,
+    MapPin, Camera, ClipboardList, FileText, ChevronRight, ChevronLeft, X, Plus,
     Calendar, Clock, User as UserIcon, CheckCircle, AlertCircle, Video,
     Search, Film, MoreHorizontal, Settings, CheckCircle as CheckCircleIcon,
     Briefcase, Eye, Edit, Copy, Archive, RotateCcw, Trash2, ImageIcon, Zap, Check
@@ -83,6 +83,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 }) => {
     // Calendar state
     const [calendarDate, setCalendarDate] = useState(new Date());
+    const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+    const dayRefs = React.useRef<{ [key: string]: HTMLButtonElement | null }>({});
 
     // Production Planning State
     const [productionPlans, setProductionPlans] = useState<ProductionPlan[]>([]);
@@ -99,6 +101,17 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
         if (!viewingPlanId || !tasks) return [];
         return tasks.filter(t => t.productionPlanId === viewingPlanId);
     }, [viewingPlanId, tasks]);
+
+    // Get productions for the selected calendar date
+    const selectedProductions = useMemo(() => {
+        return productionPlans.filter(p => {
+            const prodDate = new Date(p.productionDate);
+            prodDate.setHours(0, 0, 0, 0);
+            const checkDate = new Date(calendarDate);
+            checkDate.setHours(0, 0, 0, 0);
+            return prodDate.getTime() === checkDate.getTime() && !p.isArchived;
+        });
+    }, [productionPlans, calendarDate]);
 
     // Helper functions for TaskDetailView
     const getStatusColor = (status: string) => {
@@ -359,172 +372,375 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                 </div>
 
                 {/* Monthly Calendar */}
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6 mb-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 sm:gap-0">
-                        <h3 className="text-lg font-semibold text-slate-900">Production Calendar</h3>
-                        <div className="flex items-center justify-center gap-2">
-                            <button
-                                onClick={() => {
-                                    const newDate = new Date(calendarDate);
-                                    newDate.setMonth(newDate.getMonth() - 1);
-                                    setCalendarDate(newDate);
-                                }}
-                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                            >
-                                <ChevronRight className="w-4 h-4 rotate-180 text-slate-600" />
-                            </button>
-                            <button
+                <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 w-full min-w-0 overflow-hidden">
+                    {/* Mobile: Horizontal Scroll Full Month View */}
+                    <div className="md:hidden">
+                        {/* Header with Month Navigation */}
+                        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const newDate = new Date(calendarDate);
+                                        newDate.setMonth(newDate.getMonth() - 1);
+                                        setCalendarDate(newDate);
+                                    }}
+                                    className="p-1 hover:bg-slate-100 rounded"
+                                >
+                                    <ChevronLeft className="w-4 h-4 text-slate-600" />
+                                </button>
+                                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wide">
+                                    {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][calendarDate.getMonth()]} {calendarDate.getFullYear()}
+                                </h3>
+                                <button
+                                    onClick={() => {
+                                        const newDate = new Date(calendarDate);
+                                        newDate.setMonth(newDate.getMonth() + 1);
+                                        setCalendarDate(newDate);
+                                    }}
+                                    className="p-1 hover:bg-slate-100 rounded"
+                                >
+                                    <ChevronRight className="w-4 h-4 text-slate-600" />
+                                </button>
+                            </div>
+                            <button 
                                 onClick={() => setCalendarDate(new Date())}
-                                className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="text-xs font-medium text-slate-600 hover:text-slate-900"
                             >
-                                Today
+                                TODAY
                             </button>
-                            <button
-                                onClick={() => {
-                                    const newDate = new Date(calendarDate);
-                                    newDate.setMonth(newDate.getMonth() + 1);
-                                    setCalendarDate(newDate);
-                                }}
-                                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                            >
-                                <ChevronRight className="w-4 h-4 text-slate-600" />
-                            </button>
+                        </div>
+
+                        {/* Scrollable Full Month Days */}
+                        <div ref={scrollContainerRef} className="flex gap-3 px-4 py-4 overflow-x-auto scrollbar-hide">
+                            {(() => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const selectedDate = new Date(calendarDate);
+                                selectedDate.setHours(0, 0, 0, 0);
+                                const days = [];
+                                
+                                // Get first and last day of the month
+                                const firstDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
+                                const lastDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0);
+                                const daysInMonth = lastDay.getDate();
+                                
+                                // Generate all days in the month
+                                for (let i = 1; i <= daysInMonth; i++) {
+                                    const date = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), i);
+                                    date.setHours(0, 0, 0, 0);
+                                    
+                                    const dayName = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.getDay()];
+                                    const dayNum = date.getDate();
+                                    const isToday = date.getTime() === today.getTime();
+                                    const isSelected = date.getTime() === selectedDate.getTime();
+                                    const dayKey = `${date.getFullYear()}-${date.getMonth()}-${dayNum}`;
+                                    
+                                    // Check if this day has productions
+                                    const dayProductions = productionPlans.filter(p => {
+                                        const prodDate = new Date(p.productionDate);
+                                        prodDate.setHours(0, 0, 0, 0);
+                                        return prodDate.getTime() === date.getTime() && !p.isArchived;
+                                    });
+                                    
+                                    days.push(
+                                        <button
+                                            key={i}
+                                            ref={(el) => {
+                                                dayRefs.current[dayKey] = el;
+                                                // Auto-scroll to selected day on mount or selection change
+                                                if (isSelected && el && scrollContainerRef.current) {
+                                                    setTimeout(() => {
+                                                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                                                    }, 100);
+                                                }
+                                            }}
+                                            onClick={() => {
+                                                setCalendarDate(new Date(date));
+                                                // Clear viewingPlanId to show all productions for this day
+                                                setViewingPlanId(null);
+                                            }}
+                                            className={`flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl transition-all ${
+                                                isToday
+                                                    ? 'bg-[color:var(--dash-primary)] text-white shadow-lg'
+                                                    : isSelected
+                                                        ? 'bg-blue-50 border-2 border-blue-400 text-blue-700'
+                                                        : dayProductions.length > 0
+                                                            ? 'bg-green-100 border-2 border-green-400 text-green-800 shadow-sm'
+                                                            : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            <span className={`text-[10px] font-semibold mb-1 ${
+                                                isToday ? 'text-white/80' : isSelected ? 'text-blue-600' : dayProductions.length > 0 ? 'text-green-700' : 'text-slate-500'
+                                            }`}>
+                                                {dayName}
+                                            </span>
+                                            <span className={`text-2xl font-bold ${
+                                                isToday ? 'text-white' : isSelected ? 'text-blue-700' : dayProductions.length > 0 ? 'text-green-800' : 'text-slate-800'
+                                            }`}>
+                                                {dayNum}
+                                            </span>
+                                            {dayProductions.length > 0 && !isToday && !isSelected && (
+                                                <div className="flex items-center gap-1 mt-1">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-green-600"></div>
+                                                    {dayProductions.length > 1 && (
+                                                        <span className="text-[8px] font-semibold text-green-700">+{dayProductions.length}</span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {isToday && (
+                                                <span className="text-[8px] text-white/80 mt-1">TODAY</span>
+                                            )}
+                                        </button>
+                                    );
+                                }
+                                
+                                return days;
+                            })()}
+                        </div>
+
+                        {/* Selected Day Info */}
+                        <div className="px-4 py-3 border-t border-slate-100">
+                            {selectedProductions.length === 0 ? (
+                                <div className="text-center py-6">
+                                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <Film className="w-6 h-6 text-slate-400" />
+                                    </div>
+                                    <p className="text-sm font-medium text-slate-900 mb-1">
+                                        No events on {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][calendarDate.getMonth()]} {calendarDate.getDate()}
+                                    </p>
+                                    <p className="text-xs text-slate-500">
+                                        Select another day or schedule a meeting
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    <p className="text-xs font-medium text-slate-500 mb-2">
+                                        {selectedProductions.length} {selectedProductions.length === 1 ? 'production' : 'productions'} scheduled
+                                    </p>
+                                    {selectedProductions.map(prod => (
+                                        <button
+                                            key={prod.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                console.log('Opening production plan:', prod.id, prod.name);
+                                                setViewingPlanId(prod.id);
+                                            }}
+                                            className="w-full flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 transition-colors group"
+                                        >
+                                            <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
+                                                <Film className="w-5 h-5 text-white" />
+                                            </div>
+                                            <div className="flex-1 text-left">
+                                                <p className="text-sm font-semibold text-slate-900">{prod.name}</p>
+                                                <p className="text-xs text-slate-600">{prod.productionType}</p>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-green-600 transition-colors" />
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {(() => {
-                        const productionDays = productionPlans
-                            .filter(p => !p.isArchived)
-                            .map(p => ({
-                                date: new Date(p.productionDate),
-                                plan: p
-                            }));
+                    {/* Desktop: Full Month Grid */}
+                    <div className="hidden md:block p-5">
+                        {/* Calendar Header */}
+                        <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
+                            <h3 className="text-lg font-semibold text-slate-900">Production Calendar</h3>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const newDate = new Date(calendarDate);
+                                        newDate.setMonth(newDate.getMonth() - 1);
+                                        setCalendarDate(newDate);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    <ChevronRight className="w-4 h-4 rotate-180 text-slate-600" />
+                                </button>
+                                <button
+                                    onClick={() => setCalendarDate(new Date())}
+                                    className="px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    Today
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        const newDate = new Date(calendarDate);
+                                        newDate.setMonth(newDate.getMonth() + 1);
+                                        setCalendarDate(newDate);
+                                    }}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                    <ChevronRight className="w-4 h-4 text-slate-600" />
+                                </button>
+                            </div>
+                        </div>
 
-                        const year = calendarDate.getFullYear();
-                        const month = calendarDate.getMonth();
-                        
-                        const firstDay = new Date(year, month, 1);
-                        const lastDay = new Date(year, month + 1, 0);
-                        const startingDayOfWeek = firstDay.getDay();
-                        const daysInMonth = lastDay.getDate();
+                        {/* Calendar Month Title */}
+                        <div className="text-center text-base md:text-lg font-semibold text-slate-900 mb-3 truncate">
+                            {['January', 'February', 'March', 'April', 'May', 'June', 
+                              'July', 'August', 'September', 'October', 'November', 'December'][calendarDate.getMonth()]} {calendarDate.getFullYear()}
+                        </div>
 
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-
-                        const calendarDays = [];
-                        for (let i = 0; i < startingDayOfWeek; i++) {
-                            calendarDays.push(null);
-                        }
-                        for (let day = 1; day <= daysInMonth; day++) {
-                            calendarDays.push(day);
-                        }
-
-                        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
-                                           'July', 'August', 'September', 'October', 'November', 'December'];
-                        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-                        const getDayProductions = (day: number) => {
-                            const dayDate = new Date(year, month, day);
-                            dayDate.setHours(0, 0, 0, 0);
-                            
-                            return productionDays.filter(pd => {
-                                const prodDate = new Date(pd.date);
-                                prodDate.setHours(0, 0, 0, 0);
-                                return prodDate.getTime() === dayDate.getTime();
-                            });
-                        };
-
-                        const isToday = (day: number) => {
-                            const dayDate = new Date(year, month, day);
-                            dayDate.setHours(0, 0, 0, 0);
-                            return dayDate.getTime() === today.getTime();
-                        };
-
-                        return (
-                            <>
-                                <div className="text-center text-lg font-semibold text-slate-900 mb-4">
-                                    {monthNames[month]} {year}
+                        {/* Day Names Header */}
+                        <div className="grid grid-cols-7 gap-2 mb-1 w-full">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                                <div key={day} className="text-center text-xs font-semibold text-slate-500 py-1">
+                                    {day}
                                 </div>
+                            ))}
+                        </div>
 
-                                <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
-                                    {dayNames.map(day => (
-                                        <div key={day} className="text-center text-xs sm:text-sm font-semibold text-slate-600 py-1 sm:py-2">
-                                            <span className="hidden sm:inline">{day}</span>
-                                            <span className="sm:hidden">{day.slice(0, 1)}</span>
+                        {/* Calendar Grid */}
+                        <div className="grid grid-cols-7 gap-2 w-full min-w-0">
+                        {(() => {
+                            const year = calendarDate.getFullYear();
+                            const month = calendarDate.getMonth();
+                            const firstDay = new Date(year, month, 1);
+                            const daysInMonth = new Date(year, month + 1, 0).getDate();
+                            const startingDayOfWeek = firstDay.getDay();
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+
+                            const productionDays = productionPlans
+                                .filter(p => !p.isArchived)
+                                .map(p => ({
+                                    date: new Date(p.productionDate),
+                                    plan: p
+                                }));
+
+                            const getDayProductions = (day: number) => {
+                                const dayDate = new Date(year, month, day);
+                                dayDate.setHours(0, 0, 0, 0);
+                                return productionDays.filter(pd => {
+                                    const prodDate = new Date(pd.date);
+                                    prodDate.setHours(0, 0, 0, 0);
+                                    return prodDate.getTime() === dayDate.getTime();
+                                });
+                            };
+
+                            const isToday = (day: number) => {
+                                const dayDate = new Date(year, month, day);
+                                dayDate.setHours(0, 0, 0, 0);
+                                return dayDate.getTime() === today.getTime();
+                            };
+
+                            const calendarCells = [];
+
+                            // Empty cells before month starts
+                            for (let i = 0; i < startingDayOfWeek; i++) {
+                                calendarCells.push(
+                                    <div key={`empty-${i}`} className="h-10 md:h-11 w-full min-w-0" />
+                                );
+                            }
+
+                            // Days of the month - Fixed Height cells
+                            for (let day = 1; day <= daysInMonth; day++) {
+                                const dayProductions = getDayProductions(day);
+                                const hasProduction = dayProductions.length > 0;
+                                const isTodayDate = isToday(day);
+
+                                calendarCells.push(
+                                    <div
+                                        key={day}
+                                        className={`h-10 md:h-11 w-full min-w-0 border rounded p-1 transition-all flex flex-col items-center justify-center cursor-pointer ${
+                                            isTodayDate 
+                                                ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5 font-bold' 
+                                                : hasProduction
+                                                    ? 'border-2 border-green-400 bg-green-100 hover:bg-green-200 shadow-sm'
+                                                    : 'border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                        onClick={() => {
+                                            const date = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day);
+                                            setCalendarDate(date);
+                                            // Clear viewingPlanId to show all productions for this day in mobile view
+                                            setViewingPlanId(null);
+                                        }}
+                                    >
+                                        <div className={`text-xs font-medium ${
+                                            isTodayDate 
+                                                ? 'text-[color:var(--dash-primary)]' 
+                                                : hasProduction 
+                                                    ? 'text-green-800 font-semibold'
+                                                    : 'text-slate-700'
+                                        }`}>
+                                            {day}
                                         </div>
+                                        {hasProduction && (
+                                            <div className="text-[8px] bg-gradient-to-r from-green-600 to-emerald-600 text-white px-1 py-0.5 rounded truncate mt-0.5 font-medium">
+                                                {dayProductions.length > 1 ? `${dayProductions.length} plans` : dayProductions[0].plan.name.substring(0, 6)}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            // Fill remaining cells to complete 42 cells (6 rows)
+                            const totalCells = startingDayOfWeek + daysInMonth;
+                            const remainingCells = 42 - totalCells;
+                            for (let i = 0; i < remainingCells; i++) {
+                                calendarCells.push(
+                                    <div key={`empty-end-${i}`} className="h-10 md:h-11 w-full min-w-0" />
+                                );
+                            }
+
+                            return calendarCells;
+                        })()}
+                        </div>
+
+                        {/* Calendar Legend */}
+                        <div className="mt-4 pt-3 border-t border-slate-200 flex flex-wrap items-center justify-between text-xs gap-2">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded border-2 border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/10"></div>
+                                    <span className="text-slate-600">Today</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                                    <span className="text-slate-600">Production</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-slate-600 font-medium">
+                                <Film className="w-3.5 h-3.5" />
+                                {productionPlans.filter(p => !p.isArchived).length} scheduled
+                            </div>
+                        </div>
+
+                        {/* Desktop: Selected Day Productions - Show when a day with productions is clicked */}
+                        {selectedProductions.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-slate-200">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-sm font-semibold text-slate-700">
+                                        {calendarDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                                    </h4>
+                                    <span className="text-xs text-slate-500">
+                                        {selectedProductions.length} {selectedProductions.length === 1 ? 'production' : 'productions'} scheduled
+                                    </span>
+                                </div>
+                                <div className="space-y-2">
+                                    {selectedProductions.map(prod => (
+                                        <button
+                                            key={prod.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                console.log('Opening production plan:', prod.id, prod.name);
+                                                setViewingPlanId(prod.id);
+                                            }}
+                                            className="w-full flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 transition-colors group"
+                                        >
+                                            <Film className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                            <div className="flex-1 text-left min-w-0">
+                                                <div className="text-sm font-medium text-slate-900 truncate">{prod.name}</div>
+                                                <div className="text-xs text-slate-600 truncate">{prod.productionType}</div>
+                                            </div>
+                                            <ChevronRight className="w-4 h-4 text-green-600 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+                                        </button>
                                     ))}
                                 </div>
-
-                                <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                                    {calendarDays.map((day, index) => {
-                                        if (day === null) {
-                                            return <div key={`empty-${index}`} className="aspect-square" />;
-                                        }
-
-                                        const dayProductions = getDayProductions(day);
-                                        const hasProduction = dayProductions.length > 0;
-                                        const isTodayDate = isToday(day);
-
-                                        return (
-                                            <div
-                                                key={day}
-                                                className={`aspect-square min-h-[50px] sm:min-h-[60px] border rounded-md sm:rounded-lg p-0.5 sm:p-1 text-center transition-all ${
-                                                    isTodayDate 
-                                                        ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5 font-bold' 
-                                                        : hasProduction
-                                                            ? 'border-green-300 bg-green-50 hover:bg-green-100'
-                                                            : 'border-slate-200 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                <div className={`text-[10px] sm:text-xs font-medium ${
-                                                    isTodayDate 
-                                                        ? 'text-[color:var(--dash-primary)]' 
-                                                        : hasProduction 
-                                                            ? 'text-green-700'
-                                                            : 'text-slate-700'
-                                                }`}>
-                                                    {day}
-                                                </div>
-                                                {hasProduction && (
-                                                    <div className="flex flex-col gap-0.5 mt-0.5">
-                                                        {dayProductions.map((prod, idx) => (
-                                                            <button
-                                                                key={idx}
-                                                                onClick={() => {
-                                                                    setViewingPlanId(prod.plan.id);
-                                                                }}
-                                                                className="text-[6px] sm:text-[8px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-0.5 sm:px-1 py-0.5 rounded truncate hover:from-green-600 hover:to-emerald-600 transition-all"
-                                                                title={prod.plan.name}
-                                                            >
-                                                                {prod.plan.name.length > 12 ? prod.plan.name.substring(0, 12) + '...' : prod.plan.name}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="mt-4 pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2 sm:gap-0">
-                                    <div className="flex items-center gap-3 sm:gap-4">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-3 h-3 rounded border-2 border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/10"></div>
-                                            <span className="text-slate-600">Today</span>
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-3 h-3 rounded bg-gradient-to-r from-green-500 to-emerald-500"></div>
-                                            <span className="text-slate-600">Production</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 text-slate-600 font-medium">
-                                        <Film className="w-3.5 h-3.5" />
-                                        {productionDays.length} scheduled
-                                    </div>
-                                </div>
-                            </>
-                        );
-                    })()}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Production Plans Grid */}
@@ -573,95 +789,13 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     }`}
                                 >
                                     <div className="p-6">
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-slate-900 mb-1 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                                                    {plan.name}
-                                                </h4>
-                                                <p className="text-sm text-slate-600 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                                                    {plan.clientName}
-                                                </p>
-                                            </div>
-                                            <div className="relative ml-2">
-                                                <button
-                                                    onClick={() => setPlanMenuOpen(planMenuOpen === plan.id ? null : plan.id)}
-                                                    className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
-                                                >
-                                                    <MoreHorizontal className="w-4 h-4 text-slate-400" />
-                                                </button>
-                                                {planMenuOpen === plan.id && (
-                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-slate-200 shadow-xl z-10 py-1">
-                                                        <button
-                                                            onClick={() => handleViewPlan(plan)}
-                                                            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                                        >
-                                                            <Eye className="w-4 h-4" /> View Details
-                                                        </button>
-                                                        {!plan.isArchived && (
-                                                            <>
-                                                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_EDIT}>
-                                                                    <button
-                                                                        onClick={() => handleEditPlan(plan)}
-                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                                                    >
-                                                                        <Edit className="w-4 h-4" /> Edit Plan
-                                                                    </button>
-                                                                </PermissionGate>
-                                                                <button
-                                                                    onClick={() => handleDuplicatePlan(plan)}
-                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                                                >
-                                                                    <Copy className="w-4 h-4" /> Duplicate
-                                                                </button>
-                                                                <div className="border-t border-slate-100 my-1"></div>
-                                                                {plan.status !== 'SCHEDULED' && (
-                                                                    <button
-                                                                        onClick={() => handleUpdateStatus(plan, 'SCHEDULED')}
-                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                                                    >
-                                                                        Mark as Scheduled
-                                                                    </button>
-                                                                )}
-                                                                {plan.status !== 'IN_PROGRESS' && (
-                                                                    <button
-                                                                        onClick={() => handleUpdateStatus(plan, 'IN_PROGRESS')}
-                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                                                    >
-                                                                        Mark In Progress
-                                                                    </button>
-                                                                )}
-                                                                {plan.status !== 'COMPLETED' && (
-                                                                    <button
-                                                                        onClick={() => handleUpdateStatus(plan, 'COMPLETED')}
-                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                                                                    >
-                                                                        Mark Completed
-                                                                    </button>
-                                                                )}
-                                                                <div className="border-t border-slate-100 my-1"></div>
-                                                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_DELETE}>
-                                                                    <button
-                                                                        onClick={() => handleArchivePlan(plan)}
-                                                                        className="w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                                                                    >
-                                                                        <Archive className="w-4 h-4" /> Archive Plan
-                                                                    </button>
-                                                                </PermissionGate>
-                                                            </>
-                                                        )}
-                                                        {isRestoreable && (
-                                                            <PermissionGate permission={PERMISSIONS.PRODUCTION.RESTORE_ARCHIVED}>
-                                                                <button
-                                                                    onClick={() => handleRestorePlan(plan)}
-                                                                    className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
-                                                                >
-                                                                    <RotateCcw className="w-4 h-4" /> Restore Plan
-                                                                </button>
-                                                            </PermissionGate>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <div className="mb-3">
+                                            <h4 className="font-bold text-slate-900 mb-1 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                {plan.name}
+                                            </h4>
+                                            <p className="text-sm text-slate-600 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                {plan.clientName}
+                                            </p>
                                         </div>
 
                                         <div className="flex items-center gap-2 mb-4">
@@ -710,15 +844,6 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                     </div>
                                                 )}
                                             </div>
-                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                plan.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                                plan.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                plan.status === 'SCHEDULED' ? 'bg-amber-100 text-amber-700' :
-                                                plan.status === 'ARCHIVED' ? 'bg-slate-100 text-slate-600' :
-                                                'bg-slate-100 text-slate-600'
-                                            }`}>
-                                                {plan.status}
-                                            </span>
                                         </div>
 
                                         {plan.isArchived && plan.canRestoreUntil && (
@@ -958,17 +1083,35 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
             />
 
             {/* Plan Details Drawer */}
-            {viewingPlanId && (
+            {viewingPlanId && (() => {
+                const viewingPlan = productionPlans.find(p => p.id === viewingPlanId);
+                
+                if (!viewingPlan) {
+                    console.error('Production plan not found:', viewingPlanId);
+                    return (
+                        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingPlanId(null)}>
+                            <div className="bg-white rounded-xl p-6 max-w-md">
+                                <h3 className="text-lg font-semibold text-red-600 mb-2">Plan Not Found</h3>
+                                <p className="text-slate-600 mb-4">The selected production plan could not be loaded.</p>
+                                <button onClick={() => setViewingPlanId(null)} className="px-4 py-2 bg-slate-900 text-white rounded-lg">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+                
+                return (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-0 sm:p-4" onClick={() => setViewingPlanId(null)}>
                     <div className="bg-white rounded-none sm:rounded-xl shadow-2xl w-full max-w-4xl h-full sm:max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
                         <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-4 sm:p-6">
                             <div className="flex items-start justify-between mb-4">
                                 <div className="flex-1 pr-2">
                                     <h2 className="text-xl sm:text-2xl font-bold mb-1">
-                                        {productionPlans.find(p => p.id === viewingPlanId)?.name}
+                                        {viewingPlan.name}
                                     </h2>
                                     <p className="text-white/80 text-xs sm:text-sm">
-                                        {productionPlans.find(p => p.id === viewingPlanId)?.clientName} • {new Date(productionPlans.find(p => p.id === viewingPlanId)?.productionDate || '').toLocaleDateString()}
+                                        {viewingPlan.clientName} • {new Date(viewingPlan.productionDate).toLocaleDateString()}
                                     </p>
                                 </div>
                                 <button
@@ -981,65 +1124,63 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                             
                             {/* Action Buttons */}
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                                <button
-                                    onClick={() => {
-                                        const plan = productionPlans.find(p => p.id === viewingPlanId);
-                                        if (plan) {
-                                            setSelectedPlan(plan);
+                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_EDIT}>
+                                    <button
+                                        onClick={() => {
+                                            setSelectedPlan(viewingPlan);
                                             setIsPlanningModalOpen(true);
-                                        }
-                                    }}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-white font-medium text-sm"
-                                >
-                                    <Edit className="w-4 h-4" />
-                                    <span>Edit Plan</span>
-                                </button>
-                                <button
-                                    onClick={async () => {
-                                        const plan = productionPlans.find(p => p.id === viewingPlanId);
-                                        if (!plan) return;
-                                        
-                                        const relatedTasks = tasks.filter(t => t.productionPlanId === plan.id);
-                                        
-                                        const confirmed = window.confirm(
-                                            `⚠️ Delete "${plan.name}"?\n\n` +
-                                            `This will permanently delete:\n` +
-                                            `• The production plan\n` +
-                                            `• ${relatedTasks.length} related task(s)\n\n` +
-                                            `This action CANNOT be undone!\n\n` +
-                                            `Are you sure?`
-                                        );
-                                        
-                                        if (confirmed) {
-                                            try {
-                                                // Delete all related tasks
-                                                for (const task of relatedTasks) {
-                                                    if (onDeleteTask) {
-                                                        // Use soft delete if available
-                                                        await updateDoc(doc(db, 'tasks', task.id), {
-                                                            isDeleted: true,
-                                                            deletedAt: new Date().toISOString(),
-                                                            deletedBy: currentUserId
-                                                        });
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all text-white font-medium text-sm"
+                                    >
+                                        <Edit className="w-4 h-4" />
+                                        <span>Edit Plan</span>
+                                    </button>
+                                </PermissionGate>
+                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_DELETE}>
+                                    <button
+                                        onClick={async () => {
+                                            const relatedTasks = tasks.filter(t => t.productionPlanId === viewingPlan.id);
+                                            
+                                            const confirmed = window.confirm(
+                                                `⚠️ Delete "${viewingPlan.name}"?\n\n` +
+                                                `This will permanently delete:\n` +
+                                                `• The production plan\n` +
+                                                `• ${relatedTasks.length} related task(s)\n\n` +
+                                                `This action CANNOT be undone!\n\n` +
+                                                `Are you sure?`
+                                            );
+                                            
+                                            if (confirmed) {
+                                                try {
+                                                    // Delete all related tasks
+                                                    for (const task of relatedTasks) {
+                                                        if (onDeleteTask) {
+                                                            // Use soft delete if available
+                                                            await updateDoc(doc(db, 'tasks', task.id), {
+                                                                isDeleted: true,
+                                                                deletedAt: new Date().toISOString(),
+                                                                deletedBy: currentUserId
+                                                            });
+                                                        }
                                                     }
+                                                    
+                                                    // Delete the production plan
+                                                    await archiveProductionPlan(viewingPlan.id, currentUserId, 'user_deleted');
+                                                    await loadProductionPlans();
+                                                    setViewingPlanId(null);
+                                                    alert('🗑️ Production plan and all related tasks deleted successfully.');
+                                                } catch (error) {
+                                                    console.error('Error deleting production plan:', error);
+                                                    alert('Failed to delete production plan.');
                                                 }
-                                                
-                                                // Delete the production plan
-                                                await archiveProductionPlan(plan.id, currentUserId, 'user_deleted');
-                                                await loadProductionPlans();
-                                                setViewingPlanId(null);
-                                                alert('🗑️ Production plan and all related tasks deleted successfully.');
-                                            } catch (error) {
-                                                console.error('Error deleting production plan:', error);
-                                                alert('Failed to delete production plan.');
                                             }
-                                        }
-                                    }}
-                                    className="flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg transition-all text-white font-medium text-sm"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    <span>Delete Plan</span>
-                                </button>
+                                        }}
+                                        className="flex items-center justify-center gap-2 px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg transition-all text-white font-medium text-sm"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        <span>Finished Plan</span>
+                                    </button>
+                                </PermissionGate>
                             </div>
                         </div>
 
@@ -1244,7 +1385,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Task Detail Modal */}
             {selectedTaskId && viewingPlanTasks.length > 0 && (() => {
