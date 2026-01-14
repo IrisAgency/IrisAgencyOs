@@ -1170,13 +1170,15 @@ const TaskDetailView = ({
                                                 </button>
                                             )}
                                         </div>
-                                        <button
-                                            onClick={() => handleDeleteReferenceLink(link.id)}
-                                            className="absolute top-2 right-10 p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                            title="Delete Link"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        {!isProductionView && (
+                                            <button
+                                                onClick={() => handleDeleteReferenceLink(link.id)}
+                                                className="absolute top-2 right-10 p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                                title="Delete Link"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}  
                                 {displayReferenceLinks.length === 0 && (
