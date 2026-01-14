@@ -5,7 +5,7 @@ import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './common/Modal';
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, runTransaction, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 
