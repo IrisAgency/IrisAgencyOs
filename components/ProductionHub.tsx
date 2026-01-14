@@ -142,10 +142,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
     // Load production plans
     useEffect(() => {
-        if (activeTab === 'Planning') {
-            loadProductionPlans();
-        }
-    }, [activeTab, showArchived]);
+        loadProductionPlans();
+    }, [showArchived]);
 
     const loadProductionPlans = async () => {
         setLoadingPlans(true);
@@ -873,9 +871,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                 : 'border-slate-200 hover:bg-slate-50'
                                     }`}
                                     onClick={() => {
-                                        if (hasProduction) {
-                                            setActiveTab('Planning');
-                                        }
+                                        // Calendar day click - removed tab navigation
                                     }}
                                 >
                                     <div className="flex flex-col h-full">
