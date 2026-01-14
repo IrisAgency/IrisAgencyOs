@@ -1065,7 +1065,7 @@ const ProductionPlanningModal: React.FC<ProductionPlanningModalProps> = ({
                     {Object.keys(conflictOverrides).length} Conflict Override{Object.keys(conflictOverrides).length !== 1 ? 's' : ''} Applied
                   </p>
                   <div className="space-y-1">
-                    {Object.entries(conflictOverrides).map(([userId, override]) => (
+                    {Object.entries(conflictOverrides).map(([userId, override]: [string, ProductionConflictOverride]) => (
                       <div key={userId} className="text-xs text-orange-300/80">
                         • {override.userName} - On leave override approved
                       </div>

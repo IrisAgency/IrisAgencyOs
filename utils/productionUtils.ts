@@ -15,7 +15,9 @@ import {
   Task,
   CalendarItem,
   ProductionAssignment,
-  Department
+  Department,
+  TaskStatus,
+  Priority
 } from '../types';
 
 /**
@@ -44,9 +46,9 @@ export const generateProductionTasks = async (
         description: calendarItem.primaryBrief || null,
         voiceOver: null,
         department: Department.PRODUCTION,
-        priority: 'MEDIUM',
+        priority: Priority.MEDIUM,
         taskType: calendarItem.type.toLowerCase() as any,
-        status: 'PENDING',
+        status: TaskStatus.NEW,
         startDate: plan.productionDate,
         dueDate: plan.productionDate,
         assigneeIds: plan.teamMemberIds,
@@ -68,14 +70,8 @@ export const generateProductionTasks = async (
         sourceTaskId: null,
         
         // Copy references (no file duplication)
-        referenceLinks: calendarItem.referenceLinks || [],
-        referenceImages: calendarItem.referenceFiles?.map(file => ({
-          id: file.id || `ref_${Date.now()}_${Math.random()}`,
-          url: file.url,
-          name: file.name,
-          uploadedBy: file.uploadedBy,
-          uploadedAt: file.uploadedAt
-        })) || [],
+        referenceLinks: [],
+        referenceImages: [],
         
         attachments: [],
         isArchived: false,
@@ -107,7 +103,7 @@ export const generateProductionTasks = async (
         startDate: plan.productionDate,
         dueDate: plan.productionDate,
         assigneeIds: plan.teamMemberIds,
-        status: 'PENDING',
+        status: TaskStatus.NEW,
         
         // Production-specific fields
         isProductionCopy: true,
@@ -187,7 +183,7 @@ export const updateProductionTasks = async (
         const task = taskDoc.docs[0].data() as Task;
         
         // In SAFE mode, only update PENDING tasks
-        if (updateMode === 'SAFE' && task.status !== 'PENDING') {
+        if (updateMode === 'SAFE' && task.status !== TaskStatus.NEW) {
           console.log(`⏭️  Skipping task ${taskId} (status: ${task.status})`);
           continue;
         }

@@ -36,9 +36,11 @@ interface ProductionHubProps {
     onAddLocation: (loc: AgencyLocation) => void;
     onAddEquipment: (eq: AgencyEquipment) => void;
     onUpdateEquipment: (eq: AgencyEquipment) => void;
-    leaveRequests?: any[]; // Keep as any[] or Import type if strict
-    projectMembers?: any[]; // Allow loose typing to avoid import circulars if any, but ideally import ProjectMember
+    onTaskClick?: (task: Task) => void;
+    leaveRequests?: any[];
+    projectMembers?: any[];
     currentUserId?: string;
+}
 const ProductionHub: React.FC<ProductionHubProps> = ({
     assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
     onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = [],
