@@ -122,13 +122,13 @@ const TaskDetailView = ({
     
     // Convert calendar item reference files to reference images format
     if (sourceCalendarItem?.referenceFiles) {
-        sourceCalendarItem.referenceFiles.forEach(file => {
+        sourceCalendarItem.referenceFiles.forEach((file, index) => {
             displayReferenceImages.push({
-                id: file.id,
+                id: `calendar_file_${sourceCalendarItem.id}_${index}`,
                 fileName: file.fileName,
-                downloadUrl: file.downloadUrl,
+                downloadUrl: file.downloadURL, // Note: Calendar uses downloadURL (capital URL)
                 storagePath: file.storagePath,
-                uploadedAt: file.uploadedAt,
+                uploadedAt: file.createdAt,
                 uploadedBy: file.uploadedBy
             });
         });
