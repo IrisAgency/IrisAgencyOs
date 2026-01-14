@@ -1183,17 +1183,17 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     currentUser={currentUser}
                                     workflowTemplates={workflowTemplates || []}
                                     milestones={milestones || []}
-                                    onUpdateTask={onUpdateTask || (() => {})}
-                                    onAddTask={onAddTask || (() => {})}
-                                    onAddComment={onAddComment || (() => {})}
-                                    onAddTimeLog={onAddTimeLog || (() => {})}
-                                    onAddDependency={onAddDependency || (() => {})}
-                                    onUpdateApprovalStep={onUpdateApprovalStep || (() => {})}
-                                    onAddApprovalSteps={onAddApprovalSteps || (() => {})}
-                                    onUpdateClientApproval={onUpdateClientApproval || (() => {})}
-                                    onAddClientApproval={onAddClientApproval || (() => {})}
-                                    onUploadFile={onUploadFile || (() => {})}
-                                    onNotify={onNotify || (() => {})}
+                                    onUpdateTask={onUpdateTask || (async () => {})}
+                                    onAddTask={onAddTask || (async () => {})}
+                                    onAddComment={onAddComment || (async () => {})}
+                                    onAddTimeLog={onAddTimeLog || (async () => {})}
+                                    onAddDependency={onAddDependency || (async () => {})}
+                                    onUpdateApprovalStep={onUpdateApprovalStep || (async () => {})}
+                                    onAddApprovalSteps={onAddApprovalSteps || (async () => {})}
+                                    onUpdateClientApproval={onUpdateClientApproval || (async () => {})}
+                                    onAddClientApproval={onAddClientApproval || (async () => {})}
+                                    onUploadFile={onUploadFile || (async () => {})}
+                                    onNotify={onNotify || (async () => {})}
                                     checkPermission={checkPermission || (() => false)}
                                     projectMembers={projectMembers || []}
                                     roles={roles || []}
