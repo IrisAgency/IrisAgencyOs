@@ -1145,10 +1145,15 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
             )}
 
             {/* Task Detail Modal */}
-            {selectedTaskId && (() => {
+            {selectedTaskId && viewingPlanTasks.length > 0 && (() => {
                 const selectedTask = viewingPlanTasks.find(t => t.id === selectedTaskId);
-                if (!selectedTask) return null;
+                if (!selectedTask) {
+                    setSelectedTaskId(null);
+                    return null;
+                }
 
+                const taskProject = projects.find(p => p.id === selectedTask.projectId);
+                
                 return (
                     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTaskId(null)}>
                         <div 
@@ -1168,36 +1173,38 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
                             {/* Modal Content - Scrollable */}
                             <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                <TaskDetailView
-                                    task={selectedTask}
-                                    project={projects.find(p => p.id === selectedTask.projectId)}
-                                    users={users}
-                                    comments={comments?.filter(c => c.taskId === selectedTask.id) || []}
-                                    timeLogs={timeLogs?.filter(t => t.taskId === selectedTask.id) || []}
-                                    dependencies={dependencies?.filter(d => d.taskId === selectedTask.id) || []}
-                                    activityLogs={activityLogs?.filter(l => l.taskId === selectedTask.id) || []}
-                                    taskSteps={approvalSteps?.filter(s => s.taskId === selectedTask.id) || []}
-                                    clientApproval={clientApprovals?.find(ca => ca.taskId === selectedTask.id)}
-                                    taskFiles={files?.filter(f => f.taskId === selectedTask.id) || []}
-                                    allTasks={tasks || []}
-                                    currentUser={currentUser}
-                                    workflowTemplates={workflowTemplates || []}
-                                    milestones={milestones || []}
-                                    onUpdateTask={onUpdateTask || (async () => {})}
-                                    onAddTask={onAddTask || (async () => {})}
-                                    onAddComment={onAddComment || (async () => {})}
-                                    onAddTimeLog={onAddTimeLog || (async () => {})}
-                                    onAddDependency={onAddDependency || (async () => {})}
-                                    onUpdateApprovalStep={onUpdateApprovalStep || (async () => {})}
-                                    onAddApprovalSteps={onAddApprovalSteps || (async () => {})}
-                                    onUpdateClientApproval={onUpdateClientApproval || (async () => {})}
-                                    onAddClientApproval={onAddClientApproval || (async () => {})}
-                                    onUploadFile={onUploadFile || (async () => {})}
-                                    onNotify={onNotify || (async () => {})}
-                                    checkPermission={checkPermission || (() => false)}
-                                    projectMembers={projectMembers || []}
-                                    roles={roles || []}
-                                />
+                                {currentUser && (
+                                    <TaskDetailView
+                                        task={selectedTask}
+                                        project={taskProject}
+                                        users={users}
+                                        comments={comments?.filter(c => c.taskId === selectedTask.id) || []}
+                                        timeLogs={timeLogs?.filter(t => t.taskId === selectedTask.id) || []}
+                                        dependencies={dependencies?.filter(d => d.taskId === selectedTask.id) || []}
+                                        activityLogs={activityLogs?.filter(l => l.taskId === selectedTask.id) || []}
+                                        taskSteps={approvalSteps?.filter(s => s.taskId === selectedTask.id) || []}
+                                        clientApproval={clientApprovals?.find(ca => ca.taskId === selectedTask.id)}
+                                        taskFiles={files?.filter(f => f.taskId === selectedTask.id) || []}
+                                        allTasks={tasks || []}
+                                        currentUser={currentUser}
+                                        workflowTemplates={workflowTemplates || []}
+                                        milestones={milestones || []}
+                                        onUpdateTask={onUpdateTask || (async () => {})}
+                                        onAddTask={onAddTask || (async () => {})}
+                                        onAddComment={onAddComment || (async () => {})}
+                                        onAddTimeLog={onAddTimeLog || (async () => {})}
+                                        onAddDependency={onAddDependency || (async () => {})}
+                                        onUpdateApprovalStep={onUpdateApprovalStep || (async () => {})}
+                                        onAddApprovalSteps={onAddApprovalSteps || (async () => {})}
+                                        onUpdateClientApproval={onUpdateClientApproval || (async () => {})}
+                                        onAddClientApproval={onAddClientApproval || (async () => {})}
+                                        onUploadFile={onUploadFile || (async () => {})}
+                                        onNotify={onNotify || (async () => {})}
+                                        checkPermission={checkPermission || (() => false)}
+                                        projectMembers={projectMembers || []}
+                                        roles={roles || []}
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
