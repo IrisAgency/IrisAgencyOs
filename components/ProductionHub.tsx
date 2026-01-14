@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User, ProductionPlan, Client, CalendarItem, Task } from '../types';
 import {
     MapPin, Camera, ClipboardList, FileText, ChevronRight, X, Plus,
@@ -102,8 +102,13 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     const [planMenuOpen, setPlanMenuOpen] = useState<string | null>(null);
     const [loadingPlans, setLoadingPlans] = useState(false);
     const [viewingPlanId, setViewingPlanId] = useState<string | null>(null);
-    const [viewingPlanTasks, setViewingPlanTasks] = useState<Task[]>([]);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+    // Get real-time tasks for the currently viewed plan
+    const viewingPlanTasks = useMemo(() => {
+        if (!viewingPlanId || !tasks) return [];
+        return tasks.filter(t => t.productionPlanId === viewingPlanId);
+    }, [viewingPlanId, tasks]);
 
     // Helper functions for TaskDetailView
     const getStatusColor = (status: string) => {
@@ -248,13 +253,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
     const handleViewPlan = async (plan: ProductionPlan) => {
         try {
-            // Load the generated tasks for this plan
-            const tasksQuery = query(collection(db, 'tasks'), where('productionPlanId', '==', plan.id));
-            const tasksSnapshot = await getDocs(tasksQuery);
-            const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
-            
+            // Simply set the plan ID - tasks will be filtered reactively via useMemo
             setViewingPlanId(plan.id);
-            setViewingPlanTasks(tasks);
             setPlanMenuOpen(null);
         } catch (error) {
             console.error('Error loading plan tasks:', error);
