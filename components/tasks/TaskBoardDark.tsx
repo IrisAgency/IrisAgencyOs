@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Task, TaskStatus, Priority, User, ApprovalStep, ArchiveReason } from '../../types';
-import { Clock, AlertCircle, Archive } from 'lucide-react';
+import { Task, TaskStatus, Priority, User, ApprovalStep } from '../../types';
+import { Clock, AlertCircle } from 'lucide-react';
 import { taskNeedsMyApproval, getCurrentApprovalStepInfo } from '../../utils/approvalUtils';
 
 export type ToneFn<T> = (value: T) => string;
@@ -31,25 +31,6 @@ const getInitials = (name: string) => {
   if (parts.length === 0) return '';
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-};
-
-const getArchiveReasonLabel = (reason?: ArchiveReason | null): { text: string; color: string } => {
-  if (!reason) return { text: 'Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
-  
-  switch (reason) {
-    case ArchiveReason.MANUAL_APPROVED:
-      return { text: 'Manually Approved', color: 'bg-green-500/20 border-green-500/30 text-green-300' };
-    case ArchiveReason.MANUAL_REJECTED:
-      return { text: 'Manually Rejected', color: 'bg-red-500/20 border-red-500/30 text-red-300' };
-    case ArchiveReason.WORKFLOW_COMPLETED:
-      return { text: 'Workflow Completed', color: 'bg-blue-500/20 border-blue-500/30 text-blue-300' };
-    case ArchiveReason.USER_ARCHIVED:
-      return { text: 'User Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
-    case ArchiveReason.PROJECT_ARCHIVED:
-      return { text: 'Project Archived', color: 'bg-purple-500/20 border-purple-500/30 text-purple-300' };
-    default:
-      return { text: 'Archived', color: 'bg-slate-500/20 border-slate-500/30 text-slate-300' };
-  }
 };
 
 const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
@@ -175,12 +156,6 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
 
                   {/* Metadata */}
                   <div className="flex items-center flex-wrap gap-2 text-[11px]">
-                    {task.isArchived && task.archiveReason && (
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${getArchiveReasonLabel(task.archiveReason).color}`}>
-                        <Archive className="w-3 h-3 flex-shrink-0" />
-                        {getArchiveReasonLabel(task.archiveReason).text}
-                      </span>
-                    )}
                     <span className={`px-2 py-0.5 rounded-full border whitespace-nowrap ${priorityTone(task.priority)}`}>
                       {task.priority}
                     </span>

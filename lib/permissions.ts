@@ -180,6 +180,13 @@ export const PERMISSIONS = {
     SCHEDULE: 'production.schedule',
     CLOSE_JOB: 'production.close_job',
     DELETE: 'production.delete',
+    // Production Planning Permissions
+    PLANS_CREATE: 'production.plans.create',
+    PLANS_EDIT: 'production.plans.edit',
+    PLANS_DELETE: 'production.plans.delete',
+    PLANS_VIEW: 'production.plans.view',
+    OVERRIDE_CONFLICTS: 'production.override_conflicts',
+    RESTORE_ARCHIVED: 'production.restore_archived',
   },
 
   // ========== Vendors & Freelancers ==========

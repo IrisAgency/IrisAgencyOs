@@ -70,62 +70,47 @@ const NotificationConsole: React.FC<NotificationConsoleProps> = ({ currentUserId
     }
   };
 
-  const handleToggleTarget = (id: string) => {
-    setTargetIds(prev => 
-      prev.includes(id) ? prev.filter(tid => tid !== id) : [...prev, id]
-    );
-  };
-
   const renderTargetControl = () => {
     if (targetType === 'user') {
       return (
-        <div className="w-full border border-slate-300 rounded-md p-3 text-sm bg-white max-h-[200px] overflow-y-auto space-y-2">
+        <select
+          multiple
+          value={targetIds}
+          onChange={(e) => setTargetIds(Array.from(e.target.selectedOptions).map(o => (o as HTMLOptionElement).value))}
+          className="w-full border rounded-md p-2 text-sm"
+        >
           {selectableUsers.map((u) => (
-            <label key={u.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded">
-              <input
-                type="checkbox"
-                checked={targetIds.includes(u.id)}
-                onChange={() => handleToggleTarget(u.id)}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-slate-900">{u.name || u.email || u.id}</span>
-            </label>
+            <option key={u.id} value={u.id}>{u.name || u.email || u.id}</option>
           ))}
-        </div>
+        </select>
       );
     }
     if (targetType === 'role') {
       return (
-        <div className="w-full border border-slate-300 rounded-md p-3 text-sm bg-white max-h-[200px] overflow-y-auto space-y-2">
+        <select
+          multiple
+          value={targetIds}
+          onChange={(e) => setTargetIds(Array.from(e.target.selectedOptions).map(o => (o as HTMLOptionElement).value))}
+          className="w-full border rounded-md p-2 text-sm"
+        >
           {roles.map((r) => (
-            <label key={r.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded">
-              <input
-                type="checkbox"
-                checked={targetIds.includes(r.name)}
-                onChange={() => handleToggleTarget(r.name)}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-slate-900">{r.name}</span>
-            </label>
+            <option key={r.id} value={r.name}>{r.name}</option>
           ))}
-        </div>
+        </select>
       );
     }
     if (targetType === 'project') {
       return (
-        <div className="w-full border border-slate-300 rounded-md p-3 text-sm bg-white max-h-[200px] overflow-y-auto space-y-2">
+        <select
+          multiple
+          value={targetIds}
+          onChange={(e) => setTargetIds(Array.from(e.target.selectedOptions).map(o => (o as HTMLOptionElement).value))}
+          className="w-full border rounded-md p-2 text-sm"
+        >
           {projects.map((p) => (
-            <label key={p.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded">
-              <input
-                type="checkbox"
-                checked={targetIds.includes(p.id)}
-                onChange={() => handleToggleTarget(p.id)}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-slate-900">{p.name}</span>
-            </label>
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
-        </div>
+        </select>
       );
     }
     return <p className="text-sm text-slate-500">All users will receive this notification.</p>;
@@ -165,7 +150,7 @@ const NotificationConsole: React.FC<NotificationConsoleProps> = ({ currentUserId
           <select
             value={targetType}
             onChange={(e) => { setTargetType(e.target.value as NotificationTargetType); setTargetIds([]); }}
-            className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white text-slate-900"
+            className="w-full border rounded-md p-2 text-sm"
           >
             <option value="user">Specific users</option>
             <option value="role">Roles / groups</option>
@@ -184,7 +169,7 @@ const NotificationConsole: React.FC<NotificationConsoleProps> = ({ currentUserId
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white text-slate-900 placeholder:text-slate-400"
+          className="w-full border rounded-md p-2 text-sm"
           placeholder="System update"
         />
       </div>
@@ -194,7 +179,7 @@ const NotificationConsole: React.FC<NotificationConsoleProps> = ({ currentUserId
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="w-full border border-slate-300 rounded-md p-2 text-sm bg-white text-slate-900 placeholder:text-slate-400"
+          className="w-full border rounded-md p-2 text-sm"
           rows={3}
           placeholder="A short message to recipients"
         />

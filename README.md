@@ -24,7 +24,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 - Dashboard: timeline/week/today views, urgent tasks, focus list, stats (completion, type distribution, weekly activity), upcoming meetings.
 - Clients: CRM with notes, meetings, brand assets, marketing strategies; cascades to projects/tasks/files.
 - Projects: lifecycle, milestones, members (staff/freelancers), approvals, files, activity logs.
-- Tasks: Kanban with workflows, approvals, dependencies, time logs, comments, file attachments. **Manual Close & Archive**: General Manager and Account Manager can manually close tasks as approved/rejected, bypassing remaining workflow steps. Closed tasks are immediately archived with reason tracking (manual_approved, manual_rejected, workflow_completed, user_archived, project_archived) and displayed with colored badges in archived view.
+- Tasks: Kanban with workflows, approvals, dependencies, time logs, comments, file attachments.
 - Posting: Refactored responsive board (kanban desktop, tabbed mobile), drawer/modal details, permission-aware read-only UX.
 - Files: Client-first hierarchy with auto-created client/project/task folders, smart categorization, breadcrumbs, filters.
 - Production: shot lists, call sheets, locations, equipment inventory.

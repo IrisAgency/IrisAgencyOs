@@ -341,6 +341,14 @@ export interface Task {
   deliveryDueAt?: string | null; // Delivery deadline (separate from publish)
   dynamicMilestoneId?: string | null; // Link to Milestone (for dynamic tracking)
 
+  // Production Workflow Integration
+  isProductionCopy?: boolean; // True if this is a production-generated task
+  productionPlanId?: string | null; // Link to ProductionPlan
+  sourceType?: 'CALENDAR' | 'MANUAL' | null; // Source of production task
+  sourceCalendarItemId?: string | null; // Original calendar item if from calendar
+  sourceTaskId?: string | null; // Original task if manually selected
+  originalPublishAt?: string | null; // Original publish date for reference
+
   // Social Handover
   requiresSocialPost?: boolean;
   socialPlatforms?: SocialPlatform[];
@@ -498,6 +506,74 @@ export interface ClientApproval {
   reviewedAt?: string;
   comment?: string;
 }
+
+// --- PRODUCTION PLANNING ENTITIES ---
+
+export type ProductionPlanStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED';
+export type ProductionSourceType = 'CALENDAR' | 'MANUAL';
+export type ProductionArchiveReason = 'user_deleted' | 'plan_superseded' | null;
+
+export interface ProductionConflictOverride {
+  userName: string;
+  reason: string;
+  overriddenBy: string;
+  overriddenAt: string;
+}
+
+export interface ProductionPlan {
+  id: string;
+  clientId: string;
+  clientName: string; // Denormalized for quick display
+  name: string; // e.g., "Client Name - Jan 15 Production"
+  productionDate: string; // ISO date string
+
+  // Content Selection
+  calendarItemIds: string[]; // Selected calendar items
+  manualTaskIds: string[]; // Manually selected tasks
+
+  // Team Assignment
+  teamMemberIds: string[];
+  conflictOverrides: Record<string, ProductionConflictOverride>; // userId -> override info
+
+  // Generated Tasks Tracking
+  generatedTaskIds: string[]; // IDs of production tasks created
+
+  // Status & Archival
+  status: ProductionPlanStatus;
+  isArchived: boolean;
+  archivedAt: string | null;
+  archivedBy: string | null; // User ID
+  archiveReason: ProductionArchiveReason;
+  canRestoreUntil: string | null; // 30 days from archival
+
+  // Metadata
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionAssignment {
+  id: string;
+  productionPlanId: string;
+  userId: string;
+  userName: string; // Denormalized
+  productionDate: string;
+  planName: string; // Denormalized
+  clientName: string; // Denormalized
+  itemCount: number; // Total calendar + manual items
+  status: ProductionPlanStatus;
+  createdAt: string;
+}
+
+export interface ProductionTask extends Task {
+  isProductionCopy: true;
+  productionPlanId: string;
+  sourceType: ProductionSourceType;
+  sourceCalendarItemId: string | null;
+  sourceTaskId: string | null;
+  originalPublishAt: string | null;
+}
+
 
 // --- FILE & ASSET MANAGEMENT ENTITIES ---
 

@@ -1,15 +1,23 @@
 
-import React, { useState } from 'react';
-import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User, ProductionPlan, Client, CalendarItem, Task } from '../types';
 import {
     MapPin, Camera, ClipboardList, FileText, ChevronRight, X, Plus,
     Calendar, Clock, User as UserIcon, CheckCircle, AlertCircle, Video,
-    Search, Film, MoreHorizontal, Settings, CheckCircle as CheckCircleIcon
+    Search, Film, MoreHorizontal, Settings, CheckCircle as CheckCircleIcon,
+    Briefcase, Eye, Edit, Copy, Archive, RotateCcw, Trash2, ImageIcon, Zap
 } from 'lucide-react';
 import Modal from './common/Modal';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import ProductionPlanningModal from './production/ProductionPlanningModal';
+import MyProductionWidget from './production/MyProductionWidget';
+import PermissionGate from './PermissionGate';
+import { PERMISSIONS } from '../lib/permissions';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
+import { getProductionCountdown, generateProductionTasks, updateProductionTasks, archiveProductionPlan, restoreProductionPlan } from '../utils/productionUtils';
 
 interface ProductionHubProps {
     // Legacy
@@ -21,6 +29,7 @@ interface ProductionHubProps {
     equipment: AgencyEquipment[];
     projects: Project[];
     users: User[];
+    clients: Client[];
     // Handlers
     onAddShotList: (sl: ShotList) => void;
     onAddCallSheet: (cs: CallSheet) => void;
@@ -29,13 +38,13 @@ interface ProductionHubProps {
     onUpdateEquipment: (eq: AgencyEquipment) => void;
     leaveRequests?: any[]; // Keep as any[] or Import type if strict
     projectMembers?: any[]; // Allow loose typing to avoid import circulars if any, but ideally import ProjectMember
-}
-
+    currentUserId?: string;
 const ProductionHub: React.FC<ProductionHubProps> = ({
-    assets, shotLists, callSheets, locations, equipment, projects, users, leaveRequests = [],
-    onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = []
+    assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
+    onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = [],
+    currentUserId = 'current_user', onTaskClick
 }) => {
-    const [activeTab, setActiveTab] = useState<'Overview' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
+    const [activeTab, setActiveTab] = useState<'Overview' | 'Planning' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<string>('');
 
@@ -45,6 +54,182 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     const [csLocation, setCsLocation] = useState('');
     const [csProject, setCsProject] = useState('');
     const [selectedCrew, setSelectedCrew] = useState<string[]>([]);
+
+    // Production Planning State
+    const [productionPlans, setProductionPlans] = useState<ProductionPlan[]>([]);
+    const [showArchived, setShowArchived] = useState(false);
+    const [isPlanningModalOpen, setIsPlanningModalOpen] = useState(false);
+    const [selectedPlan, setSelectedPlan] = useState<ProductionPlan | null>(null);
+    const [planMenuOpen, setPlanMenuOpen] = useState<string | null>(null);
+    const [loadingPlans, setLoadingPlans] = useState(false);
+
+    // Load production plans
+    useEffect(() => {
+        if (activeTab === 'Planning') {
+            loadProductionPlans();
+        }
+    }, [activeTab, showArchived]);
+
+    const loadProductionPlans = async () => {
+        setLoadingPlans(true);
+        try {
+            const plansQuery = showArchived
+                ? query(collection(db, 'production_plans'))
+                : query(collection(db, 'production_plans'), where('isArchived', '==', false));
+            
+            const snapshot = await getDocs(plansQuery);
+            const plans = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProductionPlan));
+            
+            // Sort by production date (soonest first)
+            plans.sort((a, b) => new Date(a.productionDate).getTime() - new Date(b.productionDate).getTime());
+            
+            setProductionPlans(plans);
+        } catch (error) {
+            console.error('Error loading production plans:', error);
+        } finally {
+            setLoadingPlans(false);
+        }
+    };
+
+    const handleSaveProductionPlan = async (planData: Partial<ProductionPlan>) => {
+        try {
+            if (selectedPlan?.id) {
+                // Update existing plan
+                const planRef = doc(db, 'production_plans', selectedPlan.id);
+                await updateDoc(planRef, planData);
+
+                // Load calendar items and tasks for update
+                const calendarItems: CalendarItem[] = [];
+                for (const itemId of planData.calendarItemIds || []) {
+                    const itemDoc = await getDoc(doc(db, 'calendar_items', itemId));
+                    if (itemDoc.exists()) {
+                        calendarItems.push({ id: itemDoc.id, ...itemDoc.data() } as CalendarItem);
+                    }
+                }
+
+                const manualTasks: Task[] = [];
+                for (const taskId of planData.manualTaskIds || []) {
+                    const taskDoc = await getDoc(doc(db, 'tasks', taskId));
+                    if (taskDoc.exists()) {
+                        manualTasks.push({ id: taskDoc.id, ...taskDoc.data() } as Task);
+                    }
+                }
+
+                // Update existing production tasks
+                await updateProductionTasks(
+                    { ...selectedPlan, ...planData } as ProductionPlan,
+                    selectedPlan.generatedTaskIds,
+                    'SAFE'
+                );
+            } else {
+                // Create new plan
+                const newPlanRef = await addDoc(collection(db, 'production_plans'), planData);
+                const planId = newPlanRef.id;
+
+                // Update plan with its ID
+                await updateDoc(newPlanRef, { id: planId });
+
+                // Load calendar items and tasks
+                const calendarItems: CalendarItem[] = [];
+                for (const itemId of planData.calendarItemIds || []) {
+                    const itemDoc = await getDoc(doc(db, 'calendar_items', itemId));
+                    if (itemDoc.exists()) {
+                        calendarItems.push({ id: itemDoc.id, ...itemDoc.data() } as CalendarItem);
+                    }
+                }
+
+                const manualTasks: Task[] = [];
+                for (const taskId of planData.manualTaskIds || []) {
+                    const taskDoc = await getDoc(doc(db, 'tasks', taskId));
+                    if (taskDoc.exists()) {
+                        manualTasks.push({ id: taskDoc.id, ...taskDoc.data() } as Task);
+                    }
+                }
+
+                // Generate production tasks
+                await generateProductionTasks(
+                    { id: planId, ...planData } as ProductionPlan,
+                    calendarItems,
+                    manualTasks,
+                    currentUserId
+                );
+            }
+
+            await loadProductionPlans();
+            setIsPlanningModalOpen(false);
+            setSelectedPlan(null);
+        } catch (error) {
+            console.error('Error saving production plan:', error);
+            throw error;
+        }
+    };
+
+    const handleEditPlan = (plan: ProductionPlan) => {
+        setSelectedPlan(plan);
+        setIsPlanningModalOpen(true);
+        setPlanMenuOpen(null);
+    };
+
+    const handleDuplicatePlan = (plan: ProductionPlan) => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        setSelectedPlan({
+            ...plan,
+            id: '',
+            name: `${plan.name} (Copy)`,
+            productionDate: tomorrow.toISOString().split('T')[0],
+            generatedTaskIds: [],
+            status: 'DRAFT',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        });
+        setIsPlanningModalOpen(true);
+        setPlanMenuOpen(null);
+    };
+
+    const handleArchivePlan = async (plan: ProductionPlan) => {
+        const confirmed = window.confirm(
+            `Archive "${plan.name}"?\n\nThis will archive ${plan.generatedTaskIds.length} production tasks. You can restore within 30 days.`
+        );
+        
+        if (confirmed) {
+            try {
+                await archiveProductionPlan(plan.id, currentUserId, 'user_deleted');
+                await loadProductionPlans();
+                setPlanMenuOpen(null);
+            } catch (error) {
+                console.error('Error archiving plan:', error);
+                alert('Failed to archive production plan.');
+            }
+        }
+    };
+
+    const handleRestorePlan = async (plan: ProductionPlan) => {
+        try {
+            await restoreProductionPlan(plan.id);
+            await loadProductionPlans();
+            setPlanMenuOpen(null);
+        } catch (error) {
+            console.error('Error restoring plan:', error);
+            alert(error instanceof Error ? error.message : 'Failed to restore production plan.');
+        }
+    };
+
+    const handleUpdateStatus = async (plan: ProductionPlan, newStatus: ProductionPlan['status']) => {
+        try {
+            const planRef = doc(db, 'production_plans', plan.id);
+            await updateDoc(planRef, { 
+                status: newStatus,
+                updatedAt: new Date().toISOString()
+            });
+            await loadProductionPlans();
+            setPlanMenuOpen(null);
+        } catch (error) {
+            console.error('Error updating plan status:', error);
+            alert('Failed to update status.');
+        }
+    };
 
     const checkAvailability = (userId: string, dateStr: string) => {
         if (!dateStr || !leaveRequests) return true;
@@ -403,6 +588,262 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
         </div>
     );
 
+    const PlanningView = () => {
+        return (
+            <div className="space-y-4 md:space-y-6 animate-in fade-in duration-300">
+                {/* Header with Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-[color:var(--dash-primary)]/10 text-[color:var(--dash-primary)] rounded-lg">
+                            <Briefcase className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-slate-900">Production Planning</h3>
+                            <p className="text-xs text-slate-500">Manage production schedules and team assignments</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                            onClick={() => setShowArchived(!showArchived)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                                showArchived
+                                    ? 'bg-slate-100 border-slate-300 text-slate-700'
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                        >
+                            {showArchived ? 'Hide Archived' : 'Show Archived'}
+                        </button>
+                        <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_CREATE}>
+                            <button
+                                onClick={() => {
+                                    setSelectedPlan(null);
+                                    setIsPlanningModalOpen(true);
+                                }}
+                                className="bg-[color:var(--dash-primary)] text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> New Production Plan
+                            </button>
+                        </PermissionGate>
+                    </div>
+                </div>
+
+                {/* My Production Widget */}
+                {currentUserId && (
+                    <MyProductionWidget 
+                        currentUserId={currentUserId} 
+                        onTaskClick={onTaskClick}
+                    />
+                )}
+
+                {/* Production Plans Grid */}
+                {loadingPlans ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 animate-pulse">
+                                <div className="h-4 bg-slate-200 rounded w-2/3 mb-3"></div>
+                                <div className="h-3 bg-slate-200 rounded w-full mb-2"></div>
+                                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                            </div>
+                        ))}
+                    </div>
+                ) : productionPlans.length === 0 ? (
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
+                        <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                        <h3 className="text-lg font-semibold text-slate-700 mb-2">No Production Plans</h3>
+                        <p className="text-sm text-slate-500 mb-6">
+                            {showArchived 
+                                ? 'No archived production plans found.'
+                                : 'Create your first production plan to get started.'}
+                        </p>
+                        <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_CREATE}>
+                            <button
+                                onClick={() => {
+                                    setSelectedPlan(null);
+                                    setIsPlanningModalOpen(true);
+                                }}
+                                className="bg-[color:var(--dash-primary)] text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all inline-flex items-center gap-2"
+                            >
+                                <Plus className="w-4 h-4" /> Create Production Plan
+                            </button>
+                        </PermissionGate>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                        {productionPlans.map(plan => {
+                            const countdown = getProductionCountdown(plan.productionDate);
+                            const isRestoreable = plan.isArchived && plan.canRestoreUntil && new Date(plan.canRestoreUntil) > new Date();
+                            
+                            return (
+                                <div
+                                    key={plan.id}
+                                    className={`bg-white rounded-xl border shadow-sm overflow-hidden hover:shadow-md transition-all ${
+                                        plan.isArchived ? 'border-slate-300 opacity-75' : 'border-slate-200'
+                                    }`}
+                                >
+                                    <div className="p-6">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-slate-900 mb-1 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                    {plan.name}
+                                                </h4>
+                                                <p className="text-sm text-slate-600 truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                    {plan.clientName}
+                                                </p>
+                                            </div>
+                                            <div className="relative ml-2">
+                                                <button
+                                                    onClick={() => setPlanMenuOpen(planMenuOpen === plan.id ? null : plan.id)}
+                                                    className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                                                >
+                                                    <MoreHorizontal className="w-4 h-4 text-slate-400" />
+                                                </button>
+                                                {planMenuOpen === plan.id && (
+                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-slate-200 shadow-xl z-10 py-1">
+                                                        <button
+                                                            onClick={() => handleEditPlan(plan)}
+                                                            className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                        >
+                                                            <Eye className="w-4 h-4" /> View Details
+                                                        </button>
+                                                        {!plan.isArchived && (
+                                                            <>
+                                                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_EDIT}>
+                                                                    <button
+                                                                        onClick={() => handleEditPlan(plan)}
+                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                                    >
+                                                                        <Edit className="w-4 h-4" /> Edit Plan
+                                                                    </button>
+                                                                </PermissionGate>
+                                                                <button
+                                                                    onClick={() => handleDuplicatePlan(plan)}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                                                >
+                                                                    <Copy className="w-4 h-4" /> Duplicate
+                                                                </button>
+                                                                <div className="border-t border-slate-100 my-1"></div>
+                                                                {plan.status !== 'SCHEDULED' && (
+                                                                    <button
+                                                                        onClick={() => handleUpdateStatus(plan, 'SCHEDULED')}
+                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                                                    >
+                                                                        Mark as Scheduled
+                                                                    </button>
+                                                                )}
+                                                                {plan.status !== 'IN_PROGRESS' && (
+                                                                    <button
+                                                                        onClick={() => handleUpdateStatus(plan, 'IN_PROGRESS')}
+                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                                                    >
+                                                                        Mark In Progress
+                                                                    </button>
+                                                                )}
+                                                                {plan.status !== 'COMPLETED' && (
+                                                                    <button
+                                                                        onClick={() => handleUpdateStatus(plan, 'COMPLETED')}
+                                                                        className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                                                    >
+                                                                        Mark Completed
+                                                                    </button>
+                                                                )}
+                                                                <div className="border-t border-slate-100 my-1"></div>
+                                                                <PermissionGate permission={PERMISSIONS.PRODUCTION.PLANS_DELETE}>
+                                                                    <button
+                                                                        onClick={() => handleArchivePlan(plan)}
+                                                                        className="w-full px-4 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2"
+                                                                    >
+                                                                        <Archive className="w-4 h-4" /> Archive Plan
+                                                                    </button>
+                                                                </PermissionGate>
+                                                            </>
+                                                        )}
+                                                        {isRestoreable && (
+                                                            <PermissionGate permission={PERMISSIONS.PRODUCTION.RESTORE_ARCHIVED}>
+                                                                <button
+                                                                    onClick={() => handleRestorePlan(plan)}
+                                                                    className="w-full px-4 py-2 text-left text-sm text-green-600 hover:bg-green-50 flex items-center gap-2"
+                                                                >
+                                                                    <RotateCcw className="w-4 h-4" /> Restore Plan
+                                                                </button>
+                                                            </PermissionGate>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                {new Date(plan.productionDate).toLocaleDateString()}
+                                            </div>
+                                            <span className={`text-xs font-medium ${countdown.color}`}>
+                                                {countdown.label}
+                                            </span>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 text-xs mb-4 flex-wrap">
+                                            <div className="flex items-center gap-1 text-[color:var(--dash-primary)]">
+                                                <Calendar className="w-3.5 h-3.5" />
+                                                <span className="font-semibold">{plan.calendarItemIds.length}</span>
+                                            </div>
+                                            <span className="text-slate-400">+</span>
+                                            <div className="flex items-center gap-1 text-slate-500">
+                                                <ClipboardList className="w-3.5 h-3.5" />
+                                                <span className="font-semibold">{plan.manualTaskIds.length}</span>
+                                            </div>
+                                            <span className="text-slate-400">=</span>
+                                            <div className="font-semibold text-slate-700">
+                                                {plan.calendarItemIds.length + plan.manualTaskIds.length} items
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                                            <div className="flex -space-x-2">
+                                                {users
+                                                    .filter(u => plan.teamMemberIds.includes(u.id))
+                                                    .slice(0, 4)
+                                                    .map(user => (
+                                                        <img
+                                                            key={user.id}
+                                                            src={user.avatar}
+                                                            alt={user.name}
+                                                            className="w-7 h-7 rounded-full border-2 border-white"
+                                                            title={user.name}
+                                                        />
+                                                    ))}
+                                                {plan.teamMemberIds.length > 4 && (
+                                                    <div className="w-7 h-7 rounded-full border-2 border-white bg-slate-200 flex items-center justify-center text-xs font-medium text-slate-600">
+                                                        +{plan.teamMemberIds.length - 4}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                plan.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                                plan.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                plan.status === 'SCHEDULED' ? 'bg-amber-100 text-amber-700' :
+                                                plan.status === 'ARCHIVED' ? 'bg-slate-100 text-slate-600' :
+                                                'bg-slate-100 text-slate-600'
+                                            }`}>
+                                                {plan.status}
+                                            </span>
+                                        </div>
+
+                                        {plan.isArchived && plan.canRestoreUntil && (
+                                            <div className="mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                                                Restore until {new Date(plan.canRestoreUntil).toLocaleDateString()}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <PageContainer>
             <PageHeader
@@ -412,7 +853,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
             <div className="border-b border-slate-200">
                 <nav className="flex space-x-6">
-                    {['Overview', 'Shot Lists', 'Call Sheets', 'Equipment', 'Locations'].map(tab => (
+                    {['Overview', 'Planning', 'Shot Lists', 'Call Sheets', 'Equipment', 'Locations'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
@@ -427,6 +868,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
 
             <PageContent>
                 {activeTab === 'Overview' && <OverviewView />}
+                {activeTab === 'Planning' && <PlanningView />}
                 {activeTab === 'Shot Lists' && <ShotListsView />}
                 {activeTab === 'Call Sheets' && <CallSheetsView />}
                 {activeTab === 'Equipment' && <EquipmentView />}
@@ -508,6 +950,21 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                     </div>
                 )}
             </Modal>
+
+            {/* Production Planning Modal */}
+            <ProductionPlanningModal
+                isOpen={isPlanningModalOpen}
+                onClose={() => {
+                    setIsPlanningModalOpen(false);
+                    setSelectedPlan(null);
+                    setPlanMenuOpen(null);
+                }}
+                clients={clients}
+                users={users}
+                leaveRequests={leaveRequests}
+                existingPlan={selectedPlan}
+                onSave={handleSaveProductionPlan}
+            />
         </PageContainer>
     );
 };
