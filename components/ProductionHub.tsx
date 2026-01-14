@@ -64,6 +64,8 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     const [selectedPlan, setSelectedPlan] = useState<ProductionPlan | null>(null);
     const [planMenuOpen, setPlanMenuOpen] = useState<string | null>(null);
     const [loadingPlans, setLoadingPlans] = useState(false);
+    const [viewingPlanId, setViewingPlanId] = useState<string | null>(null);
+    const [viewingPlanTasks, setViewingPlanTasks] = useState<Task[]>([]);
 
     // Load production plans
     useEffect(() => {
@@ -163,6 +165,22 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
         } catch (error) {
             console.error('Error saving production plan:', error);
             throw error;
+        }
+    };
+
+    const handleViewPlan = async (plan: ProductionPlan) => {
+        try {
+            // Load the generated tasks for this plan
+            const tasksQuery = query(collection(db, 'tasks'), where('productionPlanId', '==', plan.id));
+            const tasksSnapshot = await getDocs(tasksQuery);
+            const tasks = tasksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Task));
+            
+            setViewingPlanId(plan.id);
+            setViewingPlanTasks(tasks);
+            setPlanMenuOpen(null);
+        } catch (error) {
+            console.error('Error loading plan tasks:', error);
+            alert('Failed to load plan details.');
         }
     };
 
@@ -702,7 +720,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                 {planMenuOpen === plan.id && (
                                                     <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg border border-slate-200 shadow-xl z-10 py-1">
                                                         <button
-                                                            onClick={() => handleEditPlan(plan)}
+                                                            onClick={() => handleViewPlan(plan)}
                                                             className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                                                         >
                                                             <Eye className="w-4 h-4" /> View Details
@@ -967,8 +985,124 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                 existingPlan={selectedPlan}
                 onSave={handleSaveProductionPlan}
             />
+
+            {/* Plan Details Drawer */}
+            {viewingPlanId && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setViewingPlanId(null)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-[color:var(--dash-primary)] to-rose-600 text-white p-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-2xl font-bold mb-1">
+                                    {productionPlans.find(p => p.id === viewingPlanId)?.name}
+                                </h2>
+                                <p className="text-white/80 text-sm">
+                                    {productionPlans.find(p => p.id === viewingPlanId)?.clientName} • {new Date(productionPlans.find(p => p.id === viewingPlanId)?.productionDate || '').toLocaleDateString()}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setViewingPlanId(null)}
+                                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+                            <div className="mb-6">
+                                <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                                    <Film className="w-5 h-5 text-[color:var(--dash-primary)]" />
+                                    Production Tasks ({viewingPlanTasks.length})
+                                </h3>
+
+                                {viewingPlanTasks.length === 0 ? (
+                                    <div className="bg-slate-50 rounded-lg p-8 text-center">
+                                        <AlertCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                        <p className="text-slate-600">No tasks generated for this plan yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {viewingPlanTasks.map(task => {
+                                            const assignedUsers = task.assigneeIds?.map(id => users.find(u => u.id === id)).filter(Boolean) || [];
+                                            const statusColors: Record<string, string> = {
+                                                'TODO': 'bg-slate-100 text-slate-700 border-slate-200',
+                                                'IN_PROGRESS': 'bg-blue-50 text-blue-700 border-blue-200',
+                                                'COMPLETED': 'bg-green-50 text-green-700 border-green-200',
+                                                'BLOCKED': 'bg-rose-50 text-rose-700 border-rose-200'
+                                            };
+
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    onClick={() => onTaskClick && onTaskClick(task)}
+                                                    className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <span className="text-lg">🎬</span>
+                                                                <h4 className="font-semibold text-slate-900 group-hover:text-[color:var(--dash-primary)] transition-colors truncate" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                                    {task.title}
+                                                                </h4>
+                                                            </div>
+                                                            {task.description && (
+                                                                <p className="text-sm text-slate-600 line-clamp-2 mb-3" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                                                                    {task.description}
+                                                                </p>
+                                                            )}
+                                                            <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                                                {task.dueDate && (
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Calendar className="w-3 h-3" />
+                                                                        {new Date(task.dueDate).toLocaleDateString()}
+                                                                    </span>
+                                                                )}
+                                                                {assignedUsers.length > 0 && (
+                                                                    <div className="flex items-center gap-1">
+                                                                        <UserIcon className="w-3 h-3" />
+                                                                        <div className="flex -space-x-2">
+                                                                            {assignedUsers.slice(0, 3).map(user => (
+                                                                                <div
+                                                                                    key={user!.id}
+                                                                                    className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-semibold border-2 border-white"
+                                                                                    title={user!.name}
+                                                                                >
+                                                                                    {user!.name.substring(0, 2).toUpperCase()}
+                                                                                </div>
+                                                                            ))}
+                                                                            {assignedUsers.length > 3 && (
+                                                                                <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-semibold border-2 border-white">
+                                                                                    +{assignedUsers.length - 3}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColors[task.status] || statusColors.TODO}`}>
+                                                                {task.status.replace('_', ' ')}
+                                                            </span>
+                                                            {task.sourceType && (
+                                                                <span className="px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 border border-purple-200">
+                                                                    {task.sourceType === 'calendar' ? '📅 Calendar' : '📋 Manual'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </PageContainer>
     );
 };
 
 export default ProductionHub;
+
