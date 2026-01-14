@@ -1270,11 +1270,6 @@ export interface CalendarItem {
   // Smart Project Creation - Task Link
   taskId?: string | null; // Link to generated delivery task
   
-  // Archive
-  isArchived?: boolean;
-  archivedAt?: string;
-  archivedBy?: string;
-  
   createdBy: string;
   createdAt: string;
   updatedAt: string;

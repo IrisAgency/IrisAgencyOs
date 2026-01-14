@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2 } from 'lucide-react';
 import { Client, CalendarMonth, CalendarItem, CalendarContentType, User, CalendarReferenceLink } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
@@ -34,8 +34,6 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const [editingMonth, setEditingMonth] = useState<CalendarMonth | null>(null);
   const [editingItem, setEditingItem] = useState<CalendarItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
 
   const [monthForm, setMonthForm] = useState({
     monthKey: '',
@@ -59,17 +57,6 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
 
   const canManage = checkPermission(PERMISSIONS.CALENDAR.MANAGE);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const getClientCode = (clientId: string): string => {
     const client = clients.find(c => c.id === clientId);
@@ -327,33 +314,10 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     setIsLoading(true);
     try {
       await deleteDoc(doc(db, 'calendar_items', itemId));
-      setOpenMenuId(null);
       onRefresh?.();
     } catch (error) {
       console.error('Error deleting item:', error);
       alert('Failed to delete item');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleArchiveItem = async (item: CalendarItem) => {
-    const action = item.isArchived ? 'unarchive' : 'archive';
-    if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} this calendar item?`)) return;
-
-    setIsLoading(true);
-    try {
-      await updateDoc(doc(db, 'calendar_items', item.id), {
-        isArchived: !item.isArchived,
-        archivedAt: item.isArchived ? null : new Date().toISOString(),
-        archivedBy: item.isArchived ? null : currentUser.id,
-        updatedAt: new Date().toISOString()
-      });
-      setOpenMenuId(null);
-      onRefresh?.();
-    } catch (error) {
-      console.error('Error archiving item:', error);
-      alert('Failed to ' + action + ' item');
     } finally {
       setIsLoading(false);
     }
@@ -559,48 +523,27 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                   <div className={`px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 ${getTypeColor(item.type)}`}>
                     {getTypeIcon(item.type)}
                     {item.type}
-                    {item.isArchived && <span className="ml-2 text-xs">(Archived)</span>}
                   </div>
-                  <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
-                    <div className="relative" ref={openMenuId === item.id ? menuRef : null}>
+                  <div className="flex items-center gap-1">
+                    <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                       <button
-                        onClick={() => setOpenMenuId(openMenuId === item.id ? null : item.id)}
-                        className="p-1 text-slate-400 hover:text-white transition-colors"
+                        onClick={() => openEditItem(item)}
+                        className="p-1 text-slate-400 hover:text-blue-400 transition-colors"
+                        title="Edit"
                       >
-                        <MoreVertical className="w-4 h-4" />
+                        <Edit2 className="w-4 h-4" />
                       </button>
-                      {openMenuId === item.id && (
-                        <div className="absolute right-0 mt-1 w-48 bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-lg z-50 py-1">
-                          <button
-                            onClick={() => {
-                              openEditItem(item);
-                              setOpenMenuId(null);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-gray-800 flex items-center gap-2"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleArchiveItem(item)}
-                            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-gray-800 flex items-center gap-2"
-                          >
-                            <Archive className="w-4 h-4" />
-                            {item.isArchived ? 'Unarchive' : 'Archive'}
-                          </button>
-                          <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
-                            <button
-                              onClick={() => handleDeleteItem(item.id)}
-                              className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-gray-800 flex items-center gap-2"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
-                          </PermissionGate>
-                        </div>
-                      )}
-                    </div>
-                  </PermissionGate>
+                    </PermissionGate>
+                    <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="p-1 text-slate-400 hover:text-red-400 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </PermissionGate>
+                  </div>
                 </div>
 
                 <h3 className="text-sm font-bold text-white mb-2 font-mono">{item.autoName}</h3>
