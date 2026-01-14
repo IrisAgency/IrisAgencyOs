@@ -801,6 +801,13 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'production.schedule', module: 'Production', name: 'Schedule Production', description: 'Can schedule production dates' },
   { code: 'production.close_job', module: 'Production', name: 'Close Production', description: 'Can close completed productions' },
   { code: 'production.delete', module: 'Production', name: 'Delete Production', description: 'Can delete production items' },
+  // Production Planning Permissions
+  { code: 'production.plans.view', module: 'Production', name: 'View Production Plans', description: 'Can view production planning schedules' },
+  { code: 'production.plans.create', module: 'Production', name: 'Create Production Plans', description: 'Can create new production plans' },
+  { code: 'production.plans.edit', module: 'Production', name: 'Edit Production Plans', description: 'Can edit existing production plans' },
+  { code: 'production.plans.delete', module: 'Production', name: 'Delete Production Plans', description: 'Can delete/archive production plans' },
+  { code: 'production.override_conflicts', module: 'Production', name: 'Override Conflicts', description: 'Can force update plans with conflicts or completed tasks' },
+  { code: 'production.restore_archived', module: 'Production', name: 'Restore Archived Plans', description: 'Can restore archived production plans within 30 days' },
 
   // ==================== VENDORS (Sidebar: "Network") ====================
   // 🔹 Uncheck ALL permissions below to hide "Network" from sidebar
@@ -911,6 +918,9 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Production
       'production.view', 'production.create', 'production.edit', 'production.assign_crew', 'production.schedule',
       'production.close_job', 'production.delete',
+      // Production Planning
+      'production.plans.view', 'production.plans.create', 'production.plans.edit', 'production.plans.delete',
+      'production.override_conflicts', 'production.restore_archived',
       // Vendors
       'vendors.view', 'vendors.create', 'vendors.edit', 'vendors.delete', 'vendors.assign_to_project',
       // Finance (full access)
