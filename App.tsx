@@ -1533,7 +1533,6 @@ const App: React.FC = () => {
             notes={notes}
             milestones={projectMilestones}
             approvalSteps={approvalSteps}
-            productionPlans={productionPlans}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
@@ -1546,7 +1545,6 @@ const App: React.FC = () => {
             onNavigateToClient={() => setActiveView('clients')}
             onScheduleMeeting={() => setActiveView('clients')}
             onNavigateToCalendar={() => setActiveView('calendar')}
-            onNavigateToProduction={() => setActiveView('production')}
           />
         );
       case 'clients':
