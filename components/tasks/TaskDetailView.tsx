@@ -91,23 +91,47 @@ const TaskDetailView = ({
 
     const usedTemplate = workflowTemplates.find(w => w.id === task.workflowTemplateId);
 
-    // Get source calendar item for production tasks
+    // Get source calendar item and task for production tasks
     const sourceCalendarItem = task.isProductionCopy && task.sourceCalendarItemId 
         ? calendarItems.find(item => item.id === task.sourceCalendarItemId)
         : null;
-
-    // Combine task references with calendar item references
-    const displayReferenceLinks = task.referenceLinks || [];
-    const displayReferenceImages = task.referenceImages || [];
     
-    // If this is a production task with a source calendar item, add its references
-    if (sourceCalendarItem) {
-        if (sourceCalendarItem.referenceLinks) {
-            displayReferenceLinks.push(...sourceCalendarItem.referenceLinks);
+    // Get the original task that the calendar item references
+    const sourceTask = sourceCalendarItem?.taskId 
+        ? allTasks.find(t => t.id === sourceCalendarItem.taskId)
+        : null;
+
+    // Combine references from current task, source task, and calendar item
+    const displayReferenceLinks = [...(task.referenceLinks || [])];
+    const displayReferenceImages = [...(task.referenceImages || [])];
+    
+    // Add references from source task (the original task in calendar)
+    if (sourceTask) {
+        if (sourceTask.referenceLinks) {
+            displayReferenceLinks.push(...sourceTask.referenceLinks);
         }
-        if (sourceCalendarItem.referenceImages) {
-            displayReferenceImages.push(...sourceCalendarItem.referenceImages);
+        if (sourceTask.referenceImages) {
+            displayReferenceImages.push(...sourceTask.referenceImages);
         }
+    }
+    
+    // Add calendar item's reference links (if any)
+    if (sourceCalendarItem?.referenceLinks) {
+        displayReferenceLinks.push(...sourceCalendarItem.referenceLinks);
+    }
+    
+    // Convert calendar item reference files to reference images format
+    if (sourceCalendarItem?.referenceFiles) {
+        sourceCalendarItem.referenceFiles.forEach(file => {
+            displayReferenceImages.push({
+                id: file.id,
+                fileName: file.fileName,
+                downloadUrl: file.downloadUrl,
+                storagePath: file.storagePath,
+                uploadedAt: file.uploadedAt,
+                uploadedBy: file.uploadedBy
+            });
+        });
     }
 
     // Helper: Auto-track task lifecycle events
@@ -1096,9 +1120,9 @@ const TaskDetailView = ({
                         <div>
                             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
                                 <Link className="w-4 h-4" /> Reference Links
-                                {sourceCalendarItem && (
+                                {(sourceTask || sourceCalendarItem) && (
                                     <span className="text-xs font-normal text-slate-500 ml-2">
-                                        (Including source calendar item links)
+                                        (Including {sourceTask ? 'source task' : ''}{sourceTask && sourceCalendarItem ? ' and ' : ''}{sourceCalendarItem ? 'calendar item' : ''} references)
                                     </span>
                                 )}
                             </h3>
@@ -1165,10 +1189,10 @@ const TaskDetailView = ({
                         {/* Reference Images */}
                         <div>
                             <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                <FileText className="w-4 h-4" /> Reference Images
-                                {sourceCalendarItem && (
+                                <FileText className="w-4 h-4" /> Reference Images & Files
+                                {(sourceTask || sourceCalendarItem) && (
                                     <span className="text-xs font-normal text-slate-500 ml-2">
-                                        (Including source calendar item images)
+                                        (Including {sourceTask ? 'source task' : ''}{sourceTask && sourceCalendarItem ? ' and ' : ''}{sourceCalendarItem ? 'calendar files' : ''})
                                     </span>
                                 )}
                             </h3>
