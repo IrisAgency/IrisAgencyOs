@@ -1732,16 +1732,31 @@ const App: React.FC = () => {
             onAddLocation={handleAddLocation}
             onAddEquipment={handleAddEquipment}
             onUpdateEquipment={handleUpdateEquipment}
-            onTaskClick={(task) => {
-              setActiveView('tasks');
-              setTimeout(() => {
-                const taskElement = document.querySelector(`[data-task-id="${task.id}"]`);
-                if (taskElement) {
-                  taskElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }, 100);
-            }}
             projectMembers={projectMembers}
+            tasks={getVisibleTasks()}
+            comments={taskComments}
+            timeLogs={taskTimeLogs}
+            dependencies={taskDependencies}
+            activityLogs={taskLogs}
+            approvalSteps={approvalSteps}
+            clientApprovals={clientApprovals}
+            files={getVisibleFiles()}
+            milestones={projectMilestones}
+            workflowTemplates={workflowTemplates}
+            roles={systemRoles}
+            currentUser={user}
+            onUpdateTask={handleUpdateTask}
+            onAddTask={handleAddTask}
+            onAddComment={handleAddTaskComment}
+            onAddTimeLog={handleAddTaskTimeLog}
+            onAddDependency={handleAddTaskDependency}
+            onUpdateApprovalStep={handleUpdateApprovalStep}
+            onAddApprovalSteps={handleAddApprovalSteps}
+            onUpdateClientApproval={handleUpdateClientApproval}
+            onAddClientApproval={handleAddClientApproval}
+            onUploadFile={handleUploadFile}
+            checkPermission={checkPermission}
+            onNotify={handleNotify}
           />
         );
       case 'network':

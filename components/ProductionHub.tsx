@@ -13,6 +13,7 @@ import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
 import ProductionPlanningModal from './production/ProductionPlanningModal';
 import MyProductionWidget from './production/MyProductionWidget';
+import TaskDetailView from './tasks/TaskDetailView';
 import { PermissionGate } from './PermissionGate';
 import { PERMISSIONS } from '../lib/permissions';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
@@ -40,11 +41,42 @@ interface ProductionHubProps {
     leaveRequests?: any[];
     projectMembers?: any[];
     currentUserId?: string;
+    // Task detail props from App.tsx
+    tasks?: Task[];
+    comments?: any[];
+    timeLogs?: any[];
+    dependencies?: any[];
+    activityLogs?: any[];
+    approvalSteps?: any[];
+    clientApprovals?: any[];
+    files?: any[];
+    milestones?: any[];
+    workflowTemplates?: any[];
+    roles?: any[];
+    currentUser?: any;
+    onUpdateTask?: (task: Task) => void;
+    onAddTask?: (task: Task) => void;
+    onAddComment?: (comment: any) => void;
+    onAddTimeLog?: (log: any) => void;
+    onAddDependency?: (dep: any) => void;
+    onUpdateApprovalStep?: (step: any) => void;
+    onAddApprovalSteps?: (steps: any[]) => void;
+    onUpdateClientApproval?: (approval: any) => void;
+    onAddClientApproval?: (approval: any) => void;
+    onUploadFile?: (file: any) => void;
+    checkPermission?: (permission: string) => boolean;
+    onNotify?: (type: string, title: string, message: string) => void;
 }
 const ProductionHub: React.FC<ProductionHubProps> = ({
     assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
     onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = [],
-    currentUserId = 'current_user', onTaskClick
+    currentUserId = 'current_user', onTaskClick,
+    tasks = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [],
+    approvalSteps = [], clientApprovals = [], files = [], milestones = [],
+    workflowTemplates = [], roles = [], currentUser,
+    onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
+    onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval,
+    onAddClientApproval, onUploadFile, checkPermission, onNotify
 }) => {
     const [activeTab, setActiveTab] = useState<'Overview' | 'Planning' | 'Shot Lists' | 'Call Sheets' | 'Equipment' | 'Locations'>('Overview');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -66,6 +98,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
     const [loadingPlans, setLoadingPlans] = useState(false);
     const [viewingPlanId, setViewingPlanId] = useState<string | null>(null);
     const [viewingPlanTasks, setViewingPlanTasks] = useState<Task[]>([]);
+    const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
     // Load production plans
     useEffect(() => {
@@ -855,6 +888,16 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             </div>
                                         )}
                                     </div>
+
+                                    {/* Action Button */}
+                                    <div className="px-6 pb-4">
+                                        <button
+                                            onClick={() => handleViewPlan(plan)}
+                                            className="w-full bg-[color:var(--dash-primary)] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Eye className="w-4 h-4" /> View Tasks
+                                        </button>
+                                    </div>
                                 </div>
                             );
                         })}
@@ -1033,7 +1076,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             return (
                                                 <div
                                                     key={task.id}
-                                                    onClick={() => onTaskClick && onTaskClick(task)}
+                                                    onClick={() => setSelectedTaskId(task.id)}
                                                     className="bg-white border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all cursor-pointer group"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
@@ -1100,6 +1143,66 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                     </div>
                 </div>
             )}
+
+            {/* Task Detail Modal */}
+            {selectedTaskId && (() => {
+                const selectedTask = viewingPlanTasks.find(t => t.id === selectedTaskId);
+                if (!selectedTask) return null;
+
+                return (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedTaskId(null)}>
+                        <div 
+                            className="w-full max-w-[900px] max-h-[85vh] bg-[color:var(--dash-surface-elevated)] rounded-2xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden flex flex-col"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/95 backdrop-blur-sm sticky top-0 z-10">
+                                <h3 className="text-lg font-semibold text-slate-100">Task Details</h3>
+                                <button 
+                                    onClick={() => setSelectedTaskId(null)}
+                                    className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                                >
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Modal Content - Scrollable */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                <TaskDetailView
+                                    task={selectedTask}
+                                    project={projects.find(p => p.id === selectedTask.projectId)}
+                                    users={users}
+                                    comments={comments?.filter(c => c.taskId === selectedTask.id) || []}
+                                    timeLogs={timeLogs?.filter(t => t.taskId === selectedTask.id) || []}
+                                    dependencies={dependencies?.filter(d => d.taskId === selectedTask.id) || []}
+                                    activityLogs={activityLogs?.filter(l => l.taskId === selectedTask.id) || []}
+                                    taskSteps={approvalSteps?.filter(s => s.taskId === selectedTask.id) || []}
+                                    clientApproval={clientApprovals?.find(ca => ca.taskId === selectedTask.id)}
+                                    taskFiles={files?.filter(f => f.taskId === selectedTask.id) || []}
+                                    allTasks={tasks || []}
+                                    currentUser={currentUser}
+                                    workflowTemplates={workflowTemplates || []}
+                                    milestones={milestones || []}
+                                    onUpdateTask={onUpdateTask || (() => {})}
+                                    onAddTask={onAddTask || (() => {})}
+                                    onAddComment={onAddComment || (() => {})}
+                                    onAddTimeLog={onAddTimeLog || (() => {})}
+                                    onAddDependency={onAddDependency || (() => {})}
+                                    onUpdateApprovalStep={onUpdateApprovalStep || (() => {})}
+                                    onAddApprovalSteps={onAddApprovalSteps || (() => {})}
+                                    onUpdateClientApproval={onUpdateClientApproval || (() => {})}
+                                    onAddClientApproval={onAddClientApproval || (() => {})}
+                                    onUploadFile={onUploadFile || (() => {})}
+                                    onNotify={onNotify || (() => {})}
+                                    checkPermission={checkPermission || (() => false)}
+                                    projectMembers={projectMembers || []}
+                                    roles={roles || []}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
         </PageContainer>
     );
 };
