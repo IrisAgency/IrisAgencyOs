@@ -1102,6 +1102,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     const completedCount = viewingPlanTasks.filter(t => t.status === 'completed').length;
                                     const totalCount = viewingPlanTasks.length;
                                     const progressPercent = Math.round((completedCount / totalCount) * 100);
+                                    const isComplete = progressPercent === 100;
                                     
                                     return (
                                         <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-6">
@@ -1118,9 +1119,44 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                     style={{ width: `${progressPercent}%` }}
                                                 />
                                             </div>
-                                            <p className="text-sm text-green-700">
-                                                {completedCount} of {totalCount} tasks completed
-                                            </p>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-green-700">
+                                                    {completedCount} of {totalCount} tasks completed
+                                                </p>
+                                                {isComplete && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            const plan = productionPlans.find(p => p.id === viewingPlanId);
+                                                            if (!plan) return;
+                                                            
+                                                            const confirmed = window.confirm(
+                                                                `✅ Complete "${plan.name}"?\n\n` +
+                                                                `All tasks are done! This will:\n` +
+                                                                `• Mark the production as completed\n` +
+                                                                `• Archive the plan and all tasks\n` +
+                                                                `• Move to archive (restorable within 30 days)\n\n` +
+                                                                `Continue?`
+                                                            );
+                                                            
+                                                            if (confirmed) {
+                                                                try {
+                                                                    await archiveProductionPlan(plan.id, currentUserId, 'completed');
+                                                                    await loadProductionPlans();
+                                                                    setViewingPlanId(null);
+                                                                    alert('🎉 Production completed and archived successfully!');
+                                                                } catch (error) {
+                                                                    console.error('Error completing production:', error);
+                                                                    alert('Failed to complete production plan.');
+                                                                }
+                                                            }
+                                                        }}
+                                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-lg hover:from-green-700 hover:to-emerald-700 transition-all shadow-md hover:shadow-lg font-semibold"
+                                                    >
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        Finish Production
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })()}
