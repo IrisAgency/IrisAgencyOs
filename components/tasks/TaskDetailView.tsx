@@ -54,6 +54,7 @@ export interface DetailViewProps {
     onAddSocialPost: (post: SocialPost) => void;
     leaveRequests?: any[];
     calendarItems?: any[];
+    isProductionView?: boolean;
 }
 
 const TaskDetailView = ({
@@ -61,7 +62,7 @@ const TaskDetailView = ({
     taskFiles, allTasks, currentUser, workflowTemplates, milestones,
     onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
     onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, onArchiveTask, onDeleteTask, onEditTask, onReopenTask, checkPermission,
-    getStatusColor, resolveApprover, onAddSocialPost, leaveRequests, calendarItems = []
+    getStatusColor, resolveApprover, onAddSocialPost, leaveRequests, calendarItems = [], isProductionView = false
 }: DetailViewProps) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [newComment, setNewComment] = useState('');
@@ -1156,7 +1157,7 @@ const TaskDetailView = ({
                                             >
                                                 <CornerUpLeft className="w-3 h-3 rotate-45" />
                                             </a>
-                                            {checkPermission('tasks.references.delete') && (
+                                            {!isProductionView && checkPermission('tasks.references.delete') && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.preventDefault();
@@ -1219,7 +1220,7 @@ const TaskDetailView = ({
                                                 >
                                                     <Download className="w-3 h-3" />
                                                 </a>
-                                                {checkPermission('tasks.references.delete') && (
+                                                {!isProductionView && checkPermission('tasks.references.delete') && (
                                                     <button
                                                         onClick={() => handleDeleteReferenceImage(img.id, img.storagePath)}
                                                         className="bg-white/20 hover:bg-rose-500/80 backdrop-blur-sm text-white p-1.5 rounded transition-colors"
@@ -1230,13 +1231,15 @@ const TaskDetailView = ({
                                                 )}
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => handleDeleteReferenceImage(img.id, img.storagePath)}
-                                            className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
-                                            title="Delete Image"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        {!isProductionView && (
+                                            <button
+                                                onClick={() => handleDeleteReferenceImage(img.id, img.storagePath)}
+                                                className="absolute top-2 right-2 p-1.5 text-red-600 hover:bg-red-50 rounded-full transition-colors"
+                                                title="Delete Image"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                                 {displayReferenceImages.length === 0 && (

@@ -1254,6 +1254,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                         onAddSocialPost={onAddSocialPost || (async () => {})}
                                         checkPermission={checkPermission || (() => false)}
                                         leaveRequests={leaveRequests}
+                                        isProductionView={true}
                                     />
                                 )}
                             </div>
