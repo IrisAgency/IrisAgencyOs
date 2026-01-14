@@ -1151,16 +1151,24 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             const handleCheckboxClick = async (e: React.MouseEvent) => {
                                                 e.stopPropagation();
                                                 
+                                                if (!onUpdateTask) {
+                                                    console.warn('onUpdateTask is not available');
+                                                    return;
+                                                }
+                                                
                                                 // Toggle completion status
                                                 const newStatus = isCompleted ? 'in_progress' : 'completed';
                                                 
-                                                // Update task status
-                                                if (onUpdateTask) {
+                                                try {
+                                                    // Update task status
                                                     await onUpdateTask({
                                                         ...task,
                                                         status: newStatus as any,
-                                                        completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
+                                                        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
                                                     });
+                                                    console.log(`Task ${task.id} updated to ${newStatus}`);
+                                                } catch (error) {
+                                                    console.error('Error updating task:', error);
                                                 }
                                             };
 
