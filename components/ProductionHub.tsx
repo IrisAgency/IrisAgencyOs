@@ -841,10 +841,9 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                     isTodayDate 
                                                         ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5 font-bold' 
                                                         : hasProduction
-                                                            ? 'border-green-300 bg-green-50 hover:bg-green-100 cursor-pointer'
+                                                            ? 'border-green-300 bg-green-50 hover:bg-green-100'
                                                             : 'border-slate-200 hover:bg-slate-50'
                                                 }`}
-                                                title={hasProduction ? dayProductions.map(p => p.plan.name).join(', ') : ''}
                                             >
                                                 <div className={`text-xs font-medium ${
                                                     isTodayDate 
@@ -857,19 +856,19 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                                 </div>
                                                 {hasProduction && (
                                                     <div className="flex flex-col gap-0.5 mt-0.5">
-                                                        {dayProductions.slice(0, 1).map((prod, idx) => (
-                                                            <div
+                                                        {dayProductions.map((prod, idx) => (
+                                                            <button
                                                                 key={idx}
-                                                                className="text-[8px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-1 py-0.5 rounded truncate"
+                                                                onClick={() => {
+                                                                    setViewingPlanId(prod.plan.id);
+                                                                    setActiveTab('Planning');
+                                                                }}
+                                                                className="text-[8px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-1 py-0.5 rounded truncate hover:from-green-600 hover:to-emerald-600 transition-all"
+                                                                title={prod.plan.name}
                                                             >
-                                                                🎬
-                                                            </div>
+                                                                {prod.plan.name.length > 12 ? prod.plan.name.substring(0, 12) + '...' : prod.plan.name}
+                                                            </button>
                                                         ))}
-                                                        {dayProductions.length > 1 && (
-                                                            <div className="text-[8px] text-green-600 font-bold">
-                                                                +{dayProductions.length - 1}
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 )}
                                             </div>
