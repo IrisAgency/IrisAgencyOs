@@ -468,7 +468,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                         return (
                                             <div
                                                 key={day}
-                                                className={`aspect-square border rounded-md sm:rounded-lg p-0.5 sm:p-1 text-center transition-all ${
+                                                className={`aspect-square min-h-[50px] sm:min-h-[60px] border rounded-md sm:rounded-lg p-0.5 sm:p-1 text-center transition-all ${
                                                     isTodayDate 
                                                         ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5 font-bold' 
                                                         : hasProduction
@@ -818,7 +818,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                         <h2 className="text-2xl font-bold text-slate-900">
                             {monthNames[month]} {year}
                         </h2>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center gap-2">
                             <button
                                 onClick={previousMonth}
                                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
@@ -827,7 +827,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                             </button>
                             <button
                                 onClick={() => setCalendarDate(new Date())}
-                                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                             >
                                 Today
                             </button>
@@ -841,16 +841,17 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                     </div>
 
                     {/* Day Names */}
-                    <div className="grid grid-cols-7 gap-2 mb-2">
+                    <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
                         {dayNames.map(day => (
-                            <div key={day} className="text-center text-sm font-semibold text-slate-600 py-2">
-                                {day}
+                            <div key={day} className="text-center text-xs sm:text-sm font-semibold text-slate-600 py-1 sm:py-2">
+                                <span className="hidden sm:inline">{day}</span>
+                                <span className="sm:hidden">{day.slice(0, 1)}</span>
                             </div>
                         ))}
                     </div>
 
                     {/* Calendar Grid */}
-                    <div className="grid grid-cols-7 gap-2">
+                    <div className="grid grid-cols-7 gap-1 sm:gap-2">
                         {calendarDays.map((day, index) => {
                             if (day === null) {
                                 return <div key={`empty-${index}`} className="aspect-square" />;
@@ -863,7 +864,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                             return (
                                 <div
                                     key={day}
-                                    className={`aspect-square border rounded-lg p-2 transition-all ${
+                                    className={`aspect-square min-h-[50px] sm:min-h-[70px] border rounded-md sm:rounded-lg p-1 sm:p-2 transition-all ${
                                         isTodayDate 
                                             ? 'border-[color:var(--dash-primary)] bg-[color:var(--dash-primary)]/5' 
                                             : hasProduction
@@ -875,7 +876,7 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                     }}
                                 >
                                     <div className="flex flex-col h-full">
-                                        <div className={`text-sm font-medium mb-1 ${
+                                        <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 ${
                                             isTodayDate 
                                                 ? 'text-[color:var(--dash-primary)]' 
                                                 : hasProduction 
@@ -885,19 +886,19 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                                             {day}
                                         </div>
                                         {hasProduction && (
-                                            <div className="flex-1 flex flex-col gap-1">
+                                            <div className="flex-1 flex flex-col gap-0.5 sm:gap-1">
                                                 {dayProductions.slice(0, 2).map((prod, idx) => (
                                                     <div
                                                         key={idx}
-                                                        className="text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-1.5 py-0.5 rounded truncate font-medium"
+                                                        className="text-[7px] sm:text-[10px] bg-gradient-to-r from-green-500 to-emerald-500 text-white px-0.5 sm:px-1.5 py-0.5 rounded truncate font-medium"
                                                         title={prod.plan.name}
                                                     >
-                                                        🎬 {prod.plan.name}
+                                                        <span className="hidden sm:inline">🎬 </span>{prod.plan.name}
                                                     </div>
                                                 ))}
                                                 {dayProductions.length > 2 && (
-                                                    <div className="text-[10px] text-green-600 font-medium">
-                                                        +{dayProductions.length - 2} more
+                                                    <div className="text-[7px] sm:text-[10px] text-green-600 font-medium">
+                                                        +{dayProductions.length - 2}
                                                     </div>
                                                 )}
                                             </div>
