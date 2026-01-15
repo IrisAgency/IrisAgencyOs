@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Settings, Building2, Layers, Network, ShieldAlert, Share2, Calendar, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Building2, Layers, Network, ShieldAlert, Share2, Calendar, X } from 'lucide-react';
 import { UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
@@ -215,13 +215,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
           </div>
         )}
       </nav>
-
-      <div className="p-4 border-t border-white/10">
-        <button className="flex items-center space-x-3 px-4 py-3 w-full hover:bg-white/5 rounded-lg transition-colors text-slate-400 hover:text-white">
-          <Settings className="w-5 h-5" />
-          <span>Settings</span>
-        </button>
-      </div>
     </aside>
   );
 };

@@ -54,6 +54,7 @@ interface ProjectsHubProps {
   onAddDynamicMilestone?: (milestone: Milestone) => Promise<void>;
   onUpdateDynamicMilestone?: (milestone: Milestone) => Promise<void>;
   onAddTask?: (task: Task) => Promise<void>;
+  onAddApprovalSteps?: (steps: ApprovalStep[]) => Promise<void>;
 }
 
 const ProjectsHub: React.FC<ProjectsHubProps> = ({
@@ -67,7 +68,8 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
   dynamicMilestones = [],
   onAddDynamicMilestone,
   onUpdateDynamicMilestone,
-  onAddTask
+  onAddTask,
+  onAddApprovalSteps
 }) => {
   const { user: currentUser, hasAnyPermission } = useAuth();
   
@@ -218,6 +220,87 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // --- Helpers ---
+
+  /**
+   * Generate approval steps from a workflow template for a given task
+   * Resolves roleId, projectRoleKey, or specificUserId to actual user IDs
+   */
+  const generateApprovalStepsFromWorkflow = (
+    taskId: string,
+    workflowTemplateId: string,
+    projectId: string
+  ): ApprovalStep[] => {
+    // Find the workflow template
+    const workflow = workflowTemplates.find(w => w.id === workflowTemplateId);
+    if (!workflow || !workflow.steps || workflow.steps.length === 0) {
+      console.log(`⚠️ No workflow found or no steps for workflowTemplateId: ${workflowTemplateId}`);
+      return [];
+    }
+
+    console.log(`✅ Found workflow "${workflow.name}" with ${workflow.steps.length} steps`);
+
+    // Get project members for this project
+    const projectMembers = members.filter(m => m.projectId === projectId);
+    
+    // Sort steps by order and create approval steps
+    const approvalSteps: ApprovalStep[] = workflow.steps
+      .sort((a, b) => a.order - b.order)
+      .map((stepTemplate, index) => {
+        let approverId: string | null = null;
+
+        // Priority 1: Specific User ID
+        if (stepTemplate.specificUserId) {
+          approverId = stepTemplate.specificUserId;
+          console.log(`  Step ${index + 1} "${stepTemplate.label}": Using specific user ${approverId}`);
+        }
+        // Priority 2: Project Role Key (find member with matching role in project)
+        else if (stepTemplate.projectRoleKey) {
+          const matchingMember = projectMembers.find(
+            m => m.roleInProject.toLowerCase() === stepTemplate.projectRoleKey?.toLowerCase()
+          );
+          if (matchingMember) {
+            approverId = matchingMember.userId;
+            console.log(`  Step ${index + 1} "${stepTemplate.label}": Using project role "${stepTemplate.projectRoleKey}" → user ${approverId}`);
+          } else {
+            console.warn(`  Step ${index + 1} "${stepTemplate.label}": No project member found with role "${stepTemplate.projectRoleKey}"`);
+          }
+        }
+        // Priority 3: System Role ID (find any user with matching role)
+        else if (stepTemplate.roleId) {
+          const matchingUser = users.find(u => u.role === stepTemplate.roleId);
+          if (matchingUser) {
+            approverId = matchingUser.id;
+            console.log(`  Step ${index + 1} "${stepTemplate.label}": Using system role "${stepTemplate.roleId}" → user ${approverId}`);
+          } else {
+            console.warn(`  Step ${index + 1} "${stepTemplate.label}": No user found with role "${stepTemplate.roleId}"`);
+          }
+        }
+
+        // Fallback: use first project member or first user
+        if (!approverId) {
+          approverId = projectMembers[0]?.userId || users[0]?.id || 'unknown';
+          console.warn(`  Step ${index + 1} "${stepTemplate.label}": No approver found, using fallback ${approverId}`);
+        }
+
+        const approvalStep: ApprovalStep = {
+          id: `as_${taskId}_${index}_${Date.now()}`,
+          taskId: taskId,
+          milestoneId: null, // Will be set later if needed
+          approverId: approverId,
+          level: index,
+          status: index === 0 ? 'pending' : 'waiting', // First step is pending, rest are waiting
+          createdAt: new Date().toISOString()
+        };
+
+        return approvalStep;
+      })
+      .filter(step => step.approverId !== 'unknown'); // Remove steps without valid approvers
+
+    console.log(`📋 Generated ${approvalSteps.length} approval steps for task ${taskId}`);
+    return approvalSteps;
   };
 
   // --- Handlers ---
@@ -511,13 +594,56 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
     try {
       console.log('💾 Saving tasks to Firestore...');
-      // Save all tasks to Firestore
+      
+      // Generate approval steps for all tasks with workflow templates
+      const allApprovalSteps: ApprovalStep[] = [];
+      const tasksWithApprovalPaths: Task[] = [];
+
       for (const task of tasksWithDueDates) {
-        console.log(`   💾 Saving task "${task.title}":`, {
+        console.log(`   💾 Processing task "${task.title}":`, {
+          workflowTemplateId: task.workflowTemplateId,
           referenceLinks: task.referenceLinks?.length || 0,
-          referenceImages: task.referenceImages?.length || 0,
-          hasData: !!(task.referenceLinks || task.referenceImages)
+          referenceImages: task.referenceImages?.length || 0
         });
+
+        if (task.workflowTemplateId) {
+          // Generate approval steps from workflow template
+          const approvalSteps = generateApprovalStepsFromWorkflow(
+            task.id,
+            task.workflowTemplateId,
+            task.projectId
+          );
+
+          if (approvalSteps.length > 0) {
+            allApprovalSteps.push(...approvalSteps);
+            
+            // Update task with approval path (IDs of approval steps)
+            const taskWithApprovalPath = {
+              ...task,
+              approvalPath: approvalSteps.map(step => step.id)
+            };
+            tasksWithApprovalPaths.push(taskWithApprovalPath);
+            console.log(`   ✅ Generated ${approvalSteps.length} approval steps for task "${task.title}"`);
+          } else {
+            tasksWithApprovalPaths.push(task);
+            console.log(`   ⚠️ No approval steps generated for task "${task.title}"`);
+          }
+        } else {
+          tasksWithApprovalPaths.push(task);
+          console.log(`   ℹ️ Task "${task.title}" has no workflow template`);
+        }
+      }
+
+      // Save approval steps to Firestore first
+      if (allApprovalSteps.length > 0 && onAddApprovalSteps) {
+        console.log(`📋 Saving ${allApprovalSteps.length} approval steps to Firestore...`);
+        await onAddApprovalSteps(allApprovalSteps);
+        console.log('✅ All approval steps saved successfully');
+      }
+
+      // Save all tasks to Firestore with updated approvalPath
+      for (const task of tasksWithApprovalPaths) {
+        console.log(`   💾 Saving task "${task.title}" with approvalPath:`, task.approvalPath);
         await onAddTask(task);
       }
 

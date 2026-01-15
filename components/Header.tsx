@@ -84,37 +84,37 @@ const Header: React.FC<HeaderProps> = ({
             </button>
 
             {showNotifications && (
-              <div className="fixed sm:absolute left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-0 top-16 sm:top-auto sm:mt-3 w-[calc(100vw-2rem)] sm:w-[400px] sm:min-w-[400px] sm:max-w-[400px] max-w-[500px] bg-[var(--dash-surface)] rounded-xl shadow-xl border border-[var(--dash-glass-border)] overflow-hidden animate-in fade-in zoom-in duration-200 sm:origin-top-right z-50">
-                <div className="px-4 py-3 border-b border-[var(--dash-glass-border)] flex flex-row justify-between items-center bg-[var(--dash-surface-elevated)] min-w-full">
-                  <h3 className="font-bold text-base text-[var(--dash-secondary)] whitespace-nowrap">Notifications</h3>
-                  {unreadCount > 0 && <span className="text-xs font-bold text-[var(--dash-on-primary)] bg-[var(--dash-primary)] px-2.5 py-1 rounded-full ml-3 whitespace-nowrap flex-shrink-0">{unreadCount} New</span>}
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-[var(--dash-surface)] rounded-xl shadow-xl border border-[var(--dash-glass-border)] overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right z-50">
+                <div className="p-3 border-b border-[var(--dash-glass-border)] flex justify-between items-center bg-[var(--dash-surface-elevated)]">
+                  <h3 className="font-bold text-sm text-[var(--dash-secondary)]">Notifications</h3>
+                  {unreadCount > 0 && <span className="text-xs font-bold text-[var(--dash-on-primary)] bg-[var(--dash-primary)] px-2 py-0.5 rounded-full">{unreadCount} New</span>}
                 </div>
-                <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto min-w-full">
+                <div className="max-h-80 overflow-y-auto">
                   {recentNotifications.length > 0 ? (
                     recentNotifications.map(n => (
-                      <div key={n.id} className={`p-4 border-b border-[var(--dash-glass-border)] hover:bg-[var(--dash-surface-elevated)] transition-colors min-w-full ${!n.isRead ? 'bg-[var(--dash-primary)]/5' : ''}`}>
-                        <div className="flex flex-row justify-between items-start mb-2 gap-3 min-w-full">
-                          <span className={`text-sm font-semibold flex-1 ${!n.isRead ? 'text-[var(--dash-primary)]' : 'text-[var(--dash-secondary)]'}`}>{n.title}</span>
-                          <span className="text-xs text-[var(--dash-secondary)] opacity-70 whitespace-nowrap flex-shrink-0">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div key={n.id} className={`p-3 border-b border-[var(--dash-glass-border)] hover:bg-[var(--dash-surface-elevated)] transition-colors ${!n.isRead ? 'bg-[var(--dash-primary)]/5' : ''}`}>
+                        <div className="flex justify-between items-start mb-1">
+                          <span className={`text-xs font-bold ${!n.isRead ? 'text-[var(--dash-primary)]' : 'text-[var(--dash-secondary)]'}`}>{n.title}</span>
+                          <span className="text-[10px] text-[var(--dash-secondary)] opacity-70">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <p className="text-sm text-[var(--dash-secondary)] opacity-80 mb-2 break-words w-full">{n.message}</p>
+                        <p className="text-xs text-[var(--dash-secondary)] opacity-80 line-clamp-2">{n.message}</p>
                         {!n.isRead && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onMarkAsRead(n.id); }}
-                            className="text-xs text-[var(--dash-primary)] font-medium hover:underline flex items-center gap-1.5"
+                            className="mt-2 text-[10px] text-[var(--dash-primary)] font-medium hover:underline flex items-center gap-1"
                           >
-                            <Check className="w-3.5 h-3.5" /> Mark read
+                            <Check className="w-3 h-3" /> Mark read
                           </button>
                         )}
                       </div>
                     ))
                   ) : (
-                    <div className="p-8 text-center text-[var(--dash-secondary)] opacity-50 text-sm min-w-full">No notifications.</div>
+                    <div className="p-8 text-center text-[var(--dash-secondary)] opacity-50 text-xs">No notifications.</div>
                   )}
                 </div>
                 <button
                   onClick={() => { setShowNotifications(false); onViewAllNotifications(); }}
-                  className="w-full p-3.5 text-center text-sm font-medium text-[var(--dash-primary)] hover:bg-[var(--dash-surface-elevated)] border-t border-[var(--dash-glass-border)] min-w-full"
+                  className="w-full p-3 text-center text-sm font-medium text-[var(--dash-primary)] hover:bg-[var(--dash-surface-elevated)] border-t border-[var(--dash-glass-border)]"
                 >
                   View All Notifications
                 </button>
@@ -135,11 +135,10 @@ const Header: React.FC<HeaderProps> = ({
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="p-2 text-[var(--dash-secondary)] hover:text-[var(--dash-error)] hover:bg-[var(--dash-error)]/10 rounded-full transition-all shrink-0"
+                className="hidden sm:block p-1.5 text-[var(--dash-secondary)] hover:text-[var(--dash-error)] hover:bg-[var(--dash-error)]/10 rounded-full transition-all"
                 title="Logout"
-                aria-label="Logout"
               >
-                <LogOut className="w-5 h-5" />
+                <LogOut className="w-4 h-4" />
               </button>
             )}
           </div>

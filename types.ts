@@ -459,7 +459,7 @@ export interface WorkflowStepTemplate {
   // Approver Logic (One must be set)
   roleId: string | null;       // System Role ID (e.g. 'r3' for Creative Director)
   projectRoleKey: string | null; // Project Role String (e.g. "Account Manager")
-  specificUserId?: string | null; // Specific User ID (e.g. 'u123')
+  specificUserId: string | null; // Specific User ID (e.g. 'u123')
   useDepartmentHead: boolean;  // Not fully implemented yet
 }
 

@@ -222,24 +222,32 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                                     <div className="flex gap-2">
                                                         <select
                                                             className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                            value={step.specificUserId !== null ? 'user' : step.projectRoleKey !== null ? 'project' : 'role'}
+                                                            value={step.specificUserId ? 'user' : step.projectRoleKey ? 'project' : 'role'}
                                                             onChange={(e) => {
                                                                 const val = e.target.value;
+                                                                if (!editingWorkflow) return;
+                                                                
+                                                                const newSteps = [...editingWorkflow.steps];
+                                                                const currentStep = { ...newSteps[index] };
+                                                                
                                                                 if (val === 'role') {
                                                                     const defaultRoleId = roles.length > 0 ? roles[0].id : '';
-                                                                    updateStep(index, 'roleId', defaultRoleId);
-                                                                    updateStep(index, 'projectRoleKey', null);
-                                                                    updateStep(index, 'specificUserId', null);
+                                                                    currentStep.roleId = defaultRoleId;
+                                                                    currentStep.projectRoleKey = null;
+                                                                    currentStep.specificUserId = null;
                                                                 } else if (val === 'project') {
-                                                                    updateStep(index, 'projectRoleKey', 'Account Manager');
-                                                                    updateStep(index, 'roleId', null);
-                                                                    updateStep(index, 'specificUserId', null);
+                                                                    currentStep.projectRoleKey = 'Account Manager';
+                                                                    currentStep.roleId = null;
+                                                                    currentStep.specificUserId = null;
                                                                 } else if (val === 'user') {
                                                                     const defaultUserId = users.length > 0 ? users[0].id : '';
-                                                                    updateStep(index, 'specificUserId', defaultUserId);
-                                                                    updateStep(index, 'roleId', null);
-                                                                    updateStep(index, 'projectRoleKey', null);
+                                                                    currentStep.specificUserId = defaultUserId;
+                                                                    currentStep.roleId = null;
+                                                                    currentStep.projectRoleKey = null;
                                                                 }
+                                                                
+                                                                newSteps[index] = currentStep;
+                                                                setEditingWorkflow({ ...editingWorkflow, steps: newSteps });
                                                             }}
                                                         >
                                                             <option value="role">System Role</option>
@@ -247,12 +255,12 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                                             <option value="user">Specific User</option>
                                                         </select>
 
-                                                        {step.specificUserId !== null ? (
+                                                        {step.specificUserId ? (
                                                             <select className="w-full px-3 py-2 border rounded-lg text-sm" value={step.specificUserId || ''} onChange={e => updateStep(index, 'specificUserId', e.target.value)}>
                                                                 {users.length === 0 && <option value="">No users found</option>}
                                                                 {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                                                             </select>
-                                                        ) : step.projectRoleKey !== null ? (
+                                                        ) : step.projectRoleKey ? (
                                                             <select className="w-full px-3 py-2 border rounded-lg text-sm" value={step.projectRoleKey || ''} onChange={e => updateStep(index, 'projectRoleKey', e.target.value)}>
                                                                 {['Account Manager', 'Creative Lead', 'Project Lead', 'Producer'].map(r => <option key={r} value={r}>{r}</option>)}
                                                             </select>
