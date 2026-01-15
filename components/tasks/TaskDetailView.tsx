@@ -1312,7 +1312,7 @@ const TaskDetailView = ({
                                 <div className="absolute left-[2.25rem] top-4 bottom-4 w-0.5 bg-slate-200"></div>
 
                                 <div className="space-y-6 relative">
-                                    {taskSteps.map((step, index) => {
+                                    {taskSteps.sort((a, b) => a.level - b.level).map((step, index) => {
                                         const approver = users.find(u => u.id === step.approverId);
                                         const isPending = step.status === 'pending';
                                         const isApproved = step.status === 'approved';
