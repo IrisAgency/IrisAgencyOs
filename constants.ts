@@ -1282,9 +1282,9 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
-      { id: 's1', workflowTemplateId: 'wf1', order: 0, label: 'Art Director Review', roleId: 'r3', projectRoleKey: null, useDepartmentHead: false }, // r3 is Art Director in DEFAULT_ROLES
-      { id: 's2', workflowTemplateId: 'wf1', order: 1, label: 'Creative Director Approval', roleId: 'r2', projectRoleKey: null, useDepartmentHead: false }, // r2 is Creative Director
-      { id: 's3', workflowTemplateId: 'wf1', order: 2, label: 'Account Manager Check', roleId: 'r4', projectRoleKey: 'Account Manager', useDepartmentHead: false } // r4 is Account Manager
+      { id: 's1', workflowTemplateId: 'wf1', order: 0, label: 'Art Director Review', roleId: 'r3', projectRoleKey: null, specificUserId: null, useDepartmentHead: false }, // r3 is Art Director in DEFAULT_ROLES
+      { id: 's2', workflowTemplateId: 'wf1', order: 1, label: 'Creative Director Approval', roleId: 'r2', projectRoleKey: null, specificUserId: null, useDepartmentHead: false }, // r2 is Creative Director
+      { id: 's3', workflowTemplateId: 'wf1', order: 2, label: 'Account Manager Check', roleId: 'r4', projectRoleKey: 'Account Manager', specificUserId: null, useDepartmentHead: false } // r4 is Account Manager
     ]
   },
   {
@@ -1299,8 +1299,8 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
-      { id: 's4', workflowTemplateId: 'wf2', order: 0, label: 'Producer Review', roleId: 'r5', projectRoleKey: null, useDepartmentHead: false }, // r5 is Producer
-      { id: 's5', workflowTemplateId: 'wf2', order: 1, label: 'Creative Director Review', roleId: 'r2', projectRoleKey: null, useDepartmentHead: false }
+      { id: 's4', workflowTemplateId: 'wf2', order: 0, label: 'Producer Review', roleId: 'r5', projectRoleKey: null, specificUserId: null, useDepartmentHead: false }, // r5 is Producer
+      { id: 's5', workflowTemplateId: 'wf2', order: 1, label: 'Creative Director Review', roleId: 'r2', projectRoleKey: null, specificUserId: null, useDepartmentHead: false }
     ]
   },
   {
@@ -1315,7 +1315,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
-      { id: 's6', workflowTemplateId: 'wf3', order: 0, label: 'Account Manager', roleId: 'r4', projectRoleKey: 'Account Manager', useDepartmentHead: false }
+      { id: 's6', workflowTemplateId: 'wf3', order: 0, label: 'Account Manager', roleId: 'r4', projectRoleKey: 'Account Manager', specificUserId: null, useDepartmentHead: false }
     ]
   },
   {
@@ -1330,7 +1330,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
-      { id: 's_fallback', workflowTemplateId: 'wf_fallback', order: 0, label: 'Manager Review', roleId: 'r1', projectRoleKey: null, useDepartmentHead: false }
+      { id: 's_fallback', workflowTemplateId: 'wf_fallback', order: 0, label: 'Manager Review', roleId: 'r1', projectRoleKey: null, specificUserId: null, useDepartmentHead: false }
     ]
   }
 ];
