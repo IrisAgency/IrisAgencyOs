@@ -955,7 +955,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             </div>
 
             {/* Smart Project Creation Section */}
-            {checkPermission('calendar.view') && formClientId && (
+            {(checkPermission('calendar.view') || checkPermission('calendar.manage')) && formClientId && (
               <div className="border-t border-[color:var(--dash-glass-border)] pt-4 mt-4 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
