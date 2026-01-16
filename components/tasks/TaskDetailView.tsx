@@ -1323,10 +1323,27 @@ const TaskDetailView = ({
                                         // Should show controls? Only if:
                                         // 1. Step is pending
                                         // 2. Current user is the approver
-                                        // 3. Task is awaiting review (not in revisions, completed, etc.)
+                                        // 3. Task is in a reviewable state
+                                        // Allow AWAITING_REVIEW (normal flow), APPROVED (multi-step), and REVISIONS_REQUIRED (edge case/data recovery)
                                         const showControls = isPending &&
                                             currentUser.id === step.approverId &&
-                                            task.status === TaskStatus.AWAITING_REVIEW;
+                                            (task.status === TaskStatus.AWAITING_REVIEW || 
+                                             task.status === TaskStatus.APPROVED ||
+                                             task.status === TaskStatus.REVISIONS_REQUIRED);
+
+                                        // Debug logging to help diagnose approval button visibility issues
+                                        if (currentUser.id === step.approverId) {
+                                            console.log('[Approval Debug]', {
+                                                taskId: task.id,
+                                                taskTitle: task.title,
+                                                taskStatus: task.status,
+                                                stepStatus: step.status,
+                                                stepLevel: step.level,
+                                                isPending,
+                                                isCurrentUser: currentUser.id === step.approverId,
+                                                showControls
+                                            });
+                                        }
 
                                         return (
                                             <div key={index} className="flex items-start space-x-4">

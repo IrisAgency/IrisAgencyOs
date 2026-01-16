@@ -472,6 +472,12 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         for (const item of selectedMonthItems) {
           const milestone = createdMilestones.find(m => m.type === item.type);
           const workflowId = newProject.workflowByType?.[item.type];
+          
+          console.log(`   🔍 Checking workflow for item "${item.autoName}" (type: ${item.type}):`, {
+            workflowId,
+            workflowByType: newProject.workflowByType,
+            itemType: item.type
+          });
 
           // Validate publishAt date - check if it's reasonable
           const publishDate = item.publishAt ? new Date(item.publishAt) : null;
@@ -643,7 +649,11 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
       // Save all tasks to Firestore with updated approvalPath
       for (const task of tasksWithApprovalPaths) {
-        console.log(`   💾 Saving task "${task.title}" with approvalPath:`, task.approvalPath);
+        console.log(`   💾 Saving task "${task.title}":`, {
+          workflowTemplateId: task.workflowTemplateId,
+          approvalPath: task.approvalPath,
+          id: task.id
+        });
         await onAddTask(task);
       }
 
