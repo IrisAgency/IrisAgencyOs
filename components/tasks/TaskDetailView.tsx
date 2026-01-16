@@ -1323,13 +1323,14 @@ const TaskDetailView = ({
                                         // Should show controls? Only if:
                                         // 1. Step is pending
                                         // 2. Current user is the approver
-                                        // 3. Task is in a reviewable state
-                                        // Allow AWAITING_REVIEW (normal flow), APPROVED (multi-step), and REVISIONS_REQUIRED (edge case/data recovery)
+                                        // 3. Task is NOT completed or archived
+                                        // This allows approval at any workflow stage (new, in_progress, awaiting_review, approved, revisions_required, etc.)
                                         const showControls = isPending &&
                                             currentUser.id === step.approverId &&
-                                            (task.status === TaskStatus.AWAITING_REVIEW || 
-                                             task.status === TaskStatus.APPROVED ||
-                                             task.status === TaskStatus.REVISIONS_REQUIRED);
+                                            task.status !== TaskStatus.COMPLETED &&
+                                            task.status !== TaskStatus.ARCHIVED &&
+                                            task.status !== TaskStatus.CLIENT_REVIEW &&
+                                            task.status !== TaskStatus.CLIENT_APPROVED;
 
                                         // Debug logging to help diagnose approval button visibility issues
                                         if (currentUser.id === step.approverId) {
