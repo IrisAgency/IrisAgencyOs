@@ -35,6 +35,7 @@ applyTo: '**'
 ### Testing
 - **Let the user test by themselves** before deciding that a feature or bug fix is correctly implemented
 - Do not assume success - wait for user confirmation
+- never test with firebase deploy, allways run npm run dev to test locally
 
 ### Implementation Planning
 - **Unless specifically stated otherwise, all implementations should be scoped and decided before the start of execution**
