@@ -21,7 +21,25 @@ export const db = initializeFirestore(firebaseApp, {
 export const storage = getStorage(firebaseApp);
 
 export const messagingPromise = isSupported().then((supported) => {
-  if (!supported) return null;
+  console.log('[Firebase Messaging] Browser support check:', {
+    supported,
+    hasNotification: 'Notification' in window,
+    hasServiceWorker: 'serviceWorker' in navigator,
+    notificationPermission: 'Notification' in window ? Notification.permission : 'N/A',
+    isSecureContext: window.isSecureContext,
+    protocol: window.location.protocol,
+    userAgent: navigator.userAgent
+  });
+  if (!supported) {
+    console.warn('[Firebase Messaging] Not supported. Reasons could be:', [
+      'Running in private/incognito mode',
+      'Service Workers disabled in browser',
+      'Third-party cookies blocked',
+      'Browser extensions interfering',
+      'Not running on HTTPS (except localhost)'
+    ]);
+    return null;
+  }
   return getMessaging(firebaseApp);
 });
 

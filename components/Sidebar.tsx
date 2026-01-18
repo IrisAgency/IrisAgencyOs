@@ -123,7 +123,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
       id: 'notifications', 
       label: 'Notifications', 
       icon: Bell, 
-      visible: true // All authenticated users can view notifications
+      visible: currentUserRole === 'General Manager' // Only General Manager can access notifications
     },
   ];
 

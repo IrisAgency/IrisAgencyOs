@@ -11,6 +11,7 @@ export function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [manualTrigger, setManualTrigger] = useState(false);
 
   useEffect(() => {
     const standalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -35,18 +36,23 @@ export function PWAInstallPrompt() {
         setShowPrompt(true);
       }, 3000);
     };
-
     window.addEventListener('beforeinstallprompt', handler);
 
-    setTimeout(() => {
-      if (!deferredPrompt && !standalone) {
-        console.log('⚠️ PWA: beforeinstallprompt not fired, showing manual instructions');
+    // Auto-show timer (skip if manually triggered)
+    const timer = setTimeout(() => {
+      if (!deferredPrompt && !standalone && !manualTrigger) {
+        if (import.meta.env.DEV) {
+          console.log('ℹ️ PWA: beforeinstallprompt not fired (normal on Safari/Firefox or if already installed/dismissed). Showing manual instructions.');
+        }
         setShowPrompt(true);
       }
     }, 5000);
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, [deferredPrompt]);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      clearTimeout(timer);
+    };
+  }, [deferredPrompt, manualTrigger]);
 
   const handleInstall = async () => {
     if (deferredPrompt) {
@@ -64,7 +70,26 @@ export function PWAInstallPrompt() {
   const handleDismiss = () => {
     setShowPrompt(false);
     setShowInstructions(false);
+    setManualTrigger(false);
   };
+
+  const handleManualShow = () => {
+    setManualTrigger(true);
+    setShowPrompt(true);
+  };
+
+  // Development: Show floating button to manually trigger prompt
+  if (import.meta.env.DEV && !showPrompt && !isStandalone) {
+    return (
+      <button
+        onClick={handleManualShow}
+        className="fixed bottom-4 right-4 w-12 h-12 bg-indigo-500 text-white rounded-full shadow-lg hover:bg-indigo-600 transition-all hover:scale-110 flex items-center justify-center z-50"
+        title="Show PWA Install Prompt (Dev)"
+      >
+        <Download size={20} />
+      </button>
+    );
+  }
 
   if (isStandalone || !showPrompt) {
     return null;

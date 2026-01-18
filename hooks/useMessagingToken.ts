@@ -17,31 +17,36 @@ export function useMessagingToken(user: User | null) {
       installing: registration.installing?.state
     });
 
-    // Wait for an active worker so INIT message is not lost
-    if (registration.installing) {
-      console.log('[ensureServiceWorkerReady] Waiting for installing worker to activate...');
-      await new Promise<void>((resolve) => {
-        registration.installing?.addEventListener('statechange', () => {
-          console.log('[ensureServiceWorkerReady] State changed to:', registration.installing?.state);
-          if (registration.installing?.state === 'activated') resolve();
-        });
-      });
-    }
-
+    // Wait for service worker to be fully ready
     const readyRegistration = await navigator.serviceWorker.ready;
-    const target = registration.active || registration.waiting || readyRegistration.active;
-    console.log('[ensureServiceWorkerReady] Posting INIT_MESSAGING to worker');
-    target?.postMessage({ type: 'INIT_MESSAGING', config: firebaseConfig });
+    console.log('[ensureServiceWorkerReady] Service worker ready, active state:', readyRegistration.active?.state);
 
-    return registration;
+    return readyRegistration;
   }, []);
 
   const requestPermissionAndRegister = useCallback(async () => {
     try {
       console.log('[useMessagingToken] Starting registration, user:', user?.id);
       if (!user) return null;
+      
+      // Check basic browser features
       if (!('Notification' in window) || !('serviceWorker' in navigator)) {
         console.warn('[useMessagingToken] Notifications or ServiceWorker not supported');
+        setPermissionState('unsupported');
+        return null;
+      }
+
+      // Check if Firebase Messaging is supported
+      const messaging = await messagingPromise;
+      if (!messaging) {
+        console.warn('[useMessagingToken] Firebase Messaging not supported in this browser/context');
+        console.log('[useMessagingToken] This could be due to:', [
+          '- Private/Incognito browsing mode',
+          '- Service Workers disabled',
+          '- Third-party cookies blocked',
+          '- Browser extensions blocking notifications',
+          '- Not running on HTTPS (except localhost)'
+        ]);
         setPermissionState('unsupported');
         return null;
       }
@@ -50,10 +55,6 @@ export function useMessagingToken(user: User | null) {
       console.log('[useMessagingToken] Permission result:', permission);
       setPermissionState(permission);
       if (permission !== 'granted') return null;
-
-      const messaging = await messagingPromise;
-      console.log('[useMessagingToken] Messaging instance:', messaging ? 'ready' : 'null');
-      if (!messaging) return null;
 
       if (!messagingVapidKey) {
         console.error('[useMessagingToken] Missing VITE_FIREBASE_VAPID_KEY');
@@ -73,7 +74,7 @@ export function useMessagingToken(user: User | null) {
       if (!currentToken) return null;
       setToken(currentToken);
 
-      await setDoc(doc(db, 'notification_tokens', currentToken), {
+      const tokenDoc = {
         token: currentToken,
         userId: user.id,
         uid: user.id,
@@ -81,9 +82,17 @@ export function useMessagingToken(user: User | null) {
         lastSeenAt: new Date().toISOString(),
         userAgent: navigator.userAgent,
         platform: 'web'
-      }, { merge: true });
+      };
 
-      console.log('[useMessagingToken] Token saved to Firestore');
+      console.log('[useMessagingToken] Saving token to Firestore:', {
+        collection: 'notification_tokens',
+        docId: currentToken.substring(0, 20) + '...',
+        userId: user.id
+      });
+
+      await setDoc(doc(db, 'notification_tokens', currentToken), tokenDoc, { merge: true });
+
+      console.log('[useMessagingToken] ✓ Token saved successfully to Firestore');
       return currentToken;
     } catch (error) {
       console.error('[useMessagingToken] Registration failed:', error);

@@ -55,17 +55,15 @@ exports.processOutbox = functions.firestore
           const tokenSuffix = token.slice(-8);
           
           if (res.success) {
-            functions.logger.info('✓ Push sent successfully', {
-              tokenSuffix,
+            functions.logger.info(`✓ Push sent successfully to token ...${tokenSuffix}`, {
               messageId: res.messageId
             });
           } else {
             const error = res.error;
-            const code = error?.code || '';
-            functions.logger.error('✗ Push failed', {
-              tokenSuffix,
+            const code = error?.code || 'unknown';
+            functions.logger.error(`✗ Push failed for token ...${tokenSuffix}`, {
               errorCode: code,
-              errorMessage: error?.message || null,
+              errorMessage: error?.message || 'No error message',
             });
             
             if (code === 'messaging/invalid-registration-token' || code === 'messaging/registration-token-not-registered') {
