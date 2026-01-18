@@ -18,10 +18,12 @@ interface NotificationsHubProps {
   onUpdatePreferences: (prefs: NotificationPreference) => void;
   onApprove?: (notificationId: string) => void;
   onNavigate?: (url: string) => void;
+  permissionState?: NotificationPermission | 'unsupported';
+  onRequestPermission?: () => void;
 }
 
 const NotificationsHub: React.FC<NotificationsHubProps> = ({
-  notifications, preferences, onMarkAsRead, onMarkAllAsRead, onDelete, onUpdatePreferences, onApprove, onNavigate
+  notifications, preferences, onMarkAsRead, onMarkAllAsRead, onDelete, onUpdatePreferences, onApprove, onNavigate, permissionState = 'default', onRequestPermission
 }) => {
   const [activeTab, setActiveTab] = useState<'All' | 'Tasks' | 'Approvals' | 'Posting' | 'Settings'>('All');
   const [filterUnread, setFilterUnread] = useState(false);
@@ -154,6 +156,44 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
         </h3>
 
         <div className="space-y-6">
+          {/* Push Notification Permission */}
+          <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h4 className="font-medium text-slate-900 flex items-center gap-2">
+                  <Bell className="w-4 h-4" />
+                  Push Notifications
+                </h4>
+                <p className="text-sm text-slate-600 mt-1">
+                  {permissionState === 'granted' && 'Push notifications are enabled. You\'ll receive alerts even when the app is closed.'}
+                  {permissionState === 'denied' && 'Push notifications are blocked. Please enable them in your browser settings.'}
+                  {permissionState === 'default' && 'Allow push notifications to receive alerts even when the app is closed.'}
+                  {permissionState === 'unsupported' && 'Push notifications are not supported in your browser.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {permissionState === 'granted' && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                    <Check className="w-3 h-3" /> Enabled
+                  </span>
+                )}
+                {permissionState === 'denied' && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                    <X className="w-3 h-3" /> Blocked
+                  </span>
+                )}
+                {permissionState === 'default' && onRequestPermission && (
+                  <button
+                    onClick={onRequestPermission}
+                    className="px-4 py-2 bg-iris-red text-white text-sm font-medium rounded-lg hover:bg-iris-red/90 transition-colors"
+                  >
+                    Enable Push Notifications
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Delivery Channels */}
           <div className="space-y-4">
             <h4 className="font-medium text-slate-900">Delivery Channels</h4>
@@ -163,11 +203,26 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={preferences.delivery?.[channel.key as 'inApp' | 'email' | 'push']}
-                    onChange={e => onUpdatePreferences({ 
-                      ...preferences, 
-                      delivery: { ...preferences.delivery, [channel.key]: e.target.checked }
-                    })}
+                    checked={
+                      preferences.delivery?.[channel.key as 'inApp' | 'email' | 'push'] ??
+                      (channel.key === 'inApp' ? preferences.inAppEnabled :
+                       channel.key === 'email' ? preferences.emailEnabled :
+                       preferences.pushEnabled)
+                    }
+                    onChange={e => {
+                      const newDelivery = {
+                        inApp: channel.key === 'inApp' ? e.target.checked : (preferences.delivery?.inApp ?? preferences.inAppEnabled),
+                        email: channel.key === 'email' ? e.target.checked : (preferences.delivery?.email ?? preferences.emailEnabled),
+                        push: channel.key === 'push' ? e.target.checked : (preferences.delivery?.push ?? preferences.pushEnabled)
+                      };
+                      onUpdatePreferences({ 
+                        ...preferences,
+                        delivery: newDelivery,
+                        inAppEnabled: newDelivery.inApp,
+                        emailEnabled: newDelivery.email,
+                        pushEnabled: newDelivery.push
+                      });
+                    }}
                     className="sr-only peer"
                   />
                   <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-iris-red"></div>

@@ -2029,6 +2029,8 @@ const App: React.FC = () => {
               onMarkAllAsRead={handleMarkAllNotificationsRead}
               onDelete={handleDeleteNotification}
               onUpdatePreferences={handleUpdatePreferences}
+              permissionState={permissionState}
+              onRequestPermission={requestPermissionAndRegister}
             />
           </div>
         );
