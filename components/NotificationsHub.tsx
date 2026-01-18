@@ -197,7 +197,9 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
                       <li>Safari (macOS 13+ & iOS 16.4+)</li>
                       <li>Opera (desktop & Android)</li>
                     </ul>
-                    <p className="mt-2">Note: iOS Safari requires adding the app to your home screen first, then enabling notifications in Settings → Safari → Website Settings.</p>
+                    <p className="mt-2 font-medium text-amber-600">⚠️ iOS Limitation:</p>
+                    <p className="mt-1">All browsers on iOS (including Chrome, Firefox, Edge) use Safari's engine and don't support push notifications in the browser.</p>
+                    <p className="mt-1">For iOS devices: Open this site in <strong>Safari</strong>, add it to your home screen, then enable notifications from Settings → Safari → Website Settings.</p>
                   </div>
                 )}
               </div>

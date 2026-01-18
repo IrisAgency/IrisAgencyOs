@@ -448,7 +448,7 @@ const App: React.FC = () => {
         recipientIds: newTask.assigneeIds.filter(id => id !== user?.id), // Don't notify creator
         entityId: newTask.id,
         actionUrl: `/tasks/${newTask.id}`,
-        sendPush: false,
+        sendPush: true,
         createdBy: user?.id || 'system',
       });
     }
@@ -508,7 +508,7 @@ const App: React.FC = () => {
           recipientIds: recipientIds.filter(id => id !== user?.id),
           entityId: updatedTask.id,
           actionUrl: `/tasks/${updatedTask.id}`,
-          sendPush: false,
+          sendPush: true,
           createdBy: user?.id || 'system',
         });
       }
@@ -529,7 +529,7 @@ const App: React.FC = () => {
           recipientIds: addedAssignees.filter(id => id !== user?.id),
           entityId: updatedTask.id,
           actionUrl: `/tasks/${updatedTask.id}`,
-          sendPush: false,
+          sendPush: true,
           createdBy: user?.id || 'system',
         });
       }
@@ -543,7 +543,26 @@ const App: React.FC = () => {
           message: `You've been unassigned from "${updatedTask.title}"`,
           recipientIds: removedAssignees.filter(id => id !== user?.id),
           entityId: updatedTask.id,
-          sendPush: false,
+          sendPush: true,
+          createdBy: user?.id || 'system',
+        });
+      }
+    }
+
+    // Notify on due date changes
+    if (oldTask && oldTask.dueDate !== updatedTask.dueDate && updatedTask.dueDate) {
+      const recipientIds = updatedTask.assigneeIds || [];
+      if (recipientIds.length > 0) {
+        const dueDate = new Date(updatedTask.dueDate);
+        const formattedDate = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        await notifyUsers({
+          type: 'TASK_DUE_DATE_CHANGED',
+          title: `Due Date Updated: ${updatedTask.title}`,
+          message: `Task due date ${oldTask.dueDate ? 'changed' : 'set'} to ${formattedDate}`,
+          recipientIds: recipientIds.filter(id => id !== user?.id),
+          entityId: updatedTask.id,
+          actionUrl: `/tasks/${updatedTask.id}`,
+          sendPush: true,
           createdBy: user?.id || 'system',
         });
       }
@@ -962,7 +981,32 @@ const App: React.FC = () => {
         await setDoc(doc(db, 'project_members', managerMember.id), managerMember);
       }
 
-      handleNotify('system', 'Project Created', `Project "${newProject.name}" is now active.`);
+      // Notify project members and account manager
+      const recipientIds: string[] = [];
+      if (newProject.accountManagerId && newProject.accountManagerId !== user.id) {
+        recipientIds.push(newProject.accountManagerId);
+      }
+      if (newProject.memberIds && newProject.memberIds.length > 0) {
+        newProject.memberIds.forEach(id => {
+          if (id !== user.id && !recipientIds.includes(id)) {
+            recipientIds.push(id);
+          }
+        });
+      }
+
+      if (recipientIds.length > 0) {
+        const client = clients.find(c => c.id === newProject.clientId);
+        await notifyUsers({
+          type: 'PROJECT_CREATED',
+          title: 'New Project Created',
+          message: `${user.name} created project "${newProject.name}"${client ? ` for ${client.name}` : ''}`,
+          recipientIds,
+          entityId: newProject.id,
+          actionUrl: `/projects/${newProject.id}`,
+          sendPush: true,
+          createdBy: user.id,
+        });
+      }
     }
   };
 
@@ -983,6 +1027,23 @@ const App: React.FC = () => {
 
   const handleAddProjectMember = async (member: ProjectMember) => {
     await setDoc(doc(db, 'project_members', member.id), member);
+    
+    // Notify the new member
+    if (user && member.userId !== user.id) {
+      const project = projects.find(p => p.id === member.projectId);
+      if (project) {
+        await notifyUsers({
+          type: 'PROJECT_MEMBER_ADDED',
+          title: 'Added to Project',
+          message: `${user.name} added you to project "${project.name}" as ${member.roleInProject}`,
+          recipientIds: [member.userId],
+          entityId: project.id,
+          actionUrl: `/projects/${project.id}`,
+          sendPush: true,
+          createdBy: user.id,
+        });
+      }
+    }
   };
 
   const handleRemoveProjectMember = async (memberId: string) => {
@@ -995,6 +1056,28 @@ const App: React.FC = () => {
 
   const handleAddProjectMilestone = async (milestone: ProjectMilestone) => {
     await setDoc(doc(db, 'project_milestones', milestone.id), milestone);
+    
+    // Notify project team members about new milestone
+    if (user) {
+      const project = projects.find(p => p.id === milestone.projectId);
+      const projectMembers = projectMembersList.filter(pm => pm.projectId === milestone.projectId);
+      const recipientIds = projectMembers
+        .map(pm => pm.userId)
+        .filter(id => id !== user.id);
+
+      if (recipientIds.length > 0 && project) {
+        await notifyUsers({
+          type: 'MILESTONE_CREATED',
+          title: 'New Milestone',
+          message: `${user.name} created milestone "${milestone.name}" in ${project.name}`,
+          recipientIds,
+          entityId: milestone.id,
+          actionUrl: `/projects/${milestone.projectId}`,
+          sendPush: true,
+          createdBy: user.id,
+        });
+      }
+    }
   };
 
   const handleUpdateProjectMilestone = async (milestone: ProjectMilestone) => {

@@ -330,16 +330,16 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       objectives: '',
       notes: '',
       thumbnail: `https://picsum.photos/seed/${Date.now()}/400/300`,
-      // Smart Project Creation Fields
-      monthKey: selectedMonth?.monthKey,
-      calendarMonthId: formCalendarMonthId || undefined,
-      memberIds: formMemberIds.length > 0 ? formMemberIds : undefined,
-      workflowByType: (() => {
+      // Smart Project Creation Fields - only include if calendar is selected
+      ...(selectedMonth?.monthKey && { monthKey: selectedMonth.monthKey }),
+      ...(formCalendarMonthId && { calendarMonthId: formCalendarMonthId }),
+      ...(formMemberIds.length > 0 && { memberIds: formMemberIds }),
+      ...(() => {
         const workflows: any = {};
         if (formWorkflowVideo) workflows.VIDEO = formWorkflowVideo;
         if (formWorkflowPhoto) workflows.PHOTO = formWorkflowPhoto;
         if (formWorkflowMotion) workflows.MOTION = formWorkflowMotion;
-        return Object.keys(workflows).length > 0 ? workflows : undefined;
+        return Object.keys(workflows).length > 0 ? { workflowByType: workflows } : {};
       })(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()

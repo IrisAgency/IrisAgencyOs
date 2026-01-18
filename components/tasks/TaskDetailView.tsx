@@ -11,7 +11,7 @@ import {
     MessageSquare, FileText, Link, Paperclip, MoreVertical,
     Play, Pause, AlertCircle, ChevronRight, User as UserIcon, Send,
     ThumbsUp, ThumbsDown, ShieldCheck, CornerUpLeft, Upload, Download,
-    X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2, Share2, CheckCircle as CheckCircleIcon, Trash2
+    X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2, Share2, CheckCircle as CheckCircleIcon, Trash2, XCircle
 } from 'lucide-react';
 import { deleteField } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
@@ -803,6 +803,51 @@ const TaskDetailView = ({
                         >
                             <Archive className="w-4 h-4" />
                             <span>Archive Task</span>
+                        </button>
+                    )}
+
+                    {/* Manual Close as Approved - for stuck tasks that need to be force-closed */}
+                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_APPROVE) && (
+                        <button
+                            onClick={() => {
+                                if (window.confirm(`Force close "${task.title}" as APPROVED?\n\nThis will bypass the normal workflow and mark the task as completed and approved.`)) {
+                                    onUpdateTask({
+                                        ...task,
+                                        status: TaskStatus.APPROVED,
+                                        completedAt: new Date().toISOString(),
+                                        updatedAt: new Date().toISOString()
+                                    });
+                                    onNotify('success', 'Task Manually Approved', `Task "${task.title}" has been manually closed as approved.`);
+                                }
+                            }}
+                            className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-emerald-700 shadow-sm transition-colors"
+                        >
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Manual Close as Approved</span>
+                        </button>
+                    )}
+
+                    {/* Manual Close as Rejected - for tasks that need to be force-rejected */}
+                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_REJECT) && (
+                        <button
+                            onClick={() => {
+                                const reason = window.prompt(`Enter reason for manually rejecting "${task.title}":`);
+                                if (reason && reason.trim()) {
+                                    onUpdateTask({
+                                        ...task,
+                                        status: TaskStatus.ARCHIVED,
+                                        isArchived: true,
+                                        archivedAt: new Date().toISOString(),
+                                        archivedReason: `Manually rejected: ${reason.trim()}`,
+                                        updatedAt: new Date().toISOString()
+                                    });
+                                    onNotify('info', 'Task Manually Rejected', `Task "${task.title}" has been manually rejected and archived.`);
+                                }
+                            }}
+                            className="flex items-center space-x-2 bg-rose-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-rose-700 shadow-sm transition-colors"
+                        >
+                            <XCircle className="w-4 h-4" />
+                            <span>Manual Close as Rejected</span>
                         </button>
                     )}
 
