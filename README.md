@@ -45,12 +45,19 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
   - Hub components largely ungated and lack scope-based filtering (own/dept/project/all) for tasks/projects/clients/posts/finance/etc.
   - Firestore security rules not yet updated to mirror the new permission model.
 
-## Notifications (plan + FCM wiring + Cloud Function)
-- Scenarios to support: task assigned/status change/due-soon/overdue; approval requested/reminder/escalation; meeting scheduled/reminders; invoice due-soon/overdue and payment recorded; posting scheduled/published; system broadcast/maintenance; manual announcement (console).
-- Data model: `notifications` (per-user in-app cards: userId, title, message, type, severity, category, isRead, createdAt); `notification_tokens` (userId, token, platform, userAgent, timestamps) from FCM registration; `notifications_outbox` (title, body, targetType [user|role|project|all], targetIds, targetUserIds, createdBy, createdAt) for server-side delivery.
-- Manual send: Notifications view now shows a “Manual Notifications” console (visible to users with `admin.settings.view` permission) to enqueue announcements to users/roles/projects/all; writes to `notifications` for immediate in-app visibility and `notifications_outbox` for push/back-end processors.
-- FCM: client requests permission, registers `/firebase-messaging-sw.js`, stores tokens in `notification_tokens`, and listens for foreground/background messages. Set `VITE_FIREBASE_VAPID_KEY` (defaulted to provided key) and keep other Firebase env vars populated.
-- Cloud Function: `functions/index.js` listens to `notifications_outbox/{docId}`, batches tokens in chunks of 500, sends FCM via Admin SDK, drops invalid/expired tokens, mirrors sent entries into `notifications`, and deletes the outbox doc. When `targets` are provided only the first 10 `uid` values are honored (Firestore `in` limit); otherwise it broadcasts to all stored tokens.
+## Notifications (Refactored & Fully Functional)
+- **Status**: ✅ Core notification system implemented and functional for task assignments and status changes
+- **Architecture**: Hybrid system combining in-app notifications (Firestore) with Firebase Cloud Messaging (FCM) for push notifications
+- **Service Layer** (`services/notificationService.ts`): Centralized notification creation with preference filtering, recipient resolution, and metadata management
+- **Automatic Triggers** (implemented): Task creation notifies assigned users (`TASK_ASSIGNED`); Task updates notify on status changes (`TASK_STATUS_CHANGED`) and assignment changes (`TASK_ASSIGNED`/`TASK_UNASSIGNED`)
+- **Notification Types** (50+ defined): Tasks, Approvals, Posting, Meetings, Finance, Projects with specific event types
+- **Data Model**: `notifications` (per-user: userId, type, title, message, severity, category, entityType, entityId, actionUrl, isRead); `notification_preferences` (mutedCategories, severityThreshold, channel toggles); `notification_tokens` (FCM); `notifications_outbox` (queue)
+- **Preference System**: Users control muted categories, severity threshold, delivery channels; preferences persisted and checked before creation
+- **Manual Notifications**: Admin console to send to users/roles/projects/all
+- **FCM Integration**: Permission handling, service worker, token management via `useMessagingToken` hook
+- **Cloud Function**: Processes outbox, sends FCM in batches, creates per-user docs with full metadata, removes invalid tokens
+- **Security Rules**: Notifications restricted by userId; preferences per-user only
+- **Future**: Approval workflows, comment mentions, scheduled reminders, email delivery, archiving, advanced features
 
 ## File Management
 - Client-centric folder hierarchy with auto folder creation for clients/projects/tasks; standardized filenames `[ClientCode]-[TaskName]-v[Version]-[Timestamp].[ext]`.
