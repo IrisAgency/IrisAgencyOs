@@ -807,7 +807,7 @@ const TaskDetailView = ({
                     )}
 
                     {/* Manual Close as Approved - for stuck tasks that need to be force-closed */}
-                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_APPROVE) && (
+                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.APPROVED && task.status !== TaskStatus.ARCHIVED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_APPROVE) && (
                         <button
                             onClick={() => {
                                 if (window.confirm(`Force close "${task.title}" as APPROVED?\n\nThis will bypass the normal workflow and mark the task as completed and approved.`)) {
@@ -828,7 +828,7 @@ const TaskDetailView = ({
                     )}
 
                     {/* Manual Close as Rejected - for tasks that need to be force-rejected */}
-                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_REJECT) && (
+                    {!task.isArchived && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.ARCHIVED && checkPermission(PERMISSIONS.TASKS.MANUAL_CLOSE_REJECT) && (
                         <button
                             onClick={() => {
                                 const reason = window.prompt(`Enter reason for manually rejecting "${task.title}":`);
