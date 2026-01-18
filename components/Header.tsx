@@ -93,11 +93,11 @@ const Header: React.FC<HeaderProps> = ({
                   {recentNotifications.length > 0 ? (
                     recentNotifications.map(n => (
                       <div key={n.id} className={`p-3 border-b border-[var(--dash-glass-border)] hover:bg-[var(--dash-surface-elevated)] transition-colors ${!n.isRead ? 'bg-[var(--dash-primary)]/5' : ''}`}>
-                        <div className="flex justify-between items-start mb-1">
-                          <span className={`text-xs font-bold ${!n.isRead ? 'text-[var(--dash-primary)]' : 'text-[var(--dash-secondary)]'}`}>{n.title}</span>
-                          <span className="text-[10px] text-[var(--dash-secondary)] opacity-70">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <div className="flex justify-between items-start mb-1 gap-2">
+                          <span className={`text-xs font-bold flex-1 ${!n.isRead ? 'text-[var(--dash-primary)]' : 'text-[var(--dash-secondary)]'}`}>{n.title}</span>
+                          <span className="text-[10px] text-[var(--dash-secondary)] opacity-70 whitespace-nowrap shrink-0">{new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <p className="text-xs text-[var(--dash-secondary)] opacity-80">{n.message}</p>
+                        <p className="text-xs text-[var(--dash-secondary)] opacity-80 break-words">{n.message}</p>
                         {!n.isRead && (
                           <button
                             onClick={(e) => { e.stopPropagation(); onMarkAsRead(n.id); }}

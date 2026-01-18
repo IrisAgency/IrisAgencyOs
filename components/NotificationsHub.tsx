@@ -28,6 +28,19 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
   const [activeTab, setActiveTab] = useState<'All' | 'Tasks' | 'Approvals' | 'Posting' | 'Settings'>('All');
   const [filterUnread, setFilterUnread] = useState(false);
   const [filterUrgent, setFilterUrgent] = useState(false);
+  const [hasShownPermissionPrompt, setHasShownPermissionPrompt] = React.useState(false);
+
+  // Auto-request permission when user opens Settings tab for the first time
+  React.useEffect(() => {
+    if (activeTab === 'Settings' && permissionState === 'default' && !hasShownPermissionPrompt && onRequestPermission) {
+      // Show prompt after a short delay to let UI render
+      const timer = setTimeout(() => {
+        setHasShownPermissionPrompt(true);
+        onRequestPermission();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, permissionState, hasShownPermissionPrompt, onRequestPermission]);
 
   // Helpers
   const getIcon = (type: NotificationType) => {
@@ -416,7 +429,7 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
                                 })}
                               </span>
                             </div>
-                            <p className="text-sm mt-1 text-slate-700">{latestNotification.message}</p>
+                            <p className="text-sm mt-1 text-slate-700 break-words">{latestNotification.message}</p>
                             
                             {/* Actions */}
                             {latestNotification.actions && latestNotification.actions.length > 0 && (
@@ -488,15 +501,15 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-2">
-                                <h4 className={`text-sm font-bold truncate ${
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className={`text-sm font-bold ${
                                   notification.isRead ? 'text-slate-700' : 'text-slate-900'
                                 }`}>
                                   {notification.title}
                                 </h4>
                                 {notification.severity && getSeverityBadge(notification.severity)}
                               </div>
-                              <span className="text-xs text-slate-400 whitespace-nowrap ml-2">
+                              <span className="text-xs text-slate-400 whitespace-nowrap ml-2 shrink-0">
                                 {new Date(notification.createdAt).toLocaleTimeString([], { 
                                   hour: '2-digit', minute: '2-digit' 
                                 })}
