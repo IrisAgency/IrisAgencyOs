@@ -170,8 +170,13 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
 
         <div className="space-y-6">
           {/* Push Notification Permission */}
-          <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start justify-between">
+          <div className={`space-y-4 p-4 rounded-lg border ${
+            permissionState === 'granted' ? 'bg-green-50 border-green-200' :
+            permissionState === 'denied' ? 'bg-red-50 border-red-200' :
+            permissionState === 'unsupported' ? 'bg-slate-50 border-slate-200' :
+            'bg-blue-50 border-blue-200'
+          }`}>
+            <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <h4 className="font-medium text-slate-900 flex items-center gap-2">
                   <Bell className="w-4 h-4" />
@@ -179,26 +184,43 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
                 </h4>
                 <p className="text-sm text-slate-600 mt-1">
                   {permissionState === 'granted' && 'Push notifications are enabled. You\'ll receive alerts even when the app is closed.'}
-                  {permissionState === 'denied' && 'Push notifications are blocked. Please enable them in your browser settings.'}
+                  {permissionState === 'denied' && 'Push notifications are blocked. To enable them, click the lock icon in your browser\'s address bar and allow notifications for this site.'}
                   {permissionState === 'default' && 'Allow push notifications to receive alerts even when the app is closed.'}
-                  {permissionState === 'unsupported' && 'Push notifications are not supported in your browser.'}
+                  {permissionState === 'unsupported' && 'Push notifications are not supported in your current browser or device. You will still receive in-app notifications when the application is open.'}
                 </p>
+                {permissionState === 'unsupported' && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    <p className="font-medium mb-1">💡 Supported browsers for push notifications:</p>
+                    <ul className="list-disc list-inside space-y-0.5 ml-2">
+                      <li>Chrome/Edge (desktop & Android)</li>
+                      <li>Firefox (desktop & Android)</li>
+                      <li>Safari (macOS 13+ & iOS 16.4+)</li>
+                      <li>Opera (desktop & Android)</li>
+                    </ul>
+                    <p className="mt-2">Note: iOS Safari requires adding the app to your home screen first, then enabling notifications in Settings → Safari → Website Settings.</p>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {permissionState === 'granted' && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full whitespace-nowrap">
                     <Check className="w-3 h-3" /> Enabled
                   </span>
                 )}
                 {permissionState === 'denied' && (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full whitespace-nowrap">
                     <X className="w-3 h-3" /> Blocked
+                  </span>
+                )}
+                {permissionState === 'unsupported' && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-slate-200 text-slate-600 text-xs font-medium rounded-full whitespace-nowrap">
+                    <AlertCircle className="w-3 h-3" /> Not Available
                   </span>
                 )}
                 {permissionState === 'default' && onRequestPermission && (
                   <button
                     onClick={onRequestPermission}
-                    className="px-4 py-2 bg-iris-red text-white text-sm font-medium rounded-lg hover:bg-iris-red/90 transition-colors"
+                    className="px-4 py-2 bg-iris-red text-white text-sm font-medium rounded-lg hover:bg-iris-red/90 transition-colors whitespace-nowrap"
                   >
                     Enable Push Notifications
                   </button>
@@ -210,38 +232,50 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
           {/* Delivery Channels */}
           <div className="space-y-4">
             <h4 className="font-medium text-slate-900">Delivery Channels</h4>
-            {deliveryChannels.map(channel => (
-              <div key={channel.key} className="flex items-center justify-between py-3 border-b border-slate-100">
-                <span className="text-sm text-slate-700">{channel.label}</span>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={
-                      preferences.delivery?.[channel.key as 'inApp' | 'email' | 'push'] ??
-                      (channel.key === 'inApp' ? preferences.inAppEnabled :
-                       channel.key === 'email' ? preferences.emailEnabled :
-                       preferences.pushEnabled)
-                    }
-                    onChange={e => {
-                      const newDelivery = {
-                        inApp: channel.key === 'inApp' ? e.target.checked : (preferences.delivery?.inApp ?? preferences.inAppEnabled),
-                        email: channel.key === 'email' ? e.target.checked : (preferences.delivery?.email ?? preferences.emailEnabled),
-                        push: channel.key === 'push' ? e.target.checked : (preferences.delivery?.push ?? preferences.pushEnabled)
-                      };
-                      onUpdatePreferences({ 
-                        ...preferences,
-                        delivery: newDelivery,
-                        inAppEnabled: newDelivery.inApp,
-                        emailEnabled: newDelivery.email,
-                        pushEnabled: newDelivery.push
-                      });
-                    }}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-iris-red"></div>
-                </label>
-              </div>
-            ))}
+            <p className="text-xs text-slate-500">Control how you receive notifications</p>
+            {deliveryChannels.map(channel => {
+              const isDisabled = channel.key === 'push' && permissionState === 'unsupported';
+              const isChecked = preferences.delivery?.[channel.key as 'inApp' | 'email' | 'push'] ??
+                (channel.key === 'inApp' ? preferences.inAppEnabled :
+                 channel.key === 'email' ? preferences.emailEnabled :
+                 preferences.pushEnabled);
+              
+              return (
+                <div key={channel.key} className="flex items-center justify-between py-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm ${isDisabled ? 'text-slate-400' : 'text-slate-700'}`}>
+                      {channel.label}
+                    </span>
+                    {isDisabled && (
+                      <span className="text-xs text-slate-400 italic">(Not available)</span>
+                    )}
+                  </div>
+                  <label className={`relative inline-flex items-center ${isDisabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                    <input
+                      type="checkbox"
+                      disabled={isDisabled}
+                      checked={isChecked}
+                      onChange={e => {
+                        const newDelivery = {
+                          inApp: channel.key === 'inApp' ? e.target.checked : (preferences.delivery?.inApp ?? preferences.inAppEnabled),
+                          email: channel.key === 'email' ? e.target.checked : (preferences.delivery?.email ?? preferences.emailEnabled),
+                          push: channel.key === 'push' ? e.target.checked : (preferences.delivery?.push ?? preferences.pushEnabled)
+                        };
+                        onUpdatePreferences({ 
+                          ...preferences,
+                          delivery: newDelivery,
+                          inAppEnabled: newDelivery.inApp,
+                          emailEnabled: newDelivery.email,
+                          pushEnabled: newDelivery.push
+                        });
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-iris-red peer-disabled:bg-slate-100 peer-disabled:cursor-not-allowed"></div>
+                  </label>
+                </div>
+              );
+            })}
           </div>
 
           {/* Muted Categories */}
