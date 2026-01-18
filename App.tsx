@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -29,9 +29,10 @@ import { useAuth } from './contexts/AuthContext';
 import { useBranding } from './contexts/BrandingContext';
 import { PERMISSIONS } from './lib/permissions';
 import { X, Bell } from 'lucide-react';
+import { notifyUsers } from './services/notificationService';
 import { useFirestoreCollection } from './hooks/useFirestore';
 import { useMessagingToken } from './hooks/useMessagingToken';
-import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './lib/firebase';
 import { archiveTask } from './utils/archiveUtils';
@@ -154,7 +155,49 @@ const App: React.FC = () => {
     inAppEnabled: true,
     emailEnabled: false,
     pushEnabled: true,
+    delivery: {
+      inApp: true,
+      email: false,
+      push: true,
+    },
   });
+
+  // Load notification preferences from Firestore
+  useEffect(() => {
+    if (!user) return;
+    
+    const loadPreferences = async () => {
+      try {
+        const prefsDoc = await getDoc(doc(db, 'notification_preferences', user.id));
+        if (prefsDoc.exists()) {
+          const prefs = prefsDoc.data() as NotificationPreference;
+          setNotificationPreferences(prefs);
+        } else {
+          // Create default preferences if none exist
+          const defaultPrefs: NotificationPreference = {
+            userId: user.id,
+            mutedCategories: [],
+            mutedProjects: [],
+            severityThreshold: 'info',
+            inAppEnabled: true,
+            emailEnabled: false,
+            pushEnabled: true,
+            delivery: {
+              inApp: true,
+              email: false,
+              push: true,
+            },
+          };
+          await setDoc(doc(db, 'notification_preferences', user.id), defaultPrefs);
+          setNotificationPreferences(defaultPrefs);
+        }
+      } catch (error) {
+        console.error('Failed to load notification preferences:', error);
+      }
+    };
+    
+    loadPreferences();
+  }, [user]);
 
   // Notes State
   const [notes] = useFirestoreCollection<Note>('notes', NOTES);
@@ -289,10 +332,28 @@ const App: React.FC = () => {
   };
 
   // Notification Logic
-  const handleNotify = async (type: string, title: string, message: string) => {
-    // Placeholder: in-app toast only until notifications are reimplemented
+  const handleNotify = async (type: NotificationType, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
+    // Show toast for immediate feedback
     setToast({ title, message });
     setTimeout(() => setToast(null), 4000);
+    
+    // Create persistent notification if recipients specified
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({
+          type,
+          title,
+          message,
+          recipientIds,
+          entityId,
+          actionUrl,
+          sendPush: false, // Push handled separately via manual console
+          createdBy: user?.id || 'system',
+        });
+      } catch (error) {
+        console.error('Failed to create notification:', error);
+      }
+    }
   };
 
   const handleMarkNotificationRead = async (id: string) => {
@@ -327,8 +388,27 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdatePreferences = (prefs: NotificationPreference) => {
-    setNotificationPreferences(prefs);
+  const handleUpdatePreferences = async (prefs: NotificationPreference) => {
+    try {
+      // Sync direct fields with delivery object
+      const syncedPrefs = {
+        ...prefs,
+        inAppEnabled: prefs.delivery?.inApp ?? prefs.inAppEnabled,
+        emailEnabled: prefs.delivery?.email ?? prefs.emailEnabled,
+        pushEnabled: prefs.delivery?.push ?? prefs.pushEnabled,
+        delivery: {
+          inApp: prefs.delivery?.inApp ?? prefs.inAppEnabled,
+          email: prefs.delivery?.email ?? prefs.emailEnabled,
+          push: prefs.delivery?.push ?? prefs.pushEnabled,
+        },
+      };
+      
+      await setDoc(doc(db, 'notification_preferences', prefs.userId), syncedPrefs);
+      setNotificationPreferences(syncedPrefs);
+    } catch (error) {
+      console.error('Failed to update notification preferences:', error);
+      setToast({ title: 'Error', message: 'Failed to save notification preferences' });
+    }
   };
 
 
@@ -355,6 +435,23 @@ const App: React.FC = () => {
       id: `tal${Date.now()}`, taskId: newTask.id, userId: user!.id, type: 'status_change', message: 'Task created', createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'task_activity_logs', log.id), log);
+
+    // Create notifications for assigned users
+    if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
+      const project = projects.find(p => p.id === newTask.projectId);
+      const creatorName = users.find(u => u.id === user?.id)?.name || 'Someone';
+      
+      await notifyUsers({
+        type: 'TASK_ASSIGNED',
+        title: 'New Task Assigned',
+        message: `${creatorName} assigned you to "${newTask.title}"${project ? ` in ${project.name}` : ''}`,
+        recipientIds: newTask.assigneeIds.filter(id => id !== user?.id), // Don't notify creator
+        entityId: newTask.id,
+        actionUrl: `/tasks/${newTask.id}`,
+        sendPush: false,
+        createdBy: user?.id || 'system',
+      });
+    }
 
     // Recalculate Milestone Progress if linked
     if (newTask.milestoneId) {
@@ -385,6 +482,72 @@ const App: React.FC = () => {
       id: `tal${Date.now()}`, taskId: updatedTask.id, userId: user!.id, type: 'status_change', message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString()
     };
     await setDoc(doc(db, 'task_activity_logs', log.id), log);
+
+    // Notify on status changes
+    if (oldTask && oldTask.status !== updatedTask.status) {
+      const statusMessages: Record<string, string> = {
+        'assigned': 'Task has been assigned',
+        'in_progress': 'Task is now in progress',
+        'awaiting_review': 'Task submitted for review',
+        'revisions_required': 'Revisions requested on task',
+        'approved': 'Task has been approved',
+        'client_review': 'Task sent for client review',
+        'client_approved': 'Task approved by client',
+        'completed': 'Task has been completed',
+        'archived': 'Task has been archived',
+      };
+      
+      const message = statusMessages[updatedTask.status] || `Task status changed to ${updatedTask.status}`;
+      const recipientIds = updatedTask.assigneeIds || [];
+      
+      if (recipientIds.length > 0) {
+        await notifyUsers({
+          type: 'TASK_STATUS_CHANGED',
+          title: `Task Updated: ${updatedTask.title}`,
+          message,
+          recipientIds: recipientIds.filter(id => id !== user?.id),
+          entityId: updatedTask.id,
+          actionUrl: `/tasks/${updatedTask.id}`,
+          sendPush: false,
+          createdBy: user?.id || 'system',
+        });
+      }
+    }
+
+    // Notify on assignment changes
+    if (oldTask && oldTask.assigneeIds && updatedTask.assigneeIds) {
+      const oldAssignees = new Set(oldTask.assigneeIds);
+      const newAssignees = new Set(updatedTask.assigneeIds);
+      
+      // Find newly assigned users
+      const addedAssignees = [...newAssignees].filter(id => !oldAssignees.has(id));
+      if (addedAssignees.length > 0) {
+        await notifyUsers({
+          type: 'TASK_ASSIGNED',
+          title: 'New Task Assigned',
+          message: `You've been assigned to "${updatedTask.title}"`,
+          recipientIds: addedAssignees.filter(id => id !== user?.id),
+          entityId: updatedTask.id,
+          actionUrl: `/tasks/${updatedTask.id}`,
+          sendPush: false,
+          createdBy: user?.id || 'system',
+        });
+      }
+      
+      // Find removed assignees
+      const removedAssignees = [...oldAssignees].filter(id => !newAssignees.has(id));
+      if (removedAssignees.length > 0) {
+        await notifyUsers({
+          type: 'TASK_UNASSIGNED',
+          title: 'Task Assignment Removed',
+          message: `You've been unassigned from "${updatedTask.title}"`,
+          recipientIds: removedAssignees.filter(id => id !== user?.id),
+          entityId: updatedTask.id,
+          sendPush: false,
+          createdBy: user?.id || 'system',
+        });
+      }
+    }
 
     // Recalculate Milestone Progress if linked
     if (updatedTask.milestoneId) {
@@ -733,7 +896,7 @@ const App: React.FC = () => {
       if (newBalance <= 0) newStatus = 'paid';
       const updatedInvoice = { ...invoice, paid: newPaid, balance: newBalance, status: newStatus };
       await handleUpdateInvoice(updatedInvoice);
-      handleNotify('financeUpdates', 'Payment Received', `Payment of $${pay.amount} recorded for ${invoice.invoiceNumber}.`);
+      handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${pay.amount} recorded for ${invoice.invoiceNumber}.`);
     }
   };
 
@@ -975,10 +1138,10 @@ const App: React.FC = () => {
   const handleUpdateSocialPost = async (post: SocialPost) => {
     try {
       await updateDoc(doc(db, 'social_posts', post.id), post as any);
-      handleNotify('success', 'Post Updated', `Social post "${post.title}" updated successfully.`);
+      handleNotify('system', 'Post Updated', `Social post "${post.title}" updated successfully.`);
     } catch (error) {
       console.error("Error updating social post:", error);
-      handleNotify('error', 'Update Failed', 'Failed to update social post.');
+      handleNotify('system', 'Update Failed', 'Failed to update social post.');
     }
   };
 

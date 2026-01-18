@@ -80,13 +80,30 @@ exports.processOutbox = functions.firestore
         failureCount,
       });
 
-      // mirror to notifications collection for history/UI
-      cleanupPromises.push(admin.firestore().collection(SENT_COLLECTION).add({
-        title,
-        body,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        targets: targets || null,
-      }));
+      // Create per-user notification documents for in-app display
+      if (Array.isArray(targets) && targets.length) {
+        const batch = admin.firestore().batch();
+        const createdAt = admin.firestore.FieldValue.serverTimestamp();
+        
+        targets.forEach((userId) => {
+          const notificationRef = admin.firestore().collection(SENT_COLLECTION).doc();
+          batch.set(notificationRef, {
+            userId: userId,
+            type: payload.type || 'system',
+            title: title,
+            message: body,
+            severity: payload.severity || 'info',
+            category: payload.category || 'system',
+            entityType: payload.entityType || null,
+            entityId: payload.entityId || null,
+            actionUrl: payload.actionUrl || null,
+            isRead: false,
+            createdAt: createdAt,
+          });
+        });
+        
+        cleanupPromises.push(batch.commit());
+      }
 
       // remove from outbox after send attempt
       cleanupPromises.push(snap.ref.delete());

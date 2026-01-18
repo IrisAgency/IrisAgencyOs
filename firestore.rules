@@ -24,6 +24,42 @@ service cloud.firestore {
       allow delete: if hasPermission('clients.manage') || hasPermission('client.reports.delete');
     }
 
+    // Notification rules
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Only authenticated users and system can write notifications
+      allow create: if request.auth != null;
+      // Users can update their own notifications (mark as read, etc.)
+      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      // Users can delete their own notifications
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Notification preferences rules
+    match /notification_preferences/{userId} {
+      // Users can only read and write their own preferences
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Notification outbox (for Cloud Function processing)
+    match /notifications_outbox/{docId} {
+      // Only authenticated users can create outbox entries
+      allow create: if request.auth != null;
+      // Cloud Function needs to read and delete
+      allow read, delete: if true;
+    }
+
+    // Notification tokens
+    match /notification_tokens/{tokenId} {
+      // Users can manage their own tokens
+      allow read, write: if request.auth != null && 
+        (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.uid);
+      allow create: if request.auth != null;
+      // Cloud Function needs to delete invalid tokens
+      allow delete: if true;
+    }
+
     match /{document=**} {
       allow read, write: if true;
     }

@@ -1038,10 +1038,17 @@ export interface NotificationPreference {
   mutedProjects: string[];
   severityThreshold: NotificationSeverity;
   
-  // Delivery channels
+  // Delivery channels (direct fields)
   inAppEnabled: boolean;
   emailEnabled: boolean;
   pushEnabled: boolean;
+  
+  // Delivery channels (nested object - for UI compatibility)
+  delivery?: {
+    inApp: boolean;
+    email: boolean;
+    push: boolean;
+  };
   
   // Legacy fields
   taskAssigned?: boolean;
