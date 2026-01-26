@@ -1099,7 +1099,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Assets
       'assets.view.dept', 'assets.upload',
       // Calendar (full management for copywriter)
-      'calendar.manage',
+      'calendar.view', 'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
