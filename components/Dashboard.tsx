@@ -87,6 +87,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Pre-calculate user tasks for filter population
   const userTasksAll = tasks.filter(t => 
+    !t.isDeleted &&
     t.assigneeIds?.includes(selectedUserId) && 
     t.status !== 'completed' && 
     t.status !== 'archived'
@@ -153,6 +154,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     .slice(0, 5);
 
   const urgentTasks = tasks
+    .filter(t => !t.isDeleted)
     .filter(t => t.priority === 'high' || t.priority === 'urgent')
     .filter(t => t.status !== 'completed')
     .slice(0, 3);
@@ -162,7 +164,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const clientProjects = projects.filter(p => p.clientId === client.id);
     const clientTasks = tasks.filter(t => {
         const p = projects.find(proj => proj.id === t.projectId);
-        return p?.clientId === client.id && t.status !== 'completed' && t.status !== 'archived';
+        return !t.isDeleted && p?.clientId === client.id && t.status !== 'completed' && t.status !== 'archived';
     });
     
     const overdueCount = clientTasks.filter(t => new Date(t.dueDate || '') < new Date()).length;
@@ -208,6 +210,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     .filter(u => u.status === 'active')
     .map(u => {
       const activeCount = tasks.filter(t => 
+        !t.isDeleted &&
         (t.assigneeIds || []).includes(u.id) && 
         t.status !== 'completed' && 
         t.status !== 'archived'

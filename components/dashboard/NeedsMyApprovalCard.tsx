@@ -20,6 +20,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
 }) => {
   // Filter tasks that need current user's approval
   const needsApprovalTasks = tasks.filter(task => 
+    !task.isDeleted &&
     taskNeedsMyApproval(task, currentUser, approvalSteps)
   );
 
