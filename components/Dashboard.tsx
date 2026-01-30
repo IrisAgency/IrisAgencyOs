@@ -397,7 +397,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             Week
                           </button>
                         </div>
-                        <span className="data-mono ltr-text" style={{ color: 'var(--dash-primary)' }}>{myTasks.length} Active</span>
+                        <span className="data-mono ltr-text" style={{ color: 'var(--dash-primary)' }}>{userTasksAll.length} Active</span>
                       </div>
                     </div>
 
