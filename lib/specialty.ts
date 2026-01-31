@@ -11,7 +11,7 @@ import { User, UserRole, TaskType } from '../types';
  */
 export const ROLE_SPECIALTY_MAPPING: Record<string, TaskType[]> = {
   // Production roles
-  'videographer': ['video', 'production'],
+  'videographer': ['video', 'production', 'motion'],
   'video editor': ['video', 'post_production'],
   'photographer': ['photo'],
   
