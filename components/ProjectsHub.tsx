@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType } from '../types';
-import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap, Lock } from 'lucide-react';
+import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap, Lock, AlertTriangle } from 'lucide-react';
+import { calculateWorkloadBySpecialty, getSpecialtyLabel, getMissingSpecialties, assignTasksBySpecialty } from '../lib/specialty';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
@@ -147,51 +148,19 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       return {};
     }
 
-    const assignments: Record<string, { VIDEO: number; PHOTO: number; MOTION: number }> = {};
     const selectedUsers = users.filter(u => formMemberIds.includes(u.id));
-
-    // Initialize all selected members with zero counts
-    selectedUsers.forEach(user => {
-      assignments[user.id] = { VIDEO: 0, PHOTO: 0, MOTION: 0 };
-    });
-
-    // Helper to distribute workload by role
-    const distributeByRole = (contentType: 'VIDEO' | 'PHOTO' | 'MOTION', roleKeyword: string) => {
-      const matchingUsers = selectedUsers.filter(u => 
-        u.role?.toLowerCase().includes(roleKeyword.toLowerCase())
-      );
-      
-      const count = contentCounts[contentType];
-      if (count === 0) return;
-
-      if (matchingUsers.length > 0) {
-        // Distribute among role-matching users
-        const perUser = Math.floor(count / matchingUsers.length);
-        const remainder = count % matchingUsers.length;
-        matchingUsers.forEach((user, idx) => {
-          assignments[user.id][contentType] = perUser + (idx < remainder ? 1 : 0);
-        });
-      } else {
-        // Distribute evenly among all selected members
-        const perUser = Math.floor(count / selectedUsers.length);
-        const remainder = count % selectedUsers.length;
-        selectedUsers.forEach((user, idx) => {
-          assignments[user.id][contentType] = perUser + (idx < remainder ? 1 : 0);
-        });
-      }
-    };
-
-    // Distribute VIDEO to videographers
-    distributeByRole('VIDEO', 'videographer');
     
-    // Distribute PHOTO to designers
-    distributeByRole('PHOTO', 'designer');
+    // Map calendar items to task types for workload calculation
+    const tasksForWorkload = selectedMonthItems.map(item => ({
+      type: item.type === 'VIDEO' ? 'video' as TaskType : 
+            item.type === 'PHOTO' ? 'photo' as TaskType : 
+            'motion' as TaskType,
+      id: item.id
+    }));
     
-    // Distribute MOTION to motion designers or anyone with "motion" in role
-    distributeByRole('MOTION', 'motion');
-
-    return assignments;
-  }, [formCalendarMonthId, selectedMonthItems, formMemberIds, users, contentCounts]);
+    // Calculate workload using specialty-based assignment
+    return calculateWorkloadBySpecialty(tasksForWorkload, selectedUsers);
+  }, [formCalendarMonthId, selectedMonthItems, formMemberIds, users]);
 
   // Filter users by search term
   const filteredUsers = useMemo(() => {
@@ -468,6 +437,16 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         // Generate delivery tasks
         const tasksToGenerate: Task[] = [];
         
+        // Prepare for specialty-based assignment
+        const selectedUsers = users.filter(u => formMemberIds.includes(u.id));
+        const tasksForAssignment = selectedMonthItems.map(item => ({
+          type: item.type === 'VIDEO' ? 'video' as TaskType : 
+                item.type === 'PHOTO' ? 'photo' as TaskType : 
+                'motion' as TaskType,
+          id: item.id
+        }));
+        const taskAssignments = assignTasksBySpecialty(tasksForAssignment, selectedUsers);
+        
         console.log('📅 Generating tasks from calendar items:');
         for (const item of selectedMonthItems) {
           const milestone = createdMilestones.find(m => m.type === item.type);
@@ -531,7 +510,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             status: 'new',
             startDate: newProject.startDate,
             dueDate: item.publishAt || newProject.endDate,
-            assigneeIds: formMemberIds.length > 0 ? formMemberIds : [],
+            assigneeIds: taskAssignments[item.id] || [],
             createdBy: users[0]?.id || 'system',
             approvalPath: [],
             workflowTemplateId: workflowId || null,
@@ -1091,8 +1070,14 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                                 <div className="text-sm font-medium text-slate-200 truncate">
                                   {user.name}
                                 </div>
-                                <div className="text-xs text-slate-400 truncate">
-                                  {user.role || 'Team Member'}
+                                <div className="flex items-center gap-2">
+                                  <div className="text-xs text-slate-400 truncate">
+                                    {user.role || 'Team Member'}
+                                  </div>
+                                  {/* Specialty Badge */}
+                                  <div className="text-[10px] px-1.5 py-0.5 bg-[color:var(--dash-primary)]/10 text-[color:var(--dash-primary)] rounded border border-[color:var(--dash-primary)]/20 whitespace-nowrap">
+                                    {getSpecialtyLabel(user.role)}
+                                  </div>
                                 </div>
                               </div>
                               
@@ -1125,6 +1110,43 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                       </div>
                     )}
                   </div>
+                  
+                  {/* Missing Specialty Warning */}
+                  {formCalendarMonthId && formMemberIds.length > 0 && (() => {
+                    const selectedUsers = users.filter(u => formMemberIds.includes(u.id));
+                    const tasksForCheck = selectedMonthItems.map(item => ({
+                      type: item.type === 'VIDEO' ? 'video' as TaskType : 
+                            item.type === 'PHOTO' ? 'photo' as TaskType : 
+                            'motion' as TaskType
+                    }));
+                    const missing = getMissingSpecialties(tasksForCheck, selectedUsers);
+                    
+                    if (missing.length > 0) {
+                      return (
+                        <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              <p className="text-xs font-medium text-yellow-400 mb-1">
+                                Missing Specialties
+                              </p>
+                              <p className="text-xs text-yellow-300/80">
+                                Some tasks may not have matching team members:
+                              </p>
+                              <ul className="mt-2 space-y-1">
+                                {missing.map((m, idx) => (
+                                  <li key={idx} className="text-xs text-yellow-300/70">
+                                    • <span className="font-medium capitalize">{m.taskType}</span> tasks need: {m.suggestedRoles.join(', ')}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   
                   {!formCalendarMonthId && formMemberIds.length > 0 && (
                     <p className="text-xs text-slate-500 mt-2">

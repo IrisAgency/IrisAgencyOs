@@ -31,6 +31,7 @@ export interface User {
 
   // HR Extended Fields
   jobTitle?: string;
+  specialties?: string[]; // Multi-specialty support (e.g., ["video", "photo"])
   employeeCode?: string;
   email?: string;
   phone?: string;
