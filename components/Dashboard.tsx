@@ -3,6 +3,7 @@ import {
   Task,
   Project,
   User,
+  UserRole,
   Client,
   SocialPost,
   TaskTimeLog,
@@ -519,6 +520,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 );
 
               case 'team-progress':
+                if (currentUser.role !== UserRole.GENERAL_MANAGER && currentUser.role !== UserRole.ACCOUNT_MANAGER) return null;
                 return (
                   <section key={widgetId} className="team-progress glass-panel animate-reveal" {...dragProps}>
                     <div className="widget-title">Team Workload</div>
@@ -625,6 +627,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 );
 
               case 'client-status':
+                if (currentUser.role !== UserRole.GENERAL_MANAGER && currentUser.role !== UserRole.ACCOUNT_MANAGER) return null;
                 return (
                   <section key={widgetId} className="client-status glass-panel animate-reveal" {...dragProps}>
                     <div className="widget-title">Key Accounts</div>
@@ -675,6 +678,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 );
 
               case 'milestones':
+                if (currentUser.role !== UserRole.GENERAL_MANAGER && currentUser.role !== UserRole.ACCOUNT_MANAGER) return null;
                 return (
                   <section key={widgetId} className="milestones glass-panel animate-reveal" {...dragProps}>
                     <div className="widget-title">
