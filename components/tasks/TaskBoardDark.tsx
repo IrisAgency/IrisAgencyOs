@@ -46,17 +46,20 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
 }) => {
   const [activeStatus, setActiveStatus] = useState<TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN'>('NEEDS_MY_APPROVAL');
 
+  // Helper: is a task a "production plan" task?
+  const isProductionPlanTask = (t: Task) => t.isProductionCopy === true || !!t.calendarItemId;
+
   // Get counts for each status
   const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN') => {
     if (status === 'NEEDS_MY_APPROVAL') {
       return tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps)).length;
     }
     if (status === 'PRODUCTION_PLAN') {
-      return tasks.filter(t => t.isProductionCopy === true).length;
+      return tasks.filter(t => isProductionPlanTask(t)).length;
     }
-    // Exclude production tasks from 'New' so they only show under 'Production Plan'
+    // Exclude production plan tasks from 'New' so they only show under 'Production Plan'
     if (status === TaskStatus.NEW) {
-      return tasks.filter(t => t.status === status && !t.isProductionCopy).length;
+      return tasks.filter(t => t.status === status && !isProductionPlanTask(t)).length;
     }
     return tasks.filter(t => t.status === status).length;
   };
@@ -65,9 +68,9 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   const activeTasks = activeStatus === 'NEEDS_MY_APPROVAL'
     ? tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps))
     : activeStatus === 'PRODUCTION_PLAN'
-    ? tasks.filter(t => t.isProductionCopy === true)
+    ? tasks.filter(t => isProductionPlanTask(t))
     : activeStatus === TaskStatus.NEW
-    ? tasks.filter(t => t.status === activeStatus && !t.isProductionCopy)
+    ? tasks.filter(t => t.status === activeStatus && !isProductionPlanTask(t))
     : tasks.filter(t => t.status === activeStatus);
 
   return (
