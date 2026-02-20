@@ -1,8 +1,5 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
-const https = require('https');
-const http = require('http');
-const { URL } = require('url');
 
 admin.initializeApp();
 
@@ -161,13 +158,16 @@ function chunk(arr, size) {
 
 // ──────────────────────────────────────────────────────
 // Link Preview Proxy — fetches OG metadata for a URL
+// Uses open-graph-scraper for robust metadata extraction
 // ──────────────────────────────────────────────────────
 
 /**
- * Fetches a URL's HTML and extracts Open Graph meta tags.
+ * Fetches Open Graph metadata for a URL.
  * Callable: { url: string } → { title, description, image, siteName, hostname }
  */
 exports.fetchLinkPreview = functions.https.onCall(async (data) => {
+  const ogs = (await import('open-graph-scraper')).default;
+
   // Handle both v4 (data is payload) and nested (data.data) formats
   const rawUrl = data?.url || data?.data?.url;
   if (!rawUrl || typeof rawUrl !== 'string') {
@@ -176,11 +176,8 @@ exports.fetchLinkPreview = functions.https.onCall(async (data) => {
 
   // Robust URL normalization
   let normalizedUrl = rawUrl.trim();
-  // Remove spaces
   normalizedUrl = normalizedUrl.replace(/ /g, '');
-  // Fix double protocol (e.g. "HTTPS://HTTPS://...")
   normalizedUrl = normalizedUrl.replace(/^(https?:\/\/)+/i, 'https://');
-  // Add protocol if missing
   if (!/^https?:\/\//i.test(normalizedUrl)) {
     normalizedUrl = 'https://' + normalizedUrl;
   }
@@ -188,119 +185,34 @@ exports.fetchLinkPreview = functions.https.onCall(async (data) => {
   functions.logger.info('fetchLinkPreview called for:', normalizedUrl);
 
   try {
-    const html = await fetchHtml(normalizedUrl);
-    const metadata = extractOgMetadata(html, normalizedUrl);
+    const { result } = await ogs({
+      url: normalizedUrl,
+      timeout: 8,
+      fetchOptions: {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9',
+        },
+      },
+    });
+
+    const image = result.ogImage?.[0]?.url
+      || result.twitterImage?.[0]?.url
+      || null;
+
+    const metadata = {
+      title: result.ogTitle || result.twitterTitle || null,
+      description: result.ogDescription || result.twitterDescription || null,
+      image,
+      siteName: result.ogSiteName || null,
+      hostname: (() => { try { return new URL(normalizedUrl).hostname; } catch { return null; } })(),
+    };
+
+    functions.logger.info('fetchLinkPreview success:', { url: normalizedUrl, hasImage: !!image });
     return metadata;
   } catch (err) {
-    functions.logger.error('fetchLinkPreview error:', err.message);
+    functions.logger.error('fetchLinkPreview error:', err.message || err);
     throw new functions.https.HttpsError('internal', 'Failed to fetch link preview');
   }
 });
-
-/**
- * Fetch HTML from a URL, following up to 5 redirects.
- */
-function fetchHtml(targetUrl, maxRedirects = 5) {
-  return new Promise((resolve, reject) => {
-    if (maxRedirects <= 0) return reject(new Error('Too many redirects'));
-
-    let parsedUrl;
-    try {
-      parsedUrl = new URL(targetUrl);
-    } catch {
-      return reject(new Error('Invalid URL: ' + targetUrl));
-    }
-
-    const client = parsedUrl.protocol === 'https:' ? https : http;
-
-    // Hard timeout to prevent Cloud Function from hanging
-    const timer = setTimeout(() => {
-      req.destroy();
-      reject(new Error('Request timeout'));
-    }, 7000);
-
-    const req = client.get(targetUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      timeout: 6000,
-    }, (res) => {
-      // Follow redirects
-      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
-        clearTimeout(timer);
-        let redirectUrl = res.headers.location;
-        if (redirectUrl.startsWith('/')) {
-          redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${redirectUrl}`;
-        }
-        return resolve(fetchHtml(redirectUrl, maxRedirects - 1));
-      }
-
-      if (res.statusCode !== 200) {
-        clearTimeout(timer);
-        return reject(new Error(`HTTP ${res.statusCode}`));
-      }
-
-      let body = '';
-      res.setEncoding('utf8');
-      res.on('data', (chunk) => {
-        body += chunk;
-        // Only need the <head> section, stop at 100KB
-        if (body.length > 100000) res.destroy();
-      });
-      res.on('end', () => { clearTimeout(timer); resolve(body); });
-      res.on('error', (err) => { clearTimeout(timer); reject(err); });
-    });
-
-    req.on('timeout', () => { clearTimeout(timer); req.destroy(); reject(new Error('Timeout')); });
-    req.on('error', (err) => { clearTimeout(timer); reject(err); });
-  });
-}
-
-/**
- * Extract Open Graph metadata from HTML string.
- */
-function extractOgMetadata(html, sourceUrl) {
-  const getMeta = (property) => {
-    // Match <meta property="og:xxx" content="yyy"> or <meta name="og:xxx" content="yyy">
-    const patterns = [
-      new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
-      new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']${property}["']`, 'i'),
-      new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
-      new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*name=["']${property}["']`, 'i'),
-    ];
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match?.[1]) return match[1].trim();
-    }
-    return null;
-  };
-
-  // Extract title: og:title → <title> tag
-  let title = getMeta('og:title');
-  if (!title) {
-    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    title = titleMatch?.[1]?.trim() || null;
-  }
-
-  const description = getMeta('og:description') || getMeta('description');
-  let image = getMeta('og:image') || getMeta('twitter:image');
-
-  // Make relative image URLs absolute
-  if (image && image.startsWith('/')) {
-    try {
-      const parsed = new URL(sourceUrl);
-      image = `${parsed.protocol}//${parsed.host}${image}`;
-    } catch {}
-  }
-
-  const siteName = getMeta('og:site_name');
-
-  let hostname = null;
-  try {
-    hostname = new URL(sourceUrl).hostname;
-  } catch {}
-
-  return { title, description, image, siteName, hostname };
-}
