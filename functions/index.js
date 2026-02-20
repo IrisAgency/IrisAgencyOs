@@ -1,5 +1,8 @@
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
+const https = require('https');
+const http = require('http');
+const { URL } = require('url');
 
 admin.initializeApp();
 
@@ -154,4 +157,132 @@ function chunk(arr, size) {
     result.push(arr.slice(i, i + size));
   }
   return result;
+}
+
+// ──────────────────────────────────────────────────────
+// Link Preview Proxy — fetches OG metadata for a URL
+// ──────────────────────────────────────────────────────
+
+/**
+ * Fetches a URL's HTML and extracts Open Graph meta tags.
+ * Callable: { url: string } → { title, description, image, siteName, hostname }
+ */
+exports.fetchLinkPreview = functions.https.onCall(async (data) => {
+  const targetUrl = data?.url || data?.data?.url;
+  if (!targetUrl || typeof targetUrl !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing url parameter');
+  }
+
+  // Normalize
+  let normalizedUrl = targetUrl.trim();
+  if (!/^https?:\/\//i.test(normalizedUrl)) {
+    normalizedUrl = 'https://' + normalizedUrl;
+  }
+
+  try {
+    const html = await fetchHtml(normalizedUrl);
+    const metadata = extractOgMetadata(html, normalizedUrl);
+    return metadata;
+  } catch (err) {
+    functions.logger.error('fetchLinkPreview error:', err.message);
+    throw new functions.https.HttpsError('internal', 'Failed to fetch link preview');
+  }
+});
+
+/**
+ * Fetch HTML from a URL, following up to 5 redirects.
+ */
+function fetchHtml(targetUrl, maxRedirects = 5) {
+  return new Promise((resolve, reject) => {
+    if (maxRedirects <= 0) return reject(new Error('Too many redirects'));
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(targetUrl);
+    } catch {
+      return reject(new Error('Invalid URL: ' + targetUrl));
+    }
+
+    const client = parsedUrl.protocol === 'https:' ? https : http;
+    const req = client.get(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; IrisBot/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      timeout: 8000,
+    }, (res) => {
+      // Follow redirects
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        let redirectUrl = res.headers.location;
+        if (redirectUrl.startsWith('/')) {
+          redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${redirectUrl}`;
+        }
+        return resolve(fetchHtml(redirectUrl, maxRedirects - 1));
+      }
+
+      if (res.statusCode !== 200) {
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', (chunk) => {
+        body += chunk;
+        // Only need the <head> section, stop at 100KB
+        if (body.length > 100000) res.destroy();
+      });
+      res.on('end', () => resolve(body));
+      res.on('error', reject);
+    });
+
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+    req.on('error', reject);
+  });
+}
+
+/**
+ * Extract Open Graph metadata from HTML string.
+ */
+function extractOgMetadata(html, sourceUrl) {
+  const getMeta = (property) => {
+    // Match <meta property="og:xxx" content="yyy"> or <meta name="og:xxx" content="yyy">
+    const patterns = [
+      new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
+      new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']${property}["']`, 'i'),
+      new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
+      new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*name=["']${property}["']`, 'i'),
+    ];
+    for (const pattern of patterns) {
+      const match = html.match(pattern);
+      if (match?.[1]) return match[1].trim();
+    }
+    return null;
+  };
+
+  // Extract title: og:title → <title> tag
+  let title = getMeta('og:title');
+  if (!title) {
+    const titleMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
+    title = titleMatch?.[1]?.trim() || null;
+  }
+
+  const description = getMeta('og:description') || getMeta('description');
+  let image = getMeta('og:image') || getMeta('twitter:image');
+
+  // Make relative image URLs absolute
+  if (image && image.startsWith('/')) {
+    try {
+      const parsed = new URL(sourceUrl);
+      image = `${parsed.protocol}//${parsed.host}${image}`;
+    } catch {}
+  }
+
+  const siteName = getMeta('og:site_name');
+
+  let hostname = null;
+  try {
+    hostname = new URL(sourceUrl).hostname;
+  } catch {}
+
+  return { title, description, image, siteName, hostname };
 }

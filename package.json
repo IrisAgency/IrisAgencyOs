@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dhaiwat10/react-link-preview": "^1.15.0",
     "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "firebase": "^12.6.0",

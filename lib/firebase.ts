@@ -3,6 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { initializeFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getMessaging, isSupported } from 'firebase/messaging';
+import { getFunctions } from 'firebase/functions';
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -19,6 +20,7 @@ export const db = initializeFirestore(firebaseApp, {
   experimentalForceLongPolling: true,
 });
 export const storage = getStorage(firebaseApp);
+export const cloudFunctions = getFunctions(firebaseApp);
 
 export const messagingPromise = isSupported().then((supported) => {
   console.log('[Firebase Messaging] Browser support check:', {

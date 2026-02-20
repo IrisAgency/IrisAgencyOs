@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { httpsCallable } from 'firebase/functions';
+import { cloudFunctions } from '../../lib/firebase';
 
-const PROXY_URL = 'https://rlp-proxy.herokuapp.com/v2?url=';
+interface LinkPreviewMetadata {
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+  hostname: string | null;
+}
 
 interface LinkPreviewThumbnailProps {
   url: string;
@@ -9,9 +17,12 @@ interface LinkPreviewThumbnailProps {
   onImageFound?: (imageUrl: string) => void;
 }
 
+// Simple in-memory cache to avoid re-fetching the same URL
+const previewCache = new Map<string, string | null>();
+
 /**
- * Fetches Open Graph metadata for a URL and renders the OG image as a thumbnail.
- * Uses the same proxy as @dhaiwat10/react-link-preview to avoid CORS issues.
+ * Fetches Open Graph metadata for a URL via our own Firebase Cloud Function
+ * and renders the OG image as a thumbnail.
  */
 const LinkPreviewThumbnail: React.FC<LinkPreviewThumbnailProps> = ({
   url,
@@ -35,24 +46,37 @@ const LinkPreviewThumbnail: React.FC<LinkPreviewThumbnailProps> = ({
       return;
     }
 
-    // Normalize URL — add https:// if no protocol
+    // Normalize URL
     const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
 
-    fetch(PROXY_URL + normalizedUrl)
-      .then((res) => res.json())
-      .then((res) => {
-        if (mountedRef.current && res?.metadata?.image) {
-          const img = res.metadata.image;
-          // Validate it's not a relative path or "null" string
+    // Check cache first
+    if (previewCache.has(normalizedUrl)) {
+      const cached = previewCache.get(normalizedUrl) || null;
+      setImageUrl(cached);
+      if (cached) onImageFound?.(cached);
+      setLoading(false);
+      return;
+    }
+
+    const fetchPreview = httpsCallable<{ url: string }, LinkPreviewMetadata>(cloudFunctions, 'fetchLinkPreview');
+
+    fetchPreview({ url: normalizedUrl })
+      .then((result) => {
+        if (mountedRef.current) {
+          const img = result.data?.image;
           if (img && img !== 'null' && !img.startsWith('/')) {
             setImageUrl(img);
+            previewCache.set(normalizedUrl, img);
             onImageFound?.(img);
+          } else {
+            previewCache.set(normalizedUrl, null);
           }
+          setLoading(false);
         }
-        if (mountedRef.current) setLoading(false);
       })
       .catch(() => {
         if (mountedRef.current) {
+          previewCache.set(normalizedUrl, null);
           setError(true);
           setLoading(false);
         }
