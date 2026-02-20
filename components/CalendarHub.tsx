@@ -629,17 +629,43 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filteredItems.map(item => (
+            {filteredItems.map(item => {
+              const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
+              const thumbFile = item.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
+              const thumbUrl = thumbFile?.downloadURL || (item.referenceFiles.length > 0 ? item.referenceFiles[0].downloadURL : null);
+              return (
               <div
                 key={item.id}
-                className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors"
+                className="bg-[#0a0a0a] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors group"
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 ${getTypeColor(item.type)}`}>
-                    {getTypeIcon(item.type)}
-                    {item.type}
+                {/* Thumbnail Header */}
+                {thumbUrl ? (
+                  <div className="relative w-full h-36 bg-gray-900 overflow-hidden">
+                    <img
+                      src={thumbUrl}
+                      alt={item.autoName}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 backdrop-blur-sm ${getTypeColor(item.type)}`}>
+                      {getTypeIcon(item.type)} {item.type}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                ) : (
+                  <div className="relative w-full h-20 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center overflow-hidden">
+                    <div className="opacity-10 scale-[3]">{getTypeIcon(item.type)}</div>
+                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 ${getTypeColor(item.type)}`}>
+                      {getTypeIcon(item.type)} {item.type}
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Content */}
+                <div className="p-4">
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="text-sm font-bold text-white font-mono flex-1 mr-2">{item.autoName}</h3>
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                       <button
                         onClick={() => openEditItem(item)}
@@ -661,9 +687,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                   </div>
                 </div>
 
-                <h3 className="text-sm font-bold text-white mb-2 font-mono">{item.autoName}</h3>
-
-                <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
                   <Clock className="w-3 h-3" />
                   {new Date(item.publishAt).toLocaleString()}
                 </div>
@@ -686,8 +710,10 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                     </div>
                   )}
                 </div>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {filteredItems.length === 0 && (
