@@ -5,6 +5,7 @@ import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './common/Modal';
+import LinkPreviewThumbnail from './common/LinkPreviewThumbnail';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, runTransaction, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
@@ -633,12 +634,13 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
               const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
               const thumbFile = item.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
               const thumbUrl = thumbFile?.downloadURL || (item.referenceFiles.length > 0 ? item.referenceFiles[0].downloadURL : null);
+              const linkPreviewUrl = !thumbUrl && item.referenceLinks.length > 0 ? item.referenceLinks[0].url : null;
               return (
               <div
                 key={item.id}
                 className="bg-[#0a0a0a] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors group"
               >
-                {/* Thumbnail Header */}
+                {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
                 {thumbUrl ? (
                   <div className="relative w-full h-36 bg-gray-900 overflow-hidden">
                     <img
@@ -648,6 +650,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 backdrop-blur-sm ${getTypeColor(item.type)}`}>
+                      {getTypeIcon(item.type)} {item.type}
+                    </div>
+                  </div>
+                ) : linkPreviewUrl ? (
+                  <div className="relative w-full h-36 bg-gray-900 overflow-hidden">
+                    <LinkPreviewThumbnail url={linkPreviewUrl} alt={item.autoName} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
                     <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 backdrop-blur-sm ${getTypeColor(item.type)}`}>
                       {getTypeIcon(item.type)} {item.type}
                     </div>
