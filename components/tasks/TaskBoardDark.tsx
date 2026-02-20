@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Task, TaskStatus, Priority, User, ApprovalStep } from '../../types';
 import { Clock, AlertCircle, Film } from 'lucide-react';
 import { taskNeedsMyApproval, getCurrentApprovalStepInfo } from '../../utils/approvalUtils';
+import { getAllowedTaskTypesForRole } from '../../lib/specialty';
 
 export type ToneFn<T> = (value: T) => string;
 export type DueTone = (date: string) => { label: string; className: string };
@@ -49,13 +50,23 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   // Helper: is a task a "production plan" task?
   const isProductionPlanTask = (t: Task) => t.isProductionCopy === true || !!t.calendarItemId;
 
+  // Helper: production plan tasks that match the current user's specialty
+  const allowedTypes = getAllowedTaskTypesForRole(currentUser.role);
+  const isMyProductionTask = (t: Task) => {
+    if (!isProductionPlanTask(t)) return false;
+    // If user has no specialty restrictions (managers, GM), show all production plan tasks
+    if (allowedTypes.length === 0) return true;
+    // Otherwise only show tasks matching the user's specialty
+    return allowedTypes.includes(t.taskType as any);
+  };
+
   // Get counts for each status
   const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN') => {
     if (status === 'NEEDS_MY_APPROVAL') {
       return tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps)).length;
     }
     if (status === 'PRODUCTION_PLAN') {
-      return tasks.filter(t => isProductionPlanTask(t)).length;
+      return tasks.filter(t => isMyProductionTask(t)).length;
     }
     // Exclude production plan tasks from 'New' so they only show under 'Production Plan'
     if (status === TaskStatus.NEW) {
@@ -68,7 +79,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   const activeTasks = activeStatus === 'NEEDS_MY_APPROVAL'
     ? tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps))
     : activeStatus === 'PRODUCTION_PLAN'
-    ? tasks.filter(t => isProductionPlanTask(t))
+    ? tasks.filter(t => isMyProductionTask(t))
     : activeStatus === TaskStatus.NEW
     ? tasks.filter(t => t.status === activeStatus && !isProductionPlanTask(t))
     : tasks.filter(t => t.status === activeStatus);
