@@ -445,7 +445,6 @@ const Dashboard: React.FC<DashboardProps> = ({
                       {showingUpcoming && myTasks.length > 0 && (
                         <div style={{ 
                           fontSize: '0.65rem', 
-                          color: 'var(--dash-secondary)', 
                           textTransform: 'uppercase', 
                           letterSpacing: '0.05em',
                           marginBottom: '8px',
