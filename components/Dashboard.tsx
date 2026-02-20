@@ -103,7 +103,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // Data Processing
-  const myTasks = userTasksAll
+  const myTasksFiltered = userTasksAll
     .filter(t => {
       // Time Filter
       const dueDate = t.dueDate ? new Date(t.dueDate) : null;
@@ -127,9 +127,6 @@ const Dashboard: React.FC<DashboardProps> = ({
           matchesTime = dueDate <= endOfWeek;
         }
       } else {
-        // If no due date, only show if we are NOT in strict time mode? 
-        // For now, let's hide them in "Today" view but maybe show in "Week"?
-        // Or just hide them as they aren't "due".
         matchesTime = false; 
       }
 
@@ -151,6 +148,32 @@ const Dashboard: React.FC<DashboardProps> = ({
     })
     .sort((a, b) => new Date(a.dueDate || '').getTime() - new Date(b.dueDate || '').getTime())
     .slice(0, 5);
+
+  // If no tasks match the time filter, show the nearest upcoming tasks instead
+  const showingUpcoming = myTasksFiltered.length === 0;
+  const myTasks = showingUpcoming
+    ? userTasksAll
+        .filter(t => {
+          const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+          if (!dueDate) return false;
+
+          // Client Filter
+          let matchesClient = true;
+          if (taskClientFilter !== 'all') {
+            const project = projects.find(p => p.id === t.projectId);
+            matchesClient = project?.clientId === taskClientFilter;
+          }
+          // Type Filter
+          let matchesType = true;
+          if (taskTypeFilter !== 'all') {
+            const type = t.taskType || 'Other';
+            matchesType = type === taskTypeFilter;
+          }
+          return matchesClient && matchesType;
+        })
+        .sort((a, b) => new Date(a.dueDate || '').getTime() - new Date(b.dueDate || '').getTime())
+        .slice(0, 5)
+    : myTasksFiltered;
 
   const urgentTasks = tasks
     .filter(t => t.priority === 'high' || t.priority === 'urgent')
@@ -419,6 +442,23 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
 
                     <div className="task-list">
+                      {showingUpcoming && myTasks.length > 0 && (
+                        <div style={{ 
+                          fontSize: '0.65rem', 
+                          color: 'var(--dash-secondary)', 
+                          textTransform: 'uppercase', 
+                          letterSpacing: '0.05em',
+                          marginBottom: '8px',
+                          padding: '4px 8px',
+                          background: 'var(--dash-primary)',
+                          borderRadius: '6px',
+                          display: 'inline-block',
+                          color: 'var(--dash-on-primary)',
+                          fontWeight: 600
+                        }}>
+                          ↗ Upcoming — nearest tasks
+                        </div>
+                      )}
                       {myTasks.map(task => {
                         const project = projects.find(p => p.id === task.projectId);
                         const isOverdue = new Date(task.dueDate || '') < new Date();
@@ -436,7 +476,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       })}
                       {myTasks.length === 0 && (
                         <div className="text-center py-8 text-slate-500 text-sm">
-                          No active tasks for {taskViewMode === 'today' ? 'today' : 'this week'}
+                          No assigned tasks yet
                         </div>
                       )}
                     </div>
