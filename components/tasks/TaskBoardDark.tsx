@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Task, TaskStatus, Priority, User, ApprovalStep } from '../../types';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, Film } from 'lucide-react';
 import { taskNeedsMyApproval, getCurrentApprovalStepInfo } from '../../utils/approvalUtils';
 
 export type ToneFn<T> = (value: T) => string;
@@ -17,8 +17,9 @@ interface TaskBoardDarkProps {
   dueTone: DueTone;
 }
 
-const statusColumns: { status: TaskStatus | 'NEEDS_MY_APPROVAL'; label: string }[] = [
+const statusColumns: { status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN'; label: string }[] = [
   { status: 'NEEDS_MY_APPROVAL', label: 'Needs My Approval' },
+  { status: 'PRODUCTION_PLAN', label: 'Production Plan' },
   { status: TaskStatus.NEW, label: 'New' },
   { status: TaskStatus.ASSIGNED, label: 'Assigned' },
   { status: TaskStatus.IN_PROGRESS, label: 'In Progress' },
@@ -43,12 +44,19 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   priorityTone,
   dueTone
 }) => {
-  const [activeStatus, setActiveStatus] = useState<TaskStatus | 'NEEDS_MY_APPROVAL'>('NEEDS_MY_APPROVAL');
+  const [activeStatus, setActiveStatus] = useState<TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN'>('NEEDS_MY_APPROVAL');
 
   // Get counts for each status
-  const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL') => {
+  const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN') => {
     if (status === 'NEEDS_MY_APPROVAL') {
       return tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps)).length;
+    }
+    if (status === 'PRODUCTION_PLAN') {
+      return tasks.filter(t => t.isProductionCopy === true).length;
+    }
+    // Exclude production tasks from 'New' so they only show under 'Production Plan'
+    if (status === TaskStatus.NEW) {
+      return tasks.filter(t => t.status === status && !t.isProductionCopy).length;
     }
     return tasks.filter(t => t.status === status).length;
   };
@@ -56,6 +64,10 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   // Get tasks for active status
   const activeTasks = activeStatus === 'NEEDS_MY_APPROVAL'
     ? tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps))
+    : activeStatus === 'PRODUCTION_PLAN'
+    ? tasks.filter(t => t.isProductionCopy === true)
+    : activeStatus === TaskStatus.NEW
+    ? tasks.filter(t => t.status === activeStatus && !t.isProductionCopy)
     : tasks.filter(t => t.status === activeStatus);
 
   return (
@@ -67,6 +79,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
             const count = getStatusCount(status);
             const isActive = activeStatus === status;
             const isApprovalTab = status === 'NEEDS_MY_APPROVAL';
+            const isProductionTab = status === 'PRODUCTION_PLAN';
             
             return (
               <button
@@ -77,15 +90,20 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                   ${isActive 
                     ? isApprovalTab
                       ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-2 border-amber-500'
+                      : isProductionTab
+                      ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20 border-2 border-violet-500'
                       : 'bg-[color:var(--dash-primary)] text-white shadow-lg shadow-[color:var(--dash-primary)]/20 border-2 border-[color:var(--dash-primary)]'
                     : isApprovalTab
                       ? 'bg-amber-500/10 text-amber-100 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50'
+                      : isProductionTab
+                      ? 'bg-violet-500/10 text-violet-100 border border-violet-500/30 hover:bg-violet-500/20 hover:border-violet-500/50'
                       : 'bg-[color:var(--dash-surface-elevated)]/80 text-slate-300 border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] hover:text-white hover:border-[color:var(--dash-primary)]/30'
                   }
                 `}
               >
                 <span className="truncate flex items-center gap-1.5">
                   {isApprovalTab && <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />}
+                  {isProductionTab && <Film className="w-3.5 h-3.5 flex-shrink-0" />}
                   {label}
                 </span>
                 <span className={`
@@ -94,6 +112,8 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                     ? 'bg-white/20 text-white' 
                     : isApprovalTab
                       ? 'bg-amber-500/30 text-amber-200'
+                      : isProductionTab
+                      ? 'bg-violet-500/30 text-violet-200'
                       : 'bg-white/5 text-slate-400'
                   }
                 `}>

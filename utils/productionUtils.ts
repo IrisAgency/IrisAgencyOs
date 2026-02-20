@@ -17,8 +17,11 @@ import {
   ProductionAssignment,
   Department,
   TaskStatus,
-  Priority
+  Priority,
+  User,
+  TaskType
 } from '../types';
+import { assignTasksBySpecialty } from '../lib/specialty';
 
 /**
  * Generate production tasks from a production plan
@@ -28,10 +31,24 @@ export const generateProductionTasks = async (
   plan: ProductionPlan,
   calendarItems: CalendarItem[],
   manualTasks: Task[],
-  currentUserId: string
+  currentUserId: string,
+  teamMembers?: User[]
 ): Promise<string[]> => {
   const batch = writeBatch(db);
   const generatedTaskIds: string[] = [];
+
+  // Specialty-based assignment: build per-task assignments if team members provided
+  let taskAssignments: Record<string, string[]> = {};
+  if (teamMembers && teamMembers.length > 0) {
+    const selectedMembers = teamMembers.filter(u => plan.teamMemberIds.includes(u.id));
+    if (selectedMembers.length > 0) {
+      const tasksForAssignment = calendarItems.map(item => ({
+        type: item.type.toLowerCase() as TaskType,
+        id: item.id
+      }));
+      taskAssignments = assignTasksBySpecialty(tasksForAssignment, selectedMembers);
+    }
+  }
 
   try {
     // Generate tasks from calendar items
@@ -39,19 +56,48 @@ export const generateProductionTasks = async (
       const taskRef = doc(collection(db, 'tasks'));
       const taskId = taskRef.id;
 
+      // Map calendar reference links to task format
+      const taskReferenceLinks = (calendarItem.referenceLinks || []).map((link, idx) => ({
+        id: `rl_${calendarItem.id}_${idx}_${Date.now()}`,
+        title: link.title,
+        url: link.url,
+        note: '',
+        createdBy: calendarItem.createdBy,
+        createdAt: calendarItem.createdAt
+      }));
+
+      // Map calendar reference files to task format
+      const taskReferenceImages = (calendarItem.referenceFiles || []).map((file, idx) => ({
+        id: `ri_${calendarItem.id}_${idx}_${Date.now()}`,
+        title: file.fileName,
+        fileName: file.fileName,
+        fileType: file.fileName.split('.').pop() || 'unknown',
+        fileSize: 0,
+        storageProvider: 'firebase' as const,
+        storagePath: file.storagePath,
+        downloadUrl: file.downloadURL,
+        uploadedBy: file.uploadedBy,
+        uploadedAt: file.createdAt
+      }));
+
+      // Use specialty-based assignment if available, otherwise fall back to all team members
+      const assigneeIds = taskAssignments[calendarItem.id]?.length > 0
+        ? taskAssignments[calendarItem.id]
+        : plan.teamMemberIds;
+
       const productionTask: Partial<Task> = {
         id: taskId,
         projectId: '', // Will need to be filled with actual project
         title: `🎬 ${calendarItem.autoName}`,
         description: calendarItem.primaryBrief || null,
-        voiceOver: null,
+        voiceOver: calendarItem.notes || null,
         department: Department.PRODUCTION,
         priority: Priority.MEDIUM,
         taskType: calendarItem.type.toLowerCase() as any,
         status: TaskStatus.NEW,
         startDate: plan.productionDate,
         dueDate: plan.productionDate,
-        assigneeIds: plan.teamMemberIds,
+        assigneeIds,
         createdBy: currentUserId,
         approvalPath: [],
         currentApprovalLevel: 0,
@@ -69,9 +115,9 @@ export const generateProductionTasks = async (
         sourceCalendarItemId: calendarItem.id,
         sourceTaskId: null,
         
-        // Copy references (no file duplication)
-        referenceLinks: [],
-        referenceImages: [],
+        // Copy references from calendar item
+        referenceLinks: taskReferenceLinks,
+        referenceImages: taskReferenceImages,
         
         attachments: [],
         isArchived: false,

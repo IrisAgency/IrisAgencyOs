@@ -234,12 +234,13 @@ const ProductionHub: React.FC<ProductionHubProps> = ({
                     }
                 }
 
-                // Generate production tasks
+                // Generate production tasks with specialty-based assignment
                 await generateProductionTasks(
                     { id: planId, ...planData } as ProductionPlan,
                     calendarItems,
                     manualTasks,
-                    currentUserId
+                    currentUserId,
+                    users
                 );
             }
 
