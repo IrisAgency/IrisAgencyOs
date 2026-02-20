@@ -28,7 +28,8 @@ import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { useAuth } from './contexts/AuthContext';
 import { useBranding } from './contexts/BrandingContext';
 import { PERMISSIONS } from './lib/permissions';
-import { X, Bell } from 'lucide-react';
+import { X, Bell, ChevronRight } from 'lucide-react';
+import TaskDetailView from './components/tasks/TaskDetailView';
 import { notifyUsers } from './services/notificationService';
 import { useFirestoreCollection } from './hooks/useFirestore';
 import { useMessagingToken } from './hooks/useMessagingToken';
@@ -277,7 +278,46 @@ const App: React.FC = () => {
 
   const handleNavigateToTask = (taskId: string) => {
     setTargetTaskId(taskId);
-    setActiveView('tasks');
+  };
+
+  // Global task detail overlay helpers
+  const globalSelectedTask = activeTasks.find(t => t.id === targetTaskId) || null;
+
+  const globalGetStatusColor = (s: TaskStatus): string => {
+    switch (s) {
+      case 'new' as TaskStatus: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
+      case 'assigned' as TaskStatus: return 'bg-blue-500/10 text-blue-100 border-blue-500/25';
+      case 'in_progress' as TaskStatus: return 'bg-indigo-500/10 text-indigo-100 border-indigo-500/25';
+      case 'awaiting_review' as TaskStatus: return 'bg-amber-500/10 text-amber-100 border-amber-500/20';
+      case 'revisions_required' as TaskStatus: return 'bg-rose-500/10 text-rose-100 border-rose-500/25';
+      case 'approved' as TaskStatus: return 'bg-emerald-500/10 text-emerald-100 border-emerald-500/25';
+      case 'client_review' as TaskStatus: return 'bg-purple-500/10 text-purple-100 border-purple-500/25';
+      case 'client_approved' as TaskStatus: return 'bg-teal-500/10 text-teal-100 border-teal-500/25';
+      case 'completed' as TaskStatus: return 'bg-emerald-600/15 text-emerald-100 border-emerald-400/40';
+      case 'archived' as TaskStatus: return 'bg-slate-800/60 text-slate-300 border-[color:var(--dash-glass-border)]';
+      default: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
+    }
+  };
+
+  const globalResolveApprover = (step: any, task: Task): string | null => {
+    if (step.specificUserId) return step.specificUserId;
+    if (step.projectRoleKey) {
+      const member = projectMembers.find((pm: ProjectMember) => pm.projectId === task.projectId && pm.roleInProject === step.projectRoleKey);
+      return member ? member.userId : null;
+    }
+    if (step.roleId) {
+      const roleDef = systemRoles.find((r: RoleDefinition) => r.id === step.roleId);
+      if (roleDef) {
+        const projectUserIds = projectMembers.filter((pm: ProjectMember) => pm.projectId === task.projectId).map((pm: ProjectMember) => pm.userId);
+        const projectApprover = activeUsers.find(u => u.role === roleDef.name && projectUserIds.includes(u.id));
+        if (projectApprover) return projectApprover.id;
+        const deptApprover = activeUsers.find(u => u.role === roleDef.name && u.department === task.department);
+        if (deptApprover) return deptApprover.id;
+        const anyApprover = activeUsers.find(u => u.role === roleDef.name);
+        if (anyApprover) return anyApprover.id;
+      }
+    }
+    return null;
   };
 
   const resolveNotificationTargetUserIds = (payload: ManualNotificationPayload): string[] => {
@@ -2211,6 +2251,63 @@ const App: React.FC = () => {
         )}
 
         {renderContent()}
+
+        {/* Global Task Detail Overlay - opens from any page */}
+        {globalSelectedTask && user && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setTargetTaskId(null)}>
+            <div
+              className="w-full max-w-[900px] max-h-[85vh] bg-[color:var(--dash-surface-elevated)] rounded-2xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/95 backdrop-blur-sm sticky top-0 z-10">
+                <h3 className="text-lg font-semibold text-slate-100">Task Details</h3>
+                <button
+                  onClick={() => setTargetTaskId(null)}
+                  className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <TaskDetailView
+                  task={globalSelectedTask}
+                  project={projects.find(p => p.id === globalSelectedTask.projectId)}
+                  users={activeUsers}
+                  comments={taskComments.filter(c => c.taskId === globalSelectedTask.id)}
+                  timeLogs={taskTimeLogs.filter(t => t.taskId === globalSelectedTask.id)}
+                  dependencies={taskDependencies.filter(d => d.taskId === globalSelectedTask.id)}
+                  activityLogs={taskLogs.filter(l => l.taskId === globalSelectedTask.id)}
+                  taskSteps={approvalSteps.filter(s => s.taskId === globalSelectedTask.id)}
+                  clientApproval={clientApprovals.find(ca => ca.taskId === globalSelectedTask.id)}
+                  taskFiles={files.filter(f => f.taskId === globalSelectedTask.id)}
+                  allTasks={activeTasks}
+                  currentUser={user}
+                  workflowTemplates={workflowTemplates}
+                  milestones={projectMilestones}
+                  onUpdateTask={handleUpdateTask}
+                  onAddTask={handleAddTask}
+                  onAddComment={handleAddTaskComment}
+                  onAddTimeLog={handleAddTaskTimeLog}
+                  onAddDependency={handleAddTaskDependency}
+                  onUpdateApprovalStep={handleUpdateApprovalStep}
+                  onAddApprovalSteps={handleAddApprovalSteps}
+                  onUpdateClientApproval={handleUpdateClientApproval}
+                  onAddClientApproval={handleAddClientApproval}
+                  onUploadFile={handleUploadFile}
+                  onNotify={handleNotify}
+                  onArchiveTask={handleArchiveTask}
+                  onDeleteTask={handleDeleteTask}
+                  onEditTask={(task) => { /* edit from overlay: navigate to tasks */ setActiveView('tasks'); }}
+                  checkPermission={checkPermission}
+                  getStatusColor={globalGetStatusColor}
+                  resolveApprover={globalResolveApprover}
+                  onAddSocialPost={handleAddSocialPost}
+                  leaveRequests={leaveRequests}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Toast Notification */}
         {toast && (
