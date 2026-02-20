@@ -86,6 +86,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   ]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
+  const today = new Date();
+
   // Pre-calculate user tasks for filter population
   const userTasksAll = tasks.filter(t => 
     t.assigneeIds?.includes(selectedUserId) && 
@@ -241,33 +243,71 @@ const Dashboard: React.FC<DashboardProps> = ({
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
-  // Calendar Days Generation
-  const today = new Date();
-  const calendarDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    d.setHours(0,0,0,0);
-    
-    const hasEvent = meetings.some(m => {
-        const mDate = new Date(m.date);
-        mDate.setHours(0,0,0,0);
-        return mDate.getTime() === d.getTime();
-    }) || userTasksAll.some(t => {
-        if (!t.dueDate) return false;
-        const tDate = new Date(t.dueDate);
-        tDate.setHours(0,0,0,0);
-        return tDate.getTime() === d.getTime();
+  // Calendar: Monthly Grid State
+  const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const calendarMonthDays = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDow = firstDay.getDay(); // 0=Sun
+    const daysInMonth = lastDay.getDate();
+
+    // Build a map of date → tasks/meetings for fast lookup
+    const tasksByDate: Record<string, Task[]> = {};
+    const meetingsByDate: Record<string, typeof meetings> = {};
+
+    userTasksAll.forEach(t => {
+      if (!t.dueDate) return;
+      const key = new Date(t.dueDate).toDateString();
+      if (!tasksByDate[key]) tasksByDate[key] = [];
+      tasksByDate[key].push(t);
+    });
+    meetings.forEach(m => {
+      const key = new Date(m.date).toDateString();
+      if (!meetingsByDate[key]) meetingsByDate[key] = [];
+      meetingsByDate[key].push(m);
     });
 
-    return {
-      date: d,
-      dayName: i === 0 ? 'TODAY' : d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-      dayNum: d.getDate(),
-      isToday: d.toDateString() === today.toDateString(),
-      isSelected: d.toDateString() === selectedDate.toDateString(),
-      hasEvent
-    };
-  });
+    const days: { date: Date; dayNum: number; isCurrentMonth: boolean; isToday: boolean; isSelected: boolean; tasks: Task[]; meetings: typeof meetings }[] = [];
+
+    // Leading blanks for alignment
+    for (let i = 0; i < startDow; i++) {
+      const d = new Date(year, month, -(startDow - 1 - i));
+      const key = d.toDateString();
+      days.push({ date: d, dayNum: d.getDate(), isCurrentMonth: false, isToday: false, isSelected: d.toDateString() === selectedDate.toDateString(), tasks: tasksByDate[key] || [], meetings: meetingsByDate[key] || [] });
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      const key = d.toDateString();
+      days.push({ date: d, dayNum: i, isCurrentMonth: true, isToday: d.toDateString() === today.toDateString(), isSelected: d.toDateString() === selectedDate.toDateString(), tasks: tasksByDate[key] || [], meetings: meetingsByDate[key] || [] });
+    }
+    // Trailing blanks
+    const remaining = 7 - (days.length % 7);
+    if (remaining < 7) {
+      for (let i = 1; i <= remaining; i++) {
+        const d = new Date(year, month + 1, i);
+        const key = d.toDateString();
+        days.push({ date: d, dayNum: i, isCurrentMonth: false, isToday: false, isSelected: d.toDateString() === selectedDate.toDateString(), tasks: tasksByDate[key] || [], meetings: meetingsByDate[key] || [] });
+      }
+    }
+    return days;
+  }, [calendarMonth, userTasksAll, meetings, selectedDate]);
+
+  // Task type → dot color mapping
+  const taskTypeDotColor = (type: string): string => {
+    switch (type) {
+      case 'video': return '#ef4444';       // red
+      case 'photo': return '#3b82f6';       // blue
+      case 'motion': return '#a855f7';      // purple
+      case 'design': return '#f59e0b';      // amber
+      case 'copywriting': return '#10b981'; // emerald
+      case 'social_content': case 'social_publishing': return '#ec4899'; // pink
+      case 'meeting': return '#06b6d4';     // cyan
+      default: return '#64748b';            // slate
+    }
+  };
 
   // Filter meetings for selected date
   const selectedDateMeetings = meetings.filter(m => {
@@ -552,42 +592,106 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <span style={{ cursor: 'pointer', fontSize: '0.7rem', opacity: 0.7 }} onClick={onNavigateToCalendar}>VIEW ALL</span>
                     </div>
                     
-                    {/* Calendar Strip */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-                      {calendarDays.map((day, i) => (
-                        <div 
-                            key={i} 
-                            style={{ textAlign: 'center', opacity: day.isSelected ? 1 : 0.5, cursor: 'pointer' }}
-                            onClick={() => setSelectedDate(day.date)}
-                        >
-                          <div style={{ fontSize: '0.7rem', marginBottom: '4px' }}>{day.dayName}</div>
-                          <div style={{ 
-                            width: '24px', height: '24px', borderRadius: '50%', 
-                            background: day.isSelected ? 'var(--dash-primary)' : 'transparent',
-                            color: day.isSelected ? 'var(--dash-on-primary)' : 'inherit',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '0.8rem', fontWeight: 'bold', margin: '0 auto',
-                            border: day.isToday && !day.isSelected ? '1px solid var(--dash-primary)' : 'none'
-                          }}>
-                            {day.dayNum}
-                          </div>
-                          {day.hasEvent && <div style={{ width: '4px', height: '4px', background: 'var(--dash-tertiary)', borderRadius: '50%', margin: '4px auto 0' }}></div>}
-                        </div>
+                    {/* Month Navigation */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <button
+                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                        style={{ background: 'none', border: 'none', color: 'var(--dash-text)', cursor: 'pointer', fontSize: '1rem', padding: '4px 8px', borderRadius: '6px', opacity: 0.6 }}
+                      >
+                        ‹
+                      </button>
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem', letterSpacing: '0.03em' }}>
+                        {calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }).toUpperCase()}
+                      </span>
+                      <button
+                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}
+                        style={{ background: 'none', border: 'none', color: 'var(--dash-text)', cursor: 'pointer', fontSize: '1rem', padding: '4px 8px', borderRadius: '6px', opacity: 0.6 }}
+                      >
+                        ›
+                      </button>
+                    </div>
+
+                    {/* Day-of-week headers */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', textAlign: 'center', marginBottom: '4px' }}>
+                      {['SUN','MON','TUE','WED','THU','FRI','SAT'].map(d => (
+                        <div key={d} style={{ fontSize: '0.6rem', opacity: 0.4, fontWeight: 600, letterSpacing: '0.05em', padding: '2px 0' }}>{d}</div>
                       ))}
                     </div>
 
-                    {/* Upcoming Meetings & Tasks */}
-                    <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {/* Monthly Grid */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px' }}>
+                      {calendarMonthDays.map((day, i) => {
+                        const hasTasks = day.tasks.length > 0;
+                        const hasMeetings = day.meetings.length > 0;
+                        // Collect unique task type colors (max 3 dots)
+                        const dotColors = Array.from(new Set(day.tasks.map(t => taskTypeDotColor(t.taskType || 'other')))).slice(0, 3);
+                        if (hasMeetings) dotColors.push('#06b6d4'); // cyan for meetings
+
+                        return (
+                          <div
+                            key={i}
+                            onClick={() => { if (day.isCurrentMonth) setSelectedDate(day.date); }}
+                            style={{
+                              textAlign: 'center',
+                              padding: '4px 2px 2px',
+                              cursor: day.isCurrentMonth ? 'pointer' : 'default',
+                              opacity: day.isCurrentMonth ? 1 : 0.2,
+                              borderRadius: '8px',
+                              background: day.isSelected ? 'var(--dash-primary)' : day.isToday ? 'rgba(223, 30, 60, 0.12)' : 'transparent',
+                              transition: 'background 0.15s',
+                              minHeight: '38px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start'
+                            }}
+                          >
+                            <div style={{
+                              fontSize: '0.75rem',
+                              fontWeight: day.isToday ? 800 : 500,
+                              color: day.isSelected ? 'var(--dash-on-primary)' : day.isToday ? 'var(--dash-primary)' : 'inherit',
+                              lineHeight: 1.4
+                            }}>
+                              {day.dayNum}
+                            </div>
+                            {/* Task/meeting dots */}
+                            {dotColors.length > 0 && (
+                              <div style={{ display: 'flex', gap: '2px', marginTop: '2px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                {dotColors.slice(0, 4).map((c, j) => (
+                                  <div key={j} style={{ width: '4px', height: '4px', borderRadius: '50%', background: c, flexShrink: 0 }} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Selected Day Detail */}
+                    <div style={{ marginTop: '12px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
                         {/* Tasks Section */}
                         {selectedDateTasks.length > 0 && (
-                            <div style={{ marginBottom: '12px' }}>
-                                <div className="data-mono" style={{ fontSize: '0.65rem', opacity: 0.5, marginBottom: '8px', textTransform: 'uppercase' }}>Due Today</div>
+                            <div style={{ marginBottom: '8px' }}>
+                                <div className="data-mono" style={{ fontSize: '0.6rem', opacity: 0.4, marginBottom: '6px', textTransform: 'uppercase' }}>
+                                  Tasks — {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </div>
                                 {selectedDateTasks.map(task => (
-                                    <div key={task.id} className="meeting-card" onClick={() => onNavigateToTask?.(task.id)} style={{ borderLeft: '3px solid var(--dash-primary)', cursor: 'pointer' }}>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{task.title}</div>
-                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                                            {projects.find(p => p.id === task.projectId)?.name || 'General'}
+                                    <div key={task.id} onClick={() => onNavigateToTask?.(task.id)} style={{
+                                      display: 'flex', alignItems: 'center', gap: '8px',
+                                      padding: '6px 8px', borderRadius: '8px', cursor: 'pointer',
+                                      background: 'var(--dash-surface-elevated)', marginBottom: '4px',
+                                      transition: 'background 0.15s',
+                                      borderLeft: `3px solid ${taskTypeDotColor(task.taskType || 'other')}`
+                                    }}>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+                                        <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>
+                                          {task.taskType?.toUpperCase() || 'TASK'} · {projects.find(p => p.id === task.projectId)?.name || 'General'}
                                         </div>
+                                      </div>
+                                      <div style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: taskTypeDotColor(task.taskType || 'other'), color: '#fff', fontWeight: 600, flexShrink: 0 }}>
+                                        {task.status?.replace('_', ' ').toUpperCase() || 'NEW'}
+                                      </div>
                                     </div>
                                 ))}
                             </div>
@@ -596,29 +700,29 @@ const Dashboard: React.FC<DashboardProps> = ({
                         {/* Meetings Section */}
                         {selectedDateMeetings.length > 0 && (
                             <div>
-                                <div className="data-mono" style={{ fontSize: '0.65rem', opacity: 0.5, marginBottom: '8px', textTransform: 'uppercase' }}>Meetings</div>
+                                <div className="data-mono" style={{ fontSize: '0.6rem', opacity: 0.4, marginBottom: '6px', textTransform: 'uppercase' }}>Meetings</div>
                                 {selectedDateMeetings.map(meeting => (
-                                    <div key={meeting.id} className="meeting-card" onClick={() => onNavigateToMeeting?.(meeting.id)} style={{ borderLeft: '3px solid var(--dash-tertiary)', cursor: 'pointer' }}>
-                                        <div className="time-label">
-                                        {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <div key={meeting.id} onClick={() => onNavigateToMeeting?.(meeting.id)} style={{
+                                      display: 'flex', alignItems: 'center', gap: '8px',
+                                      padding: '6px 8px', borderRadius: '8px', cursor: 'pointer',
+                                      background: 'var(--dash-surface-elevated)', marginBottom: '4px',
+                                      borderLeft: '3px solid #06b6d4'
+                                    }}>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{meeting.title}</div>
+                                        <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>
+                                          {new Date(meeting.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {clients.find(c => c.id === meeting.clientId)?.name || meeting.locationType}
                                         </div>
-                                        <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{meeting.title}</div>
-                                        <div style={{ fontSize: '0.75rem', opacity: 0.6 }}>
-                                          {clients.find(c => c.id === meeting.clientId)?.name || meeting.locationType}
-                                        </div>
+                                      </div>
                                     </div>
                                 ))}
                             </div>
                         )}
 
                         {selectedDateTasks.length === 0 && selectedDateMeetings.length === 0 && (
-                            <div className="text-center" style={{ padding: '32px 16px' }}>
-                                <div style={{ fontSize: '2rem', opacity: 0.3, marginBottom: '8px' }}>📅</div>
-                                <div style={{ fontSize: '0.85rem', opacity: 0.6, marginBottom: '4px' }}>
+                            <div className="text-center" style={{ padding: '16px 8px' }}>
+                                <div style={{ fontSize: '0.8rem', opacity: 0.4 }}>
                                     No events on {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                </div>
-                                <div style={{ fontSize: '0.7rem', opacity: 0.4 }}>
-                                    Select another day or schedule a meeting
                                 </div>
                             </div>
                         )}
