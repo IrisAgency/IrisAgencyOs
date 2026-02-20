@@ -46,8 +46,16 @@ const LinkPreviewThumbnail: React.FC<LinkPreviewThumbnailProps> = ({
       return;
     }
 
-    // Normalize URL
-    const normalizedUrl = url.startsWith('http') ? url : `https://${url}`;
+    // Normalize URL — handle uppercase protocols, spaces, etc.
+    let normalizedUrl = url.trim();
+    // Remove accidental double-protocol like "HTTPS://HTTPS://..."
+    normalizedUrl = normalizedUrl.replace(/^(https?:\/\/)+/i, 'https://');
+    // Add protocol if missing
+    if (!/^https?:\/\//i.test(normalizedUrl)) {
+      normalizedUrl = 'https://' + normalizedUrl;
+    }
+    // Clean up spaces in URL
+    normalizedUrl = normalizedUrl.replace(/ /g, '');
 
     // Check cache first
     if (previewCache.has(normalizedUrl)) {

@@ -168,16 +168,24 @@ function chunk(arr, size) {
  * Callable: { url: string } → { title, description, image, siteName, hostname }
  */
 exports.fetchLinkPreview = functions.https.onCall(async (data) => {
-  const targetUrl = data?.url || data?.data?.url;
-  if (!targetUrl || typeof targetUrl !== 'string') {
+  // Handle both v4 (data is payload) and nested (data.data) formats
+  const rawUrl = data?.url || data?.data?.url;
+  if (!rawUrl || typeof rawUrl !== 'string') {
     throw new functions.https.HttpsError('invalid-argument', 'Missing url parameter');
   }
 
-  // Normalize
-  let normalizedUrl = targetUrl.trim();
+  // Robust URL normalization
+  let normalizedUrl = rawUrl.trim();
+  // Remove spaces
+  normalizedUrl = normalizedUrl.replace(/ /g, '');
+  // Fix double protocol (e.g. "HTTPS://HTTPS://...")
+  normalizedUrl = normalizedUrl.replace(/^(https?:\/\/)+/i, 'https://');
+  // Add protocol if missing
   if (!/^https?:\/\//i.test(normalizedUrl)) {
     normalizedUrl = 'https://' + normalizedUrl;
   }
+
+  functions.logger.info('fetchLinkPreview called for:', normalizedUrl);
 
   try {
     const html = await fetchHtml(normalizedUrl);
@@ -204,15 +212,24 @@ function fetchHtml(targetUrl, maxRedirects = 5) {
     }
 
     const client = parsedUrl.protocol === 'https:' ? https : http;
+
+    // Hard timeout to prevent Cloud Function from hanging
+    const timer = setTimeout(() => {
+      req.destroy();
+      reject(new Error('Request timeout'));
+    }, 7000);
+
     const req = client.get(targetUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; IrisBot/1.0)',
-        'Accept': 'text/html,application/xhtml+xml',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
       },
-      timeout: 8000,
+      timeout: 6000,
     }, (res) => {
       // Follow redirects
       if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location) {
+        clearTimeout(timer);
         let redirectUrl = res.headers.location;
         if (redirectUrl.startsWith('/')) {
           redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${redirectUrl}`;
@@ -221,6 +238,7 @@ function fetchHtml(targetUrl, maxRedirects = 5) {
       }
 
       if (res.statusCode !== 200) {
+        clearTimeout(timer);
         return reject(new Error(`HTTP ${res.statusCode}`));
       }
 
@@ -231,12 +249,12 @@ function fetchHtml(targetUrl, maxRedirects = 5) {
         // Only need the <head> section, stop at 100KB
         if (body.length > 100000) res.destroy();
       });
-      res.on('end', () => resolve(body));
-      res.on('error', reject);
+      res.on('end', () => { clearTimeout(timer); resolve(body); });
+      res.on('error', (err) => { clearTimeout(timer); reject(err); });
     });
 
-    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
-    req.on('error', reject);
+    req.on('timeout', () => { clearTimeout(timer); req.destroy(); reject(new Error('Timeout')); });
+    req.on('error', (err) => { clearTimeout(timer); reject(err); });
   });
 }
 
