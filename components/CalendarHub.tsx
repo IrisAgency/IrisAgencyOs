@@ -471,61 +471,78 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   };
 
   return (
-    <div className="p-6 max-w-full" style={{ background: '#050505' }}>
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <Calendar className="w-8 h-8" style={{ color: '#DF1E3C' }} />
-          <h1 className="text-3xl font-bold text-white">Calendar Department</h1>
+    <div className="p-6 max-w-full min-h-screen" style={{ background: '#050505' }}>
+      {/* Header Section */}
+      <div className="mb-8 relative">
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#DF1E3C]/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="flex items-center gap-4 mb-3 relative z-10">
+          <div className="p-3 bg-gradient-to-br from-[#DF1E3C]/20 to-[#DF1E3C]/5 rounded-xl border border-[#DF1E3C]/20 shadow-[0_0_15px_rgba(223,30,60,0.15)]">
+            <Calendar className="w-8 h-8 text-[#DF1E3C]" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight">Calendar Department</h1>
+            <p className="text-slate-400 text-sm mt-1 font-medium">Monthly content planning for structured execution</p>
+          </div>
         </div>
-        <p className="text-slate-400">Monthly content planning for structured execution</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Select Client</label>
-          <select
-            value={selectedClientId}
-            onChange={(e) => {
-              setSelectedClientId(e.target.value);
-              setSelectedMonthId('');
-            }}
-            className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white"
-          >
-            <option value="">Choose a client...</option>
-            {clients.map(client => (
-              <option key={client.id} value={client.id}>{client.name}</option>
-            ))}
-          </select>
+      {/* Controls Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8 p-5 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-xl shadow-2xl">
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Select Client</label>
+          <div className="relative group">
+            <select
+              value={selectedClientId}
+              onChange={(e) => {
+                setSelectedClientId(e.target.value);
+                setSelectedMonthId('');
+              }}
+              className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#DF1E3C]/50 focus:border-transparent transition-all group-hover:border-white/20"
+            >
+              <option value="">Choose a client...</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400 group-hover:text-white transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-300 mb-2">Select Month</label>
-          <select
-            value={selectedMonthId}
-            onChange={(e) => setSelectedMonthId(e.target.value)}
-            disabled={!selectedClientId}
-            className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white disabled:opacity-50"
-          >
-            <option value="">Choose a month...</option>
-            {filteredMonths.length > 0 && (
-              <optgroup label="Active Months">
-                {filteredMonths.map(month => (
-                  <option key={month.id} value={month.id}>
-                    {month.title} ({month.monthKey})
-                  </option>
-                ))}
-              </optgroup>
-            )}
-            {archivedMonths.length > 0 && (
-              <optgroup label="Archived Months">
-                {archivedMonths.map(month => (
-                  <option key={month.id} value={month.id}>
-                    📦 {month.title} ({month.monthKey})
-                  </option>
-                ))}
-              </optgroup>
-            )}
-          </select>
+        <div className="space-y-2">
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Select Month</label>
+          <div className="relative group">
+            <select
+              value={selectedMonthId}
+              onChange={(e) => setSelectedMonthId(e.target.value)}
+              disabled={!selectedClientId}
+              className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#DF1E3C]/50 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed group-hover:border-white/20"
+            >
+              <option value="">Choose a month...</option>
+              {filteredMonths.length > 0 && (
+                <optgroup label="Active Months" className="bg-gray-900">
+                  {filteredMonths.map(month => (
+                    <option key={month.id} value={month.id}>
+                      {month.title} ({month.monthKey})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {archivedMonths.length > 0 && (
+                <optgroup label="Archived Months" className="bg-gray-900">
+                  {archivedMonths.map(month => (
+                    <option key={month.id} value={month.id}>
+                      📦 {month.title} ({month.monthKey})
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400 group-hover:text-white transition-colors">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-end">
@@ -533,9 +550,9 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             <button
               onClick={() => setShowMonthModal(true)}
               disabled={!selectedClientId}
-              className="w-full px-4 py-2 bg-[#DF1E3C] text-white rounded-lg hover:bg-[#c01830] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="w-full px-4 py-3 bg-gradient-to-r from-[#DF1E3C] to-[#b0152d] text-white rounded-xl hover:from-[#c01830] hover:to-[#901020] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium shadow-lg shadow-[#DF1E3C]/20 hover:shadow-[#DF1E3C]/40 active:scale-[0.98]"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               Create Month
             </button>
           </PermissionGate>
@@ -543,94 +560,98 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       </div>
 
       {selectedMonthId && (
-        <>
-          <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-4 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-xl shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="flex items-center justify-between mb-6 relative z-10">
+              <h2 className="text-2xl font-bold text-white flex items-center gap-3">
                 {calendarMonths.find(m => m.id === selectedMonthId)?.title}
                 {calendarMonths.find(m => m.id === selectedMonthId)?.isArchived && (
-                  <span className="ml-2 text-sm text-yellow-400">(Archived)</span>
+                  <span className="px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium border border-yellow-500/20">Archived</span>
                 )}
               </h2>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
                 <PermissionGate permission={PERMISSIONS.CALENDAR_MONTHS.DELETE}>
                   <button
                     onClick={() => handleArchiveMonth(selectedMonthId)}
-                    className="p-2 text-slate-400 hover:text-yellow-400 transition-colors"
+                    className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-all"
                     title={calendarMonths.find(m => m.id === selectedMonthId)?.isArchived ? 'Unarchive Month' : 'Archive Month'}
                   >
-                    <Archive className="w-5 h-5" />
+                    <Archive className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDeleteMonth(selectedMonthId)}
-                    className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
                     title="Delete Month"
                   >
-                    <Trash2 className="w-5 h-5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </PermissionGate>
               </div>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-white">{counts.total}</div>
-                  <div className="text-xs text-slate-400">Total</div>
+            
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
+              <div className="flex gap-4 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar">
+                <div className="flex flex-col justify-center px-5 py-3 bg-white/5 border border-white/10 rounded-xl min-w-[100px]">
+                  <div className="text-3xl font-bold text-white tracking-tight">{counts.total}</div>
+                  <div className="text-xs font-medium text-slate-400 uppercase tracking-wider mt-1">Total</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-400">{counts.videos}</div>
-                  <div className="text-xs text-slate-400">Videos</div>
+                <div className="flex flex-col justify-center px-5 py-3 bg-blue-500/10 border border-blue-500/20 rounded-xl min-w-[100px]">
+                  <div className="text-3xl font-bold text-blue-400 tracking-tight">{counts.videos}</div>
+                  <div className="text-xs font-medium text-blue-400/70 uppercase tracking-wider mt-1">Videos</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">{counts.photos}</div>
-                  <div className="text-xs text-slate-400">Photos</div>
+                <div className="flex flex-col justify-center px-5 py-3 bg-green-500/10 border border-green-500/20 rounded-xl min-w-[100px]">
+                  <div className="text-3xl font-bold text-green-400 tracking-tight">{counts.photos}</div>
+                  <div className="text-xs font-medium text-green-400/70 uppercase tracking-wider mt-1">Photos</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-400">{counts.motion}</div>
-                  <div className="text-xs text-slate-400">Motion</div>
+                <div className="flex flex-col justify-center px-5 py-3 bg-purple-500/10 border border-purple-500/20 rounded-xl min-w-[100px]">
+                  <div className="text-3xl font-bold text-purple-400 tracking-tight">{counts.motion}</div>
+                  <div className="text-xs font-medium text-purple-400/70 uppercase tracking-wider mt-1">Motion</div>
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTypeFilter('ALL')}
-                  className={`px-3 py-1 rounded-md text-sm ${typeFilter === 'ALL' ? 'bg-[#DF1E3C] text-white' : 'bg-gray-800 text-slate-300'}`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setTypeFilter('VIDEO')}
-                  className={`px-3 py-1 rounded-md text-sm ${typeFilter === 'VIDEO' ? 'bg-blue-500 text-white' : 'bg-gray-800 text-slate-300'}`}
-                >
-                  Video
-                </button>
-                <button
-                  onClick={() => setTypeFilter('PHOTO')}
-                  className={`px-3 py-1 rounded-md text-sm ${typeFilter === 'PHOTO' ? 'bg-green-500 text-white' : 'bg-gray-800 text-slate-300'}`}
-                >
-                  Photo
-                </button>
-                <button
-                  onClick={() => setTypeFilter('MOTION')}
-                  className={`px-3 py-1 rounded-md text-sm ${typeFilter === 'MOTION' ? 'bg-purple-500 text-white' : 'bg-gray-800 text-slate-300'}`}
-                >
-                  Motion
-                </button>
-              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex bg-black/40 p-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setTypeFilter('ALL')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${typeFilter === 'ALL' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('VIDEO')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${typeFilter === 'VIDEO' ? 'bg-blue-500/20 text-blue-300 shadow-sm' : 'text-slate-400 hover:text-blue-300 hover:bg-blue-500/10'}`}
+                  >
+                    Video
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('PHOTO')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${typeFilter === 'PHOTO' ? 'bg-green-500/20 text-green-300 shadow-sm' : 'text-slate-400 hover:text-green-300 hover:bg-green-500/10'}`}
+                  >
+                    Photo
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('MOTION')}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${typeFilter === 'MOTION' ? 'bg-purple-500/20 text-purple-300 shadow-sm' : 'text-slate-400 hover:text-purple-300 hover:bg-purple-500/10'}`}
+                  >
+                    Motion
+                  </button>
+                </div>
 
-              <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.CREATE}>
-                <button
-                  onClick={openCreateItem}
-                  className="px-4 py-2 bg-[#DF1E3C] text-white rounded-lg hover:bg-[#c01830] transition-colors flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Content
-                </button>
-              </PermissionGate>
+                <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.CREATE}>
+                  <button
+                    onClick={openCreateItem}
+                    className="px-5 py-2.5 bg-white text-black rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-white/10 hover:shadow-white/20 active:scale-[0.98]"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Content
+                  </button>
+                </PermissionGate>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredItems.map(item => {
               const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
               const thumbFile = item.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
@@ -639,96 +660,99 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
               return (
               <div
                 key={item.id}
-                className="bg-[#0a0a0a] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors group cursor-pointer"
+                className="bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 group cursor-pointer hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] hover:-translate-y-1 flex flex-col h-full"
                 onClick={() => setDetailItem(item)}
               >
                 {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
                 {thumbUrl ? (
-                  <div className="relative w-full h-36 bg-gray-900 overflow-hidden">
+                  <div className="relative w-full h-48 bg-black/50 overflow-hidden">
                     <img
                       src={thumbUrl}
                       alt={item.autoName}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                       onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 backdrop-blur-sm ${getTypeColor(item.type)}`}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80" />
+                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
                       {getTypeIcon(item.type)} {item.type}
                     </div>
                   </div>
                 ) : linkPreviewUrl ? (
-                  <div className="relative w-full h-36 bg-gray-900 overflow-hidden">
+                  <div className="relative w-full h-48 bg-black/50 overflow-hidden">
                     <LinkPreviewThumbnail url={linkPreviewUrl} alt={item.autoName} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 backdrop-blur-sm ${getTypeColor(item.type)}`}>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80 pointer-events-none" />
+                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
                       {getTypeIcon(item.type)} {item.type}
                     </div>
                   </div>
                 ) : (
-                  <div className="relative w-full h-20 bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center overflow-hidden">
-                    <div className="opacity-10 scale-[3]">{getTypeIcon(item.type)}</div>
-                    <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 ${getTypeColor(item.type)}`}>
+                  <div className="relative w-full h-48 bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center overflow-hidden">
+                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                    <div className="opacity-20 scale-[4] transform group-hover:scale-[4.5] transition-transform duration-700">{getTypeIcon(item.type)}</div>
+                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
                       {getTypeIcon(item.type)} {item.type}
                     </div>
                   </div>
                 )}
 
                 {/* Card Content */}
-                <div className="p-4">
-                <div className="flex items-start justify-between mb-2">
-                  <h3 className="text-sm font-bold text-white font-mono flex-1 mr-2">{item.autoName}</h3>
-                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setDetailItem(item)}
-                      className="p-1 text-slate-400 hover:text-emerald-400 transition-colors"
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                <div className="p-5 flex flex-col flex-grow relative">
+                  <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                  
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-base font-bold text-white tracking-tight flex-1 mr-3 group-hover:text-[#DF1E3C] transition-colors line-clamp-2">{item.autoName}</h3>
+                    <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 rounded-lg p-1 border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => openEditItem(item)}
-                        className="p-1 text-slate-400 hover:text-blue-400 transition-colors"
-                        title="Edit"
+                        onClick={() => setDetailItem(item)}
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-md transition-all"
+                        title="View Details"
                       >
-                        <Edit2 className="w-4 h-4" />
+                        <Eye className="w-4 h-4" />
                       </button>
-                    </PermissionGate>
-                    <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
-                      <button
-                        onClick={() => handleDeleteItem(item.id)}
-                        className="p-1 text-slate-400 hover:text-red-400 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </PermissionGate>
+                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                        <button
+                          onClick={() => openEditItem(item)}
+                          className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-md transition-all"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      </PermissionGate>
+                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
+                        <button
+                          onClick={() => handleDeleteItem(item.id)}
+                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-all"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </PermissionGate>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                  <Clock className="w-3 h-3" />
-                  {new Date(item.publishAt).toLocaleString()}
-                </div>
+                  <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-4 bg-white/5 w-fit px-2.5 py-1 rounded-md border border-white/5">
+                    <Clock className="w-3.5 h-3.5 text-slate-500" />
+                    {new Date(item.publishAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
 
-                <p className="text-sm text-slate-300 mb-3 line-clamp-2" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                  {item.primaryBrief}
-                </p>
+                  <p className="text-sm text-slate-300 mb-5 line-clamp-3 flex-grow leading-relaxed" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                    {item.primaryBrief}
+                  </p>
 
-                <div className="flex gap-3 text-xs text-slate-400">
-                  {item.referenceLinks.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <LinkIcon className="w-3 h-3" />
-                      {item.referenceLinks.length} links
-                    </div>
-                  )}
-                  {item.referenceFiles.length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <FileText className="w-3 h-3" />
-                      {item.referenceFiles.length} files
-                    </div>
-                  )}
-                </div>
+                  <div className="flex gap-4 text-xs font-medium text-slate-400 pt-4 border-t border-white/5 mt-auto">
+                    {item.referenceLinks.length > 0 && (
+                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                        <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
+                        {item.referenceLinks.length} link{item.referenceLinks.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                    {item.referenceFiles.length > 0 && (
+                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                        <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                        {item.referenceFiles.length} file{item.referenceFiles.length !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
               );
@@ -736,33 +760,52 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
           </div>
 
           {filteredItems.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-600" />
-              <p className="text-slate-400">No content items yet</p>
+            <div className="text-center py-20 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-xl shadow-2xl">
+              <div className="relative w-24 h-24 mx-auto mb-6">
+                <div className="absolute inset-0 bg-[#DF1E3C]/20 rounded-full blur-xl animate-pulse"></div>
+                <div className="relative bg-black/40 border border-white/10 w-full h-full rounded-2xl flex items-center justify-center shadow-xl">
+                  <Calendar className="w-10 h-10 text-slate-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">No content items yet</h3>
+              <p className="text-slate-400 max-w-md mx-auto mb-8">Get started by adding your first piece of content for this month. You can add videos, photos, or motion graphics.</p>
               <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.CREATE}>
                 <button
                   onClick={openCreateItem}
-                  className="mt-4 px-4 py-2 bg-[#DF1E3C] text-white rounded-lg hover:bg-[#c01830]"
+                  className="px-6 py-3 bg-gradient-to-r from-[#DF1E3C] to-[#b0152d] text-white rounded-xl hover:from-[#c01830] hover:to-[#901020] transition-all font-semibold shadow-lg shadow-[#DF1E3C]/20 hover:shadow-[#DF1E3C]/40 active:scale-[0.98] inline-flex items-center gap-2"
                 >
+                  <Plus className="w-5 h-5" />
                   Create First Item
                 </button>
               </PermissionGate>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {!selectedMonthId && selectedClientId && (
-        <div className="text-center py-12">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-600" />
-          <p className="text-slate-400">Select a month to view content</p>
+        <div className="text-center py-24 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-xl shadow-2xl animate-in fade-in duration-500">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-xl animate-pulse"></div>
+            <div className="relative bg-black/40 border border-white/10 w-full h-full rounded-2xl flex items-center justify-center shadow-xl">
+              <Calendar className="w-10 h-10 text-blue-400" />
+            </div>
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">Select a month</h3>
+          <p className="text-slate-400">Choose a month from the dropdown above to view or manage its content.</p>
         </div>
       )}
 
       {!selectedClientId && (
-        <div className="text-center py-12">
-          <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-600" />
-          <p className="text-slate-400">Select a client to get started</p>
+        <div className="text-center py-24 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-xl shadow-2xl animate-in fade-in duration-500">
+          <div className="relative w-24 h-24 mx-auto mb-6">
+            <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-xl animate-pulse"></div>
+            <div className="relative bg-black/40 border border-white/10 w-full h-full rounded-2xl flex items-center justify-center shadow-xl">
+              <Calendar className="w-10 h-10 text-purple-400" />
+            </div>
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">Select a client</h3>
+          <p className="text-slate-400">Choose a client from the dropdown above to get started with content planning.</p>
         </div>
       )}
 
@@ -983,121 +1026,178 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
 
       {/* Content Detail Preview Modal */}
       {detailItem && (
-        <Modal isOpen={true} onClose={() => setDetailItem(null)} title="">
-          <div className="space-y-5 max-h-[80vh] overflow-y-auto">
-            {/* Header with type badge and name */}
-            <div className="flex items-start gap-3">
-              <div className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-1.5 ${getTypeColor(detailItem.type)}`}>
-                {getTypeIcon(detailItem.type)} {detailItem.type}
-              </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-white font-mono">{detailItem.autoName}</h2>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                  <Clock className="w-3 h-3" />
-                  {new Date(detailItem.publishAt).toLocaleString()}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm ${getTypeColor(detailItem.type)}`}>
+                  {getTypeIcon(detailItem.type)} {detailItem.type}
                 </div>
+                <h2 className="text-xl font-bold text-white tracking-tight">{detailItem.autoName}</h2>
               </div>
-            </div>
-
-            {/* Thumbnail preview */}
-            {(() => {
-              const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
-              const thumbFile = detailItem.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
-              const thumbUrl = thumbFile?.downloadURL || (detailItem.referenceFiles.length > 0 ? detailItem.referenceFiles[0].downloadURL : null);
-              const linkUrl = !thumbUrl && detailItem.referenceLinks.length > 0 ? detailItem.referenceLinks[0].url : null;
-              return thumbUrl ? (
-                <div className="relative w-full h-56 rounded-lg overflow-hidden bg-gray-900">
-                  <img src={thumbUrl} alt={detailItem.autoName} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                </div>
-              ) : linkUrl ? (
-                <div className="relative w-full h-56 rounded-lg overflow-hidden bg-gray-900">
-                  <LinkPreviewThumbnail url={linkUrl} alt={detailItem.autoName} />
-                </div>
-              ) : null;
-            })()}
-
-            {/* Primary Brief */}
-            <div>
-              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Brief</h4>
-              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                {detailItem.primaryBrief || <span className="text-slate-500 italic">No brief provided</span>}
-              </p>
-            </div>
-
-            {/* Notes */}
-            {detailItem.notes && (
-              <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Notes</h4>
-                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                  {detailItem.notes}
-                </p>
-              </div>
-            )}
-
-            {/* Reference Links */}
-            {detailItem.referenceLinks.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Links</h4>
-                <div className="space-y-2">
-                  {detailItem.referenceLinks.map((link, i) => (
-                    <a
-                      key={i}
-                      href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 hover:bg-gray-800 transition-colors group"
-                    >
-                      <ExternalLink className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-blue-300 group-hover:text-blue-200 truncate">{link.title || link.url}</p>
-                        {link.title && <p className="text-xs text-slate-500 truncate">{link.url}</p>}
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Reference Files */}
-            {detailItem.referenceFiles.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Files</h4>
-                <div className="space-y-2">
-                  {detailItem.referenceFiles.map((file, i) => (
-                    <a
-                      key={i}
-                      href={file.downloadURL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-emerald-500/50 hover:bg-gray-800 transition-colors group"
-                    >
-                      <Download className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                      <p className="text-sm text-slate-300 group-hover:text-emerald-200 truncate flex-1">{file.fileName}</p>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 justify-end pt-4 border-t border-gray-800">
               <button
                 onClick={() => setDetailItem(null)}
-                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                {/* Left Column: Media & Meta */}
+                <div className="lg:col-span-1 space-y-6">
+                  {/* Thumbnail */}
+                  <div className="rounded-xl overflow-hidden border border-white/10 bg-black/50 shadow-lg">
+                    {(() => {
+                      const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
+                      const thumbFile = detailItem.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
+                      const thumbUrl = thumbFile?.downloadURL || (detailItem.referenceFiles.length > 0 ? detailItem.referenceFiles[0].downloadURL : null);
+                      const linkPreviewUrl = !thumbUrl && detailItem.referenceLinks.length > 0 ? detailItem.referenceLinks[0].url : null;
+
+                      if (thumbUrl) {
+                        return <img src={thumbUrl} alt="Thumbnail" className="w-full h-auto object-cover" />;
+                      } else if (linkPreviewUrl) {
+                        return <LinkPreviewThumbnail url={linkPreviewUrl} alt="Link Preview" />;
+                      } else {
+                        return (
+                          <div className="w-full aspect-video bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center relative overflow-hidden">
+                            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                            <div className="opacity-20 scale-[3]">{getTypeIcon(detailItem.type)}</div>
+                          </div>
+                        );
+                      }
+                    })()}
+                  </div>
+
+                  {/* Meta Info */}
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-4">
+                    <div>
+                      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Publish Date</div>
+                      <div className="flex items-center gap-2 text-sm font-medium text-white bg-white/5 px-3 py-2 rounded-lg border border-white/5">
+                        <Clock className="w-4 h-4 text-blue-400" />
+                        {new Date(detailItem.publishAt).toLocaleString(undefined, { 
+                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                          hour: '2-digit', minute: '2-digit'
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Column: Content */}
+                <div className="lg:col-span-2 space-y-8">
+                  
+                  {/* Brief */}
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Primary Brief
+                    </h3>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap shadow-inner" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                      {detailItem.primaryBrief}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  {detailItem.notes && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4" /> Additional Notes
+                      </h3>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap shadow-inner" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                        {detailItem.notes}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Links */}
+                  {detailItem.referenceLinks.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4" /> Reference Links
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {detailItem.referenceLinks.map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group"
+                          >
+                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                              <ExternalLink className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white truncate">{link.title || 'Reference Link'}</div>
+                              <div className="text-xs text-slate-500 truncate">{link.url}</div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Files */}
+                  {detailItem.referenceFiles.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <Download className="w-4 h-4" /> Reference Files
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {detailItem.referenceFiles.map((file, idx) => (
+                          <a
+                            key={idx}
+                            href={file.downloadURL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group"
+                          >
+                            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-white truncate">{file.fileName}</div>
+                              <div className="text-xs text-slate-500">Click to download</div>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
+              <button
+                onClick={() => setDetailItem(null)}
+                className="px-5 py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium"
               >
                 Close
               </button>
               <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                 <button
-                  onClick={() => { const item = detailItem; setDetailItem(null); openEditItem(item); }}
-                  className="px-4 py-2 bg-[#DF1E3C] text-white rounded-lg hover:bg-[#c01830] flex items-center gap-2"
+                  onClick={() => {
+                    setDetailItem(null);
+                    openEditItem(detailItem);
+                  }}
+                  className="px-5 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center gap-2 font-medium shadow-lg shadow-blue-500/20"
                 >
-                  <Edit2 className="w-4 h-4" /> Edit
+                  <Edit2 className="w-4 h-4" />
+                  Edit Content
                 </button>
               </PermissionGate>
             </div>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );
