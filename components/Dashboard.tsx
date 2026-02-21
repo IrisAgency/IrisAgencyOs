@@ -182,9 +182,18 @@ const Dashboard: React.FC<DashboardProps> = ({
     : myTasksFiltered;
 
   const urgentTasks = tasks
-    .filter(t => t.priority === 'high' || t.priority === 'urgent')
-    .filter(t => t.status !== 'completed')
-    .slice(0, 3);
+    .filter(t => {
+      if (t.status === 'completed' || t.status === 'archived') return false;
+      const isHighPriority = t.priority === 'high' || t.priority === 'critical';
+      const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
+      const isAwaitingReview = t.status === 'awaiting_review';
+      return isHighPriority || isOverdue || isAwaitingReview;
+    })
+    .sort((a, b) => {
+      // Critical first, then high, then overdue, then awaiting review
+      const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+      return (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
+    });
 
   // Calculate Client Health & Activity
   const clientStats = clients.map(client => {
@@ -589,18 +598,31 @@ const Dashboard: React.FC<DashboardProps> = ({
                 return (
                   <section key={widgetId} className="gm-urgent glass-panel animate-reveal" {...dragProps}>
                     <div className="widget-title">
-                      <span>Agency Blockers</span>
+                      <span>Agency Blockers {urgentTasks.length > 0 && <span style={{ fontSize: '0.65rem', opacity: 0.6, marginLeft: 6 }}>({urgentTasks.length})</span>}</span>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--dash-error)" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                     </div>
-                    {urgentTasks.map(task => (
-                      <div key={task.id} className="urgent-item" onClick={() => onNavigateToTask?.(task.id)}>
-                        <span style={{ fontSize: '0.9rem' }}>
-                          <span className="status-dot"></span>
-                          {task.title}
-                        </span>
-                        <span className="data-mono ltr-text" style={{ color: 'var(--dash-error)' }}>{task.priority.toUpperCase()}</span>
-                      </div>
-                    ))}
+                    <div style={{ flex: 1, overflowY: 'auto', maxHeight: '320px' }}>
+                      {urgentTasks.map(task => {
+                        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+                        const isAwaitingReview = task.status === 'awaiting_review';
+                        const isCritical = task.priority === 'critical';
+                        const isHigh = task.priority === 'high';
+                        return (
+                          <div key={task.id} className="urgent-item" onClick={() => onNavigateToTask?.(task.id)}>
+                            <span style={{ fontSize: '0.9rem' }}>
+                              <span className="status-dot"></span>
+                              {task.title}
+                            </span>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                              {isOverdue && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>OVERDUE</span>}
+                              {isAwaitingReview && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontWeight: 700, letterSpacing: '0.5px' }}>REVIEW</span>}
+                              {isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>CRITICAL</span>}
+                              {isHigh && !isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>HIGH</span>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                     {urgentTasks.length === 0 && (
                       <div className="text-center py-4 text-slate-500 text-xs">No urgent blockers</div>
                     )}
