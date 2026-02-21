@@ -22,6 +22,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
 }) => {
   const isManager = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
   const [viewMode, setViewMode] = useState<'mine' | 'team'>('mine');
+  const [filterUserId, setFilterUserId] = useState<string | null>(null);
 
   // Filter tasks that need current user's approval
   const needsApprovalTasks = tasks.filter(task => 
@@ -29,7 +30,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
   );
 
   // For team view: find ALL tasks that have pending approval steps (held by any member)
-  const teamPendingApprovals = isManager && viewMode === 'team'
+  const allTeamPendingApprovals = isManager && viewMode === 'team'
     ? tasks.filter(task => {
         if (task.status === TaskStatus.COMPLETED || task.isArchived) return false;
         const taskSteps = approvalSteps
@@ -39,6 +40,30 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
         return taskSteps.some(s => s.status === 'pending');
       })
     : [];
+
+  // Get unique approver IDs from pending steps for filter pills
+  const teamApproverIds = Array.from(new Set(
+    allTeamPendingApprovals.flatMap(task => {
+      const pending = approvalSteps
+        .filter(s => s.taskId === task.id && s.status === 'pending')
+        .map(s => s.approverId);
+      return pending;
+    })
+  ));
+  const teamApprovers = teamApproverIds
+    .map(id => users.find(u => u.id === id))
+    .filter((u): u is User => !!u);
+
+  // Apply member filter
+  const teamPendingApprovals = filterUserId
+    ? allTeamPendingApprovals.filter(task => {
+        const pendingStep = approvalSteps
+          .filter(s => s.taskId === task.id)
+          .sort((a, b) => a.level - b.level)
+          .find(s => s.status === 'pending');
+        return pendingStep?.approverId === filterUserId;
+      })
+    : allTeamPendingApprovals;
 
   const activeTasks = viewMode === 'mine' ? needsApprovalTasks : teamPendingApprovals;
 
@@ -84,7 +109,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
           {isManager && (
             <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(251,191,36,0.2)' }}>
               <button
-                onClick={() => setViewMode('mine')}
+                onClick={() => { setViewMode('mine'); setFilterUserId(null); }}
                 style={{
                   padding: '3px 8px', fontSize: '0.6rem', fontWeight: 700, border: 'none', cursor: 'pointer',
                   background: viewMode === 'mine' ? 'rgba(251,191,36,0.2)' : 'transparent',
@@ -93,7 +118,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
                 }}
               >MINE</button>
               <button
-                onClick={() => setViewMode('team')}
+                onClick={() => { setViewMode('team'); setFilterUserId(null); }}
                 style={{
                   padding: '3px 8px', fontSize: '0.6rem', fontWeight: 700, border: 'none', cursor: 'pointer',
                   background: viewMode === 'team' ? 'rgba(251,191,36,0.2)' : 'transparent',
@@ -105,6 +130,33 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
           )}
         </div>
       </div>
+
+      {/* Team member filter pills */}
+      {isManager && viewMode === 'team' && teamApprovers.length > 0 && (
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', padding: '0 0 8px 0' }}>
+          <button
+            onClick={() => setFilterUserId(null)}
+            style={{
+              padding: '2px 8px', fontSize: '0.6rem', borderRadius: '12px', border: '1px solid rgba(251,191,36,0.2)', cursor: 'pointer',
+              background: !filterUserId ? 'rgba(251,191,36,0.15)' : 'transparent',
+              color: !filterUserId ? 'rgb(253 224 71)' : 'rgba(255,255,255,0.35)',
+              fontWeight: !filterUserId ? 600 : 400, transition: 'all 0.2s'
+            }}
+          >All</button>
+          {teamApprovers.map(u => (
+            <button
+              key={u.id}
+              onClick={() => setFilterUserId(u.id)}
+              style={{
+                padding: '2px 8px', fontSize: '0.6rem', borderRadius: '12px', border: '1px solid rgba(251,191,36,0.2)', cursor: 'pointer',
+                background: filterUserId === u.id ? 'rgba(251,191,36,0.15)' : 'transparent',
+                color: filterUserId === u.id ? 'rgb(253 224 71)' : 'rgba(255,255,255,0.35)',
+                fontWeight: filterUserId === u.id ? 600 : 400, transition: 'all 0.2s'
+              }}
+            >{u.name.split(' ')[0]}</button>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="task-list">
