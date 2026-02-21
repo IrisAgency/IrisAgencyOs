@@ -1838,7 +1838,6 @@ const App: React.FC = () => {
             notes={notes}
             milestones={projectMilestones}
             approvalSteps={approvalSteps}
-            dashboardBanner={dashboardBanner}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
@@ -2252,6 +2251,56 @@ const App: React.FC = () => {
       />
 
       <main className="main">
+        {/* Dashboard Banner - inside main, positioned at top */}
+        {dashboardBanner && dashboardBanner.isActive && activeView === 'dashboard' && (
+          <div className="dashboard-banner-wrapper">
+            {dashboardBanner.linkUrl ? (
+              <a 
+                href={dashboardBanner.linkUrl} 
+                target={dashboardBanner.linkTarget || '_blank'}
+                rel="noopener noreferrer"
+                className="block w-full overflow-hidden hover:opacity-95 transition-opacity duration-300"
+              >
+                {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                  <video
+                    src={dashboardBanner.imageUrl}
+                    className="w-full h-auto"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={dashboardBanner.imageUrl}
+                    alt="Dashboard Banner"
+                    className="w-full h-auto"
+                  />
+                )}
+              </a>
+            ) : (
+              <div className="w-full overflow-hidden">
+                {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                  <video
+                    src={dashboardBanner.imageUrl}
+                    className="w-full h-auto"
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={dashboardBanner.imageUrl}
+                    alt="Dashboard Banner"
+                    className="w-full h-auto"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        
         {shouldShowPushPrompt && (
           <div className="mb-4 flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
             <div className="flex flex-col text-sm text-slate-800">

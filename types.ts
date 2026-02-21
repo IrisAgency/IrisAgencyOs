@@ -1143,7 +1143,7 @@ export interface DashboardBanner {
   storagePath: string;
   fileName: string;
   isActive: boolean;
-  linkUrl?: string;
+  linkUrl?: string | null;
   linkTarget?: '_blank' | '_self';
   uploadedBy: string;
   uploadedAt: string;

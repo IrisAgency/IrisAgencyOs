@@ -118,7 +118,7 @@ const BannerManager: React.FC<BannerManagerProps> = ({
         storagePath,
         fileName: pendingFile.name,
         isActive,
-        linkUrl: linkUrl || undefined,
+        linkUrl: linkUrl || null,
         linkTarget,
         uploadedBy: currentUserId,
         uploadedAt: banner?.uploadedAt || new Date().toISOString(),
@@ -142,7 +142,7 @@ const BannerManager: React.FC<BannerManagerProps> = ({
     const updatedBanner: DashboardBanner = {
       ...banner,
       isActive,
-      linkUrl: linkUrl || undefined,
+      linkUrl: linkUrl || null,
       linkTarget,
       updatedAt: new Date().toISOString(),
     };
