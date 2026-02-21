@@ -177,6 +177,7 @@
   /* Banner wrapper - positioned below fixed header with no gaps */
   .dashboard-banner-wrapper {
     margin-bottom: 0;
+    margin-top: calc(-1 * var(--header-h));
   }
   
   .dashboard-banner-wrapper img,
