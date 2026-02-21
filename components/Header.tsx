@@ -84,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-[var(--dash-surface)] rounded-xl shadow-xl border border-[var(--dash-glass-border)] overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right z-50">
+              <div className="fixed left-1/2 -translate-x-1/2 top-[var(--header-h)] mt-1 w-[calc(100vw-24px)] sm:absolute sm:left-auto sm:translate-x-0 sm:top-auto sm:right-0 sm:mt-3 sm:w-96 bg-[var(--dash-surface)] rounded-xl shadow-xl border border-[var(--dash-glass-border)] overflow-hidden animate-in fade-in zoom-in duration-200 sm:origin-top-right z-50">
                 <div className="p-3 border-b border-[var(--dash-glass-border)] flex justify-between items-center bg-[var(--dash-surface-elevated)]">
                   <h3 className="font-bold text-sm text-[var(--dash-secondary)]">Notifications</h3>
                   {unreadCount > 0 && <span className="text-xs font-bold text-[var(--dash-on-primary)] bg-[var(--dash-primary)] px-2 py-0.5 rounded-full">{unreadCount} New</span>}
