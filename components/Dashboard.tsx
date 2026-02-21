@@ -613,19 +613,30 @@ const Dashboard: React.FC<DashboardProps> = ({
                         const isAwaitingReview = task.status === 'awaiting_review';
                         const isCritical = task.priority === 'critical';
                         const isHigh = task.priority === 'high';
+                        const isManager = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
+                        const assigneeNames = isManager && task.assigneeIds?.length
+                          ? task.assigneeIds.map(id => users.find(u => u.id === id)?.name?.split(' ')[0] || '').filter(Boolean)
+                          : [];
                         return (
-                          <div key={task.id} className="urgent-item" onClick={() => onNavigateToTask?.(task.id)}>
-                            <span style={{ fontSize: '0.9rem' }}>
-                              <span className="status-dot"></span>
-                              {task.title}
-                            </span>
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
-                              {isOverdue && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>OVERDUE</span>}
-                              {isDueSoon && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>DUE SOON</span>}
-                              {isAwaitingReview && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontWeight: 700, letterSpacing: '0.5px' }}>REVIEW</span>}
-                              {isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>CRITICAL</span>}
-                              {isHigh && !isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>HIGH</span>}
+                          <div key={task.id} className="urgent-item" onClick={() => onNavigateToTask?.(task.id)} style={{ flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 8 }}>
+                              <span style={{ fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span className="status-dot"></span>
+                                {task.title}
+                              </span>
+                              <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
+                                {isOverdue && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>OVERDUE</span>}
+                                {isDueSoon && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>DUE SOON</span>}
+                                {isAwaitingReview && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontWeight: 700, letterSpacing: '0.5px' }}>REVIEW</span>}
+                                {isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>CRITICAL</span>}
+                                {isHigh && !isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>HIGH</span>}
+                              </div>
                             </div>
+                            {isManager && assigneeNames.length > 0 && (
+                              <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', paddingLeft: 16 }}>
+                                Assigned to: {assigneeNames.join(', ')}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
