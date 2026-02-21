@@ -955,6 +955,7 @@ export type NotificationType =
   | 'TASK_ARCHIVED'
   | 'TASK_COMMENT_MENTION'
   | 'TASK_COMMENT_REPLY'
+  | 'TASK_DUE_DATE_CHANGED'
   // Approvals
   | 'APPROVAL_REQUESTED'
   | 'APPROVAL_REMINDER'
@@ -972,6 +973,8 @@ export type NotificationType =
   | 'NEW_CLIENT_CREATED'
   | 'PROJECT_CREATED'
   | 'PROJECT_ARCHIVED'
+  | 'PROJECT_MEMBER_ADDED'
+  | 'MILESTONE_CREATED'
   | 'MILESTONE_STARTED'
   | 'MILESTONE_AT_RISK'
   // Meetings
@@ -1131,6 +1134,20 @@ export interface AppSettings {
     sessionTimeoutMinutes: number;
     enable2FA: boolean;
   };
+}
+
+// Dashboard Banner Configuration
+export interface DashboardBanner {
+  id: string;
+  imageUrl: string;
+  storagePath: string;
+  fileName: string;
+  isActive: boolean;
+  linkUrl?: string;
+  linkTarget?: '_blank' | '_self';
+  uploadedBy: string;
+  uploadedAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {

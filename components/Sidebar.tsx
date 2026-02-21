@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Building2, Layers, Network, ShieldAlert, Share2, Calendar, Bell, X } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Building2, Layers, Network, ShieldAlert, Share2, Calendar, Bell, X, LogOut } from 'lucide-react';
 import { UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
@@ -12,9 +12,10 @@ interface SidebarProps {
   currentUserRole?: UserRole;
   isSidebarOpen?: boolean;
   onClose?: () => void;
+  onLogout?: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUserRole, isSidebarOpen = false, onClose }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUserRole, isSidebarOpen = false, onClose, onLogout }) => {
   const { checkPermission, hasAnyPermission } = useAuth();
   const { branding } = useBranding();
 
@@ -221,6 +222,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
           </div>
         )}
       </nav>
+
+      {/* Mobile Logout Button */}
+      {onLogout && (
+        <div className="p-4 border-t border-white/10 lg:hidden">
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-all duration-200"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="font-medium">Sign Out</span>
+          </button>
+        </div>
+      )}
     </aside>
   );
 };

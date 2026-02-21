@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { AppSettings, User, RoleDefinition, AuditLog, DepartmentDefinition, WorkflowTemplate } from '../types';
+import { AppSettings, User, RoleDefinition, AuditLog, DepartmentDefinition, WorkflowTemplate, DashboardBanner } from '../types';
 import { PERMISSIONS_LIST } from '../constants';
-import { GitBranch, Building, Grid3x3 } from 'lucide-react';
+import { GitBranch, Building, Grid3x3, Image } from 'lucide-react';
 import RolesManager from './RolesManager';
 import PermissionMatrix from './PermissionMatrix';
 import AdminOverview from './admin/AdminOverview';
 import UsersManager from './admin/UsersManager';
 import WorkflowsManager from './admin/WorkflowsManager';
 import DepartmentsManager from './admin/DepartmentsManager';
+import BannerManager from './admin/BannerManager';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
@@ -19,6 +20,8 @@ interface AdminHubProps {
     auditLogs: AuditLog[];
     workflowTemplates: WorkflowTemplate[];
     departments: DepartmentDefinition[];
+    dashboardBanner: DashboardBanner | null;
+    currentUserId: string;
     onUpdateUser: (user: User) => void;
     onAddUser: (user: User) => void;
     onUpdateRole: (role: RoleDefinition) => void;
@@ -31,14 +34,16 @@ interface AdminHubProps {
     onAddDepartment: (dept: DepartmentDefinition) => void;
     onUpdateDepartment: (dept: DepartmentDefinition) => void;
     onDeleteDepartment: (deptId: string) => void;
+    onSaveBanner: (banner: DashboardBanner) => void;
+    onDeleteBanner: () => void;
 }
 
 const AdminHub: React.FC<AdminHubProps> = ({
-    settings, users, roles, auditLogs, workflowTemplates, departments,
+    settings, users, roles, auditLogs, workflowTemplates, departments, dashboardBanner, currentUserId,
     onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow, onSyncRoles,
-    onAddDepartment, onUpdateDepartment, onDeleteDepartment
+    onAddDepartment, onUpdateDepartment, onDeleteDepartment, onSaveBanner, onDeleteBanner
 }) => {
-    const [activeTab, setActiveTab] = useState<'Overview' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Settings' | 'Audit'>('Overview');
+    const [activeTab, setActiveTab] = useState<'Overview' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Banner' | 'Settings' | 'Audit'>('Overview');
 
     return (
         <PageContainer>
@@ -49,7 +54,7 @@ const AdminHub: React.FC<AdminHubProps> = ({
 
             <div className="border-b border-slate-200">
                 <nav className="flex space-x-6 overflow-x-auto pb-1">
-                    {['Overview', 'Users', 'Roles', 'Matrix', 'Departments', 'Workflows', 'Settings', 'Audit'].map(tab => (
+                    {['Overview', 'Users', 'Roles', 'Matrix', 'Departments', 'Workflows', 'Banner', 'Settings', 'Audit'].map(tab => (
                         <button
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
@@ -59,6 +64,7 @@ const AdminHub: React.FC<AdminHubProps> = ({
                             {tab === 'Workflows' && <GitBranch className="w-4 h-4" />}
                             {tab === 'Departments' && <Building className="w-4 h-4" />}
                             {tab === 'Matrix' && <Grid3x3 className="w-4 h-4" />}
+                            {tab === 'Banner' && <Image className="w-4 h-4" />}
                             {tab}
                         </button>
                     ))}
@@ -95,6 +101,15 @@ const AdminHub: React.FC<AdminHubProps> = ({
                         onUpdateWorkflow={onUpdateWorkflow}
                         onAddWorkflow={onAddWorkflow}
                         onDeleteWorkflow={onDeleteWorkflow}
+                    />
+                )}
+
+                {activeTab === 'Banner' && (
+                    <BannerManager
+                        banner={dashboardBanner}
+                        currentUserId={currentUserId}
+                        onSaveBanner={onSaveBanner}
+                        onDeleteBanner={onDeleteBanner}
                     />
                 )}
 

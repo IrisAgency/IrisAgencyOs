@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone, DashboardBanner } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -217,6 +217,10 @@ const App: React.FC = () => {
   const [auditLogs] = useFirestoreCollection<AuditLog>('audit_logs', AUDIT_LOGS);
   const [workflowTemplates] = useFirestoreCollection<WorkflowTemplate>('workflow_templates', WORKFLOW_TEMPLATES);
   const [departments] = useFirestoreCollection<DepartmentDefinition>('departments', []);
+  const [dashboardBanners] = useFirestoreCollection<DashboardBanner>('dashboard_banners', []);
+
+  // Get the active banner (first active one)
+  const dashboardBanner = dashboardBanners.find(b => b.isActive) || null;
 
   const { branding, loading: brandingLoading } = useBranding();
   const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
@@ -1100,7 +1104,7 @@ const App: React.FC = () => {
     // Notify project team members about new milestone
     if (user) {
       const project = projects.find(p => p.id === milestone.projectId);
-      const projectMembers = projectMembersList.filter(pm => pm.projectId === milestone.projectId);
+      const projectMembersForMilestone = projectMembers.filter(pm => pm.projectId === milestone.projectId);
       const recipientIds = projectMembers
         .map(pm => pm.userId)
         .filter(id => id !== user.id);
@@ -1597,6 +1601,21 @@ const App: React.FC = () => {
     setToast({ title: 'Success', message: 'Department deleted.' });
   };
 
+  // -- Dashboard Banner Handlers --
+  const handleSaveBanner = async (banner: DashboardBanner) => {
+    await setDoc(doc(db, 'dashboard_banners', banner.id), banner);
+    await addAuditLog('save_banner', 'DashboardBanner', banner.id, `Saved dashboard banner`);
+    setToast({ title: 'Success', message: 'Dashboard banner saved.' });
+  };
+
+  const handleDeleteBanner = async () => {
+    if (dashboardBanner) {
+      await deleteDoc(doc(db, 'dashboard_banners', dashboardBanner.id));
+      await addAuditLog('delete_banner', 'DashboardBanner', dashboardBanner.id, `Deleted dashboard banner`);
+      setToast({ title: 'Success', message: 'Dashboard banner deleted.' });
+    }
+  };
+
   const getVisibleTasks = () => {
     if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
     return activeTasks.filter(t => {
@@ -1819,6 +1838,7 @@ const App: React.FC = () => {
             notes={notes}
             milestones={projectMilestones}
             approvalSteps={approvalSteps}
+            dashboardBanner={dashboardBanner}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
             onDeleteNote={handleDeleteNote}
@@ -2168,6 +2188,8 @@ const App: React.FC = () => {
             auditLogs={auditLogs}
             workflowTemplates={workflowTemplates}
             departments={departments}
+            dashboardBanner={dashboardBanner}
+            currentUserId={user?.id || ''}
             onUpdateUser={handleUpdateUser}
             onAddUser={handleAddUser}
             onUpdateRole={handleUpdateRole}
@@ -2180,6 +2202,8 @@ const App: React.FC = () => {
             onAddDepartment={handleAddDepartment}
             onUpdateDepartment={handleUpdateDepartment}
             onDeleteDepartment={handleDeleteDepartment}
+            onSaveBanner={handleSaveBanner}
+            onDeleteBanner={handleDeleteBanner}
           />
         );
       default:
@@ -2214,6 +2238,7 @@ const App: React.FC = () => {
         currentUserRole={user.role}
         isSidebarOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
+        onLogout={handleLogout}
       />
 
       <Header

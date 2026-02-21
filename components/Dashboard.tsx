@@ -12,6 +12,7 @@ import {
   ProjectMilestone,
   ApprovalStep,
   ProductionPlan,
+  DashboardBanner,
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { usePermission } from '../hooks/usePermissions';
@@ -30,6 +31,7 @@ interface DashboardProps {
   notes: Note[];
   milestones?: ProjectMilestone[];
   approvalSteps: ApprovalStep[];
+  dashboardBanner?: DashboardBanner | null;
   onAddNote: (note: Note) => void;
   onUpdateNote: (note: Note) => void;
   onDeleteNote: (id: string) => void;
@@ -56,6 +58,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   notes = [],
   milestones = [],
   approvalSteps = [],
+  dashboardBanner = null,
   onAddNote,
   onUpdateNote,
   onDeleteNote,
@@ -404,6 +407,60 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </header>
+
+        {/* Dashboard Banner */}
+        {dashboardBanner && dashboardBanner.isActive && (
+          <div className="animate-reveal mb-6" style={{ animationDelay: '0.15s' }}>
+            {dashboardBanner.linkUrl ? (
+              <a 
+                href={dashboardBanner.linkUrl} 
+                target={dashboardBanner.linkTarget || '_blank'}
+                rel="noopener noreferrer"
+                className="block w-full overflow-hidden rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 group"
+              >
+                <div className="relative w-full aspect-video bg-black/20">
+                  {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                    <video
+                      src={dashboardBanner.imageUrl}
+                      className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={dashboardBanner.imageUrl}
+                      alt="Dashboard Banner"
+                      className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                    />
+                  )}
+                </div>
+              </a>
+            ) : (
+              <div className="w-full overflow-hidden rounded-2xl shadow-lg">
+                <div className="relative w-full aspect-video bg-black/20">
+                  {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
+                    <video
+                      src={dashboardBanner.imageUrl}
+                      className="w-full h-full object-cover"
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={dashboardBanner.imageUrl}
+                      alt="Dashboard Banner"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="grid-container">
           {widgetOrder.map((widgetId) => {

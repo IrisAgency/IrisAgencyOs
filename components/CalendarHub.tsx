@@ -1026,32 +1026,32 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
 
       {/* Content Detail Preview Modal */}
       {detailItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
           <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
             
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm ${getTypeColor(detailItem.type)}`}>
-                  {getTypeIcon(detailItem.type)} {detailItem.type}
+            <div className="flex items-center justify-between p-3 sm:p-5 border-b border-white/10 bg-white/[0.02] gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+                <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 sm:gap-1.5 shadow-sm shrink-0 ${getTypeColor(detailItem.type)}`}>
+                  {getTypeIcon(detailItem.type)} <span className="hidden sm:inline">{detailItem.type}</span>
                 </div>
-                <h2 className="text-xl font-bold text-white tracking-tight">{detailItem.autoName}</h2>
+                <h2 className="text-base sm:text-xl font-bold text-white tracking-tight truncate">{detailItem.autoName}</h2>
               </div>
               <button
                 onClick={() => setDetailItem(null)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Body */}
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 custom-scrollbar">
+              <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full">
                 
                 {/* Left Column: Media & Meta */}
-                <div className="lg:col-span-1 space-y-6">
+                <div className="lg:col-span-1 space-y-4 sm:space-y-6 w-full">
                   {/* Thumbnail */}
                   <div className="rounded-xl overflow-hidden border border-white/10 bg-black/50 shadow-lg">
                     {(() => {
@@ -1091,25 +1091,25 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                 </div>
 
                 {/* Right Column: Content */}
-                <div className="lg:col-span-2 space-y-8">
+                <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8 w-full min-w-0">
                   
                   {/* Brief */}
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                      <FileText className="w-4 h-4" /> Primary Brief
+                  <div className="w-full min-w-0">
+                    <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4 shrink-0" /> Primary Brief
                     </h3>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap shadow-inner" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                       {detailItem.primaryBrief}
                     </div>
                   </div>
 
                   {/* Notes */}
                   {detailItem.notes && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <FileText className="w-4 h-4" /> Additional Notes
+                    <div className="w-full min-w-0">
+                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4 shrink-0" /> Additional Notes
                       </h3>
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap shadow-inner" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                         {detailItem.notes}
                       </div>
                     </div>
@@ -1117,23 +1117,23 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
 
                   {/* Links */}
                   {detailItem.referenceLinks.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <LinkIcon className="w-4 h-4" /> Reference Links
+                    <div className="w-full min-w-0">
+                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 shrink-0" /> Reference Links
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-2 sm:gap-3">
                         {detailItem.referenceLinks.map((link, idx) => (
                           <a
                             key={idx}
                             href={link.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group"
+                            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group w-full overflow-hidden"
                           >
-                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:bg-blue-500/20 transition-colors">
+                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:bg-blue-500/20 transition-colors shrink-0">
                               <ExternalLink className="w-4 h-4" />
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="text-sm font-medium text-white truncate">{link.title || 'Reference Link'}</div>
                               <div className="text-xs text-slate-500 truncate">{link.url}</div>
                             </div>
@@ -1145,23 +1145,23 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
 
                   {/* Files */}
                   {detailItem.referenceFiles.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                        <Download className="w-4 h-4" /> Reference Files
+                    <div className="w-full min-w-0">
+                      <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                        <Download className="w-4 h-4 shrink-0" /> Reference Files
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 gap-2 sm:gap-3">
                         {detailItem.referenceFiles.map((file, idx) => (
                           <a
                             key={idx}
                             href={file.downloadURL}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-3 p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group"
+                            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-white/[0.02] border border-white/10 rounded-xl hover:bg-white/5 hover:border-white/20 transition-all group w-full overflow-hidden"
                           >
-                            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 group-hover:bg-emerald-500/20 transition-colors">
+                            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400 group-hover:bg-emerald-500/20 transition-colors shrink-0">
                               <FileText className="w-4 h-4" />
                             </div>
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0 overflow-hidden">
                               <div className="text-sm font-medium text-white truncate">{file.fileName}</div>
                               <div className="text-xs text-slate-500">Click to download</div>
                             </div>
@@ -1176,10 +1176,10 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-5 border-t border-white/10 bg-white/[0.02] flex justify-end gap-3">
+            <div className="p-3 sm:p-5 border-t border-white/10 bg-white/[0.02] flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
               <button
                 onClick={() => setDetailItem(null)}
-                className="px-5 py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium"
+                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium text-sm sm:text-base w-full sm:w-auto"
               >
                 Close
               </button>
@@ -1189,7 +1189,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                     setDetailItem(null);
                     openEditItem(detailItem);
                   }}
-                  className="px-5 py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center gap-2 font-medium shadow-lg shadow-blue-500/20"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-blue-500/20 text-sm sm:text-base w-full sm:w-auto"
                 >
                   <Edit2 className="w-4 h-4" />
                   Edit Content

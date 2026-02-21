@@ -135,7 +135,7 @@ const Header: React.FC<HeaderProps> = ({
             {onLogout && (
               <button
                 onClick={onLogout}
-                className="hidden sm:block p-1.5 text-[var(--dash-secondary)] hover:text-[var(--dash-error)] hover:bg-[var(--dash-error)]/10 rounded-full transition-all"
+                className="p-1.5 text-[var(--dash-secondary)] hover:text-[var(--dash-error)] hover:bg-[var(--dash-error)]/10 rounded-full transition-all"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
