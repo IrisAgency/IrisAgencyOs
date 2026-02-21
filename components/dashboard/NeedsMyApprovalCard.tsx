@@ -1,12 +1,13 @@
-import React from 'react';
-import { Task, User, ApprovalStep } from '../../types';
-import { AlertCircle, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Task, User, UserRole, ApprovalStep, TaskStatus } from '../../types';
+import { AlertCircle, Clock, ArrowRight, CheckCircle2, Users, UserCheck } from 'lucide-react';
 import { taskNeedsMyApproval } from '../../utils/approvalUtils';
 
 interface NeedsMyApprovalCardProps {
   tasks: Task[];
   approvalSteps: ApprovalStep[];
   currentUser: User;
+  users?: User[];
   onNavigateToTask?: (taskId: string) => void;
   onViewAll?: () => void;
 }
@@ -15,16 +16,34 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
   tasks,
   approvalSteps,
   currentUser,
+  users = [],
   onNavigateToTask,
   onViewAll
 }) => {
+  const isManager = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
+  const [viewMode, setViewMode] = useState<'mine' | 'team'>('mine');
+
   // Filter tasks that need current user's approval
   const needsApprovalTasks = tasks.filter(task => 
     taskNeedsMyApproval(task, currentUser, approvalSteps)
   );
 
+  // For team view: find ALL tasks that have pending approval steps (held by any member)
+  const teamPendingApprovals = isManager && viewMode === 'team'
+    ? tasks.filter(task => {
+        if (task.status === TaskStatus.COMPLETED || task.isArchived) return false;
+        const taskSteps = approvalSteps
+          .filter(s => s.taskId === task.id)
+          .sort((a, b) => a.level - b.level);
+        if (taskSteps.length === 0) return false;
+        return taskSteps.some(s => s.status === 'pending');
+      })
+    : [];
+
+  const activeTasks = viewMode === 'mine' ? needsApprovalTasks : teamPendingApprovals;
+
   // Sort by urgency: overdue first, then earliest due date, then newest
-  const sortedTasks = needsApprovalTasks.sort((a, b) => {
+  const sortedTasks = [...activeTasks].sort((a, b) => {
     const now = new Date().getTime();
     const aDue = new Date(a.dueDate).getTime();
     const bDue = new Date(b.dueDate).getTime();
@@ -43,9 +62,10 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
     return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
   });
 
-  // Take top 5
-  const displayTasks = sortedTasks.slice(0, 5);
-  const count = needsApprovalTasks.length;
+  // Take top 8 for team view, 5 for mine
+  const maxItems = viewMode === 'team' ? 8 : 5;
+  const displayTasks = sortedTasks.slice(0, maxItems);
+  const count = activeTasks.length;
 
   return (
     <>
@@ -53,13 +73,35 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
       <div className="widget-title">
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <AlertCircle style={{ width: '16px', height: '16px', color: 'rgb(251 191 36)', flexShrink: 0 }} />
-          <span>Needs My Approval</span>
+          <span>{viewMode === 'mine' ? 'Needs My Approval' : 'Team Approvals'}</span>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {count > 0 && (
             <span className="data-mono ltr-text" style={{ color: 'rgb(251 191 36)' }}>
               {count}
             </span>
+          )}
+          {isManager && (
+            <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <button
+                onClick={() => setViewMode('mine')}
+                style={{
+                  padding: '3px 8px', fontSize: '0.6rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: viewMode === 'mine' ? 'rgba(251,191,36,0.2)' : 'transparent',
+                  color: viewMode === 'mine' ? 'rgb(253 224 71)' : 'rgba(255,255,255,0.35)',
+                  transition: 'all 0.2s', letterSpacing: '0.5px'
+                }}
+              >MINE</button>
+              <button
+                onClick={() => setViewMode('team')}
+                style={{
+                  padding: '3px 8px', fontSize: '0.6rem', fontWeight: 700, border: 'none', cursor: 'pointer',
+                  background: viewMode === 'team' ? 'rgba(251,191,36,0.2)' : 'transparent',
+                  color: viewMode === 'team' ? 'rgb(253 224 71)' : 'rgba(255,255,255,0.35)',
+                  transition: 'all 0.2s', letterSpacing: '0.5px'
+                }}
+              >TEAM</button>
+            </div>
           )}
         </div>
       </div>
@@ -81,6 +123,15 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
             const isOverdue = dueDate < now;
             const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             const isUrgent = diffDays <= 2 && !isOverdue;
+
+            // Get the pending approver for team view
+            const pendingStep = viewMode === 'team'
+              ? approvalSteps
+                  .filter(s => s.taskId === task.id)
+                  .sort((a, b) => a.level - b.level)
+                  .find(s => s.status === 'pending')
+              : null;
+            const approverUser = pendingStep ? users.find(u => u.id === pendingStep.approverId) : null;
             
             return (
               <div 
@@ -109,20 +160,26 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
                     )}
                   </div>
                 </div>
-                <div style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '4px',
-                  fontSize: '0.65rem',
-                  color: 'rgb(253 224 71)',
-                  background: 'rgba(251, 191, 36, 0.1)',
-                  padding: '2px 8px',
-                  borderRadius: '4px',
-                  border: '1px solid rgba(251, 191, 36, 0.2)',
-                  alignSelf: 'flex-start'
-                }}>
-                  <AlertCircle style={{ width: '10px', height: '10px', flexShrink: 0 }} />
-                  <span>YOUR APPROVAL NEEDED</span>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '4px',
+                    fontSize: '0.65rem',
+                    color: 'rgb(253 224 71)',
+                    background: 'rgba(251, 191, 36, 0.1)',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(251, 191, 36, 0.2)',
+                  }}>
+                    <AlertCircle style={{ width: '10px', height: '10px', flexShrink: 0 }} />
+                    <span>{viewMode === 'mine' ? 'YOUR APPROVAL NEEDED' : 'PENDING APPROVAL'}</span>
+                  </div>
+                  {viewMode === 'team' && approverUser && (
+                    <span style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>
+                      Held by: {approverUser.name?.split(' ')[0] || 'Unknown'}
+                    </span>
+                  )}
                 </div>
               </div>
             );
@@ -131,7 +188,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
       </div>
 
       {/* Show More Indicator */}
-      {count > 5 && (
+      {count > maxItems && (
         <div style={{ 
           marginTop: '12px', 
           paddingTop: '12px', 
@@ -153,7 +210,7 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
             onMouseEnter={(e) => e.currentTarget.style.color = 'rgb(251 191 36)'}
             onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
           >
-            +{count - 5} more approval{count - 5 !== 1 ? 's' : ''} waiting · Click to view all
+            +{count - maxItems} more approval{count - maxItems !== 1 ? 's' : ''} waiting · Click to view all
           </button>
         </div>
       )}

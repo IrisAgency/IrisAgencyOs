@@ -599,6 +599,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                       tasks={tasks}
                       approvalSteps={approvalSteps}
                       currentUser={currentUser}
+                      users={users}
                       onNavigateToTask={onNavigateToTask}
                       onViewAll={onViewAllApprovals}
                     />
