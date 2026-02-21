@@ -187,7 +187,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       const isHighPriority = t.priority === 'high' || t.priority === 'critical';
       const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
       const isAwaitingReview = t.status === 'awaiting_review';
-      return isHighPriority || isOverdue || isAwaitingReview;
+      const now = new Date();
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59);
+      const isDueSoon = t.dueDate && new Date(t.dueDate) >= now && new Date(t.dueDate) <= tomorrow;
+      return isHighPriority || isOverdue || isAwaitingReview || isDueSoon;
     })
     .sort((a, b) => {
       // Critical first, then high, then overdue, then awaiting review
@@ -603,7 +606,10 @@ const Dashboard: React.FC<DashboardProps> = ({
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', maxHeight: '320px' }}>
                       {urgentTasks.map(task => {
-                        const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'completed';
+                        const now = new Date();
+                        const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59);
+                        const isOverdue = task.dueDate && new Date(task.dueDate) < now && task.status !== 'completed';
+                        const isDueSoon = task.dueDate && !isOverdue && new Date(task.dueDate) <= tomorrow;
                         const isAwaitingReview = task.status === 'awaiting_review';
                         const isCritical = task.priority === 'critical';
                         const isHigh = task.priority === 'high';
@@ -615,6 +621,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </span>
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                               {isOverdue && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>OVERDUE</span>}
+                              {isDueSoon && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>DUE SOON</span>}
                               {isAwaitingReview && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontWeight: 700, letterSpacing: '0.5px' }}>REVIEW</span>}
                               {isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>CRITICAL</span>}
                               {isHigh && !isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>HIGH</span>}
