@@ -181,9 +181,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         .slice(0, 5)
     : myTasksFiltered;
 
+  const isManagerRole = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
+
   const urgentTasks = tasks
     .filter(t => {
       if (t.status === 'completed' || t.status === 'archived') return false;
+      // GM and AM see ALL active tasks from all team members
+      if (isManagerRole) return true;
+      // Other roles see only urgent/overdue/due-soon/awaiting-review tasks
       const isHighPriority = t.priority === 'high' || t.priority === 'critical';
       const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
       const isAwaitingReview = t.status === 'awaiting_review';
@@ -193,9 +198,15 @@ const Dashboard: React.FC<DashboardProps> = ({
       return isHighPriority || isOverdue || isAwaitingReview || isDueSoon;
     })
     .sort((a, b) => {
-      // Critical first, then high, then overdue, then awaiting review
+      // Overdue first, then by priority, then by due date
+      const now = new Date();
+      const aOverdue = a.dueDate && new Date(a.dueDate) < now ? 1 : 0;
+      const bOverdue = b.dueDate && new Date(b.dueDate) < now ? 1 : 0;
+      if (bOverdue !== aOverdue) return bOverdue - aOverdue;
       const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-      return (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
+      const pDiff = (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3);
+      if (pDiff !== 0) return pDiff;
+      return new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime();
     });
 
   // Calculate Client Health & Activity
@@ -290,8 +301,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(today.getFullYear(), today.getMonth(), 1));
   const [calendarViewMode, setCalendarViewMode] = useState<'mine' | 'team'>('mine');
   const [calendarFilterUserId, setCalendarFilterUserId] = useState<string | null>(null);
-
-  const isManagerRole = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
 
   // Tasks to show on the calendar based on view mode
   const calendarTasks = useMemo(() => {
@@ -608,19 +617,19 @@ const Dashboard: React.FC<DashboardProps> = ({
                       {urgentTasks.map(task => {
                         const now = new Date();
                         const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 23, 59, 59);
-                        const isOverdue = task.dueDate && new Date(task.dueDate) < now && task.status !== 'completed';
+                        const isOverdue = task.dueDate && new Date(task.dueDate) < now;
                         const isDueSoon = task.dueDate && !isOverdue && new Date(task.dueDate) <= tomorrow;
                         const isAwaitingReview = task.status === 'awaiting_review';
                         const isCritical = task.priority === 'critical';
                         const isHigh = task.priority === 'high';
-                        const isManager = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
-                        const assigneeNames = isManager && task.assigneeIds?.length
+                        const assigneeNames = isManagerRole && task.assigneeIds?.length
                           ? task.assigneeIds.map(id => users.find(u => u.id === id)?.name?.split(' ')[0] || '').filter(Boolean)
                           : [];
+                        const statusLabel = task.status?.replace(/_/g, ' ');
                         return (
                           <div key={task.id} className="urgent-item" onClick={() => onNavigateToTask?.(task.id)} style={{ flexDirection: 'column', gap: 4 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 8 }}>
-                              <span style={{ fontSize: '0.9rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              <span style={{ fontSize: '0.85rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 <span className="status-dot"></span>
                                 {task.title}
                               </span>
@@ -630,11 +639,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                                 {isAwaitingReview && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', fontWeight: 700, letterSpacing: '0.5px' }}>REVIEW</span>}
                                 {isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(239,68,68,0.15)', color: '#f87171', fontWeight: 700, letterSpacing: '0.5px' }}>CRITICAL</span>}
                                 {isHigh && !isCritical && <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(251,146,60,0.15)', color: '#fb923c', fontWeight: 700, letterSpacing: '0.5px' }}>HIGH</span>}
+                                {!isOverdue && !isDueSoon && !isAwaitingReview && !isCritical && !isHigh && (
+                                  <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: 9, background: 'rgba(148,163,184,0.12)', color: 'rgba(255,255,255,0.45)', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase' }}>{statusLabel}</span>
+                                )}
                               </div>
                             </div>
-                            {isManager && assigneeNames.length > 0 && (
+                            {isManagerRole && assigneeNames.length > 0 && (
                               <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', paddingLeft: 16 }}>
-                                Assigned to: {assigneeNames.join(', ')}
+                                {assigneeNames.join(', ')}{task.dueDate ? ` · ${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
                               </div>
                             )}
                           </div>
