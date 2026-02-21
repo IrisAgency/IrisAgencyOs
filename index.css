@@ -96,6 +96,14 @@
     max-width: 100%;
   }
 
+  /* Allow absolutely/fixed positioned elements (dropdowns, modals, tooltips) to size freely */
+  .absolute,
+  .fixed,
+  [class*="absolute"],
+  [class*="fixed"] {
+    max-width: none;
+  }
+
   /* Safe text handling for Arabic + English mixed content */
   p, span, div, h1, h2, h3, h4, h5, h6, label, td, th {
     word-wrap: break-word;
@@ -421,7 +429,7 @@
     }
 
     /* Ensure small screens don't have horizontal scroll */
-    * {
+    *:not([class*="absolute"]):not([class*="fixed"]) {
       max-width: 100vw;
     }
   }
