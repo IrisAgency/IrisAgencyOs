@@ -10,6 +10,7 @@ import {
   ClientMeeting,
   Note,
   ProjectMilestone,
+  Milestone,
   ApprovalStep,
   ProductionPlan,
 } from '../types';
@@ -29,6 +30,7 @@ interface DashboardProps {
   meetings?: ClientMeeting[];
   notes: Note[];
   milestones?: ProjectMilestone[];
+  dynamicMilestones?: Milestone[];
   approvalSteps: ApprovalStep[];
   onAddNote: (note: Note) => void;
   onUpdateNote: (note: Note) => void;
@@ -55,6 +57,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   meetings = [],
   notes = [],
   milestones = [],
+  dynamicMilestones = [],
   approvalSteps = [],
   onAddNote,
   onUpdateNote,
@@ -204,30 +207,58 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   const activeClients = clientStats.slice(0, 4); 
 
-  const upcomingMilestones = milestones
-    .filter(m => {
-      if (m.status === 'completed') return false;
-      
-      // Filter by Client
+  // Convert dynamic milestones (from smart project creation) into a unified display format
+  const dynamicMilestonesConverted: { id: string; projectId: string; name: string; dueDate: string; status: string; progressPercent: number; isDynamic: true; targetCount: number; completedCount: number; type: string }[] = dynamicMilestones.map(dm => {
+    const dmTasks = tasks.filter(t => (t as any).dynamicMilestoneId === dm.id);
+    const completedCount = dmTasks.filter(t => t.status === 'completed').length;
+    const totalCount = dm.targetCount || dmTasks.length || 1;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    // Use createdAt as a rough date for sorting
+    return {
+      id: dm.id,
+      projectId: dm.projectId,
+      name: dm.title,
+      dueDate: dm.createdAt, // Use createdAt for sorting/display
+      status: progress >= 100 ? 'completed' : 'in_progress',
+      progressPercent: progress,
+      isDynamic: true as const,
+      targetCount: totalCount,
+      completedCount,
+      type: dm.type
+    };
+  });
+
+  // Merge legacy ProjectMilestones and dynamic milestones
+  const allMilestones = [
+    ...milestones
+      .filter(m => {
+        if (m.status === 'completed') return false;
+        if (milestoneClientFilter !== 'all') {
+          const project = projects.find(p => p.id === m.projectId);
+          if (project?.clientId !== milestoneClientFilter) return false;
+        }
+        const dueDate = new Date(m.dueDate);
+        const now = new Date();
+        const nextMonth = new Date();
+        nextMonth.setMonth(now.getMonth() + 1);
+        const isCurrentMonth = dueDate.getMonth() === now.getMonth() && dueDate.getFullYear() === now.getFullYear();
+        const isNextMonth = dueDate.getMonth() === nextMonth.getMonth() && dueDate.getFullYear() === nextMonth.getFullYear();
+        return isCurrentMonth || isNextMonth;
+      })
+      .map(m => ({ ...m, isDynamic: false as const, targetCount: 0, completedCount: 0, type: '' })),
+    ...dynamicMilestonesConverted.filter(dm => {
+      if (dm.status === 'completed') return false;
       if (milestoneClientFilter !== 'all') {
-        const project = projects.find(p => p.id === m.projectId);
+        const project = projects.find(p => p.id === dm.projectId);
         if (project?.clientId !== milestoneClientFilter) return false;
       }
-
-      // Filter by Month (Current Month + Next Month to show upcoming)
-      const dueDate = new Date(m.dueDate);
-      const now = new Date();
-      const nextMonth = new Date();
-      nextMonth.setMonth(now.getMonth() + 1);
-      
-      // Check if in current month or next month
-      const isCurrentMonth = dueDate.getMonth() === now.getMonth() && dueDate.getFullYear() === now.getFullYear();
-      const isNextMonth = dueDate.getMonth() === nextMonth.getMonth() && dueDate.getFullYear() === nextMonth.getFullYear();
-      
-      return isCurrentMonth || isNextMonth;
+      return true;
     })
+  ];
+
+  const upcomingMilestones = allMilestones
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    .slice(0, 5); // Increased from 1 to 5 to show more context
+    .slice(0, 8);
 
   // Team Workload Calculation
   const teamWorkload = users
@@ -800,18 +831,25 @@ const Dashboard: React.FC<DashboardProps> = ({
                       {upcomingMilestones.map(milestone => {
                         const project = projects.find(p => p.id === milestone.projectId);
                         const client = clients.find(c => c.id === project?.clientId);
+                        const typeColors: Record<string, string> = { VIDEO: '#ef4444', PHOTO: '#3b82f6', MOTION: '#a855f7', POSTING: '#06b6d4' };
+                        const accentColor = milestone.isDynamic && milestone.type ? (typeColors[milestone.type] || 'var(--dash-primary)') : 'var(--dash-primary)';
                         return (
                           <div key={milestone.id} style={{ marginBottom: '20px' }}>
-                            <div className="milestone-point" style={{ background: 'var(--dash-primary)', outline: '4px solid rgba(208, 188, 255, 0.1)' }}></div>
-                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--dash-primary)' }}>{milestone.name}</div>
+                            <div className="milestone-point" style={{ background: accentColor, outline: '4px solid rgba(208, 188, 255, 0.1)' }}></div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: accentColor }}>{milestone.name}</div>
                             <div className="data-mono" style={{ fontSize: '0.7rem', opacity: 0.5, marginBottom: '8px' }}>
-                              {client?.name ? <span>{client.name} <span className="mx-1">·</span> </span> : ''}<span>{project?.name}</span> <span className="mx-1">·</span> <span className="ltr-text inline-block">{new Date(milestone.dueDate).toLocaleDateString()}</span>
+                              {client?.name ? <span>{client.name} <span className="mx-1">·</span> </span> : ''}<span>{project?.name}</span>
+                              {milestone.isDynamic ? (
+                                <span> <span className="mx-1">·</span> <span className="ltr-text inline-block">{milestone.completedCount}/{milestone.targetCount} done</span></span>
+                              ) : (
+                                <span> <span className="mx-1">·</span> <span className="ltr-text inline-block">{new Date(milestone.dueDate).toLocaleDateString()}</span></span>
+                              )}
                             </div>
                             <div style={{ height: '4px', background: 'var(--dash-outline)', borderRadius: '2px', overflow: 'hidden', width: '100%' }}>
                               <div style={{ 
                                 height: '100%', 
                                 width: `${milestone.progressPercent || 0}%`, 
-                                background: 'var(--dash-tertiary)',
+                                background: milestone.isDynamic ? accentColor : 'var(--dash-tertiary)',
                                 transition: 'width 0.5s ease'
                               }}></div>
                             </div>

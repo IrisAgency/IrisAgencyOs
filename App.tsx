@@ -1837,6 +1837,7 @@ const App: React.FC = () => {
             meetings={clientMeetings}
             notes={notes}
             milestones={projectMilestones}
+            dynamicMilestones={milestones}
             approvalSteps={approvalSteps}
             onAddNote={handleAddNote}
             onUpdateNote={handleUpdateNote}
