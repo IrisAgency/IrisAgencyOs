@@ -276,6 +276,23 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // Calendar: Monthly Grid State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [calendarViewMode, setCalendarViewMode] = useState<'mine' | 'team'>('mine');
+  const [calendarFilterUserId, setCalendarFilterUserId] = useState<string | null>(null);
+
+  const isManagerRole = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
+
+  // Tasks to show on the calendar based on view mode
+  const calendarTasks = useMemo(() => {
+    const allActiveTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'archived');
+    if (calendarViewMode === 'mine') {
+      return allActiveTasks.filter(t => t.assigneeIds?.includes(selectedUserId));
+    }
+    // Team mode
+    if (calendarFilterUserId) {
+      return allActiveTasks.filter(t => t.assigneeIds?.includes(calendarFilterUserId));
+    }
+    return allActiveTasks; // All team tasks
+  }, [tasks, calendarViewMode, calendarFilterUserId, selectedUserId]);
 
   const calendarMonthDays = useMemo(() => {
     const year = calendarMonth.getFullYear();
@@ -289,7 +306,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     const tasksByDate: Record<string, Task[]> = {};
     const meetingsByDate: Record<string, typeof meetings> = {};
 
-    userTasksAll.forEach(t => {
+    calendarTasks.forEach(t => {
       if (!t.dueDate) return;
       const key = new Date(t.dueDate).toDateString();
       if (!tasksByDate[key]) tasksByDate[key] = [];
@@ -324,7 +341,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
     }
     return days;
-  }, [calendarMonth, userTasksAll, meetings, selectedDate]);
+  }, [calendarMonth, calendarTasks, meetings, selectedDate]);
 
   // Task type → dot color mapping
   const taskTypeDotColor = (type: string): string => {
@@ -347,7 +364,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // Filter tasks for selected date
-  const selectedDateTasks = userTasksAll.filter(t => {
+  const selectedDateTasks = calendarTasks.filter(t => {
       if (!t.dueDate) return false;
       const tDate = new Date(t.dueDate);
       return tDate.toDateString() === selectedDate.toDateString();
@@ -622,6 +639,65 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <span>Schedule</span>
                       <span style={{ cursor: 'pointer', fontSize: '0.7rem', opacity: 0.7 }} onClick={onNavigateToCalendar}>VIEW ALL</span>
                     </div>
+
+                    {/* Team / Mine Toggle (GM & AM only) */}
+                    {isManagerRole && (
+                      <div style={{ marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', gap: '4px', marginBottom: calendarViewMode === 'team' ? '8px' : '0' }}>
+                          <button
+                            onClick={() => { setCalendarViewMode('mine'); setCalendarFilterUserId(null); }}
+                            style={{
+                              padding: '3px 10px', fontSize: '0.65rem', borderRadius: '6px', border: '1px solid var(--dash-outline)', cursor: 'pointer',
+                              background: calendarViewMode === 'mine' ? 'var(--dash-primary)' : 'transparent',
+                              color: calendarViewMode === 'mine' ? 'var(--dash-on-primary)' : 'var(--dash-secondary)',
+                              fontWeight: 600
+                            }}
+                          >
+                            Mine
+                          </button>
+                          <button
+                            onClick={() => { setCalendarViewMode('team'); setCalendarFilterUserId(null); }}
+                            style={{
+                              padding: '3px 10px', fontSize: '0.65rem', borderRadius: '6px', border: '1px solid var(--dash-outline)', cursor: 'pointer',
+                              background: calendarViewMode === 'team' ? 'var(--dash-primary)' : 'transparent',
+                              color: calendarViewMode === 'team' ? 'var(--dash-on-primary)' : 'var(--dash-secondary)',
+                              fontWeight: 600
+                            }}
+                          >
+                            Team
+                          </button>
+                        </div>
+                        {calendarViewMode === 'team' && (
+                          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => setCalendarFilterUserId(null)}
+                              style={{
+                                padding: '2px 8px', fontSize: '0.6rem', borderRadius: '12px', border: '1px solid var(--dash-outline)', cursor: 'pointer',
+                                background: !calendarFilterUserId ? 'rgba(223, 30, 60, 0.15)' : 'transparent',
+                                color: !calendarFilterUserId ? 'var(--dash-primary)' : 'var(--dash-secondary)',
+                                fontWeight: !calendarFilterUserId ? 600 : 400
+                              }}
+                            >
+                              All
+                            </button>
+                            {users.filter(u => u.status === 'active').map(u => (
+                              <button
+                                key={u.id}
+                                onClick={() => setCalendarFilterUserId(u.id)}
+                                style={{
+                                  padding: '2px 8px', fontSize: '0.6rem', borderRadius: '12px', border: '1px solid var(--dash-outline)', cursor: 'pointer',
+                                  background: calendarFilterUserId === u.id ? 'rgba(223, 30, 60, 0.15)' : 'transparent',
+                                  color: calendarFilterUserId === u.id ? 'var(--dash-primary)' : 'var(--dash-secondary)',
+                                  fontWeight: calendarFilterUserId === u.id ? 600 : 400
+                                }}
+                              >
+                                {u.name.split(' ')[0]}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     
                     {/* Month Navigation */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -718,6 +794,9 @@ const Dashboard: React.FC<DashboardProps> = ({
                                         <div style={{ fontSize: '0.8rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
                                         <div style={{ fontSize: '0.65rem', opacity: 0.5 }}>
                                           {task.taskType?.toUpperCase() || 'TASK'} · {projects.find(p => p.id === task.projectId)?.name || 'General'}
+                                          {calendarViewMode === 'team' && task.assigneeIds?.length ? (
+                                            <span> · {task.assigneeIds.map(aid => users.find(u => u.id === aid)?.name.split(' ')[0]).filter(Boolean).join(', ')}</span>
+                                          ) : null}
                                         </div>
                                       </div>
                                       <div style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: taskTypeDotColor(task.taskType || 'other'), color: '#fff', fontWeight: 600, flexShrink: 0 }}>
