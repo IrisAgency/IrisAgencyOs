@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink } from 'lucide-react';
 import { Client, CalendarMonth, CalendarItem, CalendarContentType, User, CalendarReferenceLink } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
@@ -34,6 +34,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingMonth, setEditingMonth] = useState<CalendarMonth | null>(null);
   const [editingItem, setEditingItem] = useState<CalendarItem | null>(null);
+  const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const [monthForm, setMonthForm] = useState({
@@ -638,7 +639,8 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
               return (
               <div
                 key={item.id}
-                className="bg-[#0a0a0a] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors group"
+                className="bg-[#0a0a0a] border border-gray-800 rounded-lg overflow-hidden hover:border-gray-700 transition-colors group cursor-pointer"
+                onClick={() => setDetailItem(item)}
               >
                 {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
                 {thumbUrl ? (
@@ -675,7 +677,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                 <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="text-sm font-bold text-white font-mono flex-1 mr-2">{item.autoName}</h3>
-                  <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setDetailItem(item)}
+                      className="p-1 text-slate-400 hover:text-emerald-400 transition-colors"
+                      title="View Details"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
                     <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                       <button
                         onClick={() => openEditItem(item)}
@@ -967,6 +976,125 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
               >
                 {isLoading ? 'Saving...' : editingItem ? 'Update' : 'Create'}
               </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Content Detail Preview Modal */}
+      {detailItem && (
+        <Modal isOpen={true} onClose={() => setDetailItem(null)} title="">
+          <div className="space-y-5 max-h-[80vh] overflow-y-auto">
+            {/* Header with type badge and name */}
+            <div className="flex items-start gap-3">
+              <div className={`px-3 py-1.5 rounded-lg text-sm font-medium border flex items-center gap-1.5 ${getTypeColor(detailItem.type)}`}>
+                {getTypeIcon(detailItem.type)} {detailItem.type}
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-white font-mono">{detailItem.autoName}</h2>
+                <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
+                  <Clock className="w-3 h-3" />
+                  {new Date(detailItem.publishAt).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Thumbnail preview */}
+            {(() => {
+              const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
+              const thumbFile = detailItem.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
+              const thumbUrl = thumbFile?.downloadURL || (detailItem.referenceFiles.length > 0 ? detailItem.referenceFiles[0].downloadURL : null);
+              const linkUrl = !thumbUrl && detailItem.referenceLinks.length > 0 ? detailItem.referenceLinks[0].url : null;
+              return thumbUrl ? (
+                <div className="relative w-full h-56 rounded-lg overflow-hidden bg-gray-900">
+                  <img src={thumbUrl} alt={detailItem.autoName} className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              ) : linkUrl ? (
+                <div className="relative w-full h-56 rounded-lg overflow-hidden bg-gray-900">
+                  <LinkPreviewThumbnail url={linkUrl} alt={detailItem.autoName} />
+                </div>
+              ) : null;
+            })()}
+
+            {/* Primary Brief */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Brief</h4>
+              <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-wrap" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                {detailItem.primaryBrief || <span className="text-slate-500 italic">No brief provided</span>}
+              </p>
+            </div>
+
+            {/* Notes */}
+            {detailItem.notes && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Notes</h4>
+                <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
+                  {detailItem.notes}
+                </p>
+              </div>
+            )}
+
+            {/* Reference Links */}
+            {detailItem.referenceLinks.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Links</h4>
+                <div className="space-y-2">
+                  {detailItem.referenceLinks.map((link, i) => (
+                    <a
+                      key={i}
+                      href={link.url.startsWith('http') ? link.url : `https://${link.url}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-blue-500/50 hover:bg-gray-800 transition-colors group"
+                    >
+                      <ExternalLink className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-blue-300 group-hover:text-blue-200 truncate">{link.title || link.url}</p>
+                        {link.title && <p className="text-xs text-slate-500 truncate">{link.url}</p>}
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Reference Files */}
+            {detailItem.referenceFiles.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Reference Files</h4>
+                <div className="space-y-2">
+                  {detailItem.referenceFiles.map((file, i) => (
+                    <a
+                      key={i}
+                      href={file.downloadURL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 rounded-lg border border-gray-700/50 hover:border-emerald-500/50 hover:bg-gray-800 transition-colors group"
+                    >
+                      <Download className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <p className="text-sm text-slate-300 group-hover:text-emerald-200 truncate flex-1">{file.fileName}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 justify-end pt-4 border-t border-gray-800">
+              <button
+                onClick={() => setDetailItem(null)}
+                className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600"
+              >
+                Close
+              </button>
+              <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                <button
+                  onClick={() => { const item = detailItem; setDetailItem(null); openEditItem(item); }}
+                  className="px-4 py-2 bg-[#DF1E3C] text-white rounded-lg hover:bg-[#c01830] flex items-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" /> Edit
+                </button>
+              </PermissionGate>
             </div>
           </div>
         </Modal>
