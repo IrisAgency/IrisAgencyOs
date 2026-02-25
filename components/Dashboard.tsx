@@ -255,11 +255,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   const allMilestones = [
     ...milestones
       .filter(m => {
-        if (m.status === 'completed') return false;
-        if (milestoneClientFilter !== 'all') {
-          const project = projects.find(p => p.id === m.projectId);
-          if (project?.clientId !== milestoneClientFilter) return false;
-        }
+        if (!m || m.status === 'completed') return false;
+        // Exclude deleted milestones
+        if ((m as any).isDeleted) return false;
+        // Must belong to a valid, non-deleted project with a client
+        const project = projects.find(p => p.id === m.projectId);
+        if (!project || (project as any).isDeleted || !project.clientId) return false;
+        // Client filter
+        if (milestoneClientFilter !== 'all' && project.clientId !== milestoneClientFilter) return false;
         const dueDate = new Date(m.dueDate);
         const now = new Date();
         const nextMonth = new Date();
@@ -271,10 +274,11 @@ const Dashboard: React.FC<DashboardProps> = ({
       .map(m => ({ ...m, isDynamic: false as const, targetCount: 0, completedCount: 0, type: '' })),
     ...dynamicMilestonesConverted.filter(dm => {
       if (dm.status === 'completed') return false;
-      if (milestoneClientFilter !== 'all') {
-        const project = projects.find(p => p.id === dm.projectId);
-        if (project?.clientId !== milestoneClientFilter) return false;
-      }
+      // Must belong to a valid, non-deleted project with a client
+      const project = projects.find(p => p.id === dm.projectId);
+      if (!project || (project as any).isDeleted || !project.clientId) return false;
+      // Client filter
+      if (milestoneClientFilter !== 'all' && project.clientId !== milestoneClientFilter) return false;
       return true;
     })
   ];

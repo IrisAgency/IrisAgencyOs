@@ -17,20 +17,27 @@ const MilestonesWidget: React.FC<MilestonesWidgetProps> = ({ milestones = [], ta
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // 1. Filter milestones by date and client
+    // 1. Filter milestones by date, client, and deletion status
     const filteredMilestones = milestones.filter(m => {
       if (!m) return false;
-      
+      // Exclude deleted milestones
+      if (m.isDeleted) return false;
+
       // Date Filter
       const d = new Date(m.endDate || m.dueDate);
       const isCurrentMonth = d.getMonth() === currentMonth && d.getFullYear() === currentYear;
       if (!isCurrentMonth) return false;
 
+      // Project Filter
+      const project = projects.find(p => p.id === m.projectId);
+      if (!project) return false;
+      // Exclude projects without client tag
+      if (!project.clientId) return false;
+      // Exclude deleted projects
+      if (project.isDeleted) return false;
+
       // Client Filter
-      if (selectedClientId !== 'all') {
-        const project = projects.find(p => p.id === m.projectId);
-        if (!project || project.clientId !== selectedClientId) return false;
-      }
+      if (selectedClientId !== 'all' && project.clientId !== selectedClientId) return false;
 
       return true;
     });
@@ -58,7 +65,7 @@ const MilestonesWidget: React.FC<MilestonesWidgetProps> = ({ milestones = [], ta
 
       // Get project name for context if showing all clients
       const project = projects.find(p => p.id === m.projectId);
-      
+
       return {
         id: m.id,
         name: m.name,
