@@ -113,7 +113,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 
 ### Hosting URLs
 - **Production**: https://iris-os-43718.web.app
-- **Development**: (configured in dev Firebase project)
+- **Development**: https://iris-agency-os-dev.web.app
 - **Legacy**: https://agency-management-cba4a.web.app
 
 ## Deployment
