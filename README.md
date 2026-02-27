@@ -74,7 +74,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 - `services/geminiService.ts` wraps Gemini (model `gemini-2.5-flash`); surfaced via `components/AIAssistant.tsx` for creative briefs/captions/logistics.
 
 ## Setup & Local Development
-- Prereqs: Node 18+, npm.
+- Prereqs: Node 18+, npm, Firebase CLI (`npm install -g firebase-tools`).
 - Install: `npm install`
 - Env (`.env.local`):
   - `VITE_FIREBASE_API_KEY`
@@ -85,15 +85,52 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
   - `VITE_FIREBASE_APP_ID`
   - `VITE_FIREBASE_VAPID_KEY`
   - `VITE_GEMINI_API_KEY`
+  - `VITE_ENVIRONMENT` (optional: `development` or `production`)
 - Run dev: `npm run dev` (serves on 3000, 0.0.0.0)
 - Build: `npm run build`; Preview: `npm run preview`.
-- Tests: Vitest/RTL available; add an npm script and write coverage—currently not run here.
+- Tests: Vitest/RTL available; add an npm script and write coverage -- currently not run here.
+
+## Environments & Branching
+
+### Branch Strategy
+| Branch | Purpose | Firebase Project | Deploy Command |
+|--------|---------|-----------------|----------------|
+| `main` | Production (live) | `iris-os-43718` | `firebase deploy --project=prod` |
+| `development` | Development / staging | `iris-agency-os-dev` | `firebase deploy` (default) |
+
+### Key Rules
+- **Default `firebase deploy` targets the DEV project** (`iris-agency-os-dev`) to prevent accidental production deployments.
+- Production deploys require explicit `--project=prod`.
+- All new work happens on `development` branch or feature branches off it.
+- Merges to `main` require pull request review.
+
+### Environment Files
+| File | Purpose | Git Tracked |
+|------|---------|-------------|
+| `.env.local` | Current environment (dev or prod Firebase credentials) | No (Ignored) |
+| `.env.development` | Template for dev Firebase credentials | No (Ignored) |
+| `.env.local.example` | Example env file for onboarding | Yes (Tracked) |
+
+### Hosting URLs
+- **Production**: https://iris-os-43718.web.app
+- **Development**: (configured in dev Firebase project)
+- **Legacy**: https://agency-management-cba4a.web.app
 
 ## Deployment
+- **Development** (default): `firebase deploy` -- deploys to dev Firebase project.
+- **Production**: `firebase deploy --project=prod` -- deploys to production Firebase project.
 - Target: Firebase Hosting (`dist`), SPA rewrite to `index.html`; cache headers set for assets/manifest/service worker.
 - Rebuild after branding config changes; deploy with `firebase deploy --only hosting`.
-- Functions: deploy the notification outbox processor with `firebase deploy --only functions`; requires Node 18 and Firebase CLI logged into the target project. Admin SDK uses the project’s default service account—no extra keys needed.
+- Functions: deploy the notification outbox processor with `firebase deploy --only functions`; requires Node 18 and Firebase CLI logged into the target project. Admin SDK uses the project default service account -- no extra keys needed.
 - Firestore: rules in `firestore.rules`, indexes in `firestore.indexes.json`; update rules to reflect RBAC scopes before production use.
+
+## Extended Documentation
+Detailed guides are available in the `docs/` folder:
+- [`docs/GIT_WORKFLOW.md`](docs/GIT_WORKFLOW.md) -- Git branching strategy and workflow
+- [`docs/DEVELOPMENT_SETUP.md`](docs/DEVELOPMENT_SETUP.md) -- Full development environment setup
+- [`docs/DEPLOYMENT_GUIDE.md`](docs/DEPLOYMENT_GUIDE.md) -- Step-by-step deployment instructions
+- [`docs/MERGE_PROCEDURE.md`](docs/MERGE_PROCEDURE.md) -- How to merge development to production
+- [`docs/legacy/`](docs/legacy/) -- Archived scripts and historical documentation
 
 ## Data & Models
 - Authoritative types in `types.ts` (users/roles/clients/projects/tasks/workflows/files/finance/vendors/production/notifications/settings).
@@ -110,4 +147,5 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 - Testing gap: Vitest/RTL present but no automated test suite executed yet.
 
 ## Documentation Policy
-- This `README.md` is the single source of truth. Additional project markdown files have been consolidated here.
+- This `README.md` is the single source of truth for project overview. Extended documentation lives in the `docs/` folder.
+- Legacy files and historical scripts are archived in `docs/legacy/`.

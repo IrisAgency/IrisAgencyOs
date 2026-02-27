@@ -1,12 +1,16 @@
 {
   "projects": {
-    "default": "agency-management-cba4a",
-    "dev": "agency-management-cba4a",
-    "IRIS OS": "iris-os-43718"
+    "default": "iris-agency-os-dev",
+    "dev": "iris-agency-os-dev",
+    "prod": "iris-os-43718",
+    "legacy": "agency-management-cba4a"
   },
   "targets": {
-      "default": "iris-os-43718",
-      "dev": "iris-os-43718",
-      "legacy": "agency-management-cba4a"
+    "iris-agency-os-dev": {
+      "hosting": ["iris-agency-os-dev"]
+    },
+    "iris-os-43718": {
+      "hosting": ["iris-os-prod", "agency-management-cba4a"]
+    }
   }
 }

@@ -26,3 +26,9 @@
 ## Notes
 - Do not modify existing color/asset values; only centralize and remove dynamic edits.
 - Track each milestone here for multi-session continuity.
+
+---
+
+## Archived
+This document has been moved to `docs/legacy/BRANDING_REFACTOR_STATUS.md` for historical reference.
+Current branding information is maintained in the main README.md.
