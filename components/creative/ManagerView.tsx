@@ -243,6 +243,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
     e.preventDefault();
     if (!currentUser || !selectedClientId) return;
     setSavingStrategy(true);
+    console.log('[Creative] Starting strategy creation...');
 
     try {
       const now = new Date().toISOString();
@@ -250,13 +251,16 @@ const ManagerView: React.FC<ManagerViewProps> = ({
 
       // Upload strategy file directly to Firebase Storage
       if (strategyForm.type === 'file' && strategyFile) {
+        console.log('[Creative] Uploading strategy file to Storage...');
         const timestamp = Date.now();
         const storagePath = `clients/${selectedClientId}/strategies/${timestamp}_${strategyFile.name}`;
         const storageRef = ref(storage, storagePath);
         await uploadBytes(storageRef, strategyFile);
         fileUrl = await getDownloadURL(storageRef);
+        console.log('[Creative] File uploaded:', fileUrl);
       }
 
+      console.log('[Creative] Writing to client_strategies collection...');
       const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
       const monthLabel = months[strategyForm.month] + ' ' + strategyForm.year;
 
@@ -275,6 +279,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         createdAt: now,
         updatedAt: now,
       });
+      console.log('[Creative] Strategy saved to Firestore!');
 
       // Refresh strategies
       await fetchStrategies(selectedClientId);
@@ -282,8 +287,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       setStrategyForm({ title: '', type: 'file', url: '', notes: '', year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
       setStrategyFile(null);
     } catch (error) {
-      console.error('Error creating strategy:', error);
-      alert('Error saving strategy. Please try again. Check console for details.');
+      console.error('[Creative] Error creating strategy:', error);
+      alert('Error saving strategy: ' + (error as Error).message);
     } finally {
       setSavingStrategy(false);
     }
