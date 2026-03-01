@@ -93,6 +93,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // Review results tracking
   const [reviewResults, setReviewResults] = useState<Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }>>({});
 
+  // Strategy lookup map for project cards (id → strategy)
+  const [projectStrategies, setProjectStrategies] = useState<Record<string, ClientMarketingStrategy>>({});
+
   // Copywriter users (Copywriter role first, then other active users as fallback)
   const copywriters = users
     .filter(u => u.status === 'active')
@@ -101,6 +104,32 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       const bIsCW = b.role === 'Copywriter' ? 0 : 1;
       return aIsCW - bIsCW;
     });
+
+  // Load strategies for all projects that have strategyId
+  useEffect(() => {
+    const strategyIds = [...new Set(creativeProjects.filter(p => p.strategyId).map(p => p.strategyId!))];
+    const missingIds = strategyIds.filter(id => !projectStrategies[id]);
+    if (missingIds.length === 0) return;
+
+    const loadMissing = async () => {
+      try {
+        // Firestore 'in' queries support up to 30 items
+        for (let i = 0; i < missingIds.length; i += 30) {
+          const batch = missingIds.slice(i, i + 30);
+          const q = query(collection(db, 'client_strategies'), where('__name__', 'in', batch));
+          const snap = await getDocs(q);
+          const map: Record<string, ClientMarketingStrategy> = {};
+          snap.docs.forEach(d => {
+            map[d.id] = { id: d.id, ...d.data() } as ClientMarketingStrategy;
+          });
+          setProjectStrategies(prev => ({ ...prev, ...map }));
+        }
+      } catch (error) {
+        console.error('Error loading project strategies:', error);
+      }
+    };
+    loadMissing();
+  }, [creativeProjects]);
 
   // Load strategies when client changes
   useEffect(() => {
@@ -680,7 +709,25 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        {/* View strategy/brief */}
+                        {/* View strategy */}
+                        {project.strategyId && (() => {
+                          const strat = projectStrategies[project.strategyId!];
+                          const stratHref = strat
+                            ? (strat.type === 'link' ? strat.url : (strat.fileUrl || strat.url))
+                            : null;
+                          return stratHref ? (
+                            <a
+                              href={stratHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-2 text-iris-white/50 hover:text-iris-red rounded-lg hover:bg-iris-white/5 transition-colors"
+                              title="View Strategy"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </a>
+                          ) : null;
+                        })()}
+                        {/* View brief */}
                         {project.briefFile?.url && (
                           <a
                             href={project.briefFile.url}

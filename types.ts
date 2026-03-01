@@ -825,6 +825,7 @@ export interface ClientMarketingStrategy {
 
   // if type = "file"
   fileId: string | null;     // reference to Files/Assets module
+  fileUrl: string | null;    // direct download URL from Firebase Storage
 
   // if type = "link"
   url: string | null;        // Notion, Google Doc, Figma, etc.
