@@ -367,6 +367,11 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         <Clock className="w-10 h-10 mx-auto mb-3 text-iris-white/20" />
         <p className="text-iris-white/60">No creative projects assigned to you yet.</p>
         <p className="text-sm text-iris-white/40 mt-1">Your manager will assign projects when ready.</p>
+        {creativeProjects.length > 0 && (
+          <p className="text-xs text-iris-white/30 mt-3">
+            {creativeProjects.length} project(s) exist but are assigned to other copywriters.
+          </p>
+        )}
       </div>
     );
   }

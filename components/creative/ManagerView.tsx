@@ -92,8 +92,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // Review results tracking
   const [reviewResults, setReviewResults] = useState<Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }>>({});
 
-  // Copywriter users
-  const copywriters = users.filter(u => u.status === 'active');
+  // Copywriter users (Copywriter role first, then other active users as fallback)
+  const copywriters = users
+    .filter(u => u.status === 'active')
+    .sort((a, b) => {
+      const aIsCW = a.role === 'Copywriter' ? 0 : 1;
+      const bIsCW = b.role === 'Copywriter' ? 0 : 1;
+      return aIsCW - bIsCW;
+    });
 
   // Load strategies when client changes
   useEffect(() => {
@@ -911,7 +917,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 >
                   <option value="">Select Copywriter</option>
                   {copywriters.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} ({u.jobTitle || u.role})</option>
+                    <option key={u.id} value={u.id}>{u.name} — {u.role}{u.role !== 'Copywriter' ? ' ⚠️' : ''}</option>
                   ))}
                 </select>
               </div>
