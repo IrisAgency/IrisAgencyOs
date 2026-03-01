@@ -1,9 +1,19 @@
 import React, { useState, useCallback } from 'react';
 import { useSpring, animated } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { Video, Image, Clapperboard, Calendar, ExternalLink, FileText, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Video, Image as ImageIcon, Clapperboard, Calendar, ExternalLink, FileText, Check, X, ChevronLeft, ChevronRight, Maximize2, Download } from 'lucide-react';
 import type { CreativeCalendarItem, CreativeRejectionReference } from '../../types';
 import RejectionModal from './RejectionModal';
+
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
+const isImageUrl = (url: string): boolean => {
+  const lower = url.toLowerCase().split('?')[0];
+  return IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
+};
+const isImageFile = (fileName: string): boolean => {
+  const lower = fileName.toLowerCase();
+  return IMAGE_EXTENSIONS.some(ext => lower.endsWith(ext));
+};
 
 interface SwipeReviewCardProps {
   items: CreativeCalendarItem[];
@@ -16,7 +26,7 @@ interface SwipeReviewCardProps {
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   VIDEO: Video,
-  PHOTO: Image,
+  PHOTO: ImageIcon,
   MOTION: Clapperboard,
 };
 
@@ -37,6 +47,7 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rejectingItem, setRejectingItem] = useState<CreativeCalendarItem | null>(null);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [gone] = useState(new Set<number>());
 
   const SWIPE_THRESHOLD = 120;
@@ -242,47 +253,107 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                 </div>
               )}
 
-              {/* Reference Links */}
-              {currentItem.referenceLinks?.length > 0 && (
-                <div>
-                  <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Links</span>
-                  <div className="mt-1 space-y-1">
-                    {currentItem.referenceLinks.map((link, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onPointerDown={e => { e.stopPropagation(); }}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); window.open(link.url, '_blank', 'noopener,noreferrer'); }}
-                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
-                      >
-                        <ExternalLink className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{link.title || link.url}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* References — Image Previews + Links */}
+              {((currentItem.referenceFiles?.length || 0) > 0 || (currentItem.referenceLinks?.length || 0) > 0) && (() => {
+                const imageFiles = (currentItem.referenceFiles || []).filter(f => isImageFile(f.fileName));
+                const imageLinks = (currentItem.referenceLinks || []).filter(l => isImageUrl(l.url));
+                const nonImageFiles = (currentItem.referenceFiles || []).filter(f => !isImageFile(f.fileName));
+                const nonImageLinks = (currentItem.referenceLinks || []).filter(l => !isImageUrl(l.url));
 
-              {/* Reference Files */}
-              {currentItem.referenceFiles?.length > 0 && (
-                <div>
-                  <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Files</span>
-                  <div className="mt-1 space-y-1">
-                    {currentItem.referenceFiles.map((file, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onPointerDown={e => { e.stopPropagation(); }}
-                        onClick={e => { e.stopPropagation(); e.preventDefault(); window.open(file.downloadURL, '_blank', 'noopener,noreferrer'); }}
-                        className="flex items-center gap-1.5 text-sm text-iris-red hover:text-iris-red/80 transition-colors cursor-pointer"
-                      >
-                        <FileText className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{file.fileName}</span>
-                      </button>
-                    ))}
+                return (
+                  <div>
+                    <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">References</span>
+
+                    {/* Image thumbnails grid */}
+                    {(imageFiles.length > 0 || imageLinks.length > 0) && (
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {imageFiles.map((file, i) => (
+                          <button
+                            key={`if${i}`}
+                            type="button"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); setLightboxUrl(file.downloadURL); }}
+                            className="relative group aspect-square rounded-lg overflow-hidden border border-iris-white/10 hover:border-iris-red/50 transition-colors bg-iris-black/50"
+                          >
+                            <img
+                              src={file.downloadURL}
+                              alt={file.fileName}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                              <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-black/70 text-[10px] text-iris-white/80 truncate">
+                              {file.fileName}
+                            </span>
+                          </button>
+                        ))}
+                        {imageLinks.map((link, i) => (
+                          <button
+                            key={`il${i}`}
+                            type="button"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); setLightboxUrl(link.url); }}
+                            className="relative group aspect-square rounded-lg overflow-hidden border border-iris-white/10 hover:border-blue-400/50 transition-colors bg-iris-black/50"
+                          >
+                            <img
+                              src={link.url}
+                              alt={link.title || link.url}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                              <Maximize2 className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <span className="absolute bottom-0 left-0 right-0 px-1.5 py-1 bg-black/70 text-[10px] text-iris-white/80 truncate">
+                              {link.title || 'Image'}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Non-image files */}
+                    {nonImageFiles.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {nonImageFiles.map((file, i) => (
+                          <button
+                            key={`nf${i}`}
+                            type="button"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); window.open(file.downloadURL, '_blank', 'noopener,noreferrer'); }}
+                            className="flex items-center gap-1.5 text-sm text-iris-red hover:text-iris-red/80 transition-colors cursor-pointer"
+                          >
+                            <FileText className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{file.fileName}</span>
+                            <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Non-image links */}
+                    {nonImageLinks.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {nonImageLinks.map((link, i) => (
+                          <button
+                            key={`nl${i}`}
+                            type="button"
+                            onPointerDown={e => e.stopPropagation()}
+                            onClick={e => { e.stopPropagation(); window.open(link.url, '_blank', 'noopener,noreferrer'); }}
+                            className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
+                          >
+                            <ExternalLink className="w-3 h-3 shrink-0" />
+                            <span className="truncate">{link.title || link.url}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </animated.div>
@@ -318,6 +389,34 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
             api.start({ x: 0, rot: 0, scale: 1 });
           }}
         />
+      )}
+
+      {/* Image Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white bg-white/10 rounded-full backdrop-blur-sm transition-colors z-10"
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); window.open(lightboxUrl, '_blank', 'noopener,noreferrer'); }}
+            className="absolute top-4 left-4 p-2 text-white/70 hover:text-white bg-white/10 rounded-full backdrop-blur-sm transition-colors z-10"
+            title="Open in new tab"
+          >
+            <Download className="w-5 h-5" />
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Preview"
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   );
