@@ -994,11 +994,16 @@ export type NotificationType =
   | 'comment_mention'
   | 'invoice_overdue'
   | 'production_update'
-  | 'system';
+  | 'system'
+  // Creative Direction
+  | 'CREATIVE_ASSIGNED'
+  | 'CREATIVE_SUBMITTED_FOR_REVIEW'
+  | 'CREATIVE_REVISION_REQUESTED'
+  | 'CREATIVE_APPROVED';
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
-export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'system';
-export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone';
+export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'system';
+export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project';
 
 export interface NotificationAction {
   label: string;
@@ -1106,7 +1111,6 @@ export interface AppBranding {
 
   // Metadata
   updatedBy: string;
-  updatedAt: string;
 }
 
 export interface Permission {
@@ -1299,6 +1303,72 @@ export interface CalendarItem {
   taskId?: string | null; // Link to generated delivery task
   
   createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// --- CREATIVE DIRECTION & QUALITY CONTROL ---
+
+export type CreativeProjectStatus = 'DRAFT' | 'IN_PROGRESS' | 'UNDER_REVIEW' | 'NEEDS_REVISION' | 'APPROVED' | 'ARCHIVED';
+export type CreativeCalendarStatus = 'DRAFT' | 'UNDER_REVIEW' | 'NEEDS_REVISION' | 'UPDATED' | 'APPROVED';
+export type CreativeItemReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface CreativeProject {
+  id: string;
+  clientId: string;
+  strategyId: string | null; // Reference to client_strategies doc
+  briefFile: {
+    name: string;
+    url: string;
+    uploadedBy: string;
+    createdAt: string;
+  } | null;
+  status: CreativeProjectStatus;
+  assignedCopywriterId: string;
+  isArchived: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreativeCalendar {
+  id: string;
+  creativeProjectId: string;
+  clientId: string;
+  monthKey: string; // "YYYY-MM"
+  status: CreativeCalendarStatus;
+  revisionCount: number;
+  lastSubmittedAt: string | null;
+  lastReviewedAt: string | null;
+  lastUpdatedAt: string | null;
+  createdBy: string;
+  updatedBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreativeRejectionReference {
+  type: 'link' | 'file';
+  value: string; // URL for link, downloadURL for file
+  fileName?: string; // For file type
+}
+
+export interface CreativeCalendarItem {
+  id: string;
+  creativeCalendarId: string;
+  type: CalendarContentType; // 'VIDEO' | 'PHOTO' | 'MOTION'
+  title: string;
+  mainIdea: string;
+  briefDescription: string;
+  notes: string;
+  publishAt: string; // ISO date - copywriter sets this
+  referenceLinks: CalendarReferenceLink[];
+  referenceFiles: CalendarReferenceFile[];
+  reviewStatus: CreativeItemReviewStatus;
+  rejectionNote: string | null;
+  rejectionReferences: CreativeRejectionReference[];
   createdAt: string;
   updatedAt: string;
 }

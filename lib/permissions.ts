@@ -264,6 +264,16 @@ export const PERMISSIONS = {
     EDIT: 'calendar.items.edit',
     DELETE: 'calendar.items.delete',
   },
+
+  // ========== Creative Direction ==========
+  CREATIVE: {
+    VIEW: 'creative.view',
+    MANAGE: 'creative.manage',
+    REVIEW: 'creative.review',
+    UPLOAD: 'creative.upload',
+    APPROVE: 'creative.approve',
+    REJECT: 'creative.reject',
+  },
 } as const;
 
 // ============================================================================
@@ -560,5 +570,6 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'Dashboard': Object.values(PERMISSIONS.DASHBOARD),
     'Notes': Object.values(PERMISSIONS.NOTES),
     'Calendar': [...Object.values(PERMISSIONS.CALENDAR), ...Object.values(PERMISSIONS.CALENDAR_MONTHS), ...Object.values(PERMISSIONS.CALENDAR_ITEMS)],
+    'Creative Direction': Object.values(PERMISSIONS.CREATIVE),
   };
 }

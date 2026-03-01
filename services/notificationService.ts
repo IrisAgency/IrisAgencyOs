@@ -89,6 +89,17 @@ const NOTIFICATION_METADATA: Record<
   invoice_overdue: { category: 'finance', severity: 'urgent', entityType: 'invoice' },
   production_update: { category: 'system', severity: 'info' },
   system: { category: 'system', severity: 'info' },
+
+  // Missing required types
+  TASK_DUE_DATE_CHANGED: { category: 'tasks', severity: 'info', entityType: 'task' },
+  PROJECT_MEMBER_ADDED: { category: 'projects', severity: 'info', entityType: 'project' },
+  MILESTONE_CREATED: { category: 'projects', severity: 'info', entityType: 'milestone' },
+
+  // Creative Direction
+  CREATIVE_ASSIGNED: { category: 'creative' as any, severity: 'info', entityType: 'creative_project' as any },
+  CREATIVE_SUBMITTED_FOR_REVIEW: { category: 'creative' as any, severity: 'warning', entityType: 'creative_project' as any },
+  CREATIVE_REVISION_REQUESTED: { category: 'creative' as any, severity: 'warning', entityType: 'creative_project' as any },
+  CREATIVE_APPROVED: { category: 'creative' as any, severity: 'info', entityType: 'creative_project' as any },
 };
 
 /**

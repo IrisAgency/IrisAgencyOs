@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone, DashboardBanner } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -20,6 +20,7 @@ import AdminHub from './components/AdminHub';
 import PostingHub from './components/PostingHub';
 import UnifiedCalendar from './components/UnifiedCalendar';
 import CalendarHub from './components/CalendarHub';
+import CreativeDirectionHub from './components/CreativeDirectionHub';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import SplashScreen from './components/SplashScreen';
@@ -206,6 +207,11 @@ const App: React.FC = () => {
   // Calendar State
   const [calendarMonths] = useFirestoreCollection<CalendarMonth>('calendar_months', []);
   const [calendarItems] = useFirestoreCollection<CalendarItem>('calendar_items', []);
+
+  // Creative Direction State
+  const [creativeProjects] = useFirestoreCollection<CreativeProject>('creative_projects', []);
+  const [creativeCalendars] = useFirestoreCollection<CreativeCalendar>('creative_calendars', []);
+  const [creativeCalendarItems] = useFirestoreCollection<CreativeCalendarItem>('creative_calendar_items', []);
 
   // Smart Project Creation - Dynamic Milestones
   const [milestones] = useFirestoreCollection<Milestone>('milestones', []);
@@ -2004,6 +2010,24 @@ const App: React.FC = () => {
             calendarMonths={calendarMonths}
             calendarItems={calendarItems}
             currentUser={user}
+          />
+        );
+      case 'creative':
+        if (!checkPermission(PERMISSIONS.CREATIVE.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
+        return (
+          <CreativeDirectionHub
+            creativeProjects={creativeProjects}
+            creativeCalendars={creativeCalendars}
+            creativeCalendarItems={creativeCalendarItems}
+            clients={clients}
+            users={activeUsers}
+            calendarMonths={calendarMonths}
+            calendarItems={calendarItems}
+            files={files}
+            currentUser={user}
+            checkPermission={checkPermission}
+            onNotify={handleNotify}
+            onUploadFile={handleUploadFile}
           />
         );
       case 'assets':

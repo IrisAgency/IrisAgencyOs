@@ -934,6 +934,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.view', 'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
+      // Creative Direction (full access)
+      'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
       // Admin
       'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
       'admin.settings.view', 'admin.settings.edit'
@@ -972,6 +974,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
+      // Creative Direction (full access)
+      'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1011,6 +1015,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
+      // Creative Direction (full access)
+      'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1044,6 +1050,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
+      // Creative Direction (view only)
+      'creative.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1072,6 +1080,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'assets.view.dept', 'assets.upload', 'assets.link_to_task',
       // Calendar (view only)
       'calendar.view',
+      // Creative Direction (view only)
+      'creative.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1102,6 +1112,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.view', 'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
+      // Creative Direction (view + upload)
+      'creative.view', 'creative.upload',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],

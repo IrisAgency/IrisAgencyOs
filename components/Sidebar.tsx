@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Building2, Layers, Network, ShieldAlert, Share2, Calendar, Bell, X, LogOut } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CheckSquare, Clapperboard, DollarSign, Users, PieChart, Building2, Layers, Network, ShieldAlert, Share2, Calendar, Bell, X, LogOut, Sparkles } from 'lucide-react';
 import { UserRole } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { useBranding } from '../contexts/BrandingContext';
@@ -71,6 +71,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
       label: 'Calendar', 
       icon: Calendar, 
       visible: checkPermission(PERMISSIONS.CALENDAR.VIEW)
+    },
+    { 
+      id: 'creative', 
+      label: 'Creative Direction', 
+      icon: Sparkles, 
+      visible: checkPermission(PERMISSIONS.CREATIVE.VIEW)
     },
     { 
       id: 'assets', 

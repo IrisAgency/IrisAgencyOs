@@ -60,6 +60,22 @@ service cloud.firestore {
       allow delete: if true;
     }
 
+    // Creative Direction & Quality Control
+    match /creative_projects/{projectId} {
+      allow read: if hasPermission('creative.view');
+      allow write: if hasPermission('creative.manage');
+    }
+
+    match /creative_calendars/{calendarId} {
+      allow read: if hasPermission('creative.view');
+      allow write: if hasPermission('creative.manage') || hasPermission('creative.upload');
+    }
+
+    match /creative_calendar_items/{itemId} {
+      allow read: if hasPermission('creative.view');
+      allow write: if hasPermission('creative.upload') || hasPermission('creative.approve');
+    }
+
     match /{document=**} {
       allow read, write: if true;
     }
