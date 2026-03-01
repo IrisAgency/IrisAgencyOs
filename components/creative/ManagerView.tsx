@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
 import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, Client, User, CalendarMonth, CalendarItem, AgencyFile, ClientMarketingStrategy, NotificationType, CreativeRejectionReference } from '../../types';
@@ -10,7 +10,7 @@ import { activateCreativeCalendar } from './CalendarActivation';
 import {
   Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
   ChevronDown, ChevronRight, Users, Calendar, Check, AlertTriangle, 
-  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2
+  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2, Trash2
 } from 'lucide-react';
 
 interface ManagerViewProps {
@@ -67,6 +67,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingStrategy, setSavingStrategy] = useState(false);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   // Create Project Form
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -457,6 +458,76 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   // ============================================
+  // DELETE PROJECT & ALL RELATED DATA
+  // ============================================
+  const handleDeleteProject = async (projectId: string) => {
+    const project = creativeProjects.find(p => p.id === projectId);
+    if (!project) return;
+
+    const clientName = clients.find(c => c.id === project.clientId)?.name || 'Unknown';
+    const confirmed = window.confirm(
+      `⚠️ Permanently delete project for "${clientName}" (${project.monthKey || ''})? This will delete:\n\n` +
+      `• The creative project\n` +
+      `• All associated calendars\n` +
+      `• All calendar items\n` +
+      `• Uploaded brief file (if any)\n\n` +
+      `This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeletingProjectId(projectId);
+    try {
+      // 1. Find all calendars for this project
+      const calendarsSnap = await getDocs(
+        query(collection(db, 'creative_calendars'), where('creativeProjectId', '==', projectId))
+      );
+      const calendarIds = calendarsSnap.docs.map(d => d.id);
+
+      // 2. Delete all calendar items for each calendar
+      for (const calId of calendarIds) {
+        const itemsSnap = await getDocs(
+          query(collection(db, 'creative_calendar_items'), where('creativeCalendarId', '==', calId))
+        );
+        for (const itemDoc of itemsSnap.docs) {
+          // Delete reference files from storage if any
+          const itemData = itemDoc.data();
+          if (itemData.referenceFiles?.length) {
+            for (const rf of itemData.referenceFiles) {
+              if (rf.storagePath) {
+                try { await deleteObject(ref(storage, rf.storagePath)); } catch { /* file may not exist */ }
+              }
+            }
+          }
+          await deleteDoc(doc(db, 'creative_calendar_items', itemDoc.id));
+        }
+      }
+
+      // 3. Delete all calendars
+      for (const calDoc of calendarsSnap.docs) {
+        await deleteDoc(doc(db, 'creative_calendars', calDoc.id));
+      }
+
+      // 4. Delete brief file from storage if present
+      if (project.briefFile?.url) {
+        try {
+          const briefRef = ref(storage, project.briefFile.url);
+          await deleteObject(briefRef);
+        } catch { /* file may have been removed already */ }
+      }
+
+      // 5. Delete the project document
+      await deleteDoc(doc(db, 'creative_projects', projectId));
+
+      console.log(`[Creative] Deleted project ${projectId} and all related data`);
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error deleting project: ' + (error as Error).message);
+    } finally {
+      setDeletingProjectId(null);
+    }
+  };
+
+  // ============================================
   // ARCHIVE
   // ============================================
   const handleArchive = async (projectId: string) => {
@@ -758,6 +829,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                             <Archive className="w-4 h-4" />
                           </button>
                         )}
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDeleteProject(project.id)}
+                          disabled={deletingProjectId === project.id}
+                          className="p-2 text-iris-white/30 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors disabled:opacity-50"
+                          title="Delete Project"
+                        >
+                          {deletingProjectId === project.id
+                            ? <Clock className="w-4 h-4 animate-spin" />
+                            : <Trash2 className="w-4 h-4" />}
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -788,13 +870,25 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                             <span className="font-medium text-iris-white/70">{client?.name || 'Unknown'}</span>
                             <span className="text-xs text-iris-white/40 ml-2">Archived {project.archivedAt ? new Date(project.archivedAt).toLocaleDateString() : ''}</span>
                           </div>
-                          <button
-                            onClick={() => handleUnarchive(project.id)}
-                            className="p-1.5 text-iris-white/40 hover:text-iris-white/70 transition-colors"
-                            title="Unarchive"
-                          >
-                            <ArchiveRestore className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleUnarchive(project.id)}
+                              className="p-1.5 text-iris-white/40 hover:text-iris-white/70 transition-colors"
+                              title="Unarchive"
+                            >
+                              <ArchiveRestore className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProject(project.id)}
+                              disabled={deletingProjectId === project.id}
+                              className="p-1.5 text-iris-white/30 hover:text-rose-400 transition-colors disabled:opacity-50"
+                              title="Delete Project"
+                            >
+                              {deletingProjectId === project.id
+                                ? <Clock className="w-4 h-4 animate-spin" />
+                                : <Trash2 className="w-4 h-4" />}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
