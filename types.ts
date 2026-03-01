@@ -407,6 +407,10 @@ export interface Task {
 
   client?: string; // Denormalized client name
 
+  // Quality Control
+  qc?: TaskQCBlock;
+  qcOverride?: 'force_enable' | 'force_disable' | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -478,6 +482,7 @@ export interface WorkflowTemplate {
 
   steps: WorkflowStepTemplate[];
   requiresClientApproval: boolean;
+  requiresQC: boolean;
 
   createdAt: string;
   updatedAt: string;
@@ -506,6 +511,47 @@ export interface ClientApproval {
   status: 'pending' | 'approved' | 'rejected';
   reviewedAt?: string;
   comment?: string;
+}
+
+// --- QUALITY CONTROL (QC) ---
+
+export type QCStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'NEEDS_INTERVENTION';
+export type QCReviewDecision = 'APPROVED' | 'REJECTED' | 'PENDING';
+
+export interface QCReviewAttachment {
+  type: 'link' | 'file';
+  title?: string;
+  url?: string;
+  storagePath?: string;
+  downloadURL?: string;
+}
+
+export interface QCReview {
+  id: string;
+  taskId: string;
+  projectId: string;
+  clientId: string;
+
+  workflowId: string | null;
+  taskStatusSnapshot?: string;
+
+  reviewerId: string;
+  reviewerRole: string; // e.g. 'COPYWRITER' | 'ACCOUNT_MANAGER' | 'GENERAL_MANAGER' | 'CREATIVE_DIRECTOR'
+  decision: QCReviewDecision;
+
+  note: string | null;
+  attachments: QCReviewAttachment[];
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskQCBlock {
+  enabled: boolean;
+  reviewers: string[];           // list of userIds allowed to review
+  requiredApprovals: string[];   // must include GM + CD by default
+  status: QCStatus;
+  lastUpdatedAt: string;
 }
 
 // --- PRODUCTION PLANNING ENTITIES ---
@@ -999,10 +1045,15 @@ export type NotificationType =
   | 'CREATIVE_ASSIGNED'
   | 'CREATIVE_SUBMITTED_FOR_REVIEW'
   | 'CREATIVE_REVISION_REQUESTED'
-  | 'CREATIVE_APPROVED';
+  | 'CREATIVE_APPROVED'
+  // Quality Control
+  | 'QC_REVIEW_REQUESTED'
+  | 'QC_APPROVED'
+  | 'QC_REJECTED'
+  | 'QC_NEEDS_INTERVENTION';
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
-export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'system';
+export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'qc' | 'system';
 export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project';
 
 export interface NotificationAction {

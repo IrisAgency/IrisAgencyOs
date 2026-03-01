@@ -936,6 +936,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      // Quality Control (full access)
+      'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
       // Admin
       'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
       'admin.settings.view', 'admin.settings.edit'
@@ -976,6 +978,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      // Quality Control (review)
+      'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1017,6 +1021,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      // Quality Control (full access)
+      'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1052,6 +1058,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (view only)
       'creative.view',
+      // Quality Control (view only)
+      'qc.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1082,6 +1090,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.view',
       // Creative Direction (view only)
       'creative.view',
+      // Quality Control (view only)
+      'qc.view',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1114,6 +1124,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (view + upload)
       'creative.view', 'creative.upload',
+      // Quality Control (review)
+      'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
       'notes.create', 'notes.edit_own', 'notes.delete_own'
     ],
@@ -1291,6 +1303,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     status: 'active',
     isDefault: true,
     requiresClientApproval: true,
+    requiresQC: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
@@ -1308,6 +1321,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     status: 'active',
     isDefault: true,
     requiresClientApproval: true,
+    requiresQC: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
@@ -1324,6 +1338,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     status: 'available',
     isDefault: false,
     requiresClientApproval: false,
+    requiresQC: true,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [
@@ -1339,6 +1354,7 @@ export const WORKFLOW_TEMPLATES: WorkflowTemplate[] = [
     status: 'system_protected',
     isDefault: false,
     requiresClientApproval: false,
+    requiresQC: false,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
     steps: [

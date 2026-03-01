@@ -45,6 +45,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     const [requiresSocial, setRequiresSocial] = useState(false);
     const [socialPlatforms, setSocialPlatforms] = useState<SocialPlatform[]>([]);
     const [socialManagerId, setSocialManagerId] = useState<string>('');
+    const [qcOverride, setQcOverride] = useState<'force_enable' | 'force_disable' | null>(null);
     
     // Description & Voice Over State
     const [description, setDescription] = useState('');
@@ -91,6 +92,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setRequiresSocial(editingTask.requiresSocialPost || false);
                 setSocialPlatforms(editingTask.socialPlatforms || []);
                 setSocialManagerId(editingTask.socialManagerId || '');
+                setQcOverride(editingTask.qcOverride || null);
                 setAssigneeIds(editingTask.assigneeIds || []);
                 setReferenceLinks(editingTask.referenceLinks || []);
                 setSelectedImages([]); // Reset images on edit open
@@ -111,6 +113,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setRequiresSocial(false);
                 setSocialPlatforms([]);
                 setSocialManagerId('');
+                setQcOverride(null);
                 setReferenceLinks([]);
                 setSelectedImages([]);
                 setDescription('');
@@ -278,6 +281,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     requiresSocialPost: requiresSocial,
                     socialPlatforms: requiresSocial ? socialPlatforms : [],
                     socialManagerId: requiresSocial ? socialManagerId : null,
+                    qcOverride: qcOverride,
                     updatedAt: new Date().toISOString(),
                     assigneeIds: assigneeIds,
                     referenceLinks: referenceLinks,
@@ -335,6 +339,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     requiresSocialPost: requiresSocial,
                     socialPlatforms: requiresSocial ? socialPlatforms : [],
                     socialManagerId: requiresSocial ? socialManagerId : null,
+                    qcOverride: qcOverride,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     referenceLinks: referenceLinks,
@@ -768,6 +773,23 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* QC Override Control */}
+                    {checkPermission(PERMISSIONS.QC.MANAGE) && (
+                        <div className="bg-[rgba(139,92,246,0.1)] p-3 rounded-lg border border-[rgba(139,92,246,0.3)]">
+                            <label className="block text-sm font-bold text-purple-400 mb-2">Quality Control Override</label>
+                            <select
+                                value={qcOverride || ''}
+                                onChange={e => setQcOverride(e.target.value === '' ? null : e.target.value as 'force_enable' | 'force_disable')}
+                                className="w-full px-2 py-1.5 bg-[#121212] border border-[#49454F] rounded text-sm text-[#E6E1E5] focus:ring-purple-500 focus:border-purple-500"
+                            >
+                                <option value="" className="bg-[#121212]">Use Workflow Default</option>
+                                <option value="force_enable" className="bg-[#121212]">Force Enable QC</option>
+                                <option value="force_disable" className="bg-[#121212]">Force Disable QC</option>
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">Override the workflow&apos;s default QC setting for this task.</p>
+                        </div>
+                    )}
 
                     <div className="pt-4 border-t border-[#49454F] flex justify-between items-center mt-6">
                         <div className="text-xs text-gray-400">

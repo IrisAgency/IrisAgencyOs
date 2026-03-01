@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem } from './types';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem, QCReview } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -21,6 +21,7 @@ import PostingHub from './components/PostingHub';
 import UnifiedCalendar from './components/UnifiedCalendar';
 import CalendarHub from './components/CalendarHub';
 import CreativeDirectionHub from './components/CreativeDirectionHub';
+import QualityControlHub from './components/QualityControlHub';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import SplashScreen from './components/SplashScreen';
@@ -47,6 +48,7 @@ import {
   getDestinationFolder
 } from './utils/folderUtils';
 import { startOverflowMonitoring } from './utils/overflowDetector';
+import { initializeQCBlock, shouldEnableQC, resetQCForResubmission } from './utils/qcUtils';
 
 // Helper hook for LocalStorage persistence
 function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
@@ -212,6 +214,9 @@ const App: React.FC = () => {
   const [creativeProjects] = useFirestoreCollection<CreativeProject>('creative_projects', []);
   const [creativeCalendars] = useFirestoreCollection<CreativeCalendar>('creative_calendars', []);
   const [creativeCalendarItems] = useFirestoreCollection<CreativeCalendarItem>('creative_calendar_items', []);
+
+  // Quality Control State
+  const [qcReviews] = useFirestoreCollection<QCReview>('task_qc_reviews', []);
 
   // Smart Project Creation - Dynamic Milestones
   const [milestones] = useFirestoreCollection<Milestone>('milestones', []);
@@ -535,6 +540,49 @@ const App: React.FC = () => {
 
     // Notify on status changes
     if (oldTask && oldTask.status !== updatedTask.status) {
+      // --- QC Trigger ---
+      if (updatedTask.status === ('awaiting_review' as TaskStatus)) {
+        const template = workflowTemplates.find(w => w.id === updatedTask.workflowTemplateId);
+        const qcEnabled = shouldEnableQC(updatedTask, (template as any)?.requiresQC);
+
+        if (qcEnabled) {
+          // If resubmission after revision, reset QC
+          if (oldTask.status === ('revisions_required' as TaskStatus) && oldTask.qc?.enabled) {
+            try {
+              await resetQCForResubmission(updatedTask.id, qcReviews, oldTask.qc);
+            } catch (err) {
+              console.error('Failed to reset QC for resubmission:', err);
+            }
+          }
+
+          // Initialize QC block if not already enabled
+          if (!updatedTask.qc?.enabled) {
+            const qcBlock = initializeQCBlock(updatedTask, projectMembers, activeUsers, systemRoles);
+            await updateDoc(doc(db, 'tasks', updatedTask.id), { qc: qcBlock });
+
+            // Notify QC reviewers
+            if (qcBlock.reviewers.length > 0) {
+              await notifyUsers({
+                type: 'QC_REVIEW_REQUESTED',
+                title: `QC Review Needed: ${updatedTask.title}`,
+                message: `Task "${updatedTask.title}" requires Quality Control review`,
+                recipientIds: qcBlock.reviewers.filter(id => id !== user?.id),
+                entityId: updatedTask.id,
+                actionUrl: `/quality-control`,
+                sendPush: true,
+                createdBy: user?.id || 'system',
+              });
+            }
+          } else {
+            // Re-enable with reset status
+            await updateDoc(doc(db, 'tasks', updatedTask.id), {
+              'qc.status': 'PENDING',
+              'qc.lastUpdatedAt': new Date().toISOString(),
+            });
+          }
+        }
+      }
+
       const statusMessages: Record<string, string> = {
         'assigned': 'Task has been assigned',
         'in_progress': 'Task is now in progress',
@@ -2026,6 +2074,27 @@ const App: React.FC = () => {
             files={files}
             currentUser={user}
             checkPermission={checkPermission}
+            onNotify={handleNotify}
+            onUploadFile={handleUploadFile}
+          />
+        );
+      case 'quality-control':
+        if (!checkPermission(PERMISSIONS.QC.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
+        return (
+          <QualityControlHub
+            tasks={activeTasks}
+            qcReviews={qcReviews}
+            users={activeUsers}
+            projects={projects}
+            clients={clients}
+            projectMembers={projectMembers}
+            workflowTemplates={workflowTemplates}
+            approvalSteps={approvalSteps}
+            taskComments={taskComments}
+            files={files}
+            currentUser={user}
+            checkPermission={checkPermission}
+            onUpdateTask={handleUpdateTask}
             onNotify={handleNotify}
             onUploadFile={handleUploadFile}
           />

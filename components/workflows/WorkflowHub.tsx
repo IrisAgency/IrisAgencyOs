@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ApprovalStep, Project, Task, TaskStatus, User, WorkflowTemplate } from '../../types';
-import { Clock, GitBranch, Users2, Sparkles } from 'lucide-react';
+import { Clock, GitBranch, Users2, Sparkles, ShieldCheck } from 'lucide-react';
 import { DueTone, ToneFn } from '../tasks/TaskBoardDark';
 
 interface WorkflowHubProps {
@@ -41,6 +41,9 @@ const WorkflowHub: React.FC<WorkflowHubProps> = ({
         .sort((a, b) => a.order - b.order)
         .map(step => ({ key: `step-${step.order}`, label: step.label })),
     ];
+    if (selectedTemplate.requiresQC) {
+      base.push({ key: 'qc', label: '🛡️ QC Review' });
+    }
     if (selectedTemplate.requiresClientApproval) {
       base.push({ key: 'client', label: 'Client Review' });
     }
@@ -49,6 +52,11 @@ const WorkflowHub: React.FC<WorkflowHubProps> = ({
   }, [selectedTemplate]);
 
   const getStageKey = (task: Task): string => {
+    // Route tasks in QC to the QC column
+    if (task.qc?.enabled && task.status === TaskStatus.AWAITING_REVIEW && 
+        (task.qc.status === 'PENDING' || task.qc.status === 'NEEDS_INTERVENTION')) {
+      return 'qc';
+    }
     if (task.status === TaskStatus.CLIENT_REVIEW || task.status === TaskStatus.CLIENT_APPROVED) return 'client';
     if (task.status === TaskStatus.COMPLETED || task.status === TaskStatus.ARCHIVED) return 'done';
     const steps = approvalSteps.filter(s => s.taskId === task.id);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { WorkflowTemplate, WorkflowStepTemplate, RoleDefinition, Department, User } from '../../types';
-import { Plus, GitBranch, CheckCircle, Lock, Edit2, Trash2, X, Activity, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, GitBranch, CheckCircle, Lock, Edit2, Trash2, X, Activity, ArrowUp, ArrowDown, ShieldCheck } from 'lucide-react';
 import Modal from '../common/Modal';
 
 interface WorkflowsManagerProps {
@@ -37,6 +37,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
             taskType: null,
             status: 'available',
             requiresClientApproval: false,
+            requiresQC: true,
             steps: [],
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -150,6 +151,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                             <span className="ltr-text">{wf.steps.length} Steps</span>
                             <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1">{wf.requiresClientApproval ? <CheckCircle className="w-3 h-3 text-indigo-500" /> : <X className="w-3 h-3" />} Client Approval</span>
+                                <span className="flex items-center gap-1">{(wf as any).requiresQC !== false ? <ShieldCheck className="w-3 h-3 text-emerald-500" /> : <X className="w-3 h-3" />} QC Review</span>
                             </div>
                         </div>
                     </div>
@@ -193,6 +195,12 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                         <label className="flex items-center gap-2 cursor-pointer">
                                             <input type="checkbox" checked={editingWorkflow.requiresClientApproval} onChange={e => setEditingWorkflow({ ...editingWorkflow, requiresClientApproval: e.target.checked })} className="rounded text-indigo-600" />
                                             <span className="text-sm text-slate-700">Requires Client Approval?</span>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center mt-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={(editingWorkflow as any).requiresQC !== false} onChange={e => setEditingWorkflow({ ...editingWorkflow, requiresQC: e.target.checked } as any)} className="rounded text-emerald-600" />
+                                            <span className="text-sm text-slate-700">Requires Quality Control?</span>
                                         </label>
                                     </div>
                                 </div>

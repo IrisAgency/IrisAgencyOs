@@ -100,6 +100,12 @@ const NOTIFICATION_METADATA: Record<
   CREATIVE_SUBMITTED_FOR_REVIEW: { category: 'creative' as any, severity: 'warning', entityType: 'creative_project' as any },
   CREATIVE_REVISION_REQUESTED: { category: 'creative' as any, severity: 'warning', entityType: 'creative_project' as any },
   CREATIVE_APPROVED: { category: 'creative' as any, severity: 'info', entityType: 'creative_project' as any },
+
+  // Quality Control
+  QC_REVIEW_REQUESTED: { category: 'qc' as any, severity: 'warning', entityType: 'task' },
+  QC_APPROVED: { category: 'qc' as any, severity: 'info', entityType: 'task' },
+  QC_REJECTED: { category: 'qc' as any, severity: 'warning', entityType: 'task' },
+  QC_NEEDS_INTERVENTION: { category: 'qc' as any, severity: 'urgent', entityType: 'task' },
 };
 
 /**

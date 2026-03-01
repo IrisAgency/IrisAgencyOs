@@ -274,6 +274,16 @@ export const PERMISSIONS = {
     APPROVE: 'creative.approve',
     REJECT: 'creative.reject',
   },
+
+  // ========== Quality Control ==========
+  QC: {
+    VIEW: 'qc.view',
+    MANAGE: 'qc.manage',
+    REVIEW_APPROVE: 'qc.review.approve',
+    REVIEW_REJECT: 'qc.review.reject',
+    REVIEW_COMMENT: 'qc.review.comment',
+    ASSIGN_REVIEWERS: 'qc.review.assign_reviewers',
+  },
 } as const;
 
 // ============================================================================
@@ -571,5 +581,6 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'Notes': Object.values(PERMISSIONS.NOTES),
     'Calendar': [...Object.values(PERMISSIONS.CALENDAR), ...Object.values(PERMISSIONS.CALENDAR_MONTHS), ...Object.values(PERMISSIONS.CALENDAR_ITEMS)],
     'Creative Direction': Object.values(PERMISSIONS.CREATIVE),
+    'Quality Control': Object.values(PERMISSIONS.QC),
   };
 }
