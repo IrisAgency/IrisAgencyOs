@@ -248,17 +248,16 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                   <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Links</span>
                   <div className="mt-1 space-y-1">
                     {currentItem.referenceLinks.map((link, i) => (
-                      <a
+                      <button
                         key={i}
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                        onClick={e => e.stopPropagation()}
+                        type="button"
+                        onPointerDown={e => { e.stopPropagation(); }}
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); window.open(link.url, '_blank', 'noopener,noreferrer'); }}
+                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                       >
                         <ExternalLink className="w-3 h-3 shrink-0" />
                         <span className="truncate">{link.title || link.url}</span>
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -270,17 +269,16 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                   <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Files</span>
                   <div className="mt-1 space-y-1">
                     {currentItem.referenceFiles.map((file, i) => (
-                      <a
+                      <button
                         key={i}
-                        href={file.downloadURL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-sm text-iris-red hover:text-iris-red/80 transition-colors"
-                        onClick={e => e.stopPropagation()}
+                        type="button"
+                        onPointerDown={e => { e.stopPropagation(); }}
+                        onClick={e => { e.stopPropagation(); e.preventDefault(); window.open(file.downloadURL, '_blank', 'noopener,noreferrer'); }}
+                        className="flex items-center gap-1.5 text-sm text-iris-red hover:text-iris-red/80 transition-colors cursor-pointer"
                       >
                         <FileText className="w-3 h-3 shrink-0" />
                         <span className="truncate">{file.fileName}</span>
-                      </a>
+                      </button>
                     ))}
                   </div>
                 </div>
