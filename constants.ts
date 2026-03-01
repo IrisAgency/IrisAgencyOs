@@ -877,6 +877,22 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'notes.delete_own', module: 'Notes', name: 'Delete Own Notes', description: 'Can delete own notes' },
   { code: 'notes.manage_all', module: 'Notes', name: 'Manage All Notes', description: 'Can edit and delete any notes' },
   { code: 'dashboard.view_gm_urgent', module: 'Dashboard', name: 'View GM Urgent Panel', description: 'Can view GM urgent items on dashboard' },
+
+  // ==================== CREATIVE DIRECTION ====================
+  { code: 'creative.view', module: 'Creative Direction', name: 'View Creative Direction', description: '⭐ Controls sidebar visibility - Can access Creative Direction hub' },
+  { code: 'creative.manage', module: 'Creative Direction', name: 'Manage Creative Projects', description: 'Can create and manage creative projects' },
+  { code: 'creative.review', module: 'Creative Direction', name: 'Review Creative Work', description: 'Can review and provide feedback on creative work' },
+  { code: 'creative.upload', module: 'Creative Direction', name: 'Upload Creative Assets', description: 'Can upload assets to creative projects' },
+  { code: 'creative.approve', module: 'Creative Direction', name: 'Approve Creative Work', description: 'Can approve creative deliverables' },
+  { code: 'creative.reject', module: 'Creative Direction', name: 'Reject Creative Work', description: 'Can reject creative deliverables with feedback' },
+
+  // ==================== QUALITY CONTROL ====================
+  { code: 'qc.view', module: 'Quality Control', name: 'View Quality Control', description: '⭐ Controls sidebar visibility - Can access QC hub' },
+  { code: 'qc.manage', module: 'Quality Control', name: 'Manage QC', description: 'Full QC management - assign reviewers, override decisions' },
+  { code: 'qc.review.approve', module: 'Quality Control', name: 'QC Approve', description: 'Can approve tasks in QC review' },
+  { code: 'qc.review.reject', module: 'Quality Control', name: 'QC Reject', description: 'Can reject tasks in QC review' },
+  { code: 'qc.review.comment', module: 'Quality Control', name: 'QC Comment', description: 'Can comment on QC reviews' },
+  { code: 'qc.review.assign_reviewers', module: 'Quality Control', name: 'Assign QC Reviewers', description: 'Can assign reviewers to QC tasks' },
 ];
 
 export const DEFAULT_ROLES: RoleDefinition[] = [

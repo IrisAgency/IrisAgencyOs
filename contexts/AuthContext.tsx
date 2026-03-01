@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    const unsubscribeRoles = onSnapshot(collection(db, 'roles'), (snapshot) => {
+    const unsubscribeRoles = onSnapshot(collection(db, 'roles'), async (snapshot) => {
       if (snapshot.empty) {
         console.warn('⚠️ Roles collection is EMPTY - seeding with defaults');
         const batch = writeBatch(db);
@@ -95,6 +95,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         const loadedRoles = snapshot.docs.map(d => d.data() as RoleDefinition);
         console.log('✅ Loaded roles from Firestore:', loadedRoles.map(r => r.name));
+
+        // Smart sync: merge any NEW permissions from DEFAULT_ROLES into Firestore
+        // This only ADDS missing permissions, never removes admin-customized ones
+        try {
+          const syncBatch = writeBatch(db);
+          let needsSync = false;
+          for (const defaultRole of DEFAULT_ROLES) {
+            const firestoreRole = loadedRoles.find(r => r.id === defaultRole.id);
+            if (firestoreRole) {
+              const existingPerms = new Set(firestoreRole.permissions || []);
+              const newPerms = (defaultRole.permissions || []).filter(p => !existingPerms.has(p));
+              if (newPerms.length > 0) {
+                console.log(`🔄 Syncing ${newPerms.length} new permissions to role "${firestoreRole.name}":`, newPerms);
+                const mergedPermissions = [...(firestoreRole.permissions || []), ...newPerms];
+                syncBatch.update(doc(db, 'roles', defaultRole.id), { permissions: mergedPermissions });
+                needsSync = true;
+                // Update local state immediately so UI reflects changes
+                firestoreRole.permissions = mergedPermissions;
+              }
+            }
+          }
+          if (needsSync) {
+            await syncBatch.commit();
+            console.log('✅ Permission sync complete');
+          }
+        } catch (syncErr) {
+          console.error('⚠️ Permission sync error (non-fatal):', syncErr);
+        }
+
         setRoles(loadedRoles);
       }
     }, (error) => {
