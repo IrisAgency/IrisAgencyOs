@@ -307,8 +307,8 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         updatedAt: now,
       });
 
-      // Notify project creator (manager)
-      await notifyUsers({
+      // Notify project creator (manager) — non-blocking
+      notifyUsers({
         type: 'CREATIVE_SUBMITTED_FOR_REVIEW',
         title: 'Calendar Submitted for Review',
         message: `${currentUser.name} submitted a creative calendar for review.`,
@@ -316,7 +316,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         entityId: selectedProject.id,
         sendPush: true,
         createdBy: currentUser.id,
-      });
+      }).catch(err => console.warn('Notification failed (non-critical):', err));
       onNotify('CREATIVE_SUBMITTED_FOR_REVIEW', 'Calendar Submitted', 'A creative calendar was submitted for review', [selectedProject.createdBy], selectedProject.id);
     } catch (error) {
       console.error('Error submitting for review:', error);
@@ -340,8 +340,8 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         updatedBy: currentUser.id,
       });
 
-      // Notify manager
-      await notifyUsers({
+      // Notify manager — non-blocking
+      notifyUsers({
         type: 'CREATIVE_SUBMITTED_FOR_REVIEW',
         title: 'Calendar Updated & Resubmitted',
         message: `${currentUser.name} resubmitted a revised creative calendar for review.`,
@@ -349,7 +349,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         entityId: selectedProject.id,
         sendPush: true,
         createdBy: currentUser.id,
-      });
+      }).catch(err => console.warn('Notification failed (non-critical):', err));
       onNotify('CREATIVE_SUBMITTED_FOR_REVIEW', 'Calendar Resubmitted', 'A revised creative calendar was resubmitted', [selectedProject.createdBy], selectedProject.id);
     } catch (error) {
       console.error('Error resubmitting:', error);

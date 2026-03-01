@@ -66,6 +66,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [reviewComplete, setReviewComplete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
+  const [savingStrategy, setSavingStrategy] = useState(false);
 
   // Create Project Form
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -207,9 +208,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         updatedAt: now,
       });
 
-      // Notify copywriter
+      // Notify copywriter (non-blocking — don't let notification failures block project creation)
       const client = clients.find(c => c.id === selectedClientId);
-      await notifyUsers({
+      notifyUsers({
         type: 'CREATIVE_ASSIGNED',
         title: 'New Creative Assignment',
         message: `You've been assigned a creative project for ${client?.name || 'a client'}. Check Creative Direction for details.`,
@@ -217,7 +218,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         entityId: docRef.id,
         sendPush: true,
         createdBy: currentUser.id,
-      });
+      }).catch(err => console.warn('Notification failed (non-critical):', err));
       onNotify('CREATIVE_ASSIGNED', 'Creative Project Created', `Assigned to copywriter for ${client?.name || 'client'}`, [selectedCopywriterId], docRef.id);
 
       // Reset form
@@ -240,33 +241,19 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const handleCreateStrategy = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !selectedClientId) return;
-    setSaving(true);
+    setSavingStrategy(true);
 
     try {
       const now = new Date().toISOString();
-      let fileId: string | null = null;
+      let fileUrl: string | null = null;
 
-      if (strategyForm.type === 'file' && strategyFile && onUploadFile) {
-        const newFileId = `f${Date.now()}`;
-        const newFile: AgencyFile = {
-          id: newFileId,
-          projectId: selectedClientId,
-          taskId: null,
-          folderId: null,
-          uploaderId: currentUser.id,
-          name: strategyFile.name,
-          type: strategyFile.type,
-          size: strategyFile.size,
-          url: '',
-          version: 1,
-          isDeliverable: false,
-          isArchived: false,
-          tags: ['strategy', selectedClientId],
-          createdAt: now,
-        };
-        (newFile as any).file = strategyFile;
-        await onUploadFile(newFile);
-        fileId = newFileId;
+      // Upload strategy file directly to Firebase Storage
+      if (strategyForm.type === 'file' && strategyFile) {
+        const timestamp = Date.now();
+        const storagePath = `clients/${selectedClientId}/strategies/${timestamp}_${strategyFile.name}`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, strategyFile);
+        fileUrl = await getDownloadURL(storageRef);
       }
 
       const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -279,7 +266,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         monthLabel,
         title: strategyForm.title,
         type: strategyForm.type,
-        fileId: strategyForm.type === 'file' ? fileId : null,
+        fileId: null,
+        fileUrl: strategyForm.type === 'file' ? fileUrl : null,
         url: strategyForm.type === 'link' ? strategyForm.url : null,
         notes: strategyForm.notes,
         createdBy: currentUser.id,
@@ -295,7 +283,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
     } catch (error) {
       console.error('Error creating strategy:', error);
     } finally {
-      setSaving(false);
+      setSavingStrategy(false);
     }
   };
 
@@ -362,9 +350,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
           updatedAt: now,
         });
 
-        // Notify copywriter
+        // Notify copywriter (non-blocking)
         if (project?.assignedCopywriterId) {
-          await notifyUsers({
+          notifyUsers({
             type: 'CREATIVE_REVISION_REQUESTED',
             title: 'Revision Requested',
             message: 'Your creative calendar needs revision. Check the rejected items for feedback.',
@@ -372,7 +360,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             entityId: reviewingCalendar.creativeProjectId,
             sendPush: true,
             createdBy: currentUser.id,
-          });
+          }).catch(err => console.warn('Notification failed (non-critical):', err));
           onNotify('CREATIVE_REVISION_REQUESTED', 'Revision Requested', 'Creative calendar needs revision', [project.assignedCopywriterId], reviewingCalendar.creativeProjectId);
         }
       }
@@ -407,10 +395,10 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         userId: currentUser.id,
       });
 
-      // Notify copywriter
+      // Notify copywriter (non-blocking)
       const project = creativeProjects.find(p => p.id === reviewingCalendar.creativeProjectId);
       if (project?.assignedCopywriterId) {
-        await notifyUsers({
+        notifyUsers({
           type: 'CREATIVE_APPROVED',
           title: 'Calendar Approved & Activated',
           message: `Your creative calendar for ${client.name} has been approved and activated in the Calendar Department!`,
@@ -418,7 +406,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
           entityId: reviewingCalendar.creativeProjectId,
           sendPush: true,
           createdBy: currentUser.id,
-        });
+        }).catch(err => console.warn('Notification failed (non-critical):', err));
         onNotify('CREATIVE_APPROVED', 'Calendar Approved', `Creative calendar for ${client.name} activated`, [project.assignedCopywriterId], reviewingCalendar.creativeProjectId);
       }
 
@@ -1045,8 +1033,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <button type="button" onClick={() => setShowStrategyModal(false)} className="flex-1 px-4 py-2 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors">
                   Cancel
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg font-medium hover:brightness-110 disabled:opacity-50 transition-all">
-                  {saving ? 'Saving...' : 'Save Strategy'}
+                <button type="submit" disabled={savingStrategy} className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg font-medium hover:brightness-110 disabled:opacity-50 transition-all">
+                  {savingStrategy ? 'Saving...' : 'Save Strategy'}
                 </button>
               </div>
             </form>
