@@ -230,6 +230,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       setMonthKey(new Date().toISOString().slice(0, 7));
     } catch (error) {
       console.error('Error creating project:', error);
+      alert('Error creating project. Please try again. Check console for details.');
     } finally {
       setSaving(false);
     }
@@ -282,6 +283,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       setStrategyFile(null);
     } catch (error) {
       console.error('Error creating strategy:', error);
+      alert('Error saving strategy. Please try again. Check console for details.');
     } finally {
       setSavingStrategy(false);
     }
