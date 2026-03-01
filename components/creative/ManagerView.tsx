@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
 import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, Client, User, CalendarMonth, CalendarItem, AgencyFile, ClientMarketingStrategy, NotificationType, CreativeRejectionReference } from '../../types';
@@ -10,7 +10,7 @@ import { activateCreativeCalendar } from './CalendarActivation';
 import {
   Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
   ChevronDown, ChevronRight, Users, Calendar, Check, AlertTriangle, 
-  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2, Trash2
+  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2
 } from 'lucide-react';
 
 interface ManagerViewProps {
@@ -67,7 +67,6 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingStrategy, setSavingStrategy] = useState(false);
-  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   // Create Project Form
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -94,9 +93,6 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // Review results tracking
   const [reviewResults, setReviewResults] = useState<Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }>>({});
 
-  // Strategy lookup map for project cards (id → strategy)
-  const [projectStrategies, setProjectStrategies] = useState<Record<string, ClientMarketingStrategy>>({});
-
   // Copywriter users (Copywriter role first, then other active users as fallback)
   const copywriters = users
     .filter(u => u.status === 'active')
@@ -105,32 +101,6 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       const bIsCW = b.role === 'Copywriter' ? 0 : 1;
       return aIsCW - bIsCW;
     });
-
-  // Load strategies for all projects that have strategyId
-  useEffect(() => {
-    const strategyIds = [...new Set(creativeProjects.filter(p => p.strategyId).map(p => p.strategyId!))];
-    const missingIds = strategyIds.filter(id => !projectStrategies[id]);
-    if (missingIds.length === 0) return;
-
-    const loadMissing = async () => {
-      try {
-        // Firestore 'in' queries support up to 30 items
-        for (let i = 0; i < missingIds.length; i += 30) {
-          const batch = missingIds.slice(i, i + 30);
-          const q = query(collection(db, 'client_strategies'), where('__name__', 'in', batch));
-          const snap = await getDocs(q);
-          const map: Record<string, ClientMarketingStrategy> = {};
-          snap.docs.forEach(d => {
-            map[d.id] = { id: d.id, ...d.data() } as ClientMarketingStrategy;
-          });
-          setProjectStrategies(prev => ({ ...prev, ...map }));
-        }
-      } catch (error) {
-        console.error('Error loading project strategies:', error);
-      }
-    };
-    loadMissing();
-  }, [creativeProjects]);
 
   // Load strategies when client changes
   useEffect(() => {
@@ -458,76 +428,6 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   // ============================================
-  // DELETE PROJECT & ALL RELATED DATA
-  // ============================================
-  const handleDeleteProject = async (projectId: string) => {
-    const project = creativeProjects.find(p => p.id === projectId);
-    if (!project) return;
-
-    const clientName = clients.find(c => c.id === project.clientId)?.name || 'Unknown';
-    const confirmed = window.confirm(
-      `⚠️ Permanently delete project for "${clientName}" (${project.monthKey || ''})? This will delete:\n\n` +
-      `• The creative project\n` +
-      `• All associated calendars\n` +
-      `• All calendar items\n` +
-      `• Uploaded brief file (if any)\n\n` +
-      `This action cannot be undone.`
-    );
-    if (!confirmed) return;
-
-    setDeletingProjectId(projectId);
-    try {
-      // 1. Find all calendars for this project
-      const calendarsSnap = await getDocs(
-        query(collection(db, 'creative_calendars'), where('creativeProjectId', '==', projectId))
-      );
-      const calendarIds = calendarsSnap.docs.map(d => d.id);
-
-      // 2. Delete all calendar items for each calendar
-      for (const calId of calendarIds) {
-        const itemsSnap = await getDocs(
-          query(collection(db, 'creative_calendar_items'), where('creativeCalendarId', '==', calId))
-        );
-        for (const itemDoc of itemsSnap.docs) {
-          // Delete reference files from storage if any
-          const itemData = itemDoc.data();
-          if (itemData.referenceFiles?.length) {
-            for (const rf of itemData.referenceFiles) {
-              if (rf.storagePath) {
-                try { await deleteObject(ref(storage, rf.storagePath)); } catch { /* file may not exist */ }
-              }
-            }
-          }
-          await deleteDoc(doc(db, 'creative_calendar_items', itemDoc.id));
-        }
-      }
-
-      // 3. Delete all calendars
-      for (const calDoc of calendarsSnap.docs) {
-        await deleteDoc(doc(db, 'creative_calendars', calDoc.id));
-      }
-
-      // 4. Delete brief file from storage if present
-      if (project.briefFile?.url) {
-        try {
-          const briefRef = ref(storage, project.briefFile.url);
-          await deleteObject(briefRef);
-        } catch { /* file may have been removed already */ }
-      }
-
-      // 5. Delete the project document
-      await deleteDoc(doc(db, 'creative_projects', projectId));
-
-      console.log(`[Creative] Deleted project ${projectId} and all related data`);
-    } catch (error) {
-      console.error('Error deleting project:', error);
-      alert('Error deleting project: ' + (error as Error).message);
-    } finally {
-      setDeletingProjectId(null);
-    }
-  };
-
-  // ============================================
   // ARCHIVE
   // ============================================
   const handleArchive = async (projectId: string) => {
@@ -561,15 +461,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // RENDER: REVIEW MODE
   // ============================================
   if (reviewingCalendar) {
-    const allCalendarItems = creativeCalendarItems.filter(
+    const calendarItemsForReview = creativeCalendarItems.filter(
       i => i.creativeCalendarId === reviewingCalendar.id
     );
-    // If calendar was resubmitted (UPDATED), only show items needing re-review (PENDING)
-    // Previously approved items stay approved and don't need to be swiped again
-    const calendarItemsForReview = reviewingCalendar.status === 'UPDATED'
-      ? allCalendarItems.filter(i => i.reviewStatus === 'PENDING')
-      : allCalendarItems;
-    const alreadyApprovedCount = allCalendarItems.length - calendarItemsForReview.length;
     const client = clients.find(c => c.id === reviewingCalendar.clientId);
     const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
     const allReviewed = calendarItemsForReview.length > 0 && 
@@ -581,17 +475,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <div className={`${surface} rounded-xl p-5`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-iris-white">
-                {reviewingCalendar.status === 'UPDATED' ? 'Revision Review' : 'Calendar Review'}
-              </h2>
-              <p className="text-sm text-iris-white/60">
-                {client?.name} — {reviewingCalendar.monthKey}
-                {alreadyApprovedCount > 0 && (
-                  <span className="ml-2 text-emerald-400/70">
-                    ({alreadyApprovedCount} already approved, {calendarItemsForReview.length} to review)
-                  </span>
-                )}
-              </p>
+              <h2 className="text-lg font-bold text-iris-white">Calendar Review</h2>
+              <p className="text-sm text-iris-white/60">{client?.name} — {reviewingCalendar.monthKey}</p>
             </div>
             <button
               onClick={() => { setReviewingCalendar(null); setReviewComplete(false); setReviewResults({}); }}
@@ -795,25 +680,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       </div>
 
                       <div className="flex items-center gap-1.5">
-                        {/* View strategy */}
-                        {project.strategyId && (() => {
-                          const strat = projectStrategies[project.strategyId!];
-                          const stratHref = strat
-                            ? (strat.type === 'link' ? strat.url : (strat.fileUrl || strat.url))
-                            : null;
-                          return stratHref ? (
-                            <a
-                              href={stratHref}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-2 text-iris-white/50 hover:text-iris-red rounded-lg hover:bg-iris-white/5 transition-colors"
-                              title="View Strategy"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </a>
-                          ) : null;
-                        })()}
-                        {/* View brief */}
+                        {/* View strategy/brief */}
                         {project.briefFile?.url && (
                           <a
                             href={project.briefFile.url}
@@ -844,17 +711,6 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                             <Archive className="w-4 h-4" />
                           </button>
                         )}
-                        {/* Delete */}
-                        <button
-                          onClick={() => handleDeleteProject(project.id)}
-                          disabled={deletingProjectId === project.id}
-                          className="p-2 text-iris-white/30 hover:text-rose-400 rounded-lg hover:bg-rose-500/10 transition-colors disabled:opacity-50"
-                          title="Delete Project"
-                        >
-                          {deletingProjectId === project.id
-                            ? <Clock className="w-4 h-4 animate-spin" />
-                            : <Trash2 className="w-4 h-4" />}
-                        </button>
                       </div>
                     </div>
                   </div>
@@ -885,25 +741,13 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                             <span className="font-medium text-iris-white/70">{client?.name || 'Unknown'}</span>
                             <span className="text-xs text-iris-white/40 ml-2">Archived {project.archivedAt ? new Date(project.archivedAt).toLocaleDateString() : ''}</span>
                           </div>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleUnarchive(project.id)}
-                              className="p-1.5 text-iris-white/40 hover:text-iris-white/70 transition-colors"
-                              title="Unarchive"
-                            >
-                              <ArchiveRestore className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProject(project.id)}
-                              disabled={deletingProjectId === project.id}
-                              className="p-1.5 text-iris-white/30 hover:text-rose-400 transition-colors disabled:opacity-50"
-                              title="Delete Project"
-                            >
-                              {deletingProjectId === project.id
-                                ? <Clock className="w-4 h-4 animate-spin" />
-                                : <Trash2 className="w-4 h-4" />}
-                            </button>
-                          </div>
+                          <button
+                            onClick={() => handleUnarchive(project.id)}
+                            className="p-1.5 text-iris-white/40 hover:text-iris-white/70 transition-colors"
+                            title="Unarchive"
+                          >
+                            <ArchiveRestore className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
                     );

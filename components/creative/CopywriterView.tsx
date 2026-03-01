@@ -436,25 +436,18 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           <div className={`${surface} rounded-xl p-4`}>
             <h3 className="text-sm font-semibold text-iris-white/70 mb-3">Project Resources</h3>
             <div className="flex flex-wrap gap-3">
-              {strategy && (() => {
-                const strategyHref = strategy.type === 'link'
-                  ? (strategy.url || '#')
-                  : (strategy.fileUrl || strategy.url || '#');
-                const canOpen = strategyHref !== '#';
-                return (
-                  <a
-                    href={canOpen ? strategyHref : undefined}
-                    target={canOpen ? '_blank' : undefined}
-                    rel="noreferrer"
-                    onClick={canOpen ? undefined : (e) => e.preventDefault()}
-                    className={`flex items-center gap-2 px-3 py-2 bg-iris-white/5 rounded-lg text-sm text-iris-white/80 hover:bg-iris-white/10 transition-colors ${!canOpen ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <FileText className="w-4 h-4 text-iris-red" />
-                    Strategy: {strategy.title}
-                    {canOpen && <ExternalLink className="w-3 h-3" />}
-                  </a>
-                );
-              })()}
+              {strategy && (
+                <a
+                  href={strategy.type === 'link' ? (strategy.url || '#') : '#'}
+                  target={strategy.type === 'link' ? '_blank' : undefined}
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 bg-iris-white/5 rounded-lg text-sm text-iris-white/80 hover:bg-iris-white/10 transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-iris-red" />
+                  Strategy: {strategy.title}
+                  {strategy.type === 'link' && <ExternalLink className="w-3 h-3" />}
+                </a>
+              )}
               {selectedProject.briefFile?.url && (
                 <a
                   href={selectedProject.briefFile.url}
