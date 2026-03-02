@@ -28,7 +28,7 @@ interface QualityControlHubProps {
   approvalSteps: ApprovalStep[];
   taskComments: TaskComment[];
   files: AgencyFile[];
-  currentUser: { uid: string; email: string | null; displayName: string | null };
+  currentUser: { id: string; email: string | null; displayName: string | null; name?: string; role?: string };
   checkPermission: (code: string) => boolean;
   onUpdateTask: (taskId: string, data: Partial<Task>) => void;
   onNotify: (type: NotificationType, title: string, message: string, recipientIds?: string[], entityId?: string, actionUrl?: string) => void;
@@ -92,7 +92,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
 
   // ─── Derived data ─────────────────────────────────────────────────
-  const currentUserObj = useMemo(() => users.find(u => u.id === currentUser.uid), [users, currentUser.uid]);
+  const currentUserObj = useMemo(() => users.find(u => u.id === currentUser.id), [users, currentUser.id]);
   const canManage = checkPermission(PERMISSIONS.QC.MANAGE);
   const canReview = checkPermission(PERMISSIONS.QC.REVIEW_APPROVE) || checkPermission(PERMISSIONS.QC.REVIEW_REJECT);
 
@@ -108,18 +108,18 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
       // Managers (GM/CD with qc.manage) can see ALL pending QC tasks
       if (canManage) {
         // Still skip tasks the manager already reviewed
-        const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.uid);
+        const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.id);
         if (myReview && myReview.decision !== 'PENDING') return false;
         return true;
       }
       // Regular reviewers only see tasks they're assigned to
-      if (!t.qc?.reviewers?.includes(currentUser.uid)) return false;
+      if (!t.qc?.reviewers?.includes(currentUser.id)) return false;
       // Check if user hasn't already reviewed
-      const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.uid);
+      const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.id);
       if (myReview && myReview.decision !== 'PENDING') return false;
       return true;
     });
-  }, [qcTasks, qcReviews, currentUser.uid, canManage]);
+  }, [qcTasks, qcReviews, currentUser.id, canManage]);
 
   // Filtered tasks for the all/history tabs
   const filteredTasks = useMemo(() => {
@@ -183,14 +183,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     try {
       await submitQCReview({
         task,
-        reviewerId: currentUser.uid,
+        reviewerId: currentUser.id,
         reviewerRole: currentUserObj?.role || 'Unknown',
         decision: 'APPROVED',
         note: null,
         attachments: [],
         allQCReviews: qcReviews,
         users,
-        createdBy: currentUser.uid,
+        createdBy: currentUser.id,
       });
     } catch (err) {
       console.error('QC approve error:', err);
@@ -202,7 +202,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
         setCurrentIndex(prev => Math.min(prev + 1, myPendingTasks.length - 1));
       }, 500);
     }
-  }, [isSubmitting, tasks, currentUser.uid, currentUserObj, qcReviews, users, myPendingTasks.length]);
+  }, [isSubmitting, tasks, currentUser.id, currentUserObj, qcReviews, users, myPendingTasks.length]);
 
   const openRejectModal = useCallback((taskId: string) => {
     setRejectingTaskId(taskId);
@@ -225,14 +225,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
 
       await submitQCReview({
         task,
-        reviewerId: currentUser.uid,
+        reviewerId: currentUser.id,
         reviewerRole: currentUserObj?.role || 'Unknown',
         decision: 'REJECTED',
         note: rejectNote,
         attachments,
         allQCReviews: qcReviews,
         users,
-        createdBy: currentUser.uid,
+        createdBy: currentUser.id,
       });
 
       setRejectModalOpen(false);
@@ -247,7 +247,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [rejectingTaskId, rejectNote, rejectLinks, isSubmitting, tasks, currentUser.uid, currentUserObj, qcReviews, users, myPendingTasks.length]);
+  }, [rejectingTaskId, rejectNote, rejectLinks, isSubmitting, tasks, currentUser.id, currentUserObj, qcReviews, users, myPendingTasks.length]);
 
   // ─── Reviewer management ──────────────────────────────────────────
   const handleToggleReviewer = useCallback(async (taskId: string, userId: string) => {
@@ -605,7 +605,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
                 <Users2 className="w-3.5 h-3.5" />
               </button>
             )}
-            {canReview && (qcStatus === 'PENDING' || qcStatus === 'NEEDS_INTERVENTION') && (canManage || task.qc?.reviewers?.includes(currentUser.uid)) && (
+            {canReview && (qcStatus === 'PENDING' || qcStatus === 'NEEDS_INTERVENTION') && (canManage || task.qc?.reviewers?.includes(currentUser.id)) && (
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleApprove(task.id)}

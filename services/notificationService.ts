@@ -267,7 +267,7 @@ export async function createNotification(params: CreateNotificationParams): Prom
       }
 
       const notificationRef = doc(collection(db, 'notifications'));
-      const notificationData: Omit<Notification, 'id'> = {
+      const notificationData: Record<string, any> = {
         userId,
         type,
         title,
@@ -277,12 +277,13 @@ export async function createNotification(params: CreateNotificationParams): Prom
         entityType,
         entityId,
         actionUrl,
-        actions,
         isRead: false,
         createdAt,
-        groupKey,
-        dedupeKey,
       };
+      // Only include optional fields if defined (Firestore rejects undefined values)
+      if (actions !== undefined) notificationData.actions = actions;
+      if (groupKey !== undefined) notificationData.groupKey = groupKey;
+      if (dedupeKey !== undefined) notificationData.dedupeKey = dedupeKey;
 
       batch.set(notificationRef, notificationData);
       notificationCount++;
@@ -340,7 +341,7 @@ export async function createBatchNotifications(
       }
 
       const notificationRef = doc(collection(db, 'notifications'));
-      const notificationData: Omit<Notification, 'id'> = {
+      const notificationData: Record<string, any> = {
         userId: recipientId,
         type,
         title,
@@ -350,12 +351,13 @@ export async function createBatchNotifications(
         entityType,
         entityId,
         actionUrl,
-        actions,
         isRead: false,
         createdAt,
-        groupKey,
-        dedupeKey,
       };
+      // Only include optional fields if defined (Firestore rejects undefined values)
+      if (actions !== undefined) notificationData.actions = actions;
+      if (groupKey !== undefined) notificationData.groupKey = groupKey;
+      if (dedupeKey !== undefined) notificationData.dedupeKey = dedupeKey;
 
       batch.set(notificationRef, notificationData);
     }
