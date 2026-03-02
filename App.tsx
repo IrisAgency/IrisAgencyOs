@@ -544,6 +544,7 @@ const App: React.FC = () => {
       if (updatedTask.status === ('awaiting_review' as TaskStatus)) {
         const template = workflowTemplates.find(w => w.id === updatedTask.workflowTemplateId);
         const qcEnabled = shouldEnableQC(updatedTask, (template as any)?.requiresQC);
+        console.log('[QC Trigger]', { taskId: updatedTask.id, title: updatedTask.title, templateId: updatedTask.workflowTemplateId, templateRequiresQC: (template as any)?.requiresQC, qcEnabled, qcOverride: updatedTask.qcOverride, hasExistingQC: !!updatedTask.qc?.enabled });
 
         if (qcEnabled) {
           // If resubmission after revision, reset QC
@@ -558,6 +559,7 @@ const App: React.FC = () => {
           // Initialize QC block if not already enabled
           if (!updatedTask.qc?.enabled) {
             const qcBlock = initializeQCBlock(updatedTask, projectMembers, activeUsers, systemRoles);
+            console.log('[QC Block Initialized]', { reviewers: qcBlock.reviewers, requiredApprovals: qcBlock.requiredApprovals, status: qcBlock.status });
             await updateDoc(doc(db, 'tasks', updatedTask.id), { qc: qcBlock });
 
             // Notify QC reviewers

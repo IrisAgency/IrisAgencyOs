@@ -105,14 +105,21 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const myPendingTasks = useMemo(() => {
     return qcTasks.filter(t => {
       if (t.qc?.status !== 'PENDING' && t.qc?.status !== 'NEEDS_INTERVENTION') return false;
-      // Check if current user is a reviewer
+      // Managers (GM/CD with qc.manage) can see ALL pending QC tasks
+      if (canManage) {
+        // Still skip tasks the manager already reviewed
+        const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.uid);
+        if (myReview && myReview.decision !== 'PENDING') return false;
+        return true;
+      }
+      // Regular reviewers only see tasks they're assigned to
       if (!t.qc?.reviewers?.includes(currentUser.uid)) return false;
       // Check if user hasn't already reviewed
       const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.uid);
       if (myReview && myReview.decision !== 'PENDING') return false;
       return true;
     });
-  }, [qcTasks, qcReviews, currentUser.uid]);
+  }, [qcTasks, qcReviews, currentUser.uid, canManage]);
 
   // Filtered tasks for the all/history tabs
   const filteredTasks = useMemo(() => {
@@ -598,7 +605,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
                 <Users2 className="w-3.5 h-3.5" />
               </button>
             )}
-            {canReview && (qcStatus === 'PENDING' || qcStatus === 'NEEDS_INTERVENTION') && task.qc?.reviewers?.includes(currentUser.uid) && (
+            {canReview && (qcStatus === 'PENDING' || qcStatus === 'NEEDS_INTERVENTION') && (canManage || task.qc?.reviewers?.includes(currentUser.uid)) && (
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleApprove(task.id)}

@@ -171,18 +171,28 @@ export function initializeQCBlock(
     }
   }
 
-  // Fallback: if no project-level reviewers found, look globally
-  if (reviewerIds.length === 0) {
+  // Always ensure GM/CD are included as reviewers (they have override/veto power)
+  // regardless of whether they're project members
+  for (const u of users) {
+    if (u.status === 'inactive') continue;
+    if (requiredRoles.some(r => r.toLowerCase() === u.role.toLowerCase())) {
+      if (!reviewerIds.includes(u.id)) {
+        reviewerIds.push(u.id);
+      }
+      if (!requiredApprovalIds.includes(u.id)) {
+        requiredApprovalIds.push(u.id);
+      }
+    }
+  }
+
+  // Fallback: if still no project-level reviewers found (no AM/Copywriter), look globally for all reviewer roles
+  if (reviewerIds.length === requiredApprovalIds.length) {
+    // Only GM/CD found so far — add other reviewer roles globally
     for (const u of users) {
       if (u.status === 'inactive') continue;
       if (reviewerRoles.some(r => r.toLowerCase() === u.role.toLowerCase())) {
         if (!reviewerIds.includes(u.id)) {
           reviewerIds.push(u.id);
-        }
-      }
-      if (requiredRoles.some(r => r.toLowerCase() === u.role.toLowerCase())) {
-        if (!requiredApprovalIds.includes(u.id)) {
-          requiredApprovalIds.push(u.id);
         }
       }
     }
@@ -263,6 +273,16 @@ export async function submitQCReview(params: {
 
   if (!task.qc) {
     throw new Error('Task does not have QC enabled');
+  }
+
+  // Auto-add manager to reviewers/requiredApprovals if they're not already listed
+  // This handles cases where a GM/CD with qc.manage reviews a task they weren't assigned to
+  const reviewerIsInList = task.qc.reviewers.includes(reviewerId);
+  if (!reviewerIsInList) {
+    task.qc.reviewers = [...task.qc.reviewers, reviewerId];
+    if (isOverrideRole(reviewerRole)) {
+      task.qc.requiredApprovals = [...task.qc.requiredApprovals, reviewerId];
+    }
   }
 
   const now = new Date().toISOString();
