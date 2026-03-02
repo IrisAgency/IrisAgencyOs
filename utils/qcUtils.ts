@@ -23,6 +23,7 @@ import type {
   ProjectMember,
   UserRole,
   TaskStatus,
+  ApprovalStep,
 } from '../types';
 
 // Roles that have override/veto power in QC
@@ -409,6 +410,286 @@ export async function submitQCReview(params: {
   }
 
   return { newStatus };
+}
+
+/**
+ * Approve a task step from the QC Hub.
+ * This links the QC review with the approval step system:
+ * 1. Marks the user's pending approval_step as approved
+ * 2. Activates the next approval step
+ * 3. Writes a QC review record for the reviewer
+ * 4. When all steps are approved, applies the final QC/task status
+ */
+export async function approveFromQCHub(params: {
+  task: Task;
+  reviewerId: string;
+  reviewerRole: string;
+  approvalSteps: ApprovalStep[];
+  allQCReviews: QCReview[];
+  users: User[];
+  workflowTemplates: { id: string; requiresQC?: boolean; steps: any[] }[];
+  createdBy: string;
+}): Promise<{ success: boolean; message: string }> {
+  const { task, reviewerId, reviewerRole, approvalSteps, allQCReviews, users, workflowTemplates, createdBy } = params;
+
+  const taskSteps = approvalSteps.filter(s => s.taskId === task.id).sort((a, b) => a.level - b.level);
+  const pendingStep = taskSteps.find(s => s.approverId === reviewerId && s.status === 'pending');
+
+  if (!pendingStep) {
+    return { success: false, message: 'No pending approval step found for this user.' };
+  }
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  // 1. Mark current step approved
+  batch.update(doc(db, 'approval_steps', pendingStep.id), {
+    status: 'approved',
+    reviewedAt: now,
+    comment: 'Approved',
+  });
+
+  // 2. Write QC review record for traceability
+  const reviewDocId = `${task.id}_${reviewerId}`;
+  const reviewDoc: QCReview = {
+    id: reviewDocId,
+    taskId: task.id,
+    projectId: task.projectId,
+    clientId: task.client || '',
+    workflowId: task.workflowTemplateId || null,
+    taskStatusSnapshot: task.status,
+    reviewerId,
+    reviewerRole,
+    decision: 'APPROVED',
+    note: null,
+    attachments: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  const existingReview = allQCReviews.find(r => r.taskId === task.id && r.reviewerId === reviewerId);
+  if (existingReview) reviewDoc.createdAt = existingReview.createdAt;
+  batch.set(doc(db, 'task_qc_reviews', reviewDocId), reviewDoc);
+
+  // 3. Activate next step or finalize
+  const nextLevel = pendingStep.level + 1;
+  const nextStep = taskSteps.find(s => s.level === nextLevel);
+
+  const taskUpdate: Record<string, any> = { updatedAt: now };
+
+  if (nextStep) {
+    // Activate next step
+    batch.update(doc(db, 'approval_steps', nextStep.id), { status: 'pending' });
+    taskUpdate.currentApprovalLevel = nextLevel;
+  } else {
+    // All approval steps done — finalize task status
+    if (task.revisionContext?.active) {
+      taskUpdate.revisionContext = { ...task.revisionContext, active: false };
+    }
+
+    if (task.isClientApprovalRequired) {
+      taskUpdate.status = 'client_review';
+    } else {
+      taskUpdate.status = 'approved';
+    }
+
+    // Update QC block to APPROVED
+    if (task.qc) {
+      taskUpdate.qc = { ...task.qc, status: 'APPROVED', lastUpdatedAt: now };
+    }
+  }
+
+  batch.update(doc(db, 'tasks', task.id), taskUpdate);
+  await batch.commit();
+
+  // Notifications
+  try {
+    if (!nextStep) {
+      // All approved - notify assignees
+      const recipientIds = [...(task.assigneeIds || []), task.createdBy].filter(Boolean);
+      await notifyUsers({
+        type: 'QC_APPROVED',
+        title: `Approved: ${task.title}`,
+        message: `Task "${task.title}" has been fully approved`,
+        recipientIds: [...new Set(recipientIds)].filter(id => id !== reviewerId),
+        entityId: task.id,
+        actionUrl: `/tasks/${task.id}`,
+        sendPush: true,
+        createdBy,
+      });
+    } else {
+      // Notify next approver
+      await notifyUsers({
+        type: 'APPROVAL_REQUESTED',
+        title: `Approval Needed: ${task.title}`,
+        message: `Task "${task.title}" is awaiting your approval`,
+        recipientIds: [nextStep.approverId].filter(id => id !== reviewerId),
+        entityId: task.id,
+        actionUrl: `/quality-control`,
+        sendPush: true,
+        createdBy,
+      });
+    }
+  } catch (err) {
+    console.error('QC approve notification error:', err);
+  }
+
+  return { success: true, message: nextStep ? 'Step approved, next reviewer notified.' : 'All steps approved!' };
+}
+
+/**
+ * Reject a task from the QC Hub.
+ * This links the QC review with the approval step system:
+ * 1. Marks the user's pending approval_step as revision_requested
+ * 2. Creates a revision context on the task
+ * 3. Writes a QC review record with REJECTED decision
+ * 4. Moves task to revisions_required
+ */
+export async function rejectFromQCHub(params: {
+  task: Task;
+  reviewerId: string;
+  reviewerRole: string;
+  note: string;
+  attachments: QCReviewAttachment[];
+  approvalSteps: ApprovalStep[];
+  allQCReviews: QCReview[];
+  users: User[];
+  createdBy: string;
+}): Promise<{ success: boolean; message: string }> {
+  const { task, reviewerId, reviewerRole, note, attachments, approvalSteps, allQCReviews, users, createdBy } = params;
+
+  const taskSteps = approvalSteps.filter(s => s.taskId === task.id).sort((a, b) => a.level - b.level);
+  const pendingStep = taskSteps.find(s => s.approverId === reviewerId && s.status === 'pending');
+
+  if (!pendingStep) {
+    return { success: false, message: 'No pending approval step found for this user.' };
+  }
+
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  // 1. Mark current step as revision_requested
+  batch.update(doc(db, 'approval_steps', pendingStep.id), {
+    status: 'revision_requested',
+    reviewedAt: now,
+    comment: note,
+  });
+
+  // 2. Write QC review record
+  const reviewDocId = `${task.id}_${reviewerId}`;
+  const reviewDoc: QCReview = {
+    id: reviewDocId,
+    taskId: task.id,
+    projectId: task.projectId,
+    clientId: task.client || '',
+    workflowId: task.workflowTemplateId || null,
+    taskStatusSnapshot: task.status,
+    reviewerId,
+    reviewerRole,
+    decision: 'REJECTED',
+    note,
+    attachments: attachments || [],
+    createdAt: now,
+    updatedAt: now,
+  };
+  const existingReview = allQCReviews.find(r => r.taskId === task.id && r.reviewerId === reviewerId);
+  if (existingReview) reviewDoc.createdAt = existingReview.createdAt;
+  batch.set(doc(db, 'task_qc_reviews', reviewDocId), reviewDoc);
+
+  // 3. Create revision context and update task
+  const currentCycle = (task.revisionHistory?.length || 0) + 1;
+  const revisionContext = {
+    active: true,
+    requestedByUserId: reviewerId,
+    requestedByStepId: pendingStep.id,
+    assignedToUserId: task.assigneeIds?.[0] || task.createdBy,
+    requestedAt: now,
+    message: note || 'Revisions requested',
+    cycle: currentCycle,
+  };
+
+  const newHistory = [
+    ...(task.revisionHistory || []),
+    {
+      cycle: currentCycle,
+      stepLevel: pendingStep.level,
+      requestedBy: reviewerId,
+      assignedTo: task.assigneeIds?.[0] || task.createdBy,
+      comment: note,
+      date: now,
+    },
+  ];
+
+  const taskUpdate: Record<string, any> = {
+    status: 'revisions_required',
+    revisionContext,
+    revisionHistory: newHistory,
+    assigneeIds: [task.assigneeIds?.[0] || task.createdBy],
+    updatedAt: now,
+  };
+
+  // Update QC block to REJECTED
+  if (task.qc) {
+    taskUpdate.qc = { ...task.qc, status: 'REJECTED', lastUpdatedAt: now };
+  }
+
+  batch.update(doc(db, 'tasks', task.id), taskUpdate);
+  await batch.commit();
+
+  // Notifications
+  try {
+    const recipientIds = [...(task.assigneeIds || []), task.createdBy].filter(Boolean);
+    await notifyUsers({
+      type: 'QC_REJECTED',
+      title: `Revisions Requested: ${task.title}`,
+      message: note || `Task "${task.title}" needs revisions`,
+      recipientIds: [...new Set(recipientIds)].filter(id => id !== reviewerId),
+      entityId: task.id,
+      actionUrl: `/tasks/${task.id}`,
+      sendPush: true,
+      createdBy,
+    });
+  } catch (err) {
+    console.error('QC reject notification error:', err);
+  }
+
+  return { success: true, message: 'Revisions requested.' };
+}
+
+/**
+ * Sync an approval action from TaskDetailView to the QC review system.
+ * Called when someone approves/rejects from the task card to keep QC records in sync.
+ */
+export async function syncApprovalToQCReview(params: {
+  task: Task;
+  reviewerId: string;
+  reviewerRole: string;
+  decision: 'APPROVED' | 'REJECTED';
+  note: string | null;
+}): Promise<void> {
+  const { task, reviewerId, reviewerRole, decision, note } = params;
+  
+  if (!task.qc?.enabled) return; // No QC to sync with
+
+  const now = new Date().toISOString();
+  const reviewDocId = `${task.id}_${reviewerId}`;
+
+  const reviewDoc: QCReview = {
+    id: reviewDocId,
+    taskId: task.id,
+    projectId: task.projectId,
+    clientId: task.client || '',
+    workflowId: task.workflowTemplateId || null,
+    taskStatusSnapshot: task.status,
+    reviewerId,
+    reviewerRole,
+    decision,
+    note,
+    attachments: [],
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await setDoc(doc(db, 'task_qc_reviews', reviewDocId), reviewDoc);
 }
 
 /**

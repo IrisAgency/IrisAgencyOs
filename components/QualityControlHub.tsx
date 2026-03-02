@@ -1,20 +1,21 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
-import { useSpring, animated, to as interpolate } from '@react-spring/web';
+import React, { useState, useMemo, useCallback } from 'react';
+import { useSpring, animated } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
 import {
   ShieldCheck, CheckCircle2, XCircle, AlertTriangle,
   ChevronLeft, ChevronRight, Filter, Users2, Clock,
   Link as LinkIcon, Paperclip, Plus, X, MessageSquare,
-  Eye, ArrowRight, User as UserIcon, RefreshCcw, Loader2,
-  FileText, Calendar, Layers, Search
+  Eye, ArrowRight, User as UserIcon, Loader2,
+  FileText, Calendar, Layers, Search, GitMerge, ThumbsUp,
+  CornerUpLeft, ChevronDown
 } from 'lucide-react';
 import {
   Task, User, Project, Client, ProjectMember, WorkflowTemplate,
   ApprovalStep, TaskComment, AgencyFile, QCReview, QCReviewAttachment,
-  NotificationType, QCStatus, TaskStatus
+  NotificationType, TaskStatus, ApprovalStatus
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
-import { submitQCReview } from '../utils/qcUtils';
+import { approveFromQCHub, rejectFromQCHub } from '../utils/qcUtils';
 
 // ─── Props ────────────────────────────────────────────────────────────
 interface QualityControlHubProps {
@@ -30,18 +31,33 @@ interface QualityControlHubProps {
   files: AgencyFile[];
   currentUser: { id: string; email: string | null; displayName: string | null; name?: string; role?: string };
   checkPermission: (code: string) => boolean;
-  onUpdateTask: (taskId: string, data: Partial<Task>) => void;
+  onUpdateTask: (task: Task) => void;
   onNotify: (type: NotificationType, title: string, message: string, recipientIds?: string[], entityId?: string, actionUrl?: string) => void;
   onUploadFile: (file: AgencyFile) => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────
-const statusColors: Record<QCStatus, { bg: string; text: string; border: string; icon: React.ReactNode }> = {
-  PENDING: { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-500/30', icon: <Clock className="w-4 h-4" /> },
-  APPROVED: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30', icon: <CheckCircle2 className="w-4 h-4" /> },
-  REJECTED: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30', icon: <XCircle className="w-4 h-4" /> },
-  NEEDS_INTERVENTION: { bg: 'bg-purple-500/10', text: 'text-purple-300', border: 'border-purple-500/30', icon: <AlertTriangle className="w-4 h-4" /> },
+const stepStatusConfig: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
+  pending: { bg: 'bg-amber-500/10', text: 'text-amber-300', border: 'border-amber-500/30', dot: 'bg-amber-400', label: 'Pending' },
+  approved: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400', label: 'Approved' },
+  rejected: { bg: 'bg-red-500/10', text: 'text-red-300', border: 'border-red-500/30', dot: 'bg-red-400', label: 'Rejected' },
+  revision_requested: { bg: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/30', dot: 'bg-orange-400', label: 'Revisions' },
+  revision_submitted: { bg: 'bg-blue-500/10', text: 'text-blue-300', border: 'border-blue-500/30', dot: 'bg-blue-400', label: 'Resubmitted' },
+  waiting: { bg: 'bg-slate-500/10', text: 'text-slate-400', border: 'border-slate-500/30', dot: 'bg-slate-500', label: 'Waiting' },
 };
+
+type TaskApprovalState = 'pending_my_review' | 'pending_others' | 'all_approved' | 'revision_requested' | 'revisions_required';
+
+function getTaskApprovalState(task: Task, steps: ApprovalStep[], currentUserId: string): TaskApprovalState {
+  if (task.status === 'revisions_required') return 'revisions_required';
+  const myPendingStep = steps.find(s => s.approverId === currentUserId && s.status === 'pending');
+  if (myPendingStep) return 'pending_my_review';
+  const hasRevisionRequested = steps.some(s => s.status === 'revision_requested');
+  if (hasRevisionRequested) return 'revision_requested';
+  const allApproved = steps.every(s => s.status === 'approved' || s.status === 'revision_submitted');
+  if (allApproved && steps.length > 0) return 'all_approved';
+  return 'pending_others';
+}
 
 const SWIPE_THRESHOLD = 120;
 
@@ -70,7 +86,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   // ─── Filters ──────────────────────────────────────────────────────
   const [filterClient, setFilterClient] = useState<string>('');
   const [filterProject, setFilterProject] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<QCStatus | ''>('');
+  const [filterStatus, setFilterStatus] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -80,10 +96,6 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const [rejectLinks, setRejectLinks] = useState<{ title: string; url: string }[]>([]);
   const [rejectingTaskId, setRejectingTaskId] = useState<string | null>(null);
 
-  // ─── Reviewer assignment ──────────────────────────────────────────
-  const [reviewerPanelTaskId, setReviewerPanelTaskId] = useState<string | null>(null);
-  const [reviewerSearch, setReviewerSearch] = useState('');
-
   // ─── Submission state ─────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [swipeFeedback, setSwipeFeedback] = useState<{ taskId: string; type: 'approve' | 'reject' } | null>(null);
@@ -91,41 +103,56 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   // ─── Card index for deck ──────────────────────────────────────────
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // ─── Expanded card detail ─────────────────────────────────────────
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+
   // ─── Derived data ─────────────────────────────────────────────────
   const currentUserObj = useMemo(() => users.find(u => u.id === currentUser.id), [users, currentUser.id]);
   const canManage = checkPermission(PERMISSIONS.QC.MANAGE);
   const canReview = checkPermission(PERMISSIONS.QC.REVIEW_APPROVE) || checkPermission(PERMISSIONS.QC.REVIEW_REJECT);
 
-  // Tasks that have QC enabled
-  const qcTasks = useMemo(() => {
-    return tasks.filter(t => t.qc?.enabled && !t.isDeleted);
-  }, [tasks]);
-
-  // Tasks pending MY review (for the review tab)
-  const myPendingTasks = useMemo(() => {
-    return qcTasks.filter(t => {
-      if (t.qc?.status !== 'PENDING' && t.qc?.status !== 'NEEDS_INTERVENTION') return false;
-      // Managers (GM/CD with qc.manage) can see ALL pending QC tasks
-      if (canManage) {
-        // Still skip tasks the manager already reviewed
-        const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.id);
-        if (myReview && myReview.decision !== 'PENDING') return false;
-        return true;
-      }
-      // Regular reviewers only see tasks they're assigned to
-      if (!t.qc?.reviewers?.includes(currentUser.id)) return false;
-      // Check if user hasn't already reviewed
-      const myReview = qcReviews.find(r => r.taskId === t.id && r.reviewerId === currentUser.id);
-      if (myReview && myReview.decision !== 'PENDING') return false;
-      return true;
+  // Tasks that are in the approval pipeline (awaiting_review with approval steps)
+  const reviewableTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (t.isDeleted) return false;
+      const steps = approvalSteps.filter(s => s.taskId === t.id);
+      if (steps.length === 0) return false;
+      // Include tasks that are in review, or have pending steps, or have revision_requested steps
+      return t.status === 'awaiting_review' ||
+        t.status === 'revisions_required' ||
+        steps.some(s => s.status === 'pending' || s.status === 'revision_requested');
     });
-  }, [qcTasks, qcReviews, currentUser.id, canManage]);
+  }, [tasks, approvalSteps]);
+
+  // Tasks where I have a pending approval step
+  const myPendingTasks = useMemo(() => {
+    return reviewableTasks.filter(t => {
+      const steps = approvalSteps.filter(s => s.taskId === t.id);
+      const myPendingStep = steps.find(s => s.approverId === currentUser.id && s.status === 'pending');
+      if (myPendingStep) return true;
+      // Managers can see all pending tasks (but skip ones they already approved)
+      if (canManage) {
+        const hasActivePendingStep = steps.some(s => s.status === 'pending');
+        const iAlreadyApproved = steps.some(s => s.approverId === currentUser.id && s.status === 'approved');
+        return hasActivePendingStep && !iAlreadyApproved;
+      }
+      return false;
+    });
+  }, [reviewableTasks, approvalSteps, currentUser.id, canManage]);
+
+  // Completed/history tasks (all steps approved or rejected/archived)
+  const historyTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (t.isDeleted) return false;
+      const steps = approvalSteps.filter(s => s.taskId === t.id);
+      if (steps.length === 0) return false;
+      return t.status === 'approved' || t.status === 'completed' || t.status === 'client_review' || t.status === 'client_approved';
+    });
+  }, [tasks, approvalSteps]);
 
   // Filtered tasks for the all/history tabs
   const filteredTasks = useMemo(() => {
-    let result = activeTab === 'history'
-      ? qcTasks.filter(t => t.qc?.status === 'APPROVED' || t.qc?.status === 'REJECTED')
-      : qcTasks;
+    let result = activeTab === 'history' ? historyTasks : reviewableTasks;
 
     if (filterClient) {
       result = result.filter(t => {
@@ -137,7 +164,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
       result = result.filter(t => t.projectId === filterProject);
     }
     if (filterStatus) {
-      result = result.filter(t => t.qc?.status === filterStatus);
+      result = result.filter(t => t.status === filterStatus);
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -149,60 +176,67 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     }
 
     return result;
-  }, [qcTasks, activeTab, filterClient, filterProject, filterStatus, searchQuery, projects]);
+  }, [reviewableTasks, historyTasks, activeTab, filterClient, filterProject, filterStatus, searchQuery, projects]);
 
   // Counter chips
-  const pendingCount = qcTasks.filter(t => t.qc?.status === 'PENDING').length;
-  const interventionCount = qcTasks.filter(t => t.qc?.status === 'NEEDS_INTERVENTION').length;
-  const approvedCount = qcTasks.filter(t => t.qc?.status === 'APPROVED').length;
-  const rejectedCount = qcTasks.filter(t => t.qc?.status === 'REJECTED').length;
+  const pendingMyCount = myPendingTasks.length;
+  const totalInReview = reviewableTasks.length;
+  const revisionCount = tasks.filter(t => {
+    const steps = approvalSteps.filter(s => s.taskId === t.id);
+    return steps.some(s => s.status === 'revision_requested') || t.status === 'revisions_required';
+  }).length;
+  const approvedCount = historyTasks.length;
 
   // Unique clients and projects for filters
   const clientOptions = useMemo(() => {
-    const ids = new Set(qcTasks.map(t => {
+    const all = [...reviewableTasks, ...historyTasks];
+    const ids = new Set(all.map(t => {
       const proj = projects.find(p => p.id === t.projectId);
       return proj?.clientId || '';
     }).filter(Boolean));
     return clients.filter(c => ids.has(c.id));
-  }, [qcTasks, projects, clients]);
+  }, [reviewableTasks, historyTasks, projects, clients]);
 
   const projectOptions = useMemo(() => {
-    const ids = new Set(qcTasks.map(t => t.projectId));
+    const all = [...reviewableTasks, ...historyTasks];
+    const ids = new Set(all.map(t => t.projectId));
     return projects.filter(p => ids.has(p.id));
-  }, [qcTasks, projects]);
+  }, [reviewableTasks, historyTasks, projects]);
 
-  // ─── Review submission handlers ───────────────────────────────────
+  // ─── Review submission handlers (linked to approval steps) ────────
   const handleApprove = useCallback(async (taskId: string) => {
     if (isSubmitting) return;
     const task = tasks.find(t => t.id === taskId);
-    if (!task || !task.qc) return;
+    if (!task) return;
 
     setIsSubmitting(true);
     setSwipeFeedback({ taskId, type: 'approve' });
 
     try {
-      await submitQCReview({
+      const result = await approveFromQCHub({
         task,
         reviewerId: currentUser.id,
         reviewerRole: currentUserObj?.role || 'Unknown',
-        decision: 'APPROVED',
-        note: null,
-        attachments: [],
+        approvalSteps,
         allQCReviews: qcReviews,
         users,
+        workflowTemplates: workflowTemplates as any,
         createdBy: currentUser.id,
       });
+
+      if (!result.success) {
+        console.warn('QC approve failed:', result.message);
+      }
     } catch (err) {
       console.error('QC approve error:', err);
     } finally {
       setIsSubmitting(false);
       setTimeout(() => {
         setSwipeFeedback(null);
-        // Move to next card
         setCurrentIndex(prev => Math.min(prev + 1, myPendingTasks.length - 1));
       }, 500);
     }
-  }, [isSubmitting, tasks, currentUser.id, currentUserObj, qcReviews, users, myPendingTasks.length]);
+  }, [isSubmitting, tasks, currentUser.id, currentUserObj, approvalSteps, qcReviews, users, workflowTemplates, myPendingTasks.length]);
 
   const openRejectModal = useCallback((taskId: string) => {
     setRejectingTaskId(taskId);
@@ -214,7 +248,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const handleRejectSubmit = useCallback(async () => {
     if (!rejectingTaskId || !rejectNote.trim() || isSubmitting) return;
     const task = tasks.find(t => t.id === rejectingTaskId);
-    if (!task || !task.qc) return;
+    if (!task) return;
 
     setIsSubmitting(true);
 
@@ -223,17 +257,21 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
         .filter(l => l.url.trim())
         .map(l => ({ type: 'link' as const, title: l.title || l.url, url: l.url }));
 
-      await submitQCReview({
+      const result = await rejectFromQCHub({
         task,
         reviewerId: currentUser.id,
         reviewerRole: currentUserObj?.role || 'Unknown',
-        decision: 'REJECTED',
         note: rejectNote,
         attachments,
+        approvalSteps,
         allQCReviews: qcReviews,
         users,
         createdBy: currentUser.id,
       });
+
+      if (!result.success) {
+        console.warn('QC reject failed:', result.message);
+      }
 
       setRejectModalOpen(false);
       setRejectingTaskId(null);
@@ -247,21 +285,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     } finally {
       setIsSubmitting(false);
     }
-  }, [rejectingTaskId, rejectNote, rejectLinks, isSubmitting, tasks, currentUser.id, currentUserObj, qcReviews, users, myPendingTasks.length]);
-
-  // ─── Reviewer management ──────────────────────────────────────────
-  const handleToggleReviewer = useCallback(async (taskId: string, userId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task?.qc) return;
-    const isReviewer = task.qc.reviewers.includes(userId);
-    const newReviewers = isReviewer
-      ? task.qc.reviewers.filter(id => id !== userId)
-      : [...task.qc.reviewers, userId];
-
-    onUpdateTask(taskId, {
-      qc: { ...task.qc, reviewers: newReviewers },
-    });
-  }, [tasks, onUpdateTask]);
+  }, [rejectingTaskId, rejectNote, rejectLinks, isSubmitting, tasks, currentUser.id, currentUserObj, approvalSteps, qcReviews, users, myPendingTasks.length]);
 
   // ─── Lookup helpers ───────────────────────────────────────────────
   const getUser = (uid: string) => users.find(u => u.id === uid);
@@ -272,9 +296,127 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     const cl = clients.find(c => c.id === proj?.clientId);
     return cl?.name || 'Unknown';
   };
+  const getTaskSteps = (taskId: string) => approvalSteps.filter(s => s.taskId === taskId).sort((a, b) => a.level - b.level);
   const getTaskReviews = (taskId: string) => qcReviews.filter(r => r.taskId === taskId);
   const getTaskComments = (taskId: string) => taskComments.filter(c => c.taskId === taskId);
   const getTaskFiles = (taskId: string) => files.filter(f => f.taskId === taskId);
+
+  // ─── Approval Progress Bar Component ──────────────────────────────
+  const ApprovalProgress: React.FC<{ steps: ApprovalStep[]; compact?: boolean }> = ({ steps, compact }) => {
+    if (steps.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        {!compact && (
+          <div className="flex items-center gap-2">
+            <GitMerge className="w-3.5 h-3.5 text-slate-500" />
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Approval Chain</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1">
+          {steps.map((step, i) => {
+            const approver = getUser(step.approverId);
+            const isMe = step.approverId === currentUser.id;
+            return (
+              <React.Fragment key={step.id}>
+                <div className="relative group">
+                  <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                    step.status === 'approved' ? 'border-emerald-400 bg-emerald-500/20 text-emerald-300' :
+                    step.status === 'pending' ? `border-amber-400 bg-amber-500/20 text-amber-300 ${isMe ? 'ring-2 ring-amber-400/40 animate-pulse' : ''}` :
+                    step.status === 'revision_requested' ? 'border-orange-400 bg-orange-500/20 text-orange-300' :
+                    step.status === 'revision_submitted' ? 'border-blue-400 bg-blue-500/20 text-blue-300' :
+                    'border-slate-600 bg-slate-500/10 text-slate-500'
+                  }`}>
+                    {step.status === 'approved' ? <CheckCircle2 className="w-4 h-4" /> :
+                     step.status === 'revision_requested' ? <CornerUpLeft className="w-4 h-4" /> :
+                     <span>{step.level + 1}</span>
+                    }
+                  </div>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-[10px] text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
+                    <div className="font-medium">{approver?.name || 'Unassigned'}</div>
+                    <div className="text-slate-400">{approver?.role} · {(stepStatusConfig[step.status] || stepStatusConfig.waiting).label}</div>
+                    {isMe && step.status === 'pending' && <div className="text-amber-300 font-medium">Your turn!</div>}
+                  </div>
+                </div>
+                {i < steps.length - 1 && (
+                  <div className={`flex-1 h-0.5 rounded-full max-w-[24px] min-w-[8px] transition-all ${
+                    step.status === 'approved' ? 'bg-emerald-500/50' : 'bg-slate-700'
+                  }`} />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // ─── Detailed Step List Component ─────────────────────────────────
+  const ApprovalStepList: React.FC<{ steps: ApprovalStep[] }> = ({ steps }) => {
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-2 mb-1">
+          <GitMerge className="w-4 h-4 text-purple-400" />
+          <span className="text-xs font-semibold text-slate-300">Approval Steps</span>
+        </div>
+        <div className="relative pl-5">
+          {/* Connecting line */}
+          <div className="absolute left-[0.6rem] top-2 bottom-2 w-0.5 bg-slate-700/50" />
+          
+          {steps.map((step, i) => {
+            const approver = getUser(step.approverId);
+            const config = stepStatusConfig[step.status] || stepStatusConfig.waiting;
+            const isMe = step.approverId === currentUser.id;
+
+            return (
+              <div key={step.id} className="relative flex items-start gap-3 py-2">
+                {/* Step indicator */}
+                <div className={`relative z-10 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 -ml-5 ${
+                  step.status === 'approved' ? 'border-emerald-400 bg-emerald-500/20' :
+                  step.status === 'pending' ? `border-amber-400 bg-amber-500/20 ${isMe ? 'ring-2 ring-amber-400/30' : ''}` :
+                  step.status === 'revision_requested' ? 'border-orange-400 bg-orange-500/20' :
+                  step.status === 'revision_submitted' ? 'border-blue-400 bg-blue-500/20' :
+                  'border-slate-600 bg-slate-800'
+                }`}>
+                  {step.status === 'approved' && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                  {step.status === 'revision_requested' && <CornerUpLeft className="w-3 h-3 text-orange-400" />}
+                  {(step.status === 'pending' || step.status === 'waiting' || step.status === 'revision_submitted') && (
+                    <span className="text-[8px] font-bold text-slate-400">{step.level + 1}</span>
+                  )}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${isMe ? 'text-amber-300' : 'text-white'}`}>
+                      {approver?.name || 'Unassigned'}
+                      {isMe && ' (You)'}
+                    </span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${config.bg} ${config.text} ${config.border} border`}>
+                      {config.label}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">{approver?.role || 'Unknown role'}</div>
+                  {step.comment && (
+                    <div className={`mt-1 text-[11px] px-2 py-1 rounded ${
+                      step.status === 'revision_requested' ? 'bg-orange-500/10 text-orange-200 border border-orange-500/20' :
+                      'bg-white/5 text-slate-300'
+                    }`}>
+                      &ldquo;{step.comment}&rdquo;
+                    </div>
+                  )}
+                  {step.reviewedAt && (
+                    <div className="text-[10px] text-slate-600 mt-0.5">
+                      {new Date(step.reviewedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   // ─── Swipe Card ───────────────────────────────────────────────────
   const SwipeCard: React.FC<{ task: Task; isTop: boolean }> = ({ task, isTop }) => {
@@ -286,10 +428,9 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     }));
 
     const bind = useDrag(
-      ({ active, movement: [mx], direction: [xDir], velocity: [vx], cancel }) => {
+      ({ active, movement: [mx] }) => {
         if (!isTop || isSubmitting) return;
 
-        // If released past threshold
         if (!active && Math.abs(mx) > SWIPE_THRESHOLD) {
           const dir = mx > 0 ? 1 : -1;
           api.start({
@@ -299,10 +440,8 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
           });
 
           if (dir === 1) {
-            // Swipe right → approve
             handleApprove(task.id);
           } else {
-            // Swipe left → open reject modal
             setTimeout(() => {
               api.start({ x: 0, rot: 0 });
               openRejectModal(task.id);
@@ -323,15 +462,21 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
 
     const project = getProject(task.projectId);
     const clientName = getClient(task);
-    const taskReviews = getTaskReviews(task.id);
+    const steps = getTaskSteps(task.id);
     const comments = getTaskComments(task.id);
     const taskFiles = getTaskFiles(task.id);
     const assignees = (task.assigneeIds || []).map(id => getUser(id)).filter(Boolean);
     const feedback = swipeFeedback?.taskId === task.id ? swipeFeedback.type : null;
 
-    // Visual indicators for swipe direction
+    // Find my pending step
+    const myStep = steps.find(s => s.approverId === currentUser.id && s.status === 'pending');
+    const approvedSteps = steps.filter(s => s.status === 'approved').length;
+
     const approveOpacity = x.to(v => Math.max(0, Math.min(1, v / SWIPE_THRESHOLD)));
     const rejectOpacity = x.to(v => Math.max(0, Math.min(1, -v / SWIPE_THRESHOLD)));
+
+    // Workflow template name
+    const template = workflowTemplates.find(w => w.id === task.workflowTemplateId);
 
     return (
       <animated.div
@@ -354,7 +499,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               className="absolute inset-0 bg-emerald-500/10 z-10 pointer-events-none flex items-center justify-center"
             >
               <div className="bg-emerald-500/20 backdrop-blur-sm rounded-full p-6 border-2 border-emerald-400">
-                <CheckCircle2 className="w-16 h-16 text-emerald-400" />
+                <ThumbsUp className="w-16 h-16 text-emerald-400" />
               </div>
             </animated.div>
             <animated.div
@@ -362,14 +507,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               className="absolute inset-0 bg-red-500/10 z-10 pointer-events-none flex items-center justify-center"
             >
               <div className="bg-red-500/20 backdrop-blur-sm rounded-full p-6 border-2 border-red-400">
-                <XCircle className="w-16 h-16 text-red-400" />
+                <CornerUpLeft className="w-16 h-16 text-red-400" />
               </div>
             </animated.div>
           </>
         )}
 
         {/* Card content */}
-        <div className="p-5 h-full overflow-y-auto custom-scrollbar space-y-4">
+        <div className="p-5 h-full overflow-y-auto custom-scrollbar space-y-4 pb-28">
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -398,6 +543,27 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               </span>
             </div>
           </div>
+
+          {/* Your turn indicator */}
+          {myStep && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-semibold text-amber-300">Your approval is needed (Step {myStep.level + 1} of {steps.length})</span>
+            </div>
+          )}
+
+          {/* Workflow & progress */}
+          {template && (
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Layers className="w-3.5 h-3.5" />
+              <span>{template.name}</span>
+              <span className="text-slate-600">&middot;</span>
+              <span className="text-emerald-400 font-medium">{approvedSteps}/{steps.length} approved</span>
+            </div>
+          )}
+
+          {/* Approval chain visualization */}
+          <ApprovalProgress steps={steps} />
 
           {/* Description */}
           {task.description && (
@@ -440,55 +606,32 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             </div>
           )}
 
-          {/* Reviewer status */}
-          {task.qc && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Review Status:</span>
-                {task.qc.status && (() => {
-                  const s = statusColors[task.qc!.status];
-                  return (
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${s.bg} ${s.text} ${s.border} flex items-center gap-1`}>
-                      {s.icon}
-                      {task.qc!.status.replace(/_/g, ' ')}
-                    </span>
-                  );
-                })()}
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {task.qc.reviewers.map(rid => {
-                  const reviewer = getUser(rid);
-                  const review = taskReviews.find(r => r.reviewerId === rid);
-                  const decision = review?.decision || 'PENDING';
-                  return (
-                    <div key={rid} className="flex items-center gap-2 text-xs">
-                      <span className={`w-2 h-2 rounded-full ${
-                        decision === 'APPROVED' ? 'bg-emerald-400' :
-                        decision === 'REJECTED' ? 'bg-red-400' :
-                        'bg-slate-600'
-                      }`} />
-                      <span className="text-slate-300 truncate">{reviewer?.name || rid}</span>
-                      <span className="text-slate-500 text-[10px]">{reviewer?.role || ''}</span>
-                    </div>
-                  );
-                })}
-              </div>
+          {/* Revision notes (if task was previously rejected) */}
+          {task.revisionContext?.active && task.revisionContext.message && (
+            <div className="bg-orange-500/5 border border-orange-500/20 rounded-lg p-3">
+              <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold mb-1">Revision Requested</div>
+              <p className="text-xs text-slate-300">{task.revisionContext.message}</p>
             </div>
           )}
 
-          {/* Reject note from previous reviews */}
-          {taskReviews.filter(r => r.decision === 'REJECTED' && r.note).length > 0 && (
-            <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 space-y-2">
-              <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Previous Rejection Notes</div>
-              {taskReviews.filter(r => r.decision === 'REJECTED' && r.note).map(r => (
-                <div key={r.id} className="text-xs text-slate-300">
-                  <span className="font-medium text-red-300">{getUser(r.reviewerId)?.name}:</span> {r.note}
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Previous rejection notes from QC reviews */}
+          {(() => {
+            const taskReviews = getTaskReviews(task.id);
+            const rejections = taskReviews.filter(r => r.decision === 'REJECTED' && r.note);
+            if (rejections.length === 0) return null;
+            return (
+              <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 space-y-2">
+                <div className="text-[10px] uppercase tracking-wider text-red-400 font-semibold">Previous Feedback</div>
+                {rejections.map(r => (
+                  <div key={r.id} className="text-xs text-slate-300">
+                    <span className="font-medium text-red-300">{getUser(r.reviewerId)?.name}:</span> {r.note}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
-          {/* Reference links & files quick peek */}
+          {/* Reference links */}
           {(task.referenceLinks?.length || 0) > 0 && (
             <div className="flex flex-wrap gap-2">
               {task.referenceLinks?.map((link, i) => (
@@ -507,7 +650,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
           )}
         </div>
 
-        {/* Bottom action bar (fallback buttons) */}
+        {/* Bottom action bar */}
         {isTop && (
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[color:var(--dash-surface-elevated)] via-[color:var(--dash-surface-elevated)]/90 to-transparent">
             <div className="flex items-center justify-center gap-4">
@@ -516,31 +659,21 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
                 disabled={isSubmitting}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 transition-all text-sm font-medium disabled:opacity-50"
               >
-                <XCircle className="w-4 h-4" />
-                Reject
+                <CornerUpLeft className="w-4 h-4" />
+                Request Revisions
               </button>
-
-              {canManage && (
-                <button
-                  onClick={() => setReviewerPanelTaskId(task.id)}
-                  className="p-2.5 rounded-full bg-white/5 border border-[color:var(--dash-glass-border)] text-slate-300 hover:bg-white/10 transition-all"
-                  title="Manage Reviewers"
-                >
-                  <Users2 className="w-4 h-4" />
-                </button>
-              )}
 
               <button
                 onClick={() => handleApprove(task.id)}
                 disabled={isSubmitting}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-all text-sm font-medium disabled:opacity-50"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <ThumbsUp className="w-4 h-4" />
                 Approve
               </button>
             </div>
             <p className="text-center text-[10px] text-slate-600 mt-2">
-              Swipe right to approve · Swipe left to reject
+              Swipe right to approve &middot; Swipe left to request revisions
             </p>
           </div>
         )}
@@ -552,104 +685,135 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const TaskListCard: React.FC<{ task: Task }> = ({ task }) => {
     const project = getProject(task.projectId);
     const clientName = getClient(task);
-    const taskReviews = getTaskReviews(task.id);
-    const qcStatus = task.qc?.status || 'PENDING';
-    const s = statusColors[qcStatus];
-    const reviewedCount = taskReviews.filter(r => r.decision !== 'PENDING').length;
-    const totalReviewers = task.qc?.reviewers?.length || 0;
+    const steps = getTaskSteps(task.id);
+    const approvedSteps = steps.filter(s => s.status === 'approved').length;
+    const totalSteps = steps.length;
+    const myPendingStep = steps.find(s => s.approverId === currentUser.id && s.status === 'pending');
+    const state = getTaskApprovalState(task, steps, currentUser.id);
+    const isExpanded = expandedTaskId === task.id;
+
+    const statusColor = state === 'pending_my_review' ? 'border-amber-500/30 bg-amber-500/5' :
+                         state === 'all_approved' ? 'border-emerald-500/30 bg-emerald-500/5' :
+                         state === 'revision_requested' || state === 'revisions_required' ? 'border-orange-500/30 bg-orange-500/5' :
+                         'border-[color:var(--dash-glass-border)]';
 
     return (
-      <div className="rounded-xl border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/80 p-4 hover:border-[color:var(--dash-primary)]/30 transition-all">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{clientName}</div>
-            <h4 className="text-sm font-semibold text-white mt-0.5 truncate">{task.title}</h4>
-            {project && <div className="text-xs text-slate-400 truncate">{project.name}</div>}
+      <div className={`rounded-xl border bg-[color:var(--dash-surface-elevated)]/80 transition-all hover:shadow-lg ${statusColor}`}>
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{clientName}</div>
+                {myPendingStep && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-medium flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    Your turn
+                  </span>
+                )}
+              </div>
+              <h4 className="text-sm font-semibold text-white mt-0.5 truncate">{task.title}</h4>
+              {project && <div className="text-xs text-slate-400 truncate">{project.name}</div>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
+                state === 'all_approved' ? 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10' :
+                state === 'pending_my_review' ? 'border-amber-500/30 text-amber-300 bg-amber-500/10' :
+                state === 'revision_requested' || state === 'revisions_required' ? 'border-orange-500/30 text-orange-300 bg-orange-500/10' :
+                'border-slate-500/30 text-slate-400 bg-slate-500/10'
+              }`}>
+                {state === 'all_approved' ? '✓ Approved' :
+                 state === 'pending_my_review' ? 'Needs Your Review' :
+                 state === 'revision_requested' || state === 'revisions_required' ? 'Revisions' :
+                 'In Review'}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium flex items-center gap-1 ${s.bg} ${s.text} ${s.border}`}>
-              {s.icon}
-              {qcStatus.replace(/_/g, ' ')}
-            </span>
+
+          {/* Progress and meta */}
+          <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1 font-medium">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                {approvedSteps}/{totalSteps}
+              </span>
+              {task.dueDate && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                task.type === 'design' ? 'border-blue-500/30 text-blue-300' :
+                task.type === 'video' ? 'border-purple-500/30 text-purple-300' :
+                task.type === 'content' ? 'border-teal-500/30 text-teal-300' :
+                'border-slate-500/30 text-slate-300'
+              }`}>
+                {task.type}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Approve/reject buttons */}
+              {myPendingStep && canReview && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleApprove(task.id)}
+                    disabled={isSubmitting}
+                    className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
+                    title="Approve"
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => openRejectModal(task.id)}
+                    disabled={isSubmitting}
+                    className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                    title="Request Revisions"
+                  >
+                    <CornerUpLeft className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+              {/* Expand */}
+              <button
+                onClick={() => setExpandedTaskId(isExpanded ? null : task.id)}
+                className="p-1.5 rounded-lg bg-white/5 border border-[color:var(--dash-glass-border)] text-slate-400 hover:text-white hover:bg-white/10 transition-all"
+              >
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+          </div>
+
+          {/* Approval chain progress */}
+          <div className="mt-3">
+            <ApprovalProgress steps={steps} compact />
           </div>
         </div>
 
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1">
-              <Users2 className="w-3.5 h-3.5" />
-              {reviewedCount}/{totalReviewers} reviewed
-            </span>
-            {task.dueDate && (
-              <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" />
-                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-              </span>
-            )}
-            <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
-              task.type === 'design' ? 'border-blue-500/30 text-blue-300' :
-              task.type === 'video' ? 'border-purple-500/30 text-purple-300' :
-              'border-slate-500/30 text-slate-300'
-            }`}>
-              {task.type}
-            </span>
-          </div>
+        {/* Expanded detail */}
+        {isExpanded && (
+          <div className="px-4 pb-4 pt-0 border-t border-[color:var(--dash-glass-border)] mt-0 animate-in fade-in slide-in-from-top-2">
+            <div className="mt-3">
+              <ApprovalStepList steps={steps} />
+            </div>
 
-          <div className="flex items-center gap-2">
-            {canManage && qcStatus !== 'APPROVED' && qcStatus !== 'REJECTED' && (
-              <button
-                onClick={() => setReviewerPanelTaskId(task.id)}
-                className="p-1.5 rounded-lg bg-white/5 border border-[color:var(--dash-glass-border)] text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                title="Manage Reviewers"
-              >
-                <Users2 className="w-3.5 h-3.5" />
-              </button>
+            {/* Description */}
+            {task.description && (
+              <div className="mt-3">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold mb-1">Description</div>
+                <p className="text-xs text-slate-300 leading-relaxed">{task.description}</p>
+              </div>
             )}
-            {canReview && (qcStatus === 'PENDING' || qcStatus === 'NEEDS_INTERVENTION') && (canManage || task.qc?.reviewers?.includes(currentUser.id)) && (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleApprove(task.id)}
-                  disabled={isSubmitting}
-                  className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-all disabled:opacity-50"
-                  title="Approve"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => openRejectModal(task.id)}
-                  disabled={isSubmitting}
-                  className="p-1.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 transition-all disabled:opacity-50"
-                  title="Reject"
-                >
-                  <XCircle className="w-3.5 h-3.5" />
-                </button>
+
+            {/* Revision context */}
+            {task.revisionContext?.active && task.revisionContext.message && (
+              <div className="mt-3 bg-orange-500/5 border border-orange-500/20 rounded-lg p-3">
+                <div className="text-[10px] uppercase tracking-wider text-orange-400 font-semibold mb-1">Revision Notes</div>
+                <p className="text-xs text-slate-300">{task.revisionContext.message}</p>
               </div>
             )}
           </div>
-        </div>
-
-        {/* Reviewer chips */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {task.qc?.reviewers?.map(rid => {
-            const reviewer = getUser(rid);
-            const review = taskReviews.find(r => r.reviewerId === rid);
-            const decision = review?.decision || 'PENDING';
-            return (
-              <span key={rid} className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                decision === 'APPROVED' ? 'border-emerald-500/30 text-emerald-300 bg-emerald-500/10' :
-                decision === 'REJECTED' ? 'border-red-500/30 text-red-300 bg-red-500/10' :
-                'border-slate-500/30 text-slate-400 bg-white/5'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${
-                  decision === 'APPROVED' ? 'bg-emerald-400' :
-                  decision === 'REJECTED' ? 'bg-red-400' :
-                  'bg-slate-500'
-                }`} />
-                {reviewer?.name || rid}
-              </span>
-            );
-          })}
-        </div>
+        )}
       </div>
     );
   };
@@ -665,23 +829,25 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Quality Control</h1>
-            <p className="text-sm text-slate-400">Review and approve deliverables before client handoff</p>
+            <p className="text-sm text-slate-400">Review and approve tasks through the approval pipeline</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5" /> Pending {pendingCount}
+          {pendingMyCount > 0 && (
+            <span className="text-xs px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium flex items-center gap-1.5 animate-pulse">
+              <Clock className="w-3.5 h-3.5" /> {pendingMyCount} Awaiting You
+            </span>
+          )}
+          <span className="text-xs px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-300 font-medium flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5" /> {totalInReview} In Review
           </span>
-          {interventionCount > 0 && (
-            <span className="text-xs px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 font-medium flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5" /> Intervention {interventionCount}
+          {revisionCount > 0 && (
+            <span className="text-xs px-3 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-300 font-medium flex items-center gap-1.5">
+              <CornerUpLeft className="w-3.5 h-3.5" /> {revisionCount} Revisions
             </span>
           )}
           <span className="text-xs px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-medium flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5" /> Approved {approvedCount}
-          </span>
-          <span className="text-xs px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30 text-red-300 font-medium flex items-center gap-1.5">
-            <XCircle className="w-3.5 h-3.5" /> Rejected {rejectedCount}
+            <CheckCircle2 className="w-3.5 h-3.5" /> {approvedCount} Completed
           </span>
         </div>
       </div>
@@ -690,8 +856,8 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
       <div className="flex items-center gap-1 bg-[color:var(--dash-surface-elevated)]/50 backdrop-blur-sm border border-[color:var(--dash-glass-border)] rounded-xl p-1">
         {([
           { id: 'review' as TabId, label: 'My Reviews', count: myPendingTasks.length },
-          { id: 'all' as TabId, label: 'All QC Tasks', count: qcTasks.length },
-          { id: 'history' as TabId, label: 'History', count: approvedCount + rejectedCount },
+          { id: 'all' as TabId, label: 'All Tasks', count: totalInReview },
+          { id: 'history' as TabId, label: 'History', count: approvedCount },
         ]).map(tab => (
           <button
             key={tab.id}
@@ -754,14 +920,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
           </select>
           <select
             value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value as QCStatus | '')}
+            onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-sm text-white focus:ring-1 focus:ring-[color:var(--dash-primary)]"
           >
             <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-            <option value="NEEDS_INTERVENTION">Needs Intervention</option>
+            <option value="awaiting_review">Awaiting Review</option>
+            <option value="revisions_required">Revisions Required</option>
+            <option value="approved">Approved</option>
+            <option value="completed">Completed</option>
           </select>
         </div>
       )}
@@ -777,7 +943,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-white">All caught up!</h3>
-                <p className="text-sm text-slate-400 mt-1">No tasks pending your QC review.</p>
+                <p className="text-sm text-slate-400 mt-1">No tasks pending your approval.</p>
               </div>
             </div>
           ) : (
@@ -804,7 +970,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               </div>
 
               {/* Card deck */}
-              <div className="relative w-full max-w-lg" style={{ height: '580px' }}>
+              <div className="relative w-full max-w-lg" style={{ height: '620px' }}>
                 {myPendingTasks.slice(currentIndex, currentIndex + 3).reverse().map((task, i, arr) => (
                   <SwipeCard
                     key={task.id}
@@ -825,9 +991,9 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
                 <FileText className="w-8 h-8 text-slate-500" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-white">No QC tasks found</h3>
+                <h3 className="text-base font-semibold text-white">No tasks found</h3>
                 <p className="text-sm text-slate-400 mt-1">
-                  {activeTab === 'history' ? 'No completed QC reviews yet.' : 'No tasks with QC enabled.'}
+                  {activeTab === 'history' ? 'No completed approval reviews yet.' : 'No tasks in the approval pipeline.'}
                 </p>
               </div>
             </div>
@@ -844,9 +1010,9 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
             <div className="px-5 py-4 border-b border-[color:var(--dash-glass-border)] flex items-center justify-between">
-              <div className="flex items-center gap-2 text-red-300">
-                <XCircle className="w-5 h-5" />
-                <h3 className="text-base font-semibold">Reject Task</h3>
+              <div className="flex items-center gap-2 text-orange-300">
+                <CornerUpLeft className="w-5 h-5" />
+                <h3 className="text-base font-semibold">Request Revisions</h3>
               </div>
               <button
                 onClick={() => { setRejectModalOpen(false); setRejectingTaskId(null); }}
@@ -860,14 +1026,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               {/* Note (required) */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Rejection Note <span className="text-red-400">*</span>
+                  What needs to change? <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   value={rejectNote}
                   onChange={e => setRejectNote(e.target.value)}
-                  placeholder="Explain what needs to change..."
+                  placeholder="Explain what needs to be revised..."
                   rows={4}
-                  className="w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-sm text-white placeholder-slate-500 focus:ring-1 focus:ring-red-500 focus:border-red-500 resize-none"
+                  className="w-full px-3 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-sm text-white placeholder-slate-500 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 resize-none"
                 />
               </div>
 
@@ -928,102 +1094,22 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
               <button
                 onClick={handleRejectSubmit}
                 disabled={!rejectNote.trim() || isSubmitting}
-                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-orange-500/20 border border-orange-500/30 text-orange-300 hover:bg-orange-500/30 transition-all disabled:opacity-50 flex items-center gap-2"
               >
                 {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                Reject Task
+                Request Revisions
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Reviewer Assignment Panel ─────────────────────────────── */}
-      {reviewerPanelTaskId && canManage && (() => {
-        const task = tasks.find(t => t.id === reviewerPanelTaskId);
-        if (!task?.qc) return null;
-        const eligibleUsers = users.filter(u =>
-          u.status !== 'inactive' &&
-          (reviewerSearch ? u.name.toLowerCase().includes(reviewerSearch.toLowerCase()) || u.role.toLowerCase().includes(reviewerSearch.toLowerCase()) : true)
-        );
-
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95">
-              <div className="px-5 py-4 border-b border-[color:var(--dash-glass-border)] flex items-center justify-between">
-                <div className="flex items-center gap-2 text-purple-300">
-                  <Users2 className="w-5 h-5" />
-                  <h3 className="text-base font-semibold">Manage Reviewers</h3>
-                </div>
-                <button
-                  onClick={() => { setReviewerPanelTaskId(null); setReviewerSearch(''); }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-4">
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input
-                    type="text"
-                    value={reviewerSearch}
-                    onChange={e => setReviewerSearch(e.target.value)}
-                    placeholder="Search users..."
-                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] text-sm text-white placeholder-slate-500"
-                  />
-                </div>
-
-                <div className="max-h-72 overflow-y-auto space-y-1 custom-scrollbar">
-                  {eligibleUsers.map(u => {
-                    const isReviewer = task.qc!.reviewers.includes(u.id);
-                    return (
-                      <button
-                        key={u.id}
-                        onClick={() => handleToggleReviewer(reviewerPanelTaskId, u.id)}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all text-left ${
-                          isReviewer
-                            ? 'bg-purple-500/10 border border-purple-500/30'
-                            : 'hover:bg-white/5 border border-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                            isReviewer ? 'bg-purple-500/20 text-purple-300' : 'bg-white/5 text-slate-400'
-                          }`}>
-                            {u.name.charAt(0)}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="text-sm text-white font-medium truncate">{u.name}</div>
-                            <div className="text-[10px] text-slate-500">{u.role} · {u.department}</div>
-                          </div>
-                        </div>
-                        {isReviewer && (
-                          <CheckCircle2 className="w-4 h-4 text-purple-400 shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="px-5 py-3 border-t border-[color:var(--dash-glass-border)]">
-                <p className="text-[10px] text-slate-500">
-                  {task.qc!.reviewers.length} reviewer(s) assigned · Changes are saved automatically
-                </p>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Loading overlay */}
       {isSubmitting && (
         <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-[1px] pointer-events-none flex items-center justify-center">
           <div className="bg-[color:var(--dash-surface-elevated)] border border-[color:var(--dash-glass-border)] rounded-xl px-6 py-4 shadow-2xl flex items-center gap-3">
             <Loader2 className="w-5 h-5 text-[color:var(--dash-primary)] animate-spin" />
-            <span className="text-sm text-white font-medium">Submitting review...</span>
+            <span className="text-sm text-white font-medium">Processing...</span>
           </div>
         </div>
       )}

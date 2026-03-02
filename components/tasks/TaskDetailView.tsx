@@ -17,7 +17,7 @@ import { deleteField } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import Modal from '../common/Modal';
-import { shouldEnableQC } from '../../utils/qcUtils';
+import { shouldEnableQC, syncApprovalToQCReview } from '../../utils/qcUtils';
 
 export interface DetailViewProps {
     task: Task;
@@ -417,6 +417,19 @@ const TaskDetailView = ({
             // 1. Mark current step approved
             onUpdateApprovalStep({ ...currentStep, status: 'approved', reviewedAt: new Date().toISOString(), comment: 'Approved' });
 
+            // Sync to QC review record for linked state
+            try {
+                syncApprovalToQCReview({
+                    task,
+                    reviewerId: currentUser.id,
+                    reviewerRole: currentUser.role,
+                    decision: 'APPROVED',
+                    note: null,
+                });
+            } catch (err) {
+                console.error('Failed to sync approval to QC review:', err);
+            }
+
             // Clear Revision Context if active
             if (task.revisionContext?.active) {
                  onUpdateTask({
@@ -513,6 +526,19 @@ const TaskDetailView = ({
             reviewedAt: new Date().toISOString(),
             comment: revisionMessage
         });
+
+        // Sync to QC review record for linked state
+        try {
+            syncApprovalToQCReview({
+                task,
+                reviewerId: currentUser.id,
+                reviewerRole: currentUser.role,
+                decision: 'REJECTED',
+                note: revisionMessage,
+            });
+        } catch (err) {
+            console.error('Failed to sync revision request to QC review:', err);
+        }
 
         // 2. Create Revision Context
         const currentCycle = (task.revisionHistory?.length || 0) + 1;
