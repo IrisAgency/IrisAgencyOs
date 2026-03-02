@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Task, TaskStatus, Priority, User, ApprovalStep } from '../../types';
-import { Clock, AlertCircle, Film } from 'lucide-react';
+import { Clock, AlertCircle, Film, LayoutGrid } from 'lucide-react';
 import { taskNeedsMyApproval, getCurrentApprovalStepInfo } from '../../utils/approvalUtils';
 import { getAllowedTaskTypesForRole } from '../../lib/specialty';
 
@@ -18,13 +18,20 @@ interface TaskBoardDarkProps {
   dueTone: DueTone;
 }
 
-const statusColumns: { status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN'; label: string }[] = [
+type TabKey = TaskStatus | 'ALL_ACTIVE' | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN';
+
+const statusColumns: { status: TabKey; label: string }[] = [
+  { status: 'ALL_ACTIVE', label: 'All Active' },
   { status: 'NEEDS_MY_APPROVAL', label: 'Needs My Approval' },
   { status: 'PRODUCTION_PLAN', label: 'Production Plan' },
   { status: TaskStatus.NEW, label: 'New' },
   { status: TaskStatus.ASSIGNED, label: 'Assigned' },
   { status: TaskStatus.IN_PROGRESS, label: 'In Progress' },
   { status: TaskStatus.AWAITING_REVIEW, label: 'Awaiting Review' },
+  { status: TaskStatus.REVISIONS_REQUIRED, label: 'Revisions' },
+  { status: TaskStatus.APPROVED, label: 'Approved' },
+  { status: TaskStatus.CLIENT_REVIEW, label: 'Client Review' },
+  { status: TaskStatus.CLIENT_APPROVED, label: 'Client Approved' },
   { status: TaskStatus.COMPLETED, label: 'Completed' }
 ];
 
@@ -45,7 +52,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   priorityTone,
   dueTone
 }) => {
-  const [activeStatus, setActiveStatus] = useState<TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN'>('NEEDS_MY_APPROVAL');
+  const [activeStatus, setActiveStatus] = useState<TabKey>('ALL_ACTIVE');
 
   // Helper: is a task a "production plan" task?
   const isProductionPlanTask = (t: Task) => t.isProductionCopy === true || !!t.calendarItemId;
@@ -60,8 +67,15 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
     return allowedTypes.includes(t.taskType as any);
   };
 
+  // "All Active" = everything except completed/archived
+  const isActiveTask = (t: Task) =>
+    t.status !== TaskStatus.COMPLETED && t.status !== TaskStatus.ARCHIVED && !t.isArchived;
+
   // Get counts for each status
-  const getStatusCount = (status: TaskStatus | 'NEEDS_MY_APPROVAL' | 'PRODUCTION_PLAN') => {
+  const getStatusCount = (status: TabKey) => {
+    if (status === 'ALL_ACTIVE') {
+      return tasks.filter(isActiveTask).length;
+    }
     if (status === 'NEEDS_MY_APPROVAL') {
       return tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps)).length;
     }
@@ -76,7 +90,9 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
   };
 
   // Get tasks for active status
-  const activeTasks = activeStatus === 'NEEDS_MY_APPROVAL'
+  const activeTasks = activeStatus === 'ALL_ACTIVE'
+    ? tasks.filter(isActiveTask)
+    : activeStatus === 'NEEDS_MY_APPROVAL'
     ? tasks.filter(t => taskNeedsMyApproval(t, currentUser, approvalSteps))
     : activeStatus === 'PRODUCTION_PLAN'
     ? tasks.filter(t => isMyProductionTask(t))
@@ -94,6 +110,7 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
             const isActive = activeStatus === status;
             const isApprovalTab = status === 'NEEDS_MY_APPROVAL';
             const isProductionTab = status === 'PRODUCTION_PLAN';
+            const isAllActiveTab = status === 'ALL_ACTIVE';
             
             return (
               <button
@@ -106,16 +123,21 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                       ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20 border-2 border-amber-500'
                       : isProductionTab
                       ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/20 border-2 border-violet-500'
+                      : isAllActiveTab
+                      ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 border-2 border-emerald-500'
                       : 'bg-[color:var(--dash-primary)] text-white shadow-lg shadow-[color:var(--dash-primary)]/20 border-2 border-[color:var(--dash-primary)]'
                     : isApprovalTab
                       ? 'bg-amber-500/10 text-amber-100 border border-amber-500/30 hover:bg-amber-500/20 hover:border-amber-500/50'
                       : isProductionTab
                       ? 'bg-violet-500/10 text-violet-100 border border-violet-500/30 hover:bg-violet-500/20 hover:border-violet-500/50'
+                      : isAllActiveTab
+                      ? 'bg-emerald-500/10 text-emerald-100 border border-emerald-500/30 hover:bg-emerald-500/20 hover:border-emerald-500/50'
                       : 'bg-[color:var(--dash-surface-elevated)]/80 text-slate-300 border border-[color:var(--dash-glass-border)] hover:bg-[color:var(--dash-surface-elevated)] hover:text-white hover:border-[color:var(--dash-primary)]/30'
                   }
                 `}
               >
                 <span className="truncate flex items-center gap-1.5">
+                  {isAllActiveTab && <LayoutGrid className="w-3.5 h-3.5 flex-shrink-0" />}
                   {isApprovalTab && <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />}
                   {isProductionTab && <Film className="w-3.5 h-3.5 flex-shrink-0" />}
                   {label}
@@ -128,6 +150,8 @@ const TaskBoardDark: React.FC<TaskBoardDarkProps> = ({
                       ? 'bg-amber-500/30 text-amber-200'
                       : isProductionTab
                       ? 'bg-violet-500/30 text-violet-200'
+                      : isAllActiveTab
+                      ? 'bg-emerald-500/30 text-emerald-200'
                       : 'bg-white/5 text-slate-400'
                   }
                 `}>
