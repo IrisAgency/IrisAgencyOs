@@ -219,6 +219,16 @@ header {
     text-overflow: ellipsis;
 }
 
+/* Widget: Revisions */
+.revisions {
+    grid-column: span 4;
+    padding: 24px;
+    background: linear-gradient(145deg, rgba(249, 170, 51, 0.04), transparent);
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+}
+
 /* Widget 2: GM Urgent (Critical) */
 .gm-urgent { 
     grid-column: span 4; 
@@ -436,6 +446,7 @@ button {
 
     .my-tasks { grid-column: span 8; }
     .needs-my-approval { grid-column: span 4; }
+    .revisions { grid-column: span 4; }
     .gm-urgent { grid-column: span 4; }
     .team-progress { grid-column: span 4; }
     .calendar-widget { grid-column: span 4; }
@@ -453,6 +464,7 @@ button {
 
     .my-tasks { grid-column: span 4; min-height: 320px; }
     .needs-my-approval { grid-column: span 4; }
+    .revisions { grid-column: span 4; }
     .gm-urgent { grid-column: span 4; }
     .team-progress { grid-column: span 2; }
     .calendar-widget { grid-column: span 2; }
@@ -475,6 +487,7 @@ button {
 
     .my-tasks, 
     .needs-my-approval,
+    .revisions,
     .gm-urgent, 
     .team-progress, 
     .calendar-widget, 

@@ -13,6 +13,7 @@ import {
   Milestone,
   ApprovalStep,
   ProductionPlan,
+  TaskStatus,
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { usePermission } from '../hooks/usePermissions';
@@ -85,7 +86,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   // -- Drag and Drop Logic --
   const [widgetOrder, setWidgetOrder] = useState<string[]>([
-    'my-tasks', 'needs-my-approval', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
+    'my-tasks', 'needs-my-approval', 'revisions', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'
   ]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
@@ -182,6 +183,51 @@ const Dashboard: React.FC<DashboardProps> = ({
     : myTasksFiltered;
 
   const isManagerRole = currentUser.role === UserRole.GENERAL_MANAGER || currentUser.role === UserRole.ACCOUNT_MANAGER;
+
+  // Revisions Card State
+  const [revisionTypeFilter, setRevisionTypeFilter] = useState<string>('all');
+
+  // Compute revision tasks: tasks with status 'revisions_required' or active revisionContext
+  const revisionTasks = useMemo(() => {
+    return tasks.filter(t => {
+      if (t.status === TaskStatus.ARCHIVED || t.isArchived || t.isDeleted) return false;
+      const isRevision = t.status === TaskStatus.REVISIONS_REQUIRED || (t.revisionContext?.active === true);
+      if (!isRevision) return false;
+      // Also check approval steps with revision_requested status
+      const hasRevisionStep = approvalSteps.some(s => s.taskId === t.id && (s.status === 'revision_requested' || s.status === 'rejected'));
+      return isRevision || hasRevisionStep;
+    });
+  }, [tasks, approvalSteps]);
+
+  // For GM/AM: group by assignee; for others: only show their own
+  const myRevisionTasks = useMemo(() => {
+    const filtered = revisionTasks.filter(t => {
+      if (revisionTypeFilter !== 'all' && t.taskType !== revisionTypeFilter) return false;
+      if (isManagerRole) return true; // GM/AM see all
+      return (t.assigneeIds || []).includes(currentUser.id) || t.revisionContext?.assignedToUserId === currentUser.id;
+    });
+    return filtered;
+  }, [revisionTasks, isManagerRole, currentUser.id, revisionTypeFilter]);
+
+  // Group revisions by team member (for manager view)
+  const revisionsByMember = useMemo(() => {
+    if (!isManagerRole) return [];
+    const map = new Map<string, Task[]>();
+    myRevisionTasks.forEach(t => {
+      // Use revision assigned user if available, otherwise first assignee
+      const assigneeId = t.revisionContext?.assignedToUserId || t.assigneeIds?.[0] || 'unassigned';
+      if (!map.has(assigneeId)) map.set(assigneeId, []);
+      map.get(assigneeId)!.push(t);
+    });
+    return Array.from(map.entries())
+      .map(([userId, tasks]) => ({ user: users.find(u => u.id === userId), userId, tasks }))
+      .sort((a, b) => b.tasks.length - a.tasks.length);
+  }, [myRevisionTasks, isManagerRole, users]);
+
+  // Available task types for revision filter
+  const revisionTaskTypes = useMemo(() => {
+    return Array.from(new Set(revisionTasks.map(t => t.taskType).filter(Boolean))).sort();
+  }, [revisionTasks]);
 
   const urgentTasks = tasks
     .filter(t => {
@@ -421,7 +467,7 @@ const Dashboard: React.FC<DashboardProps> = ({
     if (savedOrder) {
       try {
         const parsed = JSON.parse(savedOrder);
-        const defaultOrder = ['my-tasks', 'needs-my-approval', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'];
+        const defaultOrder = ['my-tasks', 'needs-my-approval', 'revisions', 'gm-urgent', 'team-progress', 'calendar', 'client-status', 'milestones', 'quick-notes'];
         // Ensure we have all widgets and no duplicates
         const merged = Array.from(new Set([...parsed, ...defaultOrder])).filter(id => defaultOrder.includes(id));
         setWidgetOrder(merged);
@@ -607,6 +653,154 @@ const Dashboard: React.FC<DashboardProps> = ({
                       onNavigateToTask={onNavigateToTask}
                       onViewAll={onViewAllApprovals}
                     />
+                  </section>
+                );
+
+              case 'revisions':
+                return (
+                  <section key={widgetId} className="revisions glass-panel animate-reveal" {...dragProps}>
+                    <div className="widget-title">
+                      <span>
+                        {isManagerRole ? 'Team Revisions' : 'My Revisions'}
+                        {myRevisionTasks.length > 0 && (
+                          <span style={{ fontSize: '0.65rem', opacity: 0.6, marginLeft: 6 }}>({myRevisionTasks.length})</span>
+                        )}
+                      </span>
+                      {isManagerRole && (
+                        <select
+                          value={revisionTypeFilter}
+                          onChange={(e) => setRevisionTypeFilter(e.target.value)}
+                          style={{ fontSize: '0.7rem', padding: '2px 4px', width: 'auto' }}
+                        >
+                          <option value="all">All Types</option>
+                          {revisionTaskTypes.map(t => (
+                            <option key={t} value={t}>{(t || 'other').replace(/_/g, ' ')}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', maxHeight: '380px' }}>
+                      {isManagerRole ? (
+                        /* Manager view: grouped by team member */
+                        revisionsByMember.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--dash-secondary)', opacity: 0.5, fontSize: '0.85rem' }}>
+                            No active revisions
+                          </div>
+                        ) : (
+                          revisionsByMember.map(({ user: member, userId, tasks: memberTasks }) => (
+                            <div key={userId} style={{ marginBottom: '16px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <div style={{
+                                  width: '28px', height: '28px', borderRadius: '50%',
+                                  background: 'linear-gradient(135deg, var(--dash-primary), var(--dash-tertiary))',
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  fontSize: '0.65rem', fontWeight: 700, color: 'var(--dash-on-primary)', flexShrink: 0
+                                }}>
+                                  {member?.name?.charAt(0) || '?'}
+                                </div>
+                                <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{member?.name || 'Unassigned'}</span>
+                                <span className="data-mono ltr-text" style={{ fontSize: '0.65rem', opacity: 0.5, marginLeft: 'auto' }}>
+                                  {memberTasks.length} revision{memberTasks.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                              {memberTasks.map(task => {
+                                const project = projects.find(p => p.id === task.projectId);
+                                const revCycle = task.revisionContext?.cycle || (task.revisionHistory?.length || 0) + 1;
+                                return (
+                                  <div
+                                    key={task.id}
+                                    onClick={() => onNavigateToTask?.(task.id)}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: '10px',
+                                      padding: '10px 12px', marginBottom: '6px', borderRadius: '12px',
+                                      background: 'rgba(255,255,255,0.02)', cursor: 'pointer',
+                                      borderLeft: `3px solid ${revCycle >= 3 ? 'var(--dash-error)' : revCycle >= 2 ? '#F9AA33' : 'var(--dash-primary)'}`,
+                                      transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                                  >
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+                                      <div className="data-mono ltr-text" style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '2px' }}>
+                                        {project?.name || 'No project'} · {(task.taskType || 'other').replace(/_/g, ' ')}
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                                      <span style={{
+                                        fontSize: '0.6rem', padding: '2px 8px', borderRadius: '9px', fontWeight: 700,
+                                        letterSpacing: '0.5px', textTransform: 'uppercase',
+                                        background: revCycle >= 3 ? 'rgba(239,68,68,0.15)' : revCycle >= 2 ? 'rgba(249,170,51,0.15)' : 'rgba(223,30,60,0.1)',
+                                        color: revCycle >= 3 ? '#f87171' : revCycle >= 2 ? '#fbbf24' : 'var(--dash-primary)'
+                                      }}>
+                                        Cycle {revCycle}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))
+                        )
+                      ) : (
+                        /* Non-manager view: flat list of own revisions */
+                        myRevisionTasks.length === 0 ? (
+                          <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--dash-secondary)', opacity: 0.5, fontSize: '0.85rem' }}>
+                            No revisions assigned to you
+                          </div>
+                        ) : (
+                          myRevisionTasks.map(task => {
+                            const project = projects.find(p => p.id === task.projectId);
+                            const revCycle = task.revisionContext?.cycle || (task.revisionHistory?.length || 0) + 1;
+                            const requestedBy = task.revisionContext?.requestedByUserId
+                              ? users.find(u => u.id === task.revisionContext?.requestedByUserId)?.name?.split(' ')[0]
+                              : null;
+                            return (
+                              <div
+                                key={task.id}
+                                onClick={() => onNavigateToTask?.(task.id)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '10px',
+                                  padding: '12px', marginBottom: '8px', borderRadius: '12px',
+                                  background: 'rgba(255,255,255,0.02)', cursor: 'pointer',
+                                  borderLeft: `3px solid ${revCycle >= 3 ? 'var(--dash-error)' : revCycle >= 2 ? '#F9AA33' : 'var(--dash-primary)'}`,
+                                  transition: 'background 0.2s'
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                              >
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '0.85rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.title}</div>
+                                  <div className="data-mono ltr-text" style={{ fontSize: '0.65rem', opacity: 0.5, marginTop: '2px' }}>
+                                    {project?.name || 'No project'}
+                                    {requestedBy ? ` · by ${requestedBy}` : ''}
+                                  </div>
+                                  {task.revisionContext?.message && (
+                                    <div style={{ fontSize: '0.75rem', marginTop: '4px', padding: '4px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.03)', color: 'var(--dash-secondary)', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      &ldquo;{task.revisionContext.message}&rdquo;
+                                    </div>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                                  <span style={{
+                                    fontSize: '0.6rem', padding: '2px 8px', borderRadius: '9px', fontWeight: 700,
+                                    letterSpacing: '0.5px', textTransform: 'uppercase',
+                                    background: revCycle >= 3 ? 'rgba(239,68,68,0.15)' : revCycle >= 2 ? 'rgba(249,170,51,0.15)' : 'rgba(223,30,60,0.1)',
+                                    color: revCycle >= 3 ? '#f87171' : revCycle >= 2 ? '#fbbf24' : 'var(--dash-primary)'
+                                  }}>
+                                    Cycle {revCycle}
+                                  </span>
+                                  <span className="data-mono ltr-text" style={{ fontSize: '0.6rem', opacity: 0.4 }}>
+                                    {(task.taskType || 'other').replace(/_/g, ' ')}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )
+                      )}
+                    </div>
                   </section>
                 );
 
