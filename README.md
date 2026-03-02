@@ -25,6 +25,7 @@ IRIS Agency OS is a unified operating system for creative agencies covering clie
 - Clients: CRM with notes, meetings, brand assets, marketing strategies; cascades to projects/tasks/files.
 - Projects: lifecycle, milestones, members (staff/freelancers), approvals, files, activity logs.
 - Tasks: Kanban with workflows, approvals, dependencies, time logs, comments, file attachments.
+- Quality Control (QC): Tinder-style swipe review deck, linked approval pipeline, rejection modal with notes/references, role-based access (GM/CD override rules). **Google Drive in-app preview**: auto-detects Drive links in task references/attachments/deliveryLinks, renders thumbnails on cards (Drive Thumbnail API), full iframe preview in QC Review Drawer (video/image/PDF), deliverable switcher, type badges, permission-aware fallback with "Open in Drive" escape hatch.
 - Posting: Refactored responsive board (kanban desktop, tabbed mobile), drawer/modal details, permission-aware read-only UX.
 - Files: Client-first hierarchy with auto-created client/project/task folders, smart categorization, breadcrumbs, filters.
 - Production: shot lists, call sheets, locations, equipment inventory.

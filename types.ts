@@ -405,6 +405,9 @@ export interface Task {
   referenceLinks?: ReferenceLink[];
   referenceImages?: ReferenceImage[];
 
+  // Delivery Links (Google Drive links for QC review)
+  deliveryLinks?: DeliveryLink[];
+
   client?: string; // Denormalized client name
 
   // Quality Control
@@ -1302,6 +1305,17 @@ export interface ReferenceImage {
   downloadUrl: string;
   uploadedBy: string;
   uploadedAt: string;
+}
+
+/** A Google Drive (or external) delivery link for QC review */
+export interface DeliveryLink {
+  id: string;
+  url: string;
+  label: string;
+  type?: 'video' | 'image' | 'pdf' | 'document' | 'other';
+  driveFileId?: string | null;
+  addedBy: string;
+  addedAt: string;
 }
 
 // ============================================================================

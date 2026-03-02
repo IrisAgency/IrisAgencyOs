@@ -7,8 +7,11 @@ import {
   Link as LinkIcon, Paperclip, Plus, X, MessageSquare,
   Eye, ArrowRight, User as UserIcon, Loader2,
   FileText, Calendar, Layers, Search, GitMerge, ThumbsUp,
-  CornerUpLeft, ChevronDown
+  CornerUpLeft, ChevronDown, ExternalLink
 } from 'lucide-react';
+import { DriveThumbnail, DriveTypeBadge } from './common/DrivePreview';
+import QCReviewDrawer from './QCReviewDrawer';
+import { extractDriveDeliverables, DriveDeliverable } from '../utils/driveUtils';
 import {
   Task, User, Project, Client, ProjectMember, WorkflowTemplate,
   ApprovalStep, TaskComment, AgencyFile, QCReview, QCReviewAttachment,
@@ -105,6 +108,10 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
 
   // ─── Expanded card detail ─────────────────────────────────────────
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+
+  // ─── QC Review Drawer ─────────────────────────────────────────────
+  const [drawerTaskId, setDrawerTaskId] = useState<string | null>(null);
+  const drawerTask = useMemo(() => tasks.find(t => t.id === drawerTaskId) || null, [tasks, drawerTaskId]);
 
   // ─── Derived data ─────────────────────────────────────────────────
   const currentUserObj = useMemo(() => users.find(u => u.id === currentUser.id), [users, currentUser.id]);
@@ -301,6 +308,14 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
   const getTaskComments = (taskId: string) => taskComments.filter(c => c.taskId === taskId);
   const getTaskFiles = (taskId: string) => files.filter(f => f.taskId === taskId);
 
+  // ─── Drive deliverables extraction ────────────────────────────────
+  const getTaskDeliverables = useCallback((task: Task): DriveDeliverable[] => {
+    const refs = (task.referenceLinks || []).map(l => ({ id: l.id, title: l.title, url: l.url }));
+    const atts = (task.attachments || []).map(a => ({ id: a.id, name: a.name, url: a.url }));
+    const dls = (task.deliveryLinks || []).map(d => ({ id: d.id, label: d.label, url: d.url, driveFileId: d.driveFileId }));
+    return extractDriveDeliverables(refs, atts, dls);
+  }, []);
+
   // ─── Approval Progress Bar Component ──────────────────────────────
   const ApprovalProgress: React.FC<{ steps: ApprovalStep[]; compact?: boolean }> = ({ steps, compact }) => {
     if (steps.length === 0) return null;
@@ -467,6 +482,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     const taskFiles = getTaskFiles(task.id);
     const assignees = (task.assigneeIds || []).map(id => getUser(id)).filter(Boolean);
     const feedback = swipeFeedback?.taskId === task.id ? swipeFeedback.type : null;
+    const deliverables = getTaskDeliverables(task);
 
     // Find my pending step
     const myStep = steps.find(s => s.approverId === currentUser.id && s.status === 'pending');
@@ -552,6 +568,44 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             </div>
           )}
 
+          {/* Drive deliverable thumbnails */}
+          {deliverables.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                  Deliverables ({deliverables.length})
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setDrawerTaskId(task.id); }}
+                  className="text-[10px] px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1"
+                >
+                  <Eye className="w-3 h-3" />
+                  Open Preview
+                </button>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                {deliverables.slice(0, 4).map((d, i) => (
+                  <DriveThumbnail
+                    key={d.id}
+                    fileId={d.fileId}
+                    typeHint={d.typeHint}
+                    size={240}
+                    className="w-24 h-16 shrink-0"
+                    onClick={() => setDrawerTaskId(task.id)}
+                  />
+                ))}
+                {deliverables.length > 4 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDrawerTaskId(task.id); }}
+                    className="w-24 h-16 shrink-0 rounded-lg bg-white/5 border border-[color:var(--dash-glass-border)] flex items-center justify-center text-xs text-slate-400 hover:bg-white/10 transition-all"
+                  >
+                    +{deliverables.length - 4} more
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Workflow & progress */}
           {template && (
             <div className="flex items-center gap-2 text-xs text-slate-400">
@@ -631,23 +685,28 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             );
           })()}
 
-          {/* Reference links */}
-          {(task.referenceLinks?.length || 0) > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {task.referenceLinks?.map((link, i) => (
-                <a
-                  key={i}
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[10px] px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-colors flex items-center gap-1"
-                >
-                  <LinkIcon className="w-3 h-3" />
-                  {link.title || 'Reference'}
-                </a>
-              ))}
-            </div>
-          )}
+          {/* Reference links (non-Drive only — Drive links shown as thumbnails above) */}
+          {(() => {
+            const driveIds = new Set(deliverables.map(d => d.id));
+            const nonDriveLinks = (task.referenceLinks || []).filter(l => !driveIds.has(l.id));
+            if (nonDriveLinks.length === 0) return null;
+            return (
+              <div className="flex flex-wrap gap-2">
+                {nonDriveLinks.map((link, i) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[10px] px-2 py-1 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-colors flex items-center gap-1"
+                  >
+                    <LinkIcon className="w-3 h-3" />
+                    {link.title || 'Reference'}
+                  </a>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Bottom action bar */}
@@ -691,6 +750,7 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
     const myPendingStep = steps.find(s => s.approverId === currentUser.id && s.status === 'pending');
     const state = getTaskApprovalState(task, steps, currentUser.id);
     const isExpanded = expandedTaskId === task.id;
+    const deliverables = getTaskDeliverables(task);
 
     const statusColor = state === 'pending_my_review' ? 'border-amber-500/30 bg-amber-500/5' :
                          state === 'all_approved' ? 'border-emerald-500/30 bg-emerald-500/5' :
@@ -753,6 +813,17 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Drive preview button */}
+              {deliverables.length > 0 && (
+                <button
+                  onClick={() => setDrawerTaskId(task.id)}
+                  className="p-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1"
+                  title={`Preview ${deliverables.length} deliverable${deliverables.length > 1 ? 's' : ''}`}
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-medium">{deliverables.length}</span>
+                </button>
+              )}
               {/* Approve/reject buttons */}
               {myPendingStep && canReview && (
                 <div className="flex items-center gap-1">
@@ -796,6 +867,36 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             <div className="mt-3">
               <ApprovalStepList steps={steps} />
             </div>
+
+            {/* Drive deliverable thumbnails */}
+            {deliverables.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+                    Drive Deliverables ({deliverables.length})
+                  </span>
+                  <button
+                    onClick={() => setDrawerTaskId(task.id)}
+                    className="text-[10px] px-2 py-1 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-all flex items-center gap-1"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Full Preview
+                  </button>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                  {deliverables.map((d) => (
+                    <DriveThumbnail
+                      key={d.id}
+                      fileId={d.fileId}
+                      typeHint={d.typeHint}
+                      size={200}
+                      className="w-28 h-20 shrink-0"
+                      onClick={() => setDrawerTaskId(task.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Description */}
             {task.description && (
@@ -1003,6 +1104,29 @@ const QualityControlHub: React.FC<QualityControlHubProps> = ({
             ))
           )}
         </div>
+      )}
+
+      {/* ─── QC Review Drawer ──────────────────────────────────────── */}
+      {drawerTask && (
+        <QCReviewDrawer
+          isOpen={!!drawerTask}
+          onClose={() => setDrawerTaskId(null)}
+          task={drawerTask}
+          users={users}
+          projects={projects}
+          clients={clients}
+          workflowTemplates={workflowTemplates}
+          approvalSteps={approvalSteps}
+          qcReviews={qcReviews}
+          currentUserId={currentUser.id}
+          canReview={canReview}
+          isSubmitting={isSubmitting}
+          onApprove={handleApprove}
+          onReject={(taskId) => {
+            setDrawerTaskId(null);
+            openRejectModal(taskId);
+          }}
+        />
       )}
 
       {/* ─── Rejection Modal ──────────────────────────────────────── */}
