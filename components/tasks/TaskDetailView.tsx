@@ -17,6 +17,7 @@ import { deleteField } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import Modal from '../common/Modal';
+import { shouldEnableQC } from '../../utils/qcUtils';
 
 export interface DetailViewProps {
     task: Task;
@@ -247,30 +248,41 @@ const TaskDetailView = ({
                 onUpdateTask({ ...task, status: TaskStatus.AWAITING_REVIEW, updatedAt: new Date().toISOString() });
                 onNotify('approval_request', 'Approval Requested', `Task "${task.title}" is now awaiting review.`);
             } else {
-                // No workflow - direct completion
-                trackTimeEvent('task_submitted', oldStatus, TaskStatus.COMPLETED, `Completed task (no workflow)`);
+                // No workflow — check if QC is required before completing
+                const template = workflowTemplates.find(w => w.id === task.workflowTemplateId);
+                const qcRequired = shouldEnableQC(task, (template as any)?.requiresQC);
 
-                // Check for Social Handover
-                if (task.requiresSocialPost && !task.socialPostId) {
-                    const socialPost = createSocialPostFromTask(task);
-
-                    // Update Task with social post link
-                    onUpdateTask({
-                        ...task,
-                        status: TaskStatus.COMPLETED,
-                        socialPostId: socialPost.id,
-                        completedAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    });
+                if (qcRequired) {
+                    // Route to QC review instead of direct completion
+                    trackTimeEvent('task_submitted', oldStatus, TaskStatus.AWAITING_REVIEW, `Submitted task for QC review`);
+                    onUpdateTask({ ...task, status: TaskStatus.AWAITING_REVIEW, updatedAt: new Date().toISOString() });
+                    onNotify('task_status_changed', 'QC Review Required', `Task "${task.title}" sent for Quality Control review.`);
                 } else {
-                    // Normal Completion
-                    onUpdateTask({
-                        ...task,
-                        status: TaskStatus.COMPLETED,
-                        completedAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                    });
-                    onNotify('task_completed', 'Task Completed', `Task "${task.title}" has been completed.`);
+                    // No workflow and no QC - direct completion
+                    trackTimeEvent('task_submitted', oldStatus, TaskStatus.COMPLETED, `Completed task (no workflow)`);
+
+                    // Check for Social Handover
+                    if (task.requiresSocialPost && !task.socialPostId) {
+                        const socialPost = createSocialPostFromTask(task);
+
+                        // Update Task with social post link
+                        onUpdateTask({
+                            ...task,
+                            status: TaskStatus.COMPLETED,
+                            socialPostId: socialPost.id,
+                            completedAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        });
+                    } else {
+                        // Normal Completion
+                        onUpdateTask({
+                            ...task,
+                            status: TaskStatus.COMPLETED,
+                            completedAt: new Date().toISOString(),
+                            updatedAt: new Date().toISOString()
+                        });
+                        onNotify('task_completed', 'Task Completed', `Task "${task.title}" has been completed.`);
+                    }
                 }
             }
         }
@@ -422,8 +434,18 @@ const TaskDetailView = ({
                 onUpdateApprovalStep({ ...nextStep, status: 'pending' });
                 onUpdateTask({ ...task, currentApprovalLevel: nextLevel, updatedAt: new Date().toISOString() });
             } else {
-                // No more internal steps
-                if (task.isClientApprovalRequired) {
+                // No more internal approval steps — check if QC is required before proceeding
+                const template = workflowTemplates.find(w => w.id === task.workflowTemplateId);
+                const qcRequired = shouldEnableQC(task, (template as any)?.requiresQC);
+
+                if (qcRequired && !task.qc?.enabled) {
+                    // Route to awaiting_review — the QC trigger in handleUpdateTask will initialize QC
+                    onUpdateTask({ ...task, status: TaskStatus.AWAITING_REVIEW, updatedAt: new Date().toISOString() });
+                    onNotify('task_status_changed', 'QC Review Required', `"${task.title}" is now in Quality Control review.`);
+                } else if (qcRequired && task.qc?.enabled && (task.qc.status === 'PENDING' || task.qc.status === 'NEEDS_INTERVENTION')) {
+                    // QC already active but not yet resolved — keep at awaiting_review
+                    onNotify('system', 'QC In Progress', `"${task.title}" is still pending QC review.`);
+                } else if (task.isClientApprovalRequired) {
                     onUpdateTask({ ...task, status: TaskStatus.CLIENT_REVIEW, updatedAt: new Date().toISOString() });
                     // Create Client Approval record if missing
                     if (!clientApproval && project?.clientId) {
