@@ -16,6 +16,7 @@ dev-dist
 # Environment files (contain secrets)
 .env
 .env.local
+.env.*.local
 .env.development
 .env.production
 
