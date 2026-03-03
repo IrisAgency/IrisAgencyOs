@@ -3,13 +3,13 @@ importScripts('https://www.gstatic.com/firebasejs/12.6.0/firebase-messaging-comp
 
 // Firebase configuration - must be hardcoded for push event handlers to work
 const firebaseConfig = {
-  apiKey: "AIzaSyCbD1PoHAh9JJSWjzZ7Z8Wk_xj-wNuJWb0",
+  apiKey: "AIzaSyBoRMa1GuSPL73aphbJMG-AGkNqm17lWoY",
   authDomain: "iris-os-43718.firebaseapp.com",
   projectId: "iris-os-43718",
   storageBucket: "iris-os-43718.firebasestorage.app",
-  messagingSenderId: "488155542588",
-  appId: "1:488155542588:web:c0da81dc83a51dd9cd6f0f",
-  measurementId: "G-K9FBXZB06M"
+  messagingSenderId: "841502880440",
+  appId: "1:841502880440:web:97ecdc90363c668610fa4d",
+  measurementId: "G-F7KS3SN7YB"
 };
 
 // Initialize Firebase immediately (required for push event handlers)
