@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import {
     Task, Project, User, TaskStatus, Priority, Department, TaskType,
     WorkflowTemplate, ProjectMember, ProjectMilestone, SocialPlatform, UserRole,
-    ReferenceLink, ReferenceImage
+    ReferenceLink, ReferenceImage, DeliveryLink
 } from '../../types';
+import { isDriveLink, extractDriveFileId, guessDriveFileType } from '../../utils/driveUtils';
 import { PERMISSIONS } from '../../lib/permissions';
 import { AlertCircle, Link as LinkIcon, Image as ImageIcon, X, Plus, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '../common/Modal';
@@ -59,6 +60,13 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
     const [newLinkNote, setNewLinkNote] = useState('');
     const [showLinkInput, setShowLinkInput] = useState(false);
 
+    // Delivery Links State
+    const [deliveryLinks, setDeliveryLinks] = useState<DeliveryLink[]>([]);
+    const [newDeliveryLabel, setNewDeliveryLabel] = useState('');
+    const [newDeliveryUrl, setNewDeliveryUrl] = useState('');
+    const [newDeliveryType, setNewDeliveryType] = useState<'video' | 'image' | 'pdf' | 'document' | 'other'>('other');
+    const [showDeliveryInput, setShowDeliveryInput] = useState(false);
+
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -95,6 +103,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setQcOverride(editingTask.qcOverride || null);
                 setAssigneeIds(editingTask.assigneeIds || []);
                 setReferenceLinks(editingTask.referenceLinks || []);
+                setDeliveryLinks(editingTask.deliveryLinks || []);
                 setSelectedImages([]); // Reset images on edit open
                 setDescription(editingTask.description || '');
                 setVoiceOver(editingTask.voiceOver || '');
@@ -115,6 +124,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 setSocialManagerId('');
                 setQcOverride(null);
                 setReferenceLinks([]);
+                setDeliveryLinks([]);
                 setSelectedImages([]);
                 setDescription('');
                 setVoiceOver('');
@@ -174,6 +184,36 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
     const handleRemoveLink = (id: string) => {
         setReferenceLinks(referenceLinks.filter(l => l.id !== id));
+    };
+
+    const handleAddDeliveryLink = () => {
+        if (!newDeliveryUrl.trim()) return;
+        try { new URL(newDeliveryUrl); } catch { alert('Please enter a valid URL (http/https)'); return; }
+
+        const driveFileId = extractDriveFileId(newDeliveryUrl) || null;
+        const autoType = isDriveLink(newDeliveryUrl)
+            ? guessDriveFileType(newDeliveryUrl, newDeliveryLabel)
+            : newDeliveryType;
+
+        const newLink: DeliveryLink = {
+            id: `dl${Date.now()}`,
+            url: newDeliveryUrl.trim(),
+            label: newDeliveryLabel.trim() || 'Delivery File',
+            type: autoType === 'unknown' ? 'other' : (autoType as DeliveryLink['type']),
+            driveFileId,
+            addedBy: currentUser.id,
+            addedAt: new Date().toISOString(),
+        };
+
+        setDeliveryLinks([...deliveryLinks, newLink]);
+        setNewDeliveryLabel('');
+        setNewDeliveryUrl('');
+        setNewDeliveryType('other');
+        setShowDeliveryInput(false);
+    };
+
+    const handleRemoveDeliveryLink = (id: string) => {
+        setDeliveryLinks(deliveryLinks.filter(l => l.id !== id));
     };
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -286,6 +326,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     assigneeIds: assigneeIds,
                     referenceLinks: referenceLinks,
                     referenceImages: finalReferenceImages,
+                    deliveryLinks: deliveryLinks,
                     description: description?.trim() || null,
                     voiceOver: voiceOver?.trim() || null,
                     textDirHint: textDirHint
@@ -343,7 +384,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     referenceLinks: referenceLinks,
-                    referenceImages: finalReferenceImages
+                    referenceImages: finalReferenceImages,
+                    deliveryLinks: deliveryLinks
                 };
 
                 await onAddTask(taskToSave);
@@ -530,7 +572,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             </span>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-gray-400">
-                                    {referenceLinks.length} links, {selectedImages.length + (editingTask?.referenceImages?.length || 0)} images
+                                    {referenceLinks.length} links, {deliveryLinks.length} delivery, {selectedImages.length + (editingTask?.referenceImages?.length || 0)} images
                                 </span>
                                 {showReferences ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
                             </div>
@@ -636,6 +678,88 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                     {selectedImages.length === 0 && (!editingTask?.referenceImages || editingTask.referenceImages.length === 0) && (
                                         <p className="text-xs text-gray-500 italic">No images uploaded.</p>
                                     )}
+                                </div>
+
+                                {/* Delivery Links Block */}
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-xs font-bold text-gray-400 uppercase">Delivery Links (Drive / External)</label>
+                                        <button type="button" onClick={() => setShowDeliveryInput(true)} className="text-xs text-[#DF1E3C] hover:underline flex items-center gap-1">
+                                            <Plus className="w-3 h-3" /> Add Delivery Link
+                                        </button>
+                                    </div>
+
+                                    {showDeliveryInput && (
+                                        <div className="bg-[#121212] p-3 rounded-lg border border-[#49454F] mb-3 space-y-2">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    placeholder="Label (e.g. Final Video)"
+                                                    className="flex-1 px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5] placeholder-gray-500"
+                                                    value={newDeliveryLabel}
+                                                    onChange={e => setNewDeliveryLabel(e.target.value)}
+                                                />
+                                                <select
+                                                    className="px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5]"
+                                                    value={newDeliveryType}
+                                                    onChange={e => setNewDeliveryType(e.target.value as DeliveryLink['type'] || 'other')}
+                                                >
+                                                    <option value="video">Video</option>
+                                                    <option value="image">Image</option>
+                                                    <option value="pdf">PDF</option>
+                                                    <option value="document">Document</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                            </div>
+                                            <input
+                                                placeholder="URL (https://drive.google.com/... or any link)"
+                                                className="w-full px-2 py-1 text-sm bg-[#0a0a0a] border border-[#49454F] rounded text-[#E6E1E5] placeholder-gray-500"
+                                                value={newDeliveryUrl}
+                                                onChange={e => {
+                                                    setNewDeliveryUrl(e.target.value);
+                                                    if (isDriveLink(e.target.value)) {
+                                                        const hint = guessDriveFileType(e.target.value, newDeliveryLabel);
+                                                        if (hint !== 'unknown') setNewDeliveryType(hint as DeliveryLink['type'] || 'other');
+                                                    }
+                                                }}
+                                            />
+                                            {isDriveLink(newDeliveryUrl) && (
+                                                <p className="text-[10px] text-emerald-400">✓ Google Drive link detected — preview in QC</p>
+                                            )}
+                                            <div className="flex justify-end gap-2 mt-2">
+                                                <button type="button" onClick={() => { setShowDeliveryInput(false); setNewDeliveryLabel(''); setNewDeliveryUrl(''); setNewDeliveryType('other'); }} className="text-xs text-gray-400 hover:text-gray-300">Cancel</button>
+                                                <button type="button" onClick={handleAddDeliveryLink} disabled={!newDeliveryUrl.trim()} className="text-xs bg-[#DF1E3C] text-white px-3 py-1 rounded hover:bg-[#c91a35] disabled:opacity-50">Add</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-2">
+                                        {deliveryLinks.map(link => {
+                                            const isDrive = isDriveLink(link.url);
+                                            const typeLabel = {
+                                                video: '🎬 Video', image: '🖼️ Image', pdf: '📄 PDF',
+                                                document: '📝 Doc', other: '📎 File'
+                                            }[link.type || 'other'];
+                                            return (
+                                                <div key={link.id} className="flex items-start justify-between p-2 bg-[#121212] rounded border border-[#49454F]">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[10px] font-bold uppercase text-gray-400">{typeLabel}</span>
+                                                            <a href={link.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-[#DF1E3C] hover:underline truncate block">{link.label}</a>
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5 ml-0 truncate">
+                                                            {isDrive ? '↗ Google Drive' : link.url}
+                                                        </p>
+                                                    </div>
+                                                    <button type="button" onClick={() => handleRemoveDeliveryLink(link.id)} className="text-gray-400 hover:text-[#DF1E3C] ml-2 shrink-0">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                        {deliveryLinks.length === 0 && !showDeliveryInput && (
+                                            <p className="text-xs text-gray-500 italic">No delivery links added. Add Google Drive links for QC preview.</p>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -3,7 +3,8 @@ import {
     Task, Project, User, TaskStatus, Priority, Department, TaskComment,
     TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval,
     AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember,
-    RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole
+    RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole,
+    DeliveryLink
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import {
@@ -11,8 +12,10 @@ import {
     MessageSquare, FileText, Link, Paperclip, MoreVertical,
     Play, Pause, AlertCircle, ChevronRight, User as UserIcon, Send,
     ThumbsUp, ThumbsDown, ShieldCheck, CornerUpLeft, Upload, Download,
-    X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2, Share2, CheckCircle as CheckCircleIcon, Trash2, XCircle
+    X, ChevronDown, SlidersHorizontal, GitMerge, Check, Archive, RotateCcw, Edit2, Share2, CheckCircle as CheckCircleIcon, Trash2, XCircle,
+    ExternalLink, Video
 } from 'lucide-react';
+import { isDriveLink, extractDriveFileId, getDriveThumbnailUrl, getDrivePreviewUrl, getDriveViewUrl, guessDriveFileType, DriveFileHint } from '../../utils/driveUtils';
 import { deleteField } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
@@ -79,6 +82,12 @@ const TaskDetailView = ({
     const [editDescription, setEditDescription] = useState('');
     const [editVoiceOver, setEditVoiceOver] = useState('');
     const [editTextDirHint, setEditTextDirHint] = useState<'auto' | 'rtl' | 'ltr'>('auto');
+
+    // Delivery Links State
+    const [showAddDeliveryLink, setShowAddDeliveryLink] = useState(false);
+    const [newDeliveryLabel, setNewDeliveryLabel] = useState('');
+    const [newDeliveryUrl, setNewDeliveryUrl] = useState('');
+    const [newDeliveryType, setNewDeliveryType] = useState<'video' | 'image' | 'pdf' | 'document' | 'other'>('other');
 
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     
@@ -703,6 +712,45 @@ const TaskDetailView = ({
             console.error('Error deleting image:', error);
             onNotify('error', 'Error', 'Failed to delete image from storage.');
         }
+    };
+
+    const handleAddDeliveryLink = () => {
+        if (!newDeliveryUrl.trim()) return;
+        try { new URL(newDeliveryUrl); } catch { alert('Please enter a valid URL (http/https)'); return; }
+
+        const driveFileId = extractDriveFileId(newDeliveryUrl) || null;
+        const autoType = isDriveLink(newDeliveryUrl) ? guessDriveFileType(newDeliveryUrl, newDeliveryLabel) as DeliveryLink['type'] || 'other' : newDeliveryType;
+
+        const newLink: DeliveryLink = {
+            id: `dl${Date.now()}`,
+            url: newDeliveryUrl.trim(),
+            label: newDeliveryLabel.trim() || 'Delivery File',
+            type: autoType === 'unknown' ? 'other' : (autoType as DeliveryLink['type']),
+            driveFileId,
+            addedBy: currentUser.id,
+            addedAt: new Date().toISOString(),
+        };
+
+        onUpdateTask({
+            ...task,
+            deliveryLinks: [...(task.deliveryLinks || []), newLink],
+            updatedAt: new Date().toISOString(),
+        });
+        setNewDeliveryLabel('');
+        setNewDeliveryUrl('');
+        setNewDeliveryType('other');
+        setShowAddDeliveryLink(false);
+        onNotify('success', 'Delivery Link Added', 'A new delivery link has been added.');
+    };
+
+    const handleDeleteDeliveryLink = (linkId: string) => {
+        if (!confirm('Are you sure you want to delete this delivery link?')) return;
+        onUpdateTask({
+            ...task,
+            deliveryLinks: (task.deliveryLinks || []).filter(l => l.id !== linkId),
+            updatedAt: new Date().toISOString(),
+        });
+        onNotify('success', 'Delivery Link Deleted', 'Delivery link has been removed.');
     };
 
     const handleAssignUser = (userId: string) => {
@@ -1340,6 +1388,200 @@ const TaskDetailView = ({
                                 {displayReferenceImages.length === 0 && (
                                     <div className="col-span-full text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                                         <p className="text-sm text-slate-500">No reference images uploaded.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Delivery Links (Google Drive & External) */}
+                        <div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <ExternalLink className="w-4 h-4" /> Delivery Links
+                                    {(task.deliveryLinks?.length || 0) > 0 && (
+                                        <span className="text-xs font-normal bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                                            {task.deliveryLinks!.length}
+                                        </span>
+                                    )}
+                                </h3>
+                                {!isProductionView && checkPermission('tasks.references.add') && (
+                                    <button
+                                        onClick={() => setShowAddDeliveryLink(!showAddDeliveryLink)}
+                                        className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Add Delivery Link
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Add Delivery Link Form */}
+                            {showAddDeliveryLink && (
+                                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 space-y-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">Label</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Final Video, Design File"
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                value={newDeliveryLabel}
+                                                onChange={e => setNewDeliveryLabel(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-semibold text-slate-700 mb-1">Type</label>
+                                            <select
+                                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                                value={newDeliveryType}
+                                                onChange={e => setNewDeliveryType(e.target.value as DeliveryLink['type'] || 'other')}
+                                            >
+                                                <option value="video">Video</option>
+                                                <option value="image">Image / Photo</option>
+                                                <option value="pdf">PDF</option>
+                                                <option value="document">Document</option>
+                                                <option value="other">Other</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1">URL (Google Drive link or any URL)</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://drive.google.com/file/d/... or any URL"
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                            value={newDeliveryUrl}
+                                            onChange={e => {
+                                                setNewDeliveryUrl(e.target.value);
+                                                // Auto-detect type from Drive URL
+                                                if (isDriveLink(e.target.value)) {
+                                                    const hint = guessDriveFileType(e.target.value, newDeliveryLabel);
+                                                    if (hint !== 'unknown') setNewDeliveryType(hint as DeliveryLink['type'] || 'other');
+                                                }
+                                            }}
+                                        />
+                                        {isDriveLink(newDeliveryUrl) && (
+                                            <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                                                <CheckCircle className="w-3 h-3" /> Google Drive link detected — preview will be available in QC
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setShowAddDeliveryLink(false); setNewDeliveryLabel(''); setNewDeliveryUrl(''); setNewDeliveryType('other'); }}
+                                            className="px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-700"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddDeliveryLink}
+                                            disabled={!newDeliveryUrl.trim()}
+                                            className="px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Add Link
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Delivery Links Grid */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {(task.deliveryLinks || []).map(link => {
+                                    const isDrive = isDriveLink(link.url);
+                                    const fileId = link.driveFileId || extractDriveFileId(link.url);
+                                    const typeHint = isDrive ? guessDriveFileType(link.url, link.label) : (link.type || 'other');
+                                    const typeBadge = {
+                                        video: { label: 'VIDEO', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+                                        image: { label: 'PHOTO', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                                        pdf: { label: 'PDF', color: 'bg-red-100 text-red-700 border-red-200' },
+                                        document: { label: 'DOC', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+                                        other: { label: 'FILE', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+                                        unknown: { label: 'FILE', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+                                    }[typeHint] || { label: 'FILE', color: 'bg-slate-100 text-slate-700 border-slate-200' };
+
+                                    return (
+                                        <div key={link.id} className="bg-white rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors group relative overflow-hidden">
+                                            {/* Drive Thumbnail Preview */}
+                                            {isDrive && fileId && (
+                                                <div className="relative aspect-video bg-slate-100 overflow-hidden">
+                                                    <img
+                                                        src={getDriveThumbnailUrl(fileId, 400)}
+                                                        alt={link.label}
+                                                        className="w-full h-full object-cover"
+                                                        referrerPolicy="no-referrer"
+                                                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                                    />
+                                                    {/* Play icon for video */}
+                                                    {typeHint === 'video' && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <div className="bg-black/60 rounded-full p-2 backdrop-blur-sm">
+                                                                <Video className="w-5 h-5 text-white" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {/* Type badge */}
+                                                    <span className={`absolute top-2 left-2 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border ${typeBadge.color}`}>
+                                                        {typeBadge.label}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Link Details */}
+                                            <div className="p-3">
+                                                <div className="flex items-start gap-2">
+                                                    {!isDrive && (
+                                                        <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 mt-0.5 ${typeBadge.color}`}>
+                                                            {typeBadge.label}
+                                                        </span>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-sm font-medium text-slate-900 truncate" title={link.label}>{link.label}</h4>
+                                                        <a
+                                                            href={isDrive && fileId ? getDriveViewUrl(fileId) : link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-xs text-indigo-600 hover:underline truncate block mt-0.5"
+                                                        >
+                                                            {isDrive ? 'Open in Google Drive' : link.url}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center justify-between mt-2">
+                                                    <span className="text-[10px] text-slate-400">
+                                                        {users.find(u => u.id === link.addedBy)?.name || 'Unknown'} · {new Date(link.addedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <a
+                                                            href={isDrive && fileId ? getDriveViewUrl(fileId) : link.url}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                                                            title="Open"
+                                                        >
+                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                        </a>
+                                                        {!isProductionView && checkPermission('tasks.references.delete') && (
+                                                            <button
+                                                                onClick={() => handleDeleteDeliveryLink(link.id)}
+                                                                className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                                {(task.deliveryLinks || []).length === 0 && !showAddDeliveryLink && (
+                                    <div className="col-span-full text-center py-8 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                                        <ExternalLink className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                                        <p className="text-sm text-slate-500">No delivery links added.</p>
+                                        <p className="text-xs text-slate-400 mt-1">Add Google Drive links or external URLs for deliverables.</p>
                                     </div>
                                 )}
                             </div>
