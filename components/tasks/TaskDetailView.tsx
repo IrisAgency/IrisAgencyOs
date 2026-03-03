@@ -1404,7 +1404,7 @@ const TaskDetailView = ({
                                         </span>
                                     )}
                                 </h3>
-                                {!isProductionView && checkPermission('tasks.references.add') && (
+                                {!isProductionView && (
                                     <button
                                         onClick={() => setShowAddDeliveryLink(!showAddDeliveryLink)}
                                         className="flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
