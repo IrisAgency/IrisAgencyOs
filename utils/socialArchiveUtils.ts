@@ -1,5 +1,5 @@
 import { 
-  doc, setDoc, updateDoc, collection, query, where, getDocs, writeBatch 
+  doc, setDoc, updateDoc, collection, query, where, getDocs, getDoc, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { SocialPost, FileFolder, AgencyFile } from '../types';
@@ -17,8 +17,13 @@ export const archiveSocialPost = async (post: SocialPost, archivedByUserId: stri
     const batch = writeBatch(db);
     const now = new Date().toISOString();
 
-    // 1. Update SocialPost
+    // 1. Update SocialPost — verify it exists first
     const postRef = doc(db, 'socialPosts', post.id);
+    const postSnap = await getDoc(postRef);
+    if (!postSnap.exists()) {
+      console.warn(`Social post ${post.id} not found in Firestore, skipping archive.`);
+      return false;
+    }
     batch.update(postRef, {
       isArchived: true,
       archivedAt: now,
