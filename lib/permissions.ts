@@ -273,6 +273,8 @@ export const PERMISSIONS = {
     UPLOAD: 'creative.upload',
     APPROVE: 'creative.approve',
     REJECT: 'creative.reject',
+    PRESENTATION_VIEW: 'creative_direction.presentation.view',
+    PRESENTATION_SHARE: 'creative_direction.presentation.share',
   },
 
   // ========== Quality Control ==========
