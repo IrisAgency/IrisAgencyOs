@@ -813,22 +813,22 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
         <Modal isOpen={showMonthModal} onClose={() => setShowMonthModal(false)} title="Create Calendar Month">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Month (YYYY-MM)</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Month (YYYY-MM)</label>
               <input
                 type="month"
                 value={monthForm.monthKey}
                 onChange={(e) => setMonthForm(prev => ({ ...prev, monthKey: e.target.value }))}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Title</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Title</label>
               <input
                 type="text"
                 value={monthForm.title}
                 onChange={(e) => setMonthForm(prev => ({ ...prev, title: e.target.value }))}
                 placeholder="e.g., January 2026 Content Calendar"
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div className="flex gap-2 justify-end pt-4">
@@ -862,12 +862,12 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
         >
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Content Type</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Content Type</label>
               <select
                 value={itemForm.type}
                 onChange={(e) => setItemForm(prev => ({ ...prev, type: e.target.value as CalendarContentType }))}
                 disabled={!!editingItem}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white disabled:opacity-50"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="VIDEO">Video</option>
                 <option value="PHOTO">Photo</option>
@@ -876,44 +876,44 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Primary Brief *</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Primary Brief *</label>
               <textarea
                 value={itemForm.primaryBrief}
                 onChange={(e) => setItemForm(prev => ({ ...prev, primaryBrief: e.target.value }))}
                 rows={4}
                 dir="auto"
                 style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white resize-none"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Main requirement and description..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Notes & Constraints</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Notes & Constraints</label>
               <textarea
                 value={itemForm.notes}
                 onChange={(e) => setItemForm(prev => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 dir="auto"
                 style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white resize-none"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 placeholder="Additional notes, constraints, or special instructions..."
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Publish Date & Time *</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Publish Date & Time *</label>
               <input
                 type="datetime-local"
                 value={itemForm.publishAt}
                 onChange={(e) => setItemForm(prev => ({ ...prev, publishAt: e.target.value }))}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-slate-300">Reference Links</label>
+                <label className="block text-sm font-medium text-white/70">Reference Links</label>
                 <button
                   onClick={addReferenceLink}
                   className="text-xs text-[#DF1E3C] hover:text-[#c01830] flex items-center gap-1"
@@ -929,14 +929,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                     value={link.title}
                     onChange={(e) => updateReferenceLink(index, 'title', e.target.value)}
                     placeholder="Title"
-                    className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white text-sm"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
                     type="url"
                     value={link.url}
                     onChange={(e) => updateReferenceLink(index, 'url', e.target.value)}
                     placeholder="URL"
-                    className="flex-1 px-3 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white text-sm"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <button
                     onClick={() => removeReferenceLink(index)}
@@ -949,7 +949,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Reference Files</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Reference Files</label>
               <input
                 type="file"
                 multiple
@@ -958,7 +958,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                     setUploadingFiles(Array.from(e.target.files));
                   }
                 }}
-                className="w-full px-4 py-2 bg-[#0a0a0a] border border-gray-700 rounded-lg text-white text-sm"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-sm"
               />
               {uploadingFiles.length > 0 && (
                 <div className="mt-2 text-xs text-slate-400">
@@ -969,7 +969,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
 
             {editingItem && editingItem.referenceFiles.length > 0 && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">Existing Files</label>
+                <label className="block text-sm font-medium text-white/70 mb-2">Existing Files</label>
                 <div className="space-y-2">
                   {editingItem.referenceFiles.map((file, index) => (
                     <div key={index} className="flex items-center justify-between p-2 bg-[#0a0a0a] border border-gray-700 rounded-lg">
