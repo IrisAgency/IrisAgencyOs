@@ -43,10 +43,28 @@ function isDirectImageUrl(url: string): boolean {
   return /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/.test(lower);
 }
 
+/** Check if a filename or URL is an image */
+function isImageFile(name: string): boolean {
+  if (!name) return false;
+  return /\.(jpg|jpeg|png|gif|webp|svg|bmp|heic|heif|tiff?)$/i.test(name);
+}
+
+/** Check if a filename or URL is a video */
+function isVideoFile(name: string): boolean {
+  if (!name) return false;
+  return /\.(mp4|mov|avi|webm|mkv|m4v|wmv|flv|3gp)$/i.test(name);
+}
+
 /** Check if a URL is a Google Drive link */
 function isGoogleDriveUrl(url: string): boolean {
   if (!url) return false;
   return url.includes('drive.google.com') || url.includes('docs.google.com');
+}
+
+/** Check if a URL is a Firebase Storage link (has firebasestorage in it) */
+function isFirebaseStorageUrl(url: string): boolean {
+  if (!url) return false;
+  return url.includes('firebasestorage.googleapis.com') || url.includes('firebasestorage.app');
 }
 
 /** Normalize URL to ensure it has a protocol */
@@ -266,25 +284,144 @@ const ReferenceLinkCard: React.FC<{ link: CalendarReferenceLink }> = ({ link }) 
   );
 }
 
-/** Reference file renderer */
+/** Reference file renderer with smart preview (images, videos, Drive files) */
 const ReferenceFileCard: React.FC<{ file: CalendarReferenceFile }> = ({ file }) => {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-white/10 bg-[#0a0a0a]">
-      <div className="shrink-0 w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-        <FileText className="w-4 h-4 text-white/60" />
+  const [imgError, setImgError] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const url = file.downloadURL;
+  const name = file.fileName || '';
+
+  const isDriveFile = url ? isGoogleDriveUrl(url) : false;
+  const driveFileId = isDriveFile ? extractDriveFileId(url) : null;
+  const isImage = isImageFile(name) || (url ? isDirectImageUrl(url) : false);
+  const isVideo = isVideoFile(name);
+  const isFirebase = url ? isFirebaseStorageUrl(url) : false;
+  const showThumbnail = (isImage || isVideo || driveFileId) && !imgError;
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!url) return;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // Determine thumbnail source
+  const thumbnailSrc = driveFileId
+    ? getDriveThumbnailUrl(driveFileId)
+    : isImage && url
+    ? url
+    : null;
+
+  if (!showThumbnail || !thumbnailSrc) {
+    // Fallback: simple file row with icon
+    return (
+      <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
+        <div className="flex items-center gap-3 p-3">
+          <div className="shrink-0 w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
+            {isVideo ? (
+              <Video className="w-5 h-5 text-purple-400" />
+            ) : (
+              <FileText className="w-5 h-5 text-white/60" />
+            )}
+          </div>
+          <span className="flex-1 min-w-0 text-sm text-white/80 truncate">{name || 'File'}</span>
+          <div className="flex items-center gap-1.5">
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+                title="Open file"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+            )}
+            {url && (
+              <button
+                onClick={handleCopy}
+                className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+                title="Copy link"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-      <span className="flex-1 min-w-0 text-sm text-white/80 truncate">{file.fileName}</span>
-      {file.downloadURL && (
-        <a
-          href={file.downloadURL}
-          target="_blank"
-          rel="noopener noreferrer"
+    );
+  }
+
+  // Rich preview with thumbnail
+  return (
+    <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
+      {/* Thumbnail area */}
+      <div className="relative w-full aspect-video bg-black/50 overflow-hidden group">
+        <img
+          src={thumbnailSrc}
+          alt={name || 'File preview'}
+          className={`w-full h-full ${isImage ? 'object-contain' : 'object-cover'}`}
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+        {/* Video play overlay */}
+        {(isVideo || (driveFileId && !isImage)) && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
+              <Play className="w-7 h-7 text-white ml-0.5" />
+            </div>
+          </a>
+        )}
+        {/* Image expand overlay */}
+        {isImage && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
+              <ExternalLink className="w-5 h-5 text-white" />
+            </div>
+          </a>
+        )}
+      </div>
+      {/* Actions row */}
+      <div className="flex items-center gap-2 p-2.5">
+        {isVideo && <Video className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+        {isImage && <Image className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
+        {!isVideo && !isImage && <FileText className="w-3.5 h-3.5 text-white/40 shrink-0" />}
+        <span className="flex-1 min-w-0 text-xs text-white/60 truncate">{name || 'File'}</span>
+        {url && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
+            title="Open"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+        <button
+          onClick={handleCopy}
           className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-          title="Open file"
+          title="Copy link"
         >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      )}
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+        </button>
+      </div>
     </div>
   );
 }
@@ -392,7 +529,7 @@ const SlideCard: React.FC<SlideCardProps> = ({ item, users, isSlideMode }) => {
         {item.referenceFiles?.length > 0 && (
           <div>
             <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Reference Files</h4>
-            <div className="grid gap-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {item.referenceFiles.map((file, i) => (
                 <ReferenceFileCard key={i} file={file} />
               ))}
