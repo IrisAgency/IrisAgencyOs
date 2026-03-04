@@ -19,8 +19,8 @@ const RejectionModal: React.FC<RejectionModalProps> = ({
   clientId,
   projectId,
 }) => {
-  const surface = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
+  const surface = 'bg-[#0f0f0f] backdrop-blur-sm border border-white/10 text-white';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
 
   const [note, setNote] = useState('');
   const [references, setReferences] = useState<CreativeRejectionReference[]>([]);

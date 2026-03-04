@@ -52,9 +52,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   onNotify,
   onUploadFile,
 }) => {
-  const surface = 'bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white';
-  const elevated = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
+  const surface = 'bg-[#0a0a0a] backdrop-blur-sm border border-white/10 text-white';
+  const elevated = 'bg-[#0f0f0f] backdrop-blur-sm border border-white/10 text-white';
+  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
   const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
 
   // State
@@ -845,6 +845,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                   value={monthKey}
                   onChange={e => setMonthKey(e.target.value)}
                   className={inputClass}
+                  style={{ colorScheme: 'dark' }}
                 />
               </div>
 
