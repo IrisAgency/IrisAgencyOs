@@ -4,8 +4,7 @@ import type {
   Client, User, CalendarContentType,
   CalendarReferenceLink, CalendarReferenceFile,
 } from '../../types';
-import { PERMISSIONS } from '../../lib/permissions';
-import { PermissionGate } from '../PermissionGate';
+
 import {
   Video, Image, Clapperboard, Calendar, ExternalLink, FileText,
   ChevronLeft, ChevronRight, LayoutGrid, Presentation, Search,
@@ -628,15 +627,13 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
           </div>
 
           {/* Share button */}
-          <PermissionGate permission={PERMISSIONS.CREATIVE.PRESENTATION_SHARE}>
-            <button
-              onClick={handleShareLink}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
-              {copiedLink ? 'Copied!' : 'Share'}
-            </button>
-          </PermissionGate>
+          <button
+            onClick={handleShareLink}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
+            {copiedLink ? 'Copied!' : 'Share'}
+          </button>
         </div>
       </div>
 

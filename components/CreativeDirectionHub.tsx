@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, Client, User, CalendarMonth, CalendarItem, AgencyFile, NotificationType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { PERMISSIONS } from '../lib/permissions';
-import { PermissionGate } from './PermissionGate';
 import ManagerView from './creative/ManagerView';
 import CopywriterView from './creative/CopywriterView';
 import CalendarPresentationView from './creative/CalendarPresentationView';
@@ -30,37 +29,19 @@ const CreativeDirectionHub: React.FC<CreativeDirectionHubProps> = (props) => {
   const [activeHubView, setActiveHubView] = useState<HubView>('review');
   
   const isManager = checkPermission(PERMISSIONS.CREATIVE.MANAGE);
-  const canViewPresentation = checkPermission(PERMISSIONS.CREATIVE.PRESENTATION_VIEW);
 
   // Presentation View (full-screen takeover, has its own back button)
   if (activeHubView === 'presentation') {
     return (
-      <PermissionGate
-        permission={PERMISSIONS.CREATIVE.PRESENTATION_VIEW}
-        fallback={
-          <div className="space-y-6">
-            <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-10 text-center">
-              <p className="text-sm text-white/50">You do not have permission to view presentations.</p>
-              <button
-                onClick={() => setActiveHubView('review')}
-                className="mt-4 text-sm text-iris-red hover:underline"
-              >
-                Go back
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <CalendarPresentationView
-          creativeProjects={props.creativeProjects}
-          creativeCalendars={props.creativeCalendars}
-          creativeCalendarItems={props.creativeCalendarItems}
-          clients={props.clients}
-          users={props.users}
-          checkPermission={props.checkPermission}
-          onBack={() => setActiveHubView('review')}
-        />
-      </PermissionGate>
+      <CalendarPresentationView
+        creativeProjects={props.creativeProjects}
+        creativeCalendars={props.creativeCalendars}
+        creativeCalendarItems={props.creativeCalendarItems}
+        clients={props.clients}
+        users={props.users}
+        checkPermission={props.checkPermission}
+        onBack={() => setActiveHubView('review')}
+      />
     );
   }
 
@@ -81,15 +62,13 @@ const CreativeDirectionHub: React.FC<CreativeDirectionHubProps> = (props) => {
         </div>
 
         {/* Presentation View Toggle */}
-        {canViewPresentation && (
-          <button
-            onClick={() => setActiveHubView('presentation')}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-iris-red/20 to-purple-500/20 border border-iris-red/30 text-sm font-medium text-white hover:from-iris-red/30 hover:to-purple-500/30 transition-all self-start sm:self-auto"
-          >
-            <Presentation className="w-4 h-4" />
-            Presentation View
-          </button>
-        )}
+        <button
+          onClick={() => setActiveHubView('presentation')}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gradient-to-r from-iris-red/20 to-purple-500/20 border border-iris-red/30 text-sm font-medium text-white hover:from-iris-red/30 hover:to-purple-500/30 transition-all self-start sm:self-auto"
+        >
+          <Presentation className="w-4 h-4" />
+          Presentation View
+        </button>
       </div>
 
       {/* Role-based view */}
