@@ -170,23 +170,23 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700">Workflow Name</label>
-                                    <input className="w-full mt-1 px-3 py-2 border rounded-lg" value={editingWorkflow.name} onChange={e => setEditingWorkflow({ ...editingWorkflow, name: e.target.value })} />
+                                    <input className="w-full mt-1 px-3 py-2 border rounded-lg bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingWorkflow.name} onChange={e => setEditingWorkflow({ ...editingWorkflow, name: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700">Description</label>
-                                    <input className="w-full mt-1 px-3 py-2 border rounded-lg" value={editingWorkflow.description} onChange={e => setEditingWorkflow({ ...editingWorkflow, description: e.target.value })} />
+                                    <input className="w-full mt-1 px-3 py-2 border rounded-lg bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingWorkflow.description} onChange={e => setEditingWorkflow({ ...editingWorkflow, description: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700">Department</label>
-                                        <select className="w-full mt-1 px-3 py-2 border rounded-lg" value={editingWorkflow.departmentId || ''} onChange={e => setEditingWorkflow({ ...editingWorkflow, departmentId: e.target.value || null })}>
+                                        <select className="w-full mt-1 px-3 py-2 border rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingWorkflow.departmentId || ''} onChange={e => setEditingWorkflow({ ...editingWorkflow, departmentId: e.target.value || null })}>
                                             <option value="">All / None</option>
                                             {Object.values(Department).map(d => <option key={d} value={d}>{d}</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700">Task Type</label>
-                                        <select className="w-full mt-1 px-3 py-2 border rounded-lg" value={editingWorkflow.taskType || ''} onChange={e => setEditingWorkflow({ ...editingWorkflow, taskType: e.target.value as any || null })}>
+                                        <select className="w-full mt-1 px-3 py-2 border rounded-lg bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingWorkflow.taskType || ''} onChange={e => setEditingWorkflow({ ...editingWorkflow, taskType: e.target.value as any || null })}>
                                             <option value="">All / None</option>
                                             {['design', 'video', 'photo', 'motion', 'copywriting'].map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
@@ -223,13 +223,13 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                             <div className="flex-1 grid grid-cols-2 gap-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-500 mb-1">Step Label</label>
-                                                    <input className="w-full px-3 py-2 border rounded-lg text-sm" value={step.label} onChange={e => updateStep(index, 'label', e.target.value)} />
+                                                    <input className="w-full px-3 py-2 border rounded-lg text-sm bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={step.label} onChange={e => updateStep(index, 'label', e.target.value)} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-500 mb-1">Approver Logic</label>
                                                     <div className="flex gap-2">
                                                         <select
-                                                            className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                            className="w-full px-3 py-2 border rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                                             value={step.specificUserId ? 'user' : step.projectRoleKey ? 'project' : 'role'}
                                                             onChange={(e) => {
                                                                 const val = e.target.value;
@@ -264,16 +264,16 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
                                                         </select>
 
                                                         {step.specificUserId ? (
-                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm" value={step.specificUserId || ''} onChange={e => updateStep(index, 'specificUserId', e.target.value)}>
+                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={step.specificUserId || ''} onChange={e => updateStep(index, 'specificUserId', e.target.value)}>
                                                                 {users.length === 0 && <option value="">No users found</option>}
                                                                 {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.role})</option>)}
                                                             </select>
                                                         ) : step.projectRoleKey ? (
-                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm" value={step.projectRoleKey || ''} onChange={e => updateStep(index, 'projectRoleKey', e.target.value)}>
+                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={step.projectRoleKey || ''} onChange={e => updateStep(index, 'projectRoleKey', e.target.value)}>
                                                                 {['Account Manager', 'Creative Lead', 'Project Lead', 'Producer'].map(r => <option key={r} value={r}>{r}</option>)}
                                                             </select>
                                                         ) : (
-                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm" value={step.roleId || ''} onChange={e => updateStep(index, 'roleId', e.target.value)}>
+                                                            <select className="w-full px-3 py-2 border rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={step.roleId || ''} onChange={e => updateStep(index, 'roleId', e.target.value)}>
                                                                 {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
                                                             </select>
                                                         )}

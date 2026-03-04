@@ -110,38 +110,38 @@ const UsersManager: React.FC<UsersManagerProps> = ({ users, onUpdateUser, onAddU
                 >
                     <form onSubmit={handleSaveUser} className="p-6 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                            <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.name || ''} onChange={e => setEditingUser({ ...editingUser, name: e.target.value })} placeholder="Name" required />
+                            <label className="block text-sm font-medium text-white/70 mb-1">Name</label>
+                            <input className="w-full px-3 py-2 border rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingUser.name || ''} onChange={e => setEditingUser({ ...editingUser, name: e.target.value })} placeholder="Name" required />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                            <input className="w-full px-3 py-2 border rounded-lg" value={editingUser.email || ''} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} placeholder="Email" required type="email" />
+                            <label className="block text-sm font-medium text-white/70 mb-1">Email</label>
+                            <input className="w-full px-3 py-2 border rounded-lg bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-indigo-500" value={editingUser.email || ''} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} placeholder="Email" required type="email" />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+                            <label className="block text-sm font-medium text-white/70 mb-1">Role</label>
                             <select
-                                className="w-full px-3 py-2 border rounded-lg"
+                                className="w-full px-3 py-2 border rounded-lg bg-white/10 border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 value={editingUser.role || ''}
                                 onChange={e => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
                                 required
                             >
-                                <option value="">Select Role</option>
+                                <option value="" className="bg-slate-800 text-white">Select Role</option>
                                 {Object.values(UserRole).map(role => (
-                                    <option key={role} value={role}>{role}</option>
+                                    <option key={role} value={role} className="bg-slate-800 text-white">{role}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Department</label>
+                            <label className="block text-sm font-medium text-white/70 mb-1">Department</label>
                             <select
-                                className="w-full px-3 py-2 border rounded-lg"
+                                className="w-full px-3 py-2 border rounded-lg bg-white/10 border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 value={editingUser.department || ''}
                                 onChange={e => setEditingUser({ ...editingUser, department: e.target.value as Department })}
                                 required
                             >
-                                <option value="">Select Department</option>
+                                <option value="" className="bg-slate-800 text-white">Select Department</option>
                                 {Object.values(Department).map(dept => (
-                                    <option key={dept} value={dept}>{dept}</option>
+                                    <option key={dept} value={dept} className="bg-slate-800 text-white">{dept}</option>
                                 ))}
                             </select>
                         </div>
