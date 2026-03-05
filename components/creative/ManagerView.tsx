@@ -461,9 +461,21 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // RENDER: REVIEW MODE
   // ============================================
   if (reviewingCalendar) {
-    const calendarItemsForReview = creativeCalendarItems.filter(
+    const allCalendarItems = creativeCalendarItems.filter(
       i => i.creativeCalendarId === reviewingCalendar.id
     );
+    const isRevisionReview = reviewingCalendar.status === 'UPDATED';
+
+    // For revision reviews: only show items that need re-review (not already approved)
+    // For first reviews: show everything
+    const calendarItemsForReview = isRevisionReview
+      ? allCalendarItems.filter(i => i.reviewStatus !== 'APPROVED')
+      : allCalendarItems;
+
+    const alreadyApprovedCount = isRevisionReview
+      ? allCalendarItems.filter(i => i.reviewStatus === 'APPROVED').length
+      : 0;
+
     const client = clients.find(c => c.id === reviewingCalendar.clientId);
     const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
     const allReviewed = calendarItemsForReview.length > 0 && 
@@ -475,8 +487,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <div className={`${surface} rounded-xl p-5`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-iris-white">Calendar Review</h2>
-              <p className="text-sm text-iris-white/60">{client?.name} — {reviewingCalendar.monthKey}</p>
+              <h2 className="text-lg font-bold text-iris-white">
+                {isRevisionReview ? 'Revision Review' : 'Calendar Review'}
+              </h2>
+              <p className="text-sm text-iris-white/60">
+                {client?.name} — {reviewingCalendar.monthKey}
+                {isRevisionReview && alreadyApprovedCount > 0 && (
+                  <span className="ml-2 text-emerald-400/70">
+                    • {alreadyApprovedCount} item{alreadyApprovedCount !== 1 ? 's' : ''} already approved
+                  </span>
+                )}
+              </p>
             </div>
             <button
               onClick={() => { setReviewingCalendar(null); setReviewComplete(false); setReviewResults({}); }}
