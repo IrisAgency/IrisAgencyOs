@@ -460,33 +460,35 @@ const EditorialRow: React.FC<{ item: PresentationItem; index: number; onDriveCli
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
 
   return (
-    <div className="group grid grid-cols-[100px_1fr_220px] sm:grid-cols-[120px_1fr_300px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
+    <div className="group flex flex-col sm:grid sm:grid-cols-[120px_1fr_300px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
       {/* DATE column */}
-      <div className="py-4 px-4 flex flex-col items-start justify-start border-r border-gray-100">
-        {item.publishAt ? (
-          <>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-              {formatPublishDay(item.publishAt).split(',')[0]}
-            </span>
-            <span className="text-lg font-bold text-gray-800 leading-tight">
-              {new Date(item.publishAt).getDate()}
-            </span>
-            <span className="text-[11px] text-gray-400">
-              {new Date(item.publishAt).toLocaleDateString('en-US', { month: 'short' })}
-            </span>
-          </>
-        ) : (
-          <span className="text-xs text-gray-300 italic">No date</span>
-        )}
+      <div className="py-3 px-4 sm:py-4 flex flex-row sm:flex-col items-center sm:items-start justify-start gap-3 sm:gap-0 sm:border-r border-b sm:border-b-0 border-gray-100">
+        <div className="flex sm:flex-col items-baseline sm:items-start gap-1.5 sm:gap-0">
+          {item.publishAt ? (
+            <>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                {formatPublishDay(item.publishAt).split(',')[0]}
+              </span>
+              <span className="text-lg font-bold text-gray-800 leading-tight">
+                {new Date(item.publishAt).getDate()}
+              </span>
+              <span className="text-[11px] text-gray-400">
+                {new Date(item.publishAt).toLocaleDateString('en-US', { month: 'short' })}
+              </span>
+            </>
+          ) : (
+            <span className="text-xs text-gray-300 italic">No date</span>
+          )}
+        </div>
         {/* Type badge */}
-        <span className={`mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+        <span className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
           <TypeIcon className="w-3 h-3" />
           {item.type}
         </span>
       </div>
 
       {/* CONTENT column */}
-      <div className="py-4 px-5 min-w-0">
+      <div className="py-3 px-4 sm:py-4 sm:px-5 min-w-0">
         <div className="flex items-start gap-2.5">
           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           <div className="flex-1 min-w-0">
@@ -494,20 +496,20 @@ const EditorialRow: React.FC<{ item: PresentationItem; index: number; onDriveCli
               {item.title}
             </h3>
             {item.mainIdea && (
-              <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed line-clamp-2" />
+              <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />
             )}
             {item.brief && (
-              <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed line-clamp-3" />
+              <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />
             )}
             {item.notes && (
-              <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic line-clamp-2" />
+              <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />
             )}
           </div>
         </div>
       </div>
 
       {/* MEDIA column */}
-      <div className="py-4 px-4 border-l border-gray-100 flex items-start">
+      <div className="py-3 px-4 sm:py-4 border-t sm:border-t-0 sm:border-l border-gray-100 flex items-start">
         <MediaPreview item={item} onDriveClick={onDriveClick} />
       </div>
     </div>
@@ -826,7 +828,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
         ) : (
           <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
             {/* Column headers */}
-            <div className="grid grid-cols-[100px_1fr_220px] sm:grid-cols-[120px_1fr_300px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
+            <div className="hidden sm:grid sm:grid-cols-[120px_1fr_300px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
               <div className="py-3 px-4">Date</div>
               <div className="py-3 px-5">Content</div>
               <div className="py-3 px-4 border-l border-gray-200">Media</div>
