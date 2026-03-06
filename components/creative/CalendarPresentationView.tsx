@@ -1,106 +1,87 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import type {
   CreativeProject, CreativeCalendar, CreativeCalendarItem,
+  CalendarMonth, CalendarItem,
   Client, User, CalendarContentType,
   CalendarReferenceLink, CalendarReferenceFile,
 } from '../../types';
 
 import {
   Video, Image, Clapperboard, Calendar, ExternalLink, FileText,
-  ChevronLeft, ChevronRight, LayoutGrid, Presentation, Search,
-  Copy, Check, X, Clock, User as UserIcon, Share2,
-  ArrowLeft, Link as LinkIcon, Play,
+  Presentation, Search, X, ArrowLeft, Link as LinkIcon, Play,
+  Printer, ChevronDown,
 } from 'lucide-react';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-/** Extract Google Drive file ID from common URL patterns */
 function extractDriveFileId(url: string): string | null {
   if (!url) return null;
-  // /file/d/{id}/
   const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (fileMatch) return fileMatch[1];
-  // open?id={id}
   const openMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (openMatch) return openMatch[1];
-  // /folders/{id}
   const folderMatch = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
   if (folderMatch) return folderMatch[1];
   return null;
 }
 
-/** Generate Google Drive thumbnail URL */
 function getDriveThumbnailUrl(fileId: string): string {
-  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
 }
 
-/** Check if a URL is a direct image link */
 function isDirectImageUrl(url: string): boolean {
   if (!url) return false;
-  const lower = url.toLowerCase();
-  return /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/.test(lower);
+  return /\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(url);
 }
 
-/** Check if a filename or URL is an image */
 function isImageFile(name: string): boolean {
   if (!name) return false;
   return /\.(jpg|jpeg|png|gif|webp|svg|bmp|heic|heif|tiff?)$/i.test(name);
 }
 
-/** Check if a filename or URL is a video */
 function isVideoFile(name: string): boolean {
   if (!name) return false;
   return /\.(mp4|mov|avi|webm|mkv|m4v|wmv|flv|3gp)$/i.test(name);
 }
 
-/** Check if a URL is a Google Drive link */
 function isGoogleDriveUrl(url: string): boolean {
   if (!url) return false;
   return url.includes('drive.google.com') || url.includes('docs.google.com');
 }
 
-/** Check if a URL is a Firebase Storage link (has firebasestorage in it) */
-function isFirebaseStorageUrl(url: string): boolean {
-  if (!url) return false;
-  return url.includes('firebasestorage.googleapis.com') || url.includes('firebasestorage.app');
-}
-
-/** Normalize URL to ensure it has a protocol */
 function normalizeUrl(url: string): string | null {
   if (!url) return null;
   const trimmed = url.trim();
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (trimmed.includes('.') && !trimmed.includes(' ')) {
-    return `https://${trimmed}`;
-  }
+  if (trimmed.includes('.') && !trimmed.includes(' ')) return `https://${trimmed}`;
   return null;
 }
 
-/** Format an ISO date string into a readable date */
 function formatDate(isoDate: string | undefined | null): string {
   if (!isoDate) return '—';
   try {
-    return new Date(isoDate).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return new Date(isoDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   } catch {
     return isoDate;
   }
 }
 
-/** Render text with preserved line breaks and bidi support */
+function formatPublishDay(isoDate: string): string {
+  if (!isoDate) return '';
+  try {
+    const d = new Date(isoDate);
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  } catch {
+    return isoDate;
+  }
+}
+
 function BidiText({ text, className = '' }: { text: string; className?: string }) {
   if (!text) return null;
   return (
-    <div
-      dir="auto"
-      style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
-      className={`whitespace-pre-wrap break-words ${className}`}
-    >
+    <div dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className={`whitespace-pre-wrap break-words ${className}`}>
       {text}
     </div>
   );
@@ -110,462 +91,305 @@ function BidiText({ text, className = '' }: { text: string; className?: string }
 // TYPE CONSTANTS
 // ============================================================================
 
-const TYPE_ICONS: Record<string, React.ElementType> = {
-  VIDEO: Video,
-  PHOTO: Image,
-  MOTION: Clapperboard,
+const TYPE_ICONS: Record<string, React.ElementType> = { VIDEO: Video, PHOTO: Image, MOTION: Clapperboard };
+
+const TYPE_DOT_COLORS: Record<string, string> = {
+  VIDEO: 'bg-purple-500',
+  PHOTO: 'bg-blue-500',
+  MOTION: 'bg-amber-500',
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  VIDEO: 'bg-purple-500/20 text-purple-400 border-purple-400/30',
-  PHOTO: 'bg-blue-500/20 text-blue-400 border-blue-400/30',
-  MOTION: 'bg-amber-500/20 text-amber-400 border-amber-400/30',
+const TYPE_BADGE_COLORS: Record<string, string> = {
+  VIDEO: 'bg-purple-50 text-purple-700 border-purple-200',
+  PHOTO: 'bg-blue-50 text-blue-700 border-blue-200',
+  MOTION: 'bg-amber-50 text-amber-700 border-amber-200',
 };
 
 const TYPE_OPTIONS: { value: CalendarContentType | 'ALL'; label: string }[] = [
-  { value: 'ALL', label: 'All Types' },
+  { value: 'ALL', label: 'All' },
   { value: 'VIDEO', label: 'Video' },
   { value: 'PHOTO', label: 'Photo' },
   { value: 'MOTION', label: 'Motion' },
 ];
 
 // ============================================================================
-// SUB-COMPONENTS
+// UNIFIED PRESENTATION ITEM
 // ============================================================================
 
-/** Google Drive fast preview card */
-function DrivePreviewCard({ url, title }: { url: string; title?: string }) {
-  const [imgError, setImgError] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const fileId = extractDriveFileId(url);
+interface PresentationItem {
+  id: string;
+  type: CalendarContentType;
+  title: string;
+  mainIdea: string;
+  brief: string;
+  notes: string;
+  publishAt: string;
+  referenceLinks: CalendarReferenceLink[];
+  referenceFiles: CalendarReferenceFile[];
+  seqLabel: string; // e.g. "VIDEO-01" or "#3"
+  source: 'activated' | 'creative';
+}
 
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+/** Normalize a CalendarItem (activated/production) into PresentationItem */
+function calItemToPres(item: CalendarItem): PresentationItem {
+  return {
+    id: item.id,
+    type: item.type,
+    title: item.autoName || `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
+    mainIdea: '',
+    brief: item.primaryBrief || '',
+    notes: item.notes || '',
+    publishAt: item.publishAt || '',
+    referenceLinks: item.referenceLinks || [],
+    referenceFiles: item.referenceFiles || [],
+    seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
+    source: 'activated',
   };
+}
+
+/** Normalize a CreativeCalendarItem into PresentationItem */
+function creativeItemToPres(item: CreativeCalendarItem, idx: number): PresentationItem {
+  return {
+    id: item.id,
+    type: item.type,
+    title: item.title || `${item.type} #${idx + 1}`,
+    mainIdea: item.mainIdea || '',
+    brief: item.briefDescription || '',
+    notes: item.notes || '',
+    publishAt: item.publishAt || '',
+    referenceLinks: item.referenceLinks || [],
+    referenceFiles: item.referenceFiles || [],
+    seqLabel: `#${idx + 1}`,
+    source: 'creative',
+  };
+}
+
+// ============================================================================
+// DRIVE PREVIEW MODAL
+// ============================================================================
+
+function DrivePreviewModal({ url, title, onClose }: { url: string; title?: string; onClose: () => void }) {
+  const fileId = extractDriveFileId(url);
+  const embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
 
   return (
-    <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
-      {/* Thumbnail area */}
-      {fileId && !imgError ? (
-        <div className="relative w-full aspect-video bg-black/50 overflow-hidden">
-          <img
-            src={getDriveThumbnailUrl(fileId)}
-            alt={title || 'Drive preview'}
-            className="w-full h-full object-cover"
-            onError={() => setImgError(true)}
-            loading="lazy"
-          />
-          {/* Overlay with play icon for videos */}
-          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Play className="w-6 h-6 text-white ml-0.5" />
-            </div>
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <span className="text-sm font-medium text-gray-800 truncate">{title || 'Drive Preview'}</span>
+          <div className="flex items-center gap-2">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
+              Open in Drive <ExternalLink className="w-3 h-3" />
+            </a>
+            <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800">
+              <X className="w-5 h-5" />
+            </button>
           </div>
         </div>
-      ) : (
-        <div className="w-full h-24 flex items-center justify-center bg-white/5">
-          <FileText className="w-8 h-8 text-white/30" />
+        {/* Iframe */}
+        <div className="w-full aspect-video bg-gray-100">
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title={title || 'Drive preview'}
+          />
         </div>
-      )}
-      {/* Actions */}
-      <div className="flex items-center gap-2 p-2.5">
-        <span className="flex-1 min-w-0 text-xs text-white/60 truncate">
-          {title || 'Google Drive file'}
-        </span>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-          title="Open"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-        <button
-          onClick={handleCopy}
-          className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-          title="Copy link"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
       </div>
     </div>
   );
 }
 
-/** Direct image preview */
-function ImagePreviewCard({ url, title }: { url: string; title?: string }) {
-  const [imgError, setImgError] = useState(false);
+// ============================================================================
+// MEDIA PREVIEW (thumbnail inline)
+// ============================================================================
 
-  if (imgError) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-[#0a0a0a] hover:bg-white/5 transition-colors text-sm text-white/70 hover:text-white"
-      >
-        <LinkIcon className="w-4 h-4 shrink-0" />
-        <span className="truncate">{title || url}</span>
-        <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-auto" />
-      </a>
-    );
-  }
+function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveClick: (url: string, title: string) => void }) {
+  const allMedia: { type: 'link' | 'file'; url: string; name: string; isDrive: boolean; isImg: boolean; isVid: boolean; driveId: string | null }[] = [];
 
-  return (
-    <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
-      <div className="relative w-full aspect-video bg-black/50 overflow-hidden">
-        <img
-          src={url}
-          alt={title || 'Reference'}
-          className="w-full h-full object-contain"
-          onError={() => setImgError(true)}
-          loading="lazy"
-        />
-      </div>
-      <div className="flex items-center gap-2 p-2.5">
-        <span className="flex-1 min-w-0 text-xs text-white/60 truncate">{title || 'Image'}</span>
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-          title="Open"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-/** Reference link renderer with smart preview */
-const ReferenceLinkCard: React.FC<{ link: CalendarReferenceLink }> = ({ link }) => {
-  const normalizedUrl = normalizeUrl(link.url);
-
-  if (!normalizedUrl) {
-    // Not a valid URL — just display as plain text
-    return (
-      <div className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-[#0a0a0a] text-sm text-white/60">
-        <LinkIcon className="w-4 h-4 shrink-0" />
-        <span className="break-words min-w-0">{link.title || link.url}</span>
-      </div>
-    );
-  }
-
-  if (isGoogleDriveUrl(normalizedUrl)) {
-    return <DrivePreviewCard url={normalizedUrl} title={link.title} />;
-  }
-
-  if (isDirectImageUrl(normalizedUrl)) {
-    return <ImagePreviewCard url={normalizedUrl} title={link.title} />;
-  }
-
-  // Generic link
-  return (
-    <a
-      href={normalizedUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="flex items-center gap-2 p-3 rounded-lg border border-white/10 bg-[#0a0a0a] hover:bg-white/5 transition-colors text-sm text-white/70 hover:text-white"
-    >
-      <LinkIcon className="w-4 h-4 shrink-0 text-iris-red" />
-      <div className="flex-1 min-w-0">
-        {link.title && <span className="block truncate font-medium">{link.title}</span>}
-        <span className="block truncate text-xs text-white/40">{normalizedUrl}</span>
-      </div>
-      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-    </a>
-  );
-}
-
-/** Reference file renderer with smart preview (images, videos, Drive files) */
-const ReferenceFileCard: React.FC<{ file: CalendarReferenceFile }> = ({ file }) => {
-  const [imgError, setImgError] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const url = file.downloadURL;
-  const name = file.fileName || '';
-
-  const isDriveFile = url ? isGoogleDriveUrl(url) : false;
-  const driveFileId = isDriveFile ? extractDriveFileId(url) : null;
-  const isImage = isImageFile(name) || (url ? isDirectImageUrl(url) : false);
-  const isVideo = isVideoFile(name);
-  const isFirebase = url ? isFirebaseStorageUrl(url) : false;
-  const showThumbnail = (isImage || isVideo || driveFileId) && !imgError;
-
-  const handleCopy = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!url) return;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+  // Collect reference links
+  for (const link of item.referenceLinks) {
+    const norm = normalizeUrl(link.url);
+    if (!norm) continue;
+    const isDrive = isGoogleDriveUrl(norm);
+    allMedia.push({
+      type: 'link',
+      url: norm,
+      name: link.title || 'Link',
+      isDrive,
+      isImg: isDirectImageUrl(norm),
+      isVid: false,
+      driveId: isDrive ? extractDriveFileId(norm) : null,
     });
-  };
+  }
 
-  // Determine thumbnail source
-  const thumbnailSrc = driveFileId
-    ? getDriveThumbnailUrl(driveFileId)
-    : isImage && url
-    ? url
+  // Collect reference files
+  for (const file of item.referenceFiles) {
+    const url = file.downloadURL;
+    if (!url) continue;
+    const isDrive = isGoogleDriveUrl(url);
+    allMedia.push({
+      type: 'file',
+      url,
+      name: file.fileName || 'File',
+      isDrive,
+      isImg: isImageFile(file.fileName) || isDirectImageUrl(url),
+      isVid: isVideoFile(file.fileName),
+      driveId: isDrive ? extractDriveFileId(url) : null,
+    });
+  }
+
+  if (allMedia.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {allMedia.map((m, i) => (
+        <MediaThumb key={i} media={m} onDriveClick={onDriveClick} />
+      ))}
+    </div>
+  );
+}
+
+const MediaThumb: React.FC<{
+  media: { url: string; name: string; isDrive: boolean; isImg: boolean; isVid: boolean; driveId: string | null };
+  onDriveClick: (url: string, title: string) => void;
+}> = ({ media, onDriveClick }) => {
+  const [imgErr, setImgErr] = useState(false);
+
+  const thumbSrc = media.driveId
+    ? getDriveThumbnailUrl(media.driveId)
+    : media.isImg
+    ? media.url
     : null;
 
-  if (!showThumbnail || !thumbnailSrc) {
-    // Fallback: simple file row with icon
+  const handleClick = () => {
+    if (media.isDrive) {
+      onDriveClick(media.url, media.name);
+    } else {
+      window.open(media.url, '_blank');
+    }
+  };
+
+  // Thumbnail preview
+  if (thumbSrc && !imgErr) {
     return (
-      <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
-        <div className="flex items-center gap-3 p-3">
-          <div className="shrink-0 w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center">
-            {isVideo ? (
-              <Video className="w-5 h-5 text-purple-400" />
-            ) : (
-              <FileText className="w-5 h-5 text-white/60" />
-            )}
+      <button
+        onClick={handleClick}
+        className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors group flex-shrink-0 bg-gray-50"
+        title={media.name}
+      >
+        <img src={thumbSrc} alt="" className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+        {(media.isVid || (media.isDrive && !media.isImg)) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Play className="w-5 h-5 text-white" />
           </div>
-          <span className="flex-1 min-w-0 text-sm text-white/80 truncate">{name || 'File'}</span>
-          <div className="flex items-center gap-1.5">
-            {url && (
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-                title="Open file"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
-            {url && (
-              <button
-                onClick={handleCopy}
-                className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-                title="Copy link"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              </button>
-            )}
+        )}
+        {media.isDrive && (
+          <div className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-sm bg-white/90 flex items-center justify-center">
+            <ExternalLink className="w-2.5 h-2.5 text-gray-600" />
           </div>
-        </div>
-      </div>
+        )}
+      </button>
     );
   }
 
-  // Rich preview with thumbnail
+  // Fallback icon chip
   return (
-    <div className="w-full rounded-lg overflow-hidden border border-white/10 bg-[#0a0a0a]">
-      {/* Thumbnail area */}
-      <div className="relative w-full aspect-video bg-black/50 overflow-hidden group">
-        <img
-          src={thumbnailSrc}
-          alt={name || 'File preview'}
-          className={`w-full h-full ${isImage ? 'object-contain' : 'object-cover'}`}
-          onError={() => setImgError(true)}
-          loading="lazy"
-        />
-        {/* Video play overlay */}
-        {(isVideo || (driveFileId && !isImage)) && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <Play className="w-7 h-7 text-white ml-0.5" />
-            </div>
-          </a>
-        )}
-        {/* Image expand overlay */}
-        {isImage && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/20">
-              <ExternalLink className="w-5 h-5 text-white" />
-            </div>
-          </a>
-        )}
-      </div>
-      {/* Actions row */}
-      <div className="flex items-center gap-2 p-2.5">
-        {isVideo && <Video className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
-        {isImage && <Image className="w-3.5 h-3.5 text-blue-400 shrink-0" />}
-        {!isVideo && !isImage && <FileText className="w-3.5 h-3.5 text-white/40 shrink-0" />}
-        <span className="flex-1 min-w-0 text-xs text-white/60 truncate">{name || 'File'}</span>
-        {url && (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-            title="Open"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        )}
-        <button
-          onClick={handleCopy}
-          className="shrink-0 p-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors"
-          title="Copy link"
-        >
-          {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// SLIDE CARD
-// ============================================================================
-
-interface SlideCardProps {
-  item: CreativeCalendarItem;
-  users: User[];
-  isSlideMode: boolean;
-}
-
-const SlideCard: React.FC<SlideCardProps> = ({ item, users, isSlideMode }) => {
-  const TypeIcon = TYPE_ICONS[item.type] || FileText;
-  const typeColor = TYPE_COLORS[item.type] || 'bg-white/10 text-white/60 border-white/20';
-  const createdByUser = users.find(u => u.id === item.createdAt); // fallback lookup
-
-  return (
-    <div
-      className={`w-full min-w-0 rounded-xl border border-white/10 bg-[#0a0a0a] backdrop-blur-sm overflow-hidden ${
-        isSlideMode ? 'max-w-[900px] mx-auto' : ''
-      }`}
+    <button
+      onClick={handleClick}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 transition-colors text-xs text-gray-600 hover:text-gray-900"
+      title={media.name}
     >
-      {/* Header */}
-      <div className="p-4 sm:p-5 lg:p-6 border-b border-white/10 bg-[#0f0f0f]">
-        <div className="flex flex-wrap items-start gap-3">
+      {media.isVid ? <Video className="w-3.5 h-3.5 text-purple-500" /> :
+       media.isDrive ? <ExternalLink className="w-3.5 h-3.5 text-blue-500" /> :
+       <LinkIcon className="w-3.5 h-3.5 text-gray-400" />}
+      <span className="max-w-[80px] truncate">{media.name}</span>
+    </button>
+  );
+}
+
+// ============================================================================
+// EDITORIAL ROW
+// ============================================================================
+
+const EditorialRow: React.FC<{ item: PresentationItem; index: number; onDriveClick: (url: string, title: string) => void }> = ({ item, index, onDriveClick }) => {
+  const TypeIcon = TYPE_ICONS[item.type] || FileText;
+  const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
+  const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
+
+  return (
+    <div className="group grid grid-cols-[100px_1fr_200px] sm:grid-cols-[120px_1fr_240px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
+      {/* DATE column */}
+      <div className="py-4 px-4 flex flex-col items-start justify-start border-r border-gray-100">
+        {item.publishAt ? (
+          <>
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+              {formatPublishDay(item.publishAt).split(',')[0]}
+            </span>
+            <span className="text-lg font-bold text-gray-800 leading-tight">
+              {new Date(item.publishAt).getDate()}
+            </span>
+            <span className="text-[11px] text-gray-400">
+              {new Date(item.publishAt).toLocaleDateString('en-US', { month: 'short' })}
+            </span>
+          </>
+        ) : (
+          <span className="text-xs text-gray-300 italic">No date</span>
+        )}
+        {/* Type badge */}
+        <span className={`mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+          <TypeIcon className="w-3 h-3" />
+          {item.type}
+        </span>
+      </div>
+
+      {/* CONTENT column */}
+      <div className="py-4 px-5 min-w-0">
+        <div className="flex items-start gap-2.5">
+          <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           <div className="flex-1 min-w-0">
-            <h2
-              dir="auto"
-              style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
-              className="text-lg sm:text-xl font-bold text-white break-words"
-            >
+            <h3 dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className="text-sm font-semibold text-gray-900 leading-snug break-words">
               {item.title}
-            </h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border ${typeColor}`}>
-                <TypeIcon className="w-3.5 h-3.5" />
-                {item.type}
-              </span>
-              {item.publishAt && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-white/50">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {formatDate(item.publishAt)}
-                </span>
-              )}
-              {/* Review status */}
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border ${
-                item.reviewStatus === 'APPROVED'
-                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30'
-                  : item.reviewStatus === 'REJECTED'
-                  ? 'bg-rose-500/20 text-rose-400 border-rose-400/30'
-                  : 'bg-slate-500/20 text-slate-400 border-slate-400/30'
-              }`}>
-                {item.reviewStatus === 'APPROVED' && <Check className="w-3 h-3" />}
-                {item.reviewStatus === 'REJECTED' && <X className="w-3 h-3" />}
-                {item.reviewStatus === 'PENDING' && <Clock className="w-3 h-3" />}
-                {item.reviewStatus}
-              </span>
-            </div>
+            </h3>
+            {item.mainIdea && (
+              <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed line-clamp-2" />
+            )}
+            {item.brief && (
+              <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed line-clamp-3" />
+            )}
+            {item.notes && (
+              <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic line-clamp-2" />
+            )}
           </div>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="p-4 sm:p-5 lg:p-6 space-y-5">
-        {/* Main Idea */}
-        {item.mainIdea && (
-          <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Main Idea</h4>
-            <BidiText text={item.mainIdea} className="text-sm text-white/90 leading-relaxed" />
-          </div>
-        )}
-
-        {/* Brief Description */}
-        {item.briefDescription && (
-          <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Brief</h4>
-            <BidiText text={item.briefDescription} className="text-sm text-white/80 leading-relaxed" />
-          </div>
-        )}
-
-        {/* Notes */}
-        {item.notes && (
-          <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">Notes</h4>
-            <BidiText text={item.notes} className="text-sm text-white/70 leading-relaxed" />
-          </div>
-        )}
-
-        {/* Reference Links */}
-        {item.referenceLinks?.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Reference Links</h4>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {item.referenceLinks.map((link, i) => (
-                <ReferenceLinkCard key={i} link={link} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Reference Files */}
-        {item.referenceFiles?.length > 0 && (
-          <div>
-            <h4 className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Reference Files</h4>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {item.referenceFiles.map((file, i) => (
-                <ReferenceFileCard key={i} file={file} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Rejection note (if rejected) */}
-        {item.reviewStatus === 'REJECTED' && item.rejectionNote && (
-          <div className="p-3 rounded-lg border border-rose-500/20 bg-rose-500/5">
-            <h4 className="text-xs font-semibold text-rose-400 uppercase tracking-wider mb-1">Rejection Note</h4>
-            <BidiText text={item.rejectionNote} className="text-sm text-rose-300/80" />
-          </div>
-        )}
-
-        {/* Audit Info */}
-        <div className="pt-3 border-t border-white/5">
-          <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-white/40">
-            {item.createdAt && (
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Created: {formatDate(item.createdAt)}
-              </span>
-            )}
-            {item.updatedAt && item.updatedAt !== item.createdAt && (
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                Updated: {formatDate(item.updatedAt)}
-              </span>
-            )}
-          </div>
-        </div>
+      {/* MEDIA column */}
+      <div className="py-4 px-4 border-l border-gray-100 flex items-start">
+        <MediaPreview item={item} onDriveClick={onDriveClick} />
       </div>
     </div>
   );
 }
+
+// ============================================================================
+// PRINT STYLES (injected once)
+// ============================================================================
+
+const PRINT_STYLES = `
+@media print {
+  body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  .print-break { page-break-before: always; }
+}
+`;
 
 // ============================================================================
 // MAIN COMPONENT
@@ -575,6 +399,8 @@ interface CalendarPresentationViewProps {
   creativeProjects: CreativeProject[];
   creativeCalendars: CreativeCalendar[];
   creativeCalendarItems: CreativeCalendarItem[];
+  calendarMonths: CalendarMonth[];
+  calendarItems: CalendarItem[];
   clients: Client[];
   users: User[];
   checkPermission: (permission: string) => boolean;
@@ -585,136 +411,131 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   creativeProjects,
   creativeCalendars,
   creativeCalendarItems,
+  calendarMonths,
+  calendarItems,
   clients,
   users,
-  checkPermission,
   onBack,
 }) => {
   // ── State ──
-  const [viewMode, setViewMode] = useState<'slide' | 'grid'>('slide');
-  const [slideIndex, setSlideIndex] = useState(0);
   const [filterType, setFilterType] = useState<CalendarContentType | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [driveModal, setDriveModal] = useState<{ url: string; title: string } | null>(null);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+
+  // ── Inject print styles ──
+  useMemo(() => {
+    const id = 'presentation-print-css';
+    if (!document.getElementById(id)) {
+      const style = document.createElement('style');
+      style.id = id;
+      style.textContent = PRINT_STYLES;
+      document.head.appendChild(style);
+    }
+  }, []);
 
   // ── Derive approved projects & calendars ──
-  const approvedCalendars = useMemo(() => {
-    return creativeCalendars.filter(c => c.status === 'APPROVED');
-  }, [creativeCalendars]);
+  const approvedCalendars = useMemo(() => creativeCalendars.filter(c => c.status === 'APPROVED'), [creativeCalendars]);
+  const approvedProjectIds = useMemo(() => new Set(approvedCalendars.map(c => c.creativeProjectId)), [approvedCalendars]);
+  const approvedProjects = useMemo(() => creativeProjects.filter(p => approvedProjectIds.has(p.id)), [creativeProjects, approvedProjectIds]);
 
-  const approvedProjectIds = useMemo(() => {
-    return new Set(approvedCalendars.map(c => c.creativeProjectId));
-  }, [approvedCalendars]);
-
-  const approvedProjects = useMemo(() => {
-    return creativeProjects.filter(p =>
-      approvedProjectIds.has(p.id) && (p.status === 'APPROVED' || approvedProjectIds.has(p.id))
-    );
-  }, [creativeProjects, approvedProjectIds]);
-
-  // Auto-select first project if none selected
-  useEffect(() => {
+  // Auto-select first
+  useMemo(() => {
     if (!selectedProjectId && approvedProjects.length > 0) {
       setSelectedProjectId(approvedProjects[0].id);
     }
   }, [approvedProjects, selectedProjectId]);
 
-  // ── Items for current selection ──
+  // ── Selected calendar + items ──
   const selectedCalendar = useMemo(() => {
     if (!selectedProjectId) return null;
     return approvedCalendars.find(c => c.creativeProjectId === selectedProjectId) ?? null;
   }, [selectedProjectId, approvedCalendars]);
 
-  const allItems = useMemo(() => {
-    if (!selectedCalendar) return [];
-    return creativeCalendarItems
-      .filter(i => i.creativeCalendarId === selectedCalendar.id)
-      .sort((a, b) => {
-        // Sort by publishAt, then by createdAt
-        const dateA = a.publishAt || a.createdAt;
-        const dateB = b.publishAt || b.createdAt;
-        return dateA.localeCompare(dateB);
-      });
-  }, [selectedCalendar, creativeCalendarItems]);
+  const selectedProject = approvedProjects.find(p => p.id === selectedProjectId);
+  const selectedClient = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
 
-  const filteredItems = useMemo(() => {
-    let items = allItems;
-    if (filterType !== 'ALL') {
-      items = items.filter(i => i.type === filterType);
+  // ── Build presentation items: prefer activated CalendarItems, fallback to CreativeCalendarItems ──
+  const presentationItems = useMemo((): PresentationItem[] => {
+    if (!selectedCalendar || !selectedProject) return [];
+
+    // Try activated (production) items first
+    const activatedMonth = calendarMonths.find(
+      m => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey
+    );
+
+    if (activatedMonth) {
+      const items = calendarItems
+        .filter(i => i.calendarMonthId === activatedMonth.id)
+        .sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
+      if (items.length > 0) return items.map(calItemToPres);
     }
+
+    // Fallback: creative calendar items
+    const items = creativeCalendarItems
+      .filter(i => i.creativeCalendarId === selectedCalendar.id)
+      .sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
+    return items.map((item, idx) => creativeItemToPres(item, idx));
+  }, [selectedCalendar, selectedProject, calendarMonths, calendarItems, creativeCalendarItems]);
+
+  // ── Filtered items ──
+  const filteredItems = useMemo(() => {
+    let items = presentationItems;
+    if (filterType !== 'ALL') items = items.filter(i => i.type === filterType);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       items = items.filter(i =>
         i.title?.toLowerCase().includes(q) ||
         i.mainIdea?.toLowerCase().includes(q) ||
-        i.briefDescription?.toLowerCase().includes(q) ||
+        i.brief?.toLowerCase().includes(q) ||
         i.notes?.toLowerCase().includes(q)
       );
     }
     return items;
-  }, [allItems, filterType, searchQuery]);
+  }, [presentationItems, filterType, searchQuery]);
 
-  // Reset slide index when items change
-  useEffect(() => {
-    setSlideIndex(0);
-  }, [filteredItems.length, selectedProjectId, filterType, searchQuery]);
-
-  // ── Keyboard Navigation ──
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (viewMode !== 'slide') return;
-    if (e.key === 'ArrowRight') {
-      setSlideIndex(prev => Math.min(prev + 1, filteredItems.length - 1));
-    } else if (e.key === 'ArrowLeft') {
-      setSlideIndex(prev => Math.max(prev - 1, 0));
-    }
-  }, [viewMode, filteredItems.length]);
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
-
-  // ── Client & Project info ──
-  const selectedProject = approvedProjects.find(p => p.id === selectedProjectId);
-  const selectedClient = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
-
-  // ── Share link ──
-  const handleShareLink = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2000);
-    });
-  };
-
-  // ── Content type counts ──
+  // ── Type counts ──
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { ALL: allItems.length };
-    for (const item of allItems) {
-      counts[item.type] = (counts[item.type] || 0) + 1;
+    const c: Record<string, number> = { ALL: presentationItems.length };
+    for (const item of presentationItems) c[item.type] = (c[item.type] || 0) + 1;
+    return c;
+  }, [presentationItems]);
+
+  // ── Group by date ──
+  const dateGroups = useMemo(() => {
+    const groups: { dateKey: string; label: string; items: PresentationItem[] }[] = [];
+    const map = new Map<string, PresentationItem[]>();
+    for (const item of filteredItems) {
+      const key = item.publishAt ? item.publishAt.slice(0, 10) : 'no-date';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
     }
-    return counts;
-  }, [allItems]);
+    for (const [key, items] of map) {
+      groups.push({
+        dateKey: key,
+        label: key === 'no-date' ? 'Unscheduled' : formatDate(key),
+        items,
+      });
+    }
+    return groups;
+  }, [filteredItems]);
+
+  const handleDriveClick = (url: string, title: string) => setDriveModal({ url, title });
 
   // ── Empty State ──
   if (approvedProjects.length === 0) {
     return (
-      <div className="space-y-4">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Creative Direction
-        </button>
-        <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-12 text-center">
-            <Presentation className="w-12 h-12 mx-auto text-white/20 mb-4" />
-            <h3 className="text-lg font-semibold text-white/70">No Approved Calendars</h3>
-            <p className="text-sm text-white/40 mt-2 max-w-md mx-auto">
-              There are no calendars with an approved status yet. Once a calendar is approved through the review process, it will appear here.
+      <div className="min-h-screen bg-white">
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          <button onClick={onBack} className="no-print inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-8">
+            <ArrowLeft className="w-4 h-4" /> Back to Creative Direction
+          </button>
+          <div className="text-center py-20">
+            <Presentation className="w-12 h-12 mx-auto text-gray-200 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-400">No Approved Calendars</h3>
+            <p className="text-sm text-gray-300 mt-2 max-w-md mx-auto">
+              Once a calendar is approved through the review process, it will appear here as an editorial schedule.
             </p>
           </div>
         </div>
@@ -722,153 +543,112 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
     );
   }
 
-  const currentSlideItem = filteredItems[slideIndex];
-
   return (
-    <div ref={containerRef} className="space-y-4 overflow-x-hidden">
-      {/* Top Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors self-start"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Creative Direction
-        </button>
+    <div className="min-h-screen bg-white text-gray-900">
+      {driveModal && (
+        <DrivePreviewModal url={driveModal.url} title={driveModal.title} onClose={() => setDriveModal(null)} />
+      )}
 
-        <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <div className="flex rounded-lg border border-white/10 overflow-hidden">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        {/* ── HEADER BAR ── */}
+        <div className="no-print flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
+          <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors self-start">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewMode('slide')}
-              className={`p-2 text-xs font-medium transition-colors ${
-                viewMode === 'slide'
-                  ? 'bg-iris-red text-white'
-                  : 'bg-transparent text-white/50 hover:text-white hover:bg-white/5'
-              }`}
-              title="Slide View"
+              onClick={() => window.print()}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
             >
-              <Presentation className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 text-xs font-medium transition-colors ${
-                viewMode === 'grid'
-                  ? 'bg-iris-red text-white'
-                  : 'bg-transparent text-white/50 hover:text-white hover:bg-white/5'
-              }`}
-              title="Grid View"
-            >
-              <LayoutGrid className="w-4 h-4" />
+              <Printer className="w-3.5 h-3.5" /> Print
             </button>
           </div>
-
-          {/* Share button */}
-          <button
-            onClick={handleShareLink}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-          >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Share2 className="w-3.5 h-3.5" />}
-            {copiedLink ? 'Copied!' : 'Share'}
-          </button>
         </div>
-      </div>
 
-      {/* Container */}
-      <div className="max-w-[1200px] w-full mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Project Selector + Calendar Info */}
-        <div className="rounded-xl border border-white/10 bg-[#0f0f0f] p-4 sm:p-5 mb-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            {/* Project selector */}
-            <div className="flex-1 min-w-0">
-              <label className="block text-xs font-semibold text-white/50 uppercase tracking-wider mb-1.5">
-                Approved Calendar
-              </label>
-              <select
-                value={selectedProjectId || ''}
-                onChange={(e) => setSelectedProjectId(e.target.value || null)}
-                className="w-full max-w-md px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white text-sm focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50"
-              >
-                {approvedProjects.map(project => {
-                  const client = clients.find(c => c.id === project.clientId);
-                  const cal = approvedCalendars.find(c => c.creativeProjectId === project.id);
-                  return (
-                    <option key={project.id} value={project.id}>
-                      {client?.name || 'Unknown Client'} — {cal?.monthKey || ''}
-                    </option>
-                  );
-                })}
-              </select>
+        {/* ── MAGAZINE MASTHEAD ── */}
+        <header className="mb-10 border-b-2 border-gray-900 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 uppercase">
+                {selectedClient?.name || 'Client'}
+              </h1>
+              <p className="text-sm text-gray-400 mt-1 font-medium tracking-wide uppercase">
+                Content Calendar · {selectedCalendar?.monthKey || ''}
+              </p>
             </div>
 
-            {/* Calendar meta */}
-            {selectedCalendar && selectedClient && (
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/50">
-                <span className="inline-flex items-center gap-1.5">
-                  <UserIcon className="w-3.5 h-3.5" />
-                  {selectedClient.name}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
-                  {selectedCalendar.monthKey}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  Approved
-                </span>
-                {selectedCalendar.lastReviewedAt && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    Reviewed: {formatDate(selectedCalendar.lastReviewedAt)}
-                  </span>
+            {/* Calendar selector */}
+            {approvedProjects.length > 1 && (
+              <div className="relative no-print">
+                <button
+                  onClick={() => setSelectorOpen(!selectorOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  <Calendar className="w-4 h-4" />
+                  {selectedCalendar?.monthKey || 'Select'}
+                  <ChevronDown className={`w-4 h-4 transition-transform ${selectorOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {selectorOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+                    {approvedProjects.map(proj => {
+                      const client = clients.find(c => c.id === proj.clientId);
+                      const cal = approvedCalendars.find(c => c.creativeProjectId === proj.id);
+                      const isActive = proj.id === selectedProjectId;
+                      return (
+                        <button
+                          key={proj.id}
+                          onClick={() => { setSelectedProjectId(proj.id); setSelectorOpen(false); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${isActive ? 'bg-gray-100 font-medium text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}
+                        >
+                          {client?.name || 'Client'} — {cal?.monthKey || ''}
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
-                <span className="inline-flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" />
-                  {allItems.length} items
-                </span>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Filters Bar */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-4">
-          {/* Type filter */}
+          {/* Stats row */}
+          <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-xs text-gray-400 font-medium uppercase tracking-wider">
+            <span>{presentationItems.length} Items</span>
+            {typeCounts['VIDEO'] && <span>{typeCounts['VIDEO']} Video</span>}
+            {typeCounts['PHOTO'] && <span>{typeCounts['PHOTO']} Photo</span>}
+            {typeCounts['MOTION'] && <span>{typeCounts['MOTION']} Motion</span>}
+          </div>
+        </header>
+
+        {/* ── FILTERS ── */}
+        <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
           <div className="flex flex-wrap gap-1.5">
             {TYPE_OPTIONS.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => setFilterType(opt.value)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-colors border ${
                   filterType === opt.value
-                    ? 'bg-iris-red/20 text-iris-red border-iris-red/30'
-                    : 'bg-white/5 text-white/50 border-white/10 hover:text-white hover:bg-white/10'
+                    ? 'bg-gray-900 text-white border-gray-900'
+                    : 'bg-white text-gray-400 border-gray-200 hover:text-gray-700 hover:border-gray-400'
                 }`}
               >
                 {opt.label}
-                {typeCounts[opt.value] !== undefined && (
-                  <span className="ml-1 opacity-70">({typeCounts[opt.value]})</span>
-                )}
+                {typeCounts[opt.value] !== undefined && <span className="ml-1 opacity-60">({typeCounts[opt.value]})</span>}
               </button>
             ))}
           </div>
-
-          {/* Search */}
           <div className="flex-1 min-w-0 sm:max-w-xs ml-auto">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-300" />
               <input
                 type="text"
-                placeholder="Search items..."
+                placeholder="Search..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50"
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 rounded-lg border border-gray-200 text-gray-800 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400"
               />
               {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-white/40 hover:text-white"
-                >
+                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-300 hover:text-gray-600">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -876,86 +656,35 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
           </div>
         </div>
 
-        {/* Content */}
+        {/* ── EDITORIAL TABLE ── */}
         {filteredItems.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-[#0a0a0a] p-10 text-center">
-            <Search className="w-8 h-8 mx-auto text-white/20 mb-3" />
-            <p className="text-sm text-white/50">
-              {searchQuery || filterType !== 'ALL'
-                ? 'No items match your filters.'
-                : 'No items in this calendar.'}
+          <div className="py-20 text-center">
+            <Search className="w-8 h-8 mx-auto text-gray-200 mb-3" />
+            <p className="text-sm text-gray-400">
+              {searchQuery || filterType !== 'ALL' ? 'No items match your filters.' : 'No items in this calendar.'}
             </p>
           </div>
-        ) : viewMode === 'slide' ? (
-          /* ── Slide Mode ── */
-          <div className="space-y-4">
-            {/* Slide navigation */}
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-white/50">
-                Item {slideIndex + 1} of {filteredItems.length}
-              </span>
-              <div className="flex items-center gap-2">
-                {/* Dots for small sets, or just count for large */}
-                {filteredItems.length <= 20 && (
-                  <div className="hidden sm:flex gap-1">
-                    {filteredItems.map((_, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setSlideIndex(i)}
-                        className={`w-2 h-2 rounded-full transition-all ${
-                          i === slideIndex
-                            ? 'bg-iris-red scale-125'
-                            : 'bg-white/20 hover:bg-white/40'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Slide Card */}
-            {currentSlideItem && (
-              <SlideCard item={currentSlideItem} users={users} isSlideMode={true} />
-            )}
-
-            {/* Prev/Next Buttons */}
-            <div className="flex items-center justify-between gap-4">
-              <button
-                onClick={() => setSlideIndex(prev => Math.max(prev - 1, 0))}
-                disabled={slideIndex <= 0}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/10 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Previous</span>
-              </button>
-
-              {/* Keyboard hint */}
-              <span className="hidden md:inline text-xs text-white/30">
-                ← → Arrow keys to navigate
-              </span>
-
-              <button
-                onClick={() => setSlideIndex(prev => Math.min(prev + 1, filteredItems.length - 1))}
-                disabled={slideIndex >= filteredItems.length - 1}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-white/10 text-sm font-medium text-white/70 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <span className="hidden sm:inline">Next</span>
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
         ) : (
-          /* ── Grid Mode ── */
-          <div
-            className="grid gap-4"
-            style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))' }}
-          >
-            {filteredItems.map((item) => (
-              <SlideCard key={item.id} item={item} users={users} isSlideMode={false} />
+          <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            {/* Column headers */}
+            <div className="grid grid-cols-[100px_1fr_200px] sm:grid-cols-[120px_1fr_240px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
+              <div className="py-3 px-4">Date</div>
+              <div className="py-3 px-5">Content</div>
+              <div className="py-3 px-4 border-l border-gray-200">Media</div>
+            </div>
+
+            {/* Rows */}
+            {filteredItems.map((item, i) => (
+              <EditorialRow key={item.id} item={item} index={i} onDriveClick={handleDriveClick} />
             ))}
           </div>
         )}
+
+        {/* ── FOOTER ── */}
+        <footer className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] text-gray-300 uppercase tracking-wider">
+          <span>Editorial Schedule · {selectedClient?.name}</span>
+          <span>{selectedCalendar?.monthKey} · {presentationItems.length} Items</span>
+        </footer>
       </div>
     </div>
   );

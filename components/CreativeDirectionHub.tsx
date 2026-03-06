@@ -37,6 +37,8 @@ const CreativeDirectionHub: React.FC<CreativeDirectionHubProps> = (props) => {
         creativeProjects={props.creativeProjects}
         creativeCalendars={props.creativeCalendars}
         creativeCalendarItems={props.creativeCalendarItems}
+        calendarMonths={props.calendarMonths}
+        calendarItems={props.calendarItems}
         clients={props.clients}
         users={props.users}
         checkPermission={props.checkPermission}
