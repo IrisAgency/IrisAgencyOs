@@ -211,8 +211,17 @@ function DrivePreviewModal({ url, title, onClose }: { url: string; title?: strin
 // MEDIA PREVIEW (thumbnail inline)
 // ============================================================================
 
+interface MediaEntry {
+  url: string;
+  name: string;
+  isDrive: boolean;
+  isImg: boolean;
+  isVid: boolean;
+  driveId: string | null;
+}
+
 function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveClick: (url: string, title: string) => void }) {
-  const allMedia: { type: 'link' | 'file'; url: string; name: string; isDrive: boolean; isImg: boolean; isVid: boolean; driveId: string | null }[] = [];
+  const allMedia: MediaEntry[] = [];
 
   // Collect reference links
   for (const link of item.referenceLinks) {
@@ -220,7 +229,6 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     if (!norm) continue;
     const isDrive = isGoogleDriveUrl(norm);
     allMedia.push({
-      type: 'link',
       url: norm,
       name: link.title || 'Link',
       isDrive,
@@ -236,7 +244,6 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     if (!url) continue;
     const isDrive = isGoogleDriveUrl(url);
     allMedia.push({
-      type: 'file',
       url,
       name: file.fileName || 'File',
       isDrive,
@@ -246,10 +253,12 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     });
   }
 
-  if (allMedia.length === 0) return null;
+  if (allMedia.length === 0) {
+    return <span className="text-[11px] text-gray-300 italic">No media</span>;
+  }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-col gap-2 w-full">
       {allMedia.map((m, i) => (
         <MediaThumb key={i} media={m} onDriveClick={onDriveClick} />
       ))}
@@ -258,11 +267,12 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
 }
 
 const MediaThumb: React.FC<{
-  media: { url: string; name: string; isDrive: boolean; isImg: boolean; isVid: boolean; driveId: string | null };
+  media: MediaEntry;
   onDriveClick: (url: string, title: string) => void;
 }> = ({ media, onDriveClick }) => {
   const [imgErr, setImgErr] = useState(false);
 
+  // Always try thumbnail for Drive files (they could be images, videos, PDFs — Drive generates thumbnails for all)
   const thumbSrc = media.driveId
     ? getDriveThumbnailUrl(media.driveId)
     : media.isImg
@@ -277,40 +287,70 @@ const MediaThumb: React.FC<{
     }
   };
 
-  // Thumbnail preview
+  // Thumbnail card (Drive files, images, videos with thumbnails)
   if (thumbSrc && !imgErr) {
     return (
       <button
         onClick={handleClick}
-        className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 transition-colors group flex-shrink-0 bg-gray-50"
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
         title={media.name}
       >
-        <img src={thumbSrc} alt="" className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+        <div className="w-full aspect-[16/10] bg-gray-100 overflow-hidden">
+          <img
+            src={thumbSrc}
+            alt={media.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+            loading="lazy"
+          />
+        </div>
+        {/* Play overlay for video / generic Drive */}
         {(media.isVid || (media.isDrive && !media.isImg)) && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Play className="w-5 h-5 text-white" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+              <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+            </div>
           </div>
         )}
+        {/* Image expand hint */}
+        {media.isImg && !media.isDrive && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600" />
+            </div>
+          </div>
+        )}
+        {/* Drive badge */}
         {media.isDrive && (
-          <div className="absolute bottom-0.5 right-0.5 w-4 h-4 rounded-sm bg-white/90 flex items-center justify-center">
-            <ExternalLink className="w-2.5 h-2.5 text-gray-600" />
+          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 shadow-sm flex items-center gap-1">
+            <ExternalLink className="w-2.5 h-2.5 text-gray-500" />
+            <span className="text-[9px] font-semibold text-gray-500">Drive</span>
           </div>
         )}
       </button>
     );
   }
 
-  // Fallback icon chip
+  // Fallback: icon card for non-previewable files
   return (
     <button
       onClick={handleClick}
-      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 transition-colors text-xs text-gray-600 hover:text-gray-900"
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left"
       title={media.name}
     >
-      {media.isVid ? <Video className="w-3.5 h-3.5 text-purple-500" /> :
-       media.isDrive ? <ExternalLink className="w-3.5 h-3.5 text-blue-500" /> :
-       <LinkIcon className="w-3.5 h-3.5 text-gray-400" />}
-      <span className="max-w-[80px] truncate">{media.name}</span>
+      <div className="shrink-0 w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
+        {media.isVid ? <Video className="w-4 h-4 text-purple-500" /> :
+         media.isDrive ? <ExternalLink className="w-4 h-4 text-blue-500" /> :
+         media.isImg ? <Image className="w-4 h-4 text-blue-400" /> :
+         <LinkIcon className="w-4 h-4 text-gray-400" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="block text-xs font-medium text-gray-700 truncate">{media.name}</span>
+        <span className="block text-[10px] text-gray-400 truncate">
+          {media.isDrive ? 'Google Drive' : media.isVid ? 'Video' : media.isImg ? 'Image' : 'Link'}
+        </span>
+      </div>
+      <ExternalLink className="w-3.5 h-3.5 text-gray-300 shrink-0" />
     </button>
   );
 }
@@ -325,7 +365,7 @@ const EditorialRow: React.FC<{ item: PresentationItem; index: number; onDriveCli
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
 
   return (
-    <div className="group grid grid-cols-[100px_1fr_200px] sm:grid-cols-[120px_1fr_240px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
+    <div className="group grid grid-cols-[100px_1fr_220px] sm:grid-cols-[120px_1fr_300px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
       {/* DATE column */}
       <div className="py-4 px-4 flex flex-col items-start justify-start border-r border-gray-100">
         {item.publishAt ? (
@@ -527,7 +567,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   if (approvedProjects.length === 0) {
     return (
       <div className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-12">
+        <div className="max-w-6xl mx-auto px-6 py-12">
           <button onClick={onBack} className="no-print inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-8">
             <ArrowLeft className="w-4 h-4" /> Back to Creative Direction
           </button>
@@ -549,7 +589,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
         <DrivePreviewModal url={driveModal.url} title={driveModal.title} onClose={() => setDriveModal(null)} />
       )}
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* ── HEADER BAR ── */}
         <div className="no-print flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
           <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors self-start">
@@ -667,7 +707,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
         ) : (
           <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
             {/* Column headers */}
-            <div className="grid grid-cols-[100px_1fr_200px] sm:grid-cols-[120px_1fr_240px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
+            <div className="grid grid-cols-[100px_1fr_220px] sm:grid-cols-[120px_1fr_300px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
               <div className="py-3 px-4">Date</div>
               <div className="py-3 px-5">Content</div>
               <div className="py-3 px-4 border-l border-gray-200">Media</div>
