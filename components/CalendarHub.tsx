@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation } from 'lucide-react';
+import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
 import { Client, CalendarMonth, CalendarItem, CalendarContentType, User, CalendarReferenceLink } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
@@ -36,6 +37,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   const [editingItem, setEditingItem] = useState<CalendarItem | null>(null);
   const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPresentation, setShowPresentation] = useState(false);
 
   const [monthForm, setMonthForm] = useState({
     monthKey: '',
@@ -470,6 +472,17 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     }
   };
 
+  if (showPresentation) {
+    return (
+      <CalendarDeptPresentationView
+        calendarMonths={calendarMonths}
+        calendarItems={calendarItems}
+        clients={clients}
+        onBack={() => setShowPresentation(false)}
+      />
+    );
+  }
+
   return (
     <div className="p-6 max-w-full min-h-screen" style={{ background: '#050505' }}>
       {/* Header Section */}
@@ -479,10 +492,17 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
           <div className="p-3 bg-gradient-to-br from-[#DF1E3C]/20 to-[#DF1E3C]/5 rounded-xl border border-[#DF1E3C]/20 shadow-[0_0_15px_rgba(223,30,60,0.15)]">
             <Calendar className="w-8 h-8 text-[#DF1E3C]" />
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight">Calendar Department</h1>
             <p className="text-slate-400 text-sm mt-1 font-medium">Monthly content planning for structured execution</p>
           </div>
+          <button
+            onClick={() => setShowPresentation(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.1] hover:border-white/[0.2] rounded-xl text-sm text-slate-300 hover:text-white transition-all duration-200 shadow-lg"
+          >
+            <Presentation className="w-4 h-4" />
+            <span className="hidden sm:inline">Presentation View</span>
+          </button>
         </div>
       </div>
 
