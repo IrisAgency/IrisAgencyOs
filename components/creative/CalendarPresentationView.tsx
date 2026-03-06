@@ -51,6 +51,30 @@ function isGoogleDriveUrl(url: string): boolean {
   return url.includes('drive.google.com') || url.includes('docs.google.com');
 }
 
+function isFirebaseStorageUrl(url: string): boolean {
+  if (!url) return false;
+  return url.includes('firebasestorage.googleapis.com') || url.includes('firebasestorage.app');
+}
+
+/** Get a website favicon via Google's favicon service */
+function getWebsiteFavicon(url: string): string {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+  } catch {
+    return '';
+  }
+}
+
+/** Extract domain from URL for display */
+function getDomainFromUrl(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '');
+  } catch {
+    return url;
+  }
+}
+
 function normalizeUrl(url: string): string | null {
   if (!url) return null;
   const trimmed = url.trim();
@@ -215,8 +239,10 @@ interface MediaEntry {
   url: string;
   name: string;
   isDrive: boolean;
+  isFirebase: boolean;
   isImg: boolean;
   isVid: boolean;
+  isWebsite: boolean;
   driveId: string | null;
 }
 
@@ -228,12 +254,17 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     const norm = normalizeUrl(link.url);
     if (!norm) continue;
     const isDrive = isGoogleDriveUrl(norm);
+    const isFirebase = isFirebaseStorageUrl(norm);
+    const isImg = isDirectImageUrl(norm) || (isFirebase && isImageFile(link.title || ''));
+    const isVid = isFirebase && isVideoFile(link.title || '');
     allMedia.push({
       url: norm,
       name: link.title || 'Link',
       isDrive,
-      isImg: isDirectImageUrl(norm),
-      isVid: false,
+      isFirebase,
+      isImg,
+      isVid,
+      isWebsite: !isDrive && !isFirebase && !isImg && !isVid,
       driveId: isDrive ? extractDriveFileId(norm) : null,
     });
   }
@@ -243,12 +274,17 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     const url = file.downloadURL;
     if (!url) continue;
     const isDrive = isGoogleDriveUrl(url);
+    const isFirebase = isFirebaseStorageUrl(url);
+    const isImg = isImageFile(file.fileName) || isDirectImageUrl(url);
+    const isVid = isVideoFile(file.fileName);
     allMedia.push({
       url,
       name: file.fileName || 'File',
       isDrive,
-      isImg: isImageFile(file.fileName) || isDirectImageUrl(url),
-      isVid: isVideoFile(file.fileName),
+      isFirebase,
+      isImg,
+      isVid,
+      isWebsite: false,
       driveId: isDrive ? extractDriveFileId(url) : null,
     });
   }
@@ -271,13 +307,17 @@ const MediaThumb: React.FC<{
   onDriveClick: (url: string, title: string) => void;
 }> = ({ media, onDriveClick }) => {
   const [imgErr, setImgErr] = useState(false);
+  const [vidErr, setVidErr] = useState(false);
 
-  // Always try thumbnail for Drive files (they could be images, videos, PDFs — Drive generates thumbnails for all)
+  // Determine thumbnail source
   const thumbSrc = media.driveId
     ? getDriveThumbnailUrl(media.driveId)
     : media.isImg
     ? media.url
     : null;
+
+  // For videos on Firebase/direct URLs, we can use a <video> element for preview
+  const canVideoPreview = media.isVid && !media.isDrive && !vidErr;
 
   const handleClick = () => {
     if (media.isDrive) {
@@ -287,7 +327,7 @@ const MediaThumb: React.FC<{
     }
   };
 
-  // Thumbnail card (Drive files, images, videos with thumbnails)
+  // ── 1. Image thumbnail (Drive, direct images, Firebase images) ──
   if (thumbSrc && !imgErr) {
     return (
       <button
@@ -304,7 +344,6 @@ const MediaThumb: React.FC<{
             loading="lazy"
           />
         </div>
-        {/* Play overlay for video / generic Drive */}
         {(media.isVid || (media.isDrive && !media.isImg)) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
             <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
@@ -312,7 +351,6 @@ const MediaThumb: React.FC<{
             </div>
           </div>
         )}
-        {/* Image expand hint */}
         {media.isImg && !media.isDrive && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
             <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
@@ -320,7 +358,6 @@ const MediaThumb: React.FC<{
             </div>
           </div>
         )}
-        {/* Drive badge */}
         {media.isDrive && (
           <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 shadow-sm flex items-center gap-1">
             <ExternalLink className="w-2.5 h-2.5 text-gray-500" />
@@ -331,26 +368,82 @@ const MediaThumb: React.FC<{
     );
   }
 
-  // Fallback: icon card for non-previewable files
+  // ── 2. Video preview (Firebase/direct video files — use <video> poster frame) ──
+  if (canVideoPreview) {
+    return (
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.name}
+      >
+        <div className="w-full aspect-[16/10] bg-black overflow-hidden">
+          <video
+            src={media.url}
+            className="w-full h-full object-cover"
+            muted
+            preload="metadata"
+            onError={() => setVidErr(true)}
+          />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
+          <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+            <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+          </div>
+        </div>
+        {media.isFirebase && (
+          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 shadow-sm">
+            <span className="text-[9px] font-semibold text-purple-600">Video</span>
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  // ── 3. Website link with favicon + domain ──
+  if (media.isWebsite) {
+    const favicon = getWebsiteFavicon(media.url);
+    const domain = getDomainFromUrl(media.url);
+    return (
+      <button
+        onClick={handleClick}
+        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group"
+        title={media.url}
+      >
+        <div className="shrink-0 w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
+          {favicon ? (
+            <img src={favicon} alt="" className="w-6 h-6" loading="lazy" />
+          ) : (
+            <LinkIcon className="w-4 h-4 text-gray-400" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="block text-xs font-medium text-gray-700 truncate">{media.name !== 'Link' ? media.name : domain}</span>
+          <span className="block text-[10px] text-gray-400 truncate">{domain}</span>
+        </div>
+        <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
+      </button>
+    );
+  }
+
+  // ── 4. Generic fallback card ──
   return (
     <button
       onClick={handleClick}
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left"
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group"
       title={media.name}
     >
-      <div className="shrink-0 w-9 h-9 rounded-lg bg-gray-100 flex items-center justify-center">
-        {media.isVid ? <Video className="w-4 h-4 text-purple-500" /> :
-         media.isDrive ? <ExternalLink className="w-4 h-4 text-blue-500" /> :
-         media.isImg ? <Image className="w-4 h-4 text-blue-400" /> :
-         <LinkIcon className="w-4 h-4 text-gray-400" />}
+      <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
+        {media.isVid ? <Video className="w-4.5 h-4.5 text-purple-500" /> :
+         media.isImg ? <Image className="w-4.5 h-4.5 text-blue-400" /> :
+         <FileText className="w-4.5 h-4.5 text-gray-400" />}
       </div>
       <div className="flex-1 min-w-0">
         <span className="block text-xs font-medium text-gray-700 truncate">{media.name}</span>
         <span className="block text-[10px] text-gray-400 truncate">
-          {media.isDrive ? 'Google Drive' : media.isVid ? 'Video' : media.isImg ? 'Image' : 'Link'}
+          {media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}
         </span>
       </div>
-      <ExternalLink className="w-3.5 h-3.5 text-gray-300 shrink-0" />
+      <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
     </button>
   );
 }
