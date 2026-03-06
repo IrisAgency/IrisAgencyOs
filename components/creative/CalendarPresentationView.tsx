@@ -571,7 +571,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   // ── Derive approved projects & calendars ──
   const approvedCalendars = useMemo(() => creativeCalendars.filter(c => c.status === 'APPROVED'), [creativeCalendars]);
   const approvedProjectIds = useMemo(() => new Set(approvedCalendars.map(c => c.creativeProjectId)), [approvedCalendars]);
-  const approvedProjects = useMemo(() => creativeProjects.filter(p => approvedProjectIds.has(p.id)), [creativeProjects, approvedProjectIds]);
+  const approvedProjects = useMemo(() => creativeProjects.filter(p => approvedProjectIds.has(p.id) && !p.isArchived), [creativeProjects, approvedProjectIds]);
 
   // Auto-select first
   useMemo(() => {
