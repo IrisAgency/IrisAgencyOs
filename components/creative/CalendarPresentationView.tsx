@@ -9,8 +9,10 @@ import type {
 import {
   Video, Image, Clapperboard, Calendar, ExternalLink, FileText,
   Presentation, Search, X, ArrowLeft, Link as LinkIcon, Play,
-  Printer, ChevronDown,
+  Printer, ChevronDown, Share2,
 } from 'lucide-react';
+import ShareLinkManager from './ShareLinkManager';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ============================================================================
 // HELPERS
@@ -551,11 +553,13 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   onBack,
 }) => {
   // ── State ──
+  const { user: currentUser } = useAuth();
   const [filterType, setFilterType] = useState<CalendarContentType | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [driveModal, setDriveModal] = useState<{ url: string; title: string } | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [showShareManager, setShowShareManager] = useState(false);
 
   // ── Inject print styles ──
   useMemo(() => {
@@ -690,6 +694,12 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
           </button>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowShareManager(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-200 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
+            <button
               onClick={() => window.print()}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors"
             >
@@ -697,6 +707,22 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Share Link Manager Modal */}
+        {showShareManager && selectedCalendar && selectedProject && (
+          <ShareLinkManager
+            creativeProjectId={selectedProject.id}
+            creativeCalendarId={selectedCalendar.id}
+            calendarMonthId={
+              calendarMonths.find(
+                m => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey
+              )?.id || null
+            }
+            clientId={selectedProject.clientId}
+            currentUserId={currentUser?.id || ''}
+            onClose={() => setShowShareManager(false)}
+          />
+        )}
 
         {/* ── MAGAZINE MASTHEAD ── */}
         <header className="mb-10 border-b-2 border-gray-900 pb-6">

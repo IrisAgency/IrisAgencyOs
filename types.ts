@@ -1437,3 +1437,22 @@ export interface CreativeCalendarItem {
   createdAt: string;
   updatedAt: string;
 }
+
+// ========== Presentation Sharing ==========
+
+export interface PresentationShare {
+  id: string;
+  token: string;
+  creativeProjectId: string;
+  creativeCalendarId: string;
+  calendarMonthId: string | null; // null = use creative items directly
+  clientId: string;
+  isActive: boolean;
+  allowDownload: boolean;
+  expiresAt: string | null; // ISO date or null for never
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  accessCount: number;
+  lastOpenedAt: string | null;
+}
