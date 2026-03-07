@@ -366,16 +366,39 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   // ============================================
   // RENDER
   // ============================================
+
+  // Pre-compute ALL pending revisions in the Creative department (visible to any team member)
+  const allPendingRevisions = calendarItemRevisions.filter(
+    r => r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION'
+  );
+
   if (myProjects.length === 0) {
     return (
-      <div className={`${surface} rounded-xl p-8 text-center`}>
-        <Clock className="w-10 h-10 mx-auto mb-3 text-iris-white/20" />
-        <p className="text-iris-white/60">No creative projects assigned to you yet.</p>
-        <p className="text-sm text-iris-white/40 mt-1">Your manager will assign projects when ready.</p>
-        {creativeProjects.length > 0 && (
-          <p className="text-xs text-iris-white/30 mt-3">
-            {creativeProjects.length} project(s) exist but are assigned to other copywriters.
-          </p>
+      <div className="space-y-4">
+        <div className={`${surface} rounded-xl p-8 text-center`}>
+          <Clock className="w-10 h-10 mx-auto mb-3 text-iris-white/20" />
+          <p className="text-iris-white/60">No creative projects assigned to you yet.</p>
+          <p className="text-sm text-iris-white/40 mt-1">Your manager will assign projects when ready.</p>
+          {creativeProjects.length > 0 && (
+            <p className="text-xs text-iris-white/30 mt-3">
+              {creativeProjects.length} project(s) exist but are assigned to other copywriters.
+            </p>
+          )}
+        </div>
+
+        {/* Show calendar revision requests even with no assigned projects */}
+        {allPendingRevisions.length > 0 && (
+          <RevisionRequestsSection
+            pendingRevisions={allPendingRevisions}
+            deptCalendarItems={deptCalendarItems}
+            clients={clients}
+            users={users}
+            currentUser={currentUser}
+            creativeCalendars={creativeCalendars}
+            creativeProjects={creativeProjects}
+            surface={surface}
+            elevated={elevated}
+          />
         )}
       </div>
     );
@@ -412,167 +435,19 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
       {/* ============================================ */}
       {/* CALENDAR REVISION REQUESTS SECTION — always visible */}
       {/* ============================================ */}
-      {(() => {
-        // Find revision requests that belong to this copywriter's creative projects
-        const myProjectIds = myProjects.map(p => p.id);
-        const myCalendarIds = creativeCalendars
-          .filter(cc => myProjectIds.includes(cc.creativeProjectId))
-          .map(cc => cc.id);
-        // Also get client IDs from my projects for fallback matching
-        const myClientIds = myProjects.map(p => p.clientId);
-        const pendingRevisions = calendarItemRevisions.filter(
-          r => (r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION') &&
-               (
-                 // Primary match: creativeCalendarId matches one of my creative calendars
-                 (r.creativeCalendarId && myCalendarIds.includes(r.creativeCalendarId)) ||
-                 // Fallback match: creativeProjectId matches one of my projects
-                 (r.creativeProjectId && myProjectIds.includes(r.creativeProjectId)) ||
-                 // Last resort: clientId matches one of my project clients (for old revisions without proper links)
-                 (!r.creativeCalendarId && !r.creativeProjectId && myClientIds.includes(r.clientId))
-               )
-        );
-
-        if (pendingRevisions.length === 0) return null;
-
-        return (
-          <div className={`${surface} rounded-xl p-5`}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-amber-500/20 rounded-lg">
-                <RotateCcw className="w-5 h-5 text-amber-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-iris-white">Calendar Revision Requests</h3>
-                <p className="text-xs text-iris-white/50">{pendingRevisions.length} item{pendingRevisions.length !== 1 ? 's' : ''} need{pendingRevisions.length === 1 ? 's' : ''} revision from Calendar Department</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {pendingRevisions.map(rev => {
-                const calItem = deptCalendarItems.find(ci => ci.id === rev.calendarItemId);
-                const client = clients.find(c => c.id === rev.clientId);
-                const requester = users.find(u => u.id === rev.requestedBy);
-                
-                return (
-                  <div key={rev.id} className={`${elevated} rounded-xl p-4 space-y-3`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-iris-white text-sm">{calItem?.autoName || 'Calendar Item'}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                          rev.status === 'REVISION_REQUESTED' ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' :
-                          'bg-blue-500/20 text-blue-400 border-blue-400/30'
-                        }`}>
-                          {rev.status === 'REVISION_REQUESTED' ? 'Needs Revision' : 'In Progress'}
-                        </span>
-                      </div>
-                      <span className="text-xs text-iris-white/40">{client?.name}</span>
-                    </div>
-
-                    {/* Revision note */}
-                    <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
-                      <div className="text-xs font-semibold text-amber-400 mb-1 flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" />
-                        {requester?.name || 'Calendar Dept'} requested:
-                      </div>
-                      <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
-                      {rev.revisionReferences && rev.revisionReferences.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {rev.revisionReferences.map((refItem, idx) => (
-                            <a key={idx} href={refItem.value} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
-                              <ExternalLink className="w-3 h-3" /> {refItem.fileName || refItem.value}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Current content for reference */}
-                    {calItem && (
-                      <div className="bg-white/[0.02] rounded-lg p-3 text-xs space-y-1">
-                        <div className="font-semibold text-iris-white/50">Current Brief:</div>
-                        <p className="text-iris-white/60 line-clamp-3" dir="auto">{calItem.primaryBrief}</p>
-                      </div>
-                    )}
-
-                    {/* Action: Start Revision / Submit Revision */}
-                    {rev.status === 'REVISION_REQUESTED' && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
-                              status: 'IN_CREATIVE_REVISION',
-                              updatedAt: new Date().toISOString(),
-                            });
-                            if (calItem) {
-                              await updateDoc(doc(db, 'calendar_items', calItem.id), {
-                                revisionStatus: 'IN_CREATIVE_REVISION',
-                                updatedAt: new Date().toISOString(),
-                              });
-                            }
-                          } catch (error) {
-                            console.error('Error starting revision:', error);
-                          }
-                        }}
-                        className="w-full px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-400/30 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <Edit2 className="w-4 h-4" /> Start Working on Revision
-                      </button>
-                    )}
-
-                    {rev.status === 'IN_CREATIVE_REVISION' && (
-                      <CalendarRevisionEditor
-                        revision={rev}
-                        calendarItem={calItem}
-                        currentUser={currentUser}
-                        users={users}
-                        onSubmit={async (revisedBrief, revisedNotes) => {
-                          try {
-                            const now = new Date().toISOString();
-                            await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
-                              revisedBrief,
-                              revisedNotes,
-                              revisedBy: currentUser?.id,
-                              revisedAt: now,
-                              status: 'AWAITING_CREATIVE_APPROVAL',
-                              updatedAt: now,
-                            });
-                            if (calItem) {
-                              await updateDoc(doc(db, 'calendar_items', calItem.id), {
-                                revisionStatus: 'AWAITING_CREATIVE_APPROVAL',
-                                updatedAt: now,
-                              });
-                            }
-                            // Notify creative manager
-                            const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
-                            const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
-                            const managerIds = users
-                              .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser?.id)
-                              .map(u => u.id);
-                            if (managerIds.length > 0) {
-                              await notifyUsers({
-                                type: 'CALENDAR_REVISION_SUBMITTED',
-                                title: 'Calendar Revision Submitted',
-                                message: `${currentUser?.name} submitted a revised brief for "${calItem?.autoName}"`,
-                                recipientIds: managerIds,
-                                entityId: rev.id,
-                                actionUrl: '/creative',
-                                sendPush: true,
-                                createdBy: currentUser?.id || 'system',
-                              });
-                            }
-                          } catch (error) {
-                            console.error('Error submitting revision:', error);
-                            alert('Failed to submit revision');
-                          }
-                        }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
+      {allPendingRevisions.length > 0 && (
+        <RevisionRequestsSection
+          pendingRevisions={allPendingRevisions}
+          deptCalendarItems={deptCalendarItems}
+          clients={clients}
+          users={users}
+          currentUser={currentUser}
+          creativeCalendars={creativeCalendars}
+          creativeProjects={creativeProjects}
+          surface={surface}
+          elevated={elevated}
+        />
+      )}
 
       {selectedProject && selectedCalendar && (
         <>
@@ -983,6 +858,159 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Extracted revision requests section — reusable in both main render and "no projects" early return
+const RevisionRequestsSection: React.FC<{
+  pendingRevisions: CalendarItemRevision[];
+  deptCalendarItems: CalendarItem[];
+  clients: Client[];
+  users: User[];
+  currentUser: User | null;
+  creativeCalendars: CreativeCalendar[];
+  creativeProjects: CreativeProject[];
+  surface: string;
+  elevated: string;
+}> = ({ pendingRevisions, deptCalendarItems, clients, users, currentUser, creativeCalendars, creativeProjects, surface, elevated }) => {
+  return (
+    <div className={`${surface} rounded-xl p-5`}>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-amber-500/20 rounded-lg">
+          <RotateCcw className="w-5 h-5 text-amber-400" />
+        </div>
+        <div>
+          <h3 className="font-bold text-iris-white">Calendar Revision Requests</h3>
+          <p className="text-xs text-iris-white/50">{pendingRevisions.length} item{pendingRevisions.length !== 1 ? 's' : ''} need{pendingRevisions.length === 1 ? 's' : ''} revision from Calendar Department</p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {pendingRevisions.map(rev => {
+          const calItem = deptCalendarItems.find(ci => ci.id === rev.calendarItemId);
+          const client = clients.find(c => c.id === rev.clientId);
+          const requester = users.find(u => u.id === rev.requestedBy);
+          
+          return (
+            <div key={rev.id} className={`${elevated} rounded-xl p-4 space-y-3`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-iris-white text-sm">{calItem?.autoName || 'Calendar Item'}</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                    rev.status === 'REVISION_REQUESTED' ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' :
+                    'bg-blue-500/20 text-blue-400 border-blue-400/30'
+                  }`}>
+                    {rev.status === 'REVISION_REQUESTED' ? 'Needs Revision' : 'In Progress'}
+                  </span>
+                </div>
+                <span className="text-xs text-iris-white/40">{client?.name}</span>
+              </div>
+
+              {/* Revision note */}
+              <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
+                <div className="text-xs font-semibold text-amber-400 mb-1 flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  {requester?.name || 'Calendar Dept'} requested:
+                </div>
+                <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                {rev.revisionReferences && rev.revisionReferences.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {rev.revisionReferences.map((refItem, idx) => (
+                      <a key={idx} href={refItem.value} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                        <ExternalLink className="w-3 h-3" /> {refItem.fileName || refItem.value}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Current content for reference */}
+              {calItem && (
+                <div className="bg-white/[0.02] rounded-lg p-3 text-xs space-y-1">
+                  <div className="font-semibold text-iris-white/50">Current Brief:</div>
+                  <p className="text-iris-white/60 line-clamp-3" dir="auto">{calItem.primaryBrief}</p>
+                </div>
+              )}
+
+              {/* Action: Start Revision */}
+              {rev.status === 'REVISION_REQUESTED' && (
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                        status: 'IN_CREATIVE_REVISION',
+                        updatedAt: new Date().toISOString(),
+                      });
+                      if (calItem) {
+                        await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                          revisionStatus: 'IN_CREATIVE_REVISION',
+                          updatedAt: new Date().toISOString(),
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Error starting revision:', error);
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-400/30 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-2"
+                >
+                  <Edit2 className="w-4 h-4" /> Start Working on Revision
+                </button>
+              )}
+
+              {/* Action: Submit Revision */}
+              {rev.status === 'IN_CREATIVE_REVISION' && (
+                <CalendarRevisionEditor
+                  revision={rev}
+                  calendarItem={calItem}
+                  currentUser={currentUser}
+                  users={users}
+                  onSubmit={async (revisedBrief, revisedNotes) => {
+                    try {
+                      const now = new Date().toISOString();
+                      await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                        revisedBrief,
+                        revisedNotes,
+                        revisedBy: currentUser?.id,
+                        revisedAt: now,
+                        status: 'AWAITING_CREATIVE_APPROVAL',
+                        updatedAt: now,
+                      });
+                      if (calItem) {
+                        await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                          revisionStatus: 'AWAITING_CREATIVE_APPROVAL',
+                          updatedAt: now,
+                        });
+                      }
+                      // Notify creative manager
+                      const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
+                      const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+                      const managerIds = users
+                        .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser?.id)
+                        .map(u => u.id);
+                      if (managerIds.length > 0) {
+                        await notifyUsers({
+                          type: 'CALENDAR_REVISION_SUBMITTED',
+                          title: 'Calendar Revision Submitted',
+                          message: `${currentUser?.name} submitted a revised brief for "${calItem?.autoName}"`,
+                          recipientIds: managerIds,
+                          entityId: rev.id,
+                          actionUrl: '/creative',
+                          sendPush: true,
+                          createdBy: currentUser?.id || 'system',
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Error submitting revision:', error);
+                      alert('Failed to submit revision');
+                    }
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
