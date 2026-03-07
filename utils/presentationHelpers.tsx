@@ -230,6 +230,37 @@ export function resolveItemThumbnail(item: PresentationItem): string | null {
     if (m.isImg && !m.isFirebase) return m.url;
   }
 
+  // 4. First video from Firebase storage (browsers can render a poster frame)
+  for (const m of media) {
+    if (m.isVid && m.isFirebase) return m.url;
+  }
+
+  // 5. Any Firebase storage file at all (could be a non-standard extension)
+  for (const m of media) {
+    if (m.isFirebase) return m.url;
+  }
+
+  return null;
+}
+
+/**
+ * Return the first website/link URL suitable for LinkPreviewThumbnail OG fetch.
+ * Only returns a URL when resolveItemThumbnail already returns null (no static thumb).
+ */
+export function resolveItemLinkPreviewUrl(item: PresentationItem): string | null {
+  const media = collectMediaEntries(item);
+
+  // Return first website link (not a direct image, not Drive, not Firebase)
+  for (const m of media) {
+    if (m.isWebsite) return m.url;
+  }
+
+  // Fallback: any reference link that isn't a file
+  for (const link of item.referenceLinks) {
+    const norm = normalizeUrl(link.url);
+    if (norm) return norm;
+  }
+
   return null;
 }
 

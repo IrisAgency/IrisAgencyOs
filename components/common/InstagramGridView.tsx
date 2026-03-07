@@ -6,10 +6,12 @@ import {
 import {
   PresentationItem,
   resolveItemThumbnail,
+  resolveItemLinkPreviewUrl,
   formatPublishDay,
   TYPE_ICONS,
   TYPE_BADGE_COLORS,
 } from '../../utils/presentationHelpers';
+import LinkPreviewThumbnail from './LinkPreviewThumbnail';
 
 // ============================================================================
 // INSTAGRAM GRID VIEW
@@ -90,11 +92,18 @@ const GridCard: React.FC<{
 }> = ({ item, onClick }) => {
   const [imgErr, setImgErr] = useState(false);
   const thumbnailUrl = useMemo(() => resolveItemThumbnail(item), [item]);
+  const linkPreviewUrl = useMemo(() => !thumbnailUrl ? resolveItemLinkPreviewUrl(item) : null, [item, thumbnailUrl]);
 
   const TypeIcon = TYPE_ICONS[item.type] || Calendar;
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
   const isVideo = item.type === 'VIDEO';
   const isMotion = item.type === 'MOTION';
+
+  // Check if the thumbnail URL is actually a video file
+  const isVideoThumb = useMemo(() => {
+    if (!thumbnailUrl) return false;
+    return /\.(mp4|mov|avi|webm|mkv|m4v|wmv|flv|3gp)(\?.*)?$/i.test(thumbnailUrl);
+  }, [thumbnailUrl]);
 
   return (
     /*
@@ -111,7 +120,17 @@ const GridCard: React.FC<{
       style={{ paddingBottom: '100%' }}
     >
       {/* Thumbnail — fills the entire square */}
-      {thumbnailUrl && !imgErr ? (
+      {thumbnailUrl && !imgErr && isVideoThumb ? (
+        /* Video file → use <video> element to show first frame */
+        <video
+          src={thumbnailUrl}
+          className="absolute inset-0 w-full h-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          onError={() => setImgErr(true)}
+        />
+      ) : thumbnailUrl && !imgErr ? (
         <img
           src={thumbnailUrl}
           alt={item.title}
@@ -119,6 +138,15 @@ const GridCard: React.FC<{
           onError={() => setImgErr(true)}
           loading="lazy"
         />
+      ) : linkPreviewUrl ? (
+        /* Fallback: OG image from link preview */
+        <div className="absolute inset-0 w-full h-full">
+          <LinkPreviewThumbnail
+            url={linkPreviewUrl}
+            alt={item.title}
+            className="w-full h-full object-cover"
+          />
+        </div>
       ) : (
         /* Placeholder when no image */
         <div className="absolute inset-0 flex flex-col items-center justify-center p-2">

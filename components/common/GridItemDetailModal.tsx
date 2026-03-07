@@ -13,7 +13,9 @@ import {
   TYPE_DOT_COLORS,
   MediaPreview,
   resolveItemThumbnail,
+  resolveItemLinkPreviewUrl,
 } from '../../utils/presentationHelpers';
+import LinkPreviewThumbnail from './LinkPreviewThumbnail';
 
 // ============================================================================
 // GRID ITEM DETAIL MODAL
@@ -34,6 +36,8 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
   const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
   const thumbnailUrl = resolveItemThumbnail(item);
+  const linkPreviewUrl = !thumbnailUrl ? resolveItemLinkPreviewUrl(item) : null;
+  const isVideoThumb = thumbnailUrl ? /\.(mp4|mov|avi|webm|mkv|m4v|wmv|flv|3gp)(\?.*)?$/i.test(thumbnailUrl) : false;
 
   return (
     <div
@@ -74,7 +78,19 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Thumbnail Preview */}
-          {thumbnailUrl && (
+          {thumbnailUrl && isVideoThumb ? (
+            <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+              <div className="w-full aspect-video relative">
+                <video
+                  src={thumbnailUrl}
+                  className="w-full h-full object-cover"
+                  controls
+                  playsInline
+                  preload="metadata"
+                />
+              </div>
+            </div>
+          ) : thumbnailUrl ? (
             <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
               <div className="w-full aspect-video relative">
                 <img
@@ -85,7 +101,17 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
                 />
               </div>
             </div>
-          )}
+          ) : linkPreviewUrl ? (
+            <div className="rounded-xl overflow-hidden border border-gray-200 bg-gray-100">
+              <div className="w-full aspect-video relative">
+                <LinkPreviewThumbnail
+                  url={linkPreviewUrl}
+                  alt={item.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          ) : null}
 
           {/* Date + Seq Label */}
           <div className="flex flex-wrap items-center gap-3">
