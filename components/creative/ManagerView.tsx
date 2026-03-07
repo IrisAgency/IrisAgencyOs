@@ -60,8 +60,11 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const inputClass = 'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
   const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
 
-  // State
-  const [activeTab, setActiveTab] = useState<'projects' | 'review' | 'cal-revisions'>('projects');
+  // State — auto-select Cal Revisions tab if there are active revisions
+  const hasActiveRevisions = calendarItemRevisions.some(r => r.status !== 'SYNCED_TO_CALENDAR');
+  const [activeTab, setActiveTab] = useState<'projects' | 'review' | 'cal-revisions'>(
+    hasActiveRevisions ? 'cal-revisions' : 'projects'
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStrategyModal, setShowStrategyModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
