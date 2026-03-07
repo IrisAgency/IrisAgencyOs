@@ -150,6 +150,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceLinks: item.referenceLinks || [],
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
+    presentationNotes: item.presentationNotes || '',
   };
 }
 
@@ -165,6 +166,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     referenceLinks: item.referenceLinks || [],
     referenceFiles: item.referenceFiles || [],
     seqLabel: `#${idx + 1}`,
+    presentationNotes: item.presentationNotes || '',
   };
 }
 

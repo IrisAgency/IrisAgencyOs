@@ -1391,6 +1391,9 @@ export interface CalendarItem {
 
   // Instagram Grid Pinning (1-3 = pinned position, null/undefined = not pinned)
   pinnedInGrid?: number | null;
+
+  // Presentation notes (added via presentation view detail modal)
+  presentationNotes?: string;
   
   createdBy: string;
   createdAt: string;
@@ -1505,6 +1508,7 @@ export interface CreativeCalendarItem {
   reviewStatus: CreativeItemReviewStatus;
   rejectionNote: string | null;
   rejectionReferences: CreativeRejectionReference[];
+  presentationNotes?: string;
   createdAt: string;
   updatedAt: string;
 }

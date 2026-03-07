@@ -158,6 +158,7 @@ export interface PresentationItem {
   seqLabel: string;
   source?: 'activated' | 'creative';
   pinnedInGrid?: number | null;
+  presentationNotes?: string;
 }
 
 export interface MediaEntry {

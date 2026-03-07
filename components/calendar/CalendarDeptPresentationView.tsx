@@ -1,7 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type {
   CalendarMonth, CalendarItem, Client, CalendarContentType,
 } from '../../types';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 import {
   Calendar, Presentation, Search, X, ArrowLeft,
@@ -35,6 +37,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     pinnedInGrid: item.pinnedInGrid || null,
+    presentationNotes: item.presentationNotes || '',
   };
 }
 
@@ -148,6 +151,11 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
     );
   }
 
+  // Save presentation notes to Firestore
+  const handleSaveNotes = useCallback(async (itemId: string, notes: string) => {
+    await updateDoc(doc(db, 'calendar_items', itemId), { presentationNotes: notes });
+  }, []);
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {driveModal && <DrivePreviewModal url={driveModal.url} title={driveModal.title} onClose={() => setDriveModal(null)} />}
@@ -157,6 +165,7 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
           item={gridDetailItem}
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
+          onSaveNotes={handleSaveNotes}
         />
       )}
 

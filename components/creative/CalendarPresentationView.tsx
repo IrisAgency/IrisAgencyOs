@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import type {
   CreativeProject, CreativeCalendar, CreativeCalendarItem,
   CalendarMonth, CalendarItem,
   Client, User, CalendarContentType,
 } from '../../types';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 
 import {
   Calendar, Presentation, Search, X, ArrowLeft,
@@ -42,6 +44,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     source: 'activated',
     pinnedInGrid: item.pinnedInGrid || null,
+    presentationNotes: item.presentationNotes || '',
   };
 }
 
@@ -58,6 +61,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     referenceFiles: item.referenceFiles || [],
     seqLabel: `#${idx + 1}`,
     source: 'creative',
+    presentationNotes: item.presentationNotes || '',
   };
 }
 
@@ -218,6 +222,14 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
     );
   }
 
+  // Save presentation notes to Firestore
+  const handleSaveNotes = useCallback(async (itemId: string, notes: string) => {
+    // Determine if it's a calendar_items or creative_calendar_items doc
+    const isCalendarItem = calendarItems.some(i => i.id === itemId);
+    const collection = isCalendarItem ? 'calendar_items' : 'creative_calendar_items';
+    await updateDoc(doc(db, collection, itemId), { presentationNotes: notes });
+  }, [calendarItems]);
+
   return (
     <div className="min-h-screen bg-white text-gray-900">
       {driveModal && (
@@ -229,6 +241,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
           item={gridDetailItem}
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
+          onSaveNotes={handleSaveNotes}
         />
       )}
 
