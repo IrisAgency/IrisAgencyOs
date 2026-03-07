@@ -1388,6 +1388,9 @@ export interface CalendarItem {
   linkedCreativeItemId?: string | null;       // Specific creative item this was synced from
   activeRevisionId?: string | null;           // Current active revision request
   revisionCount?: number;                     // How many times revision was requested
+
+  // Instagram Grid Pinning (1-3 = pinned position, null/undefined = not pinned)
+  pinnedInGrid?: number | null;
   
   createdBy: string;
   createdAt: string;

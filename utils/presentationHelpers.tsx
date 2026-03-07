@@ -157,6 +157,7 @@ export interface PresentationItem {
   referenceFiles: CalendarReferenceFile[];
   seqLabel: string;
   source?: 'activated' | 'creative';
+  pinnedInGrid?: number | null;
 }
 
 export interface MediaEntry {

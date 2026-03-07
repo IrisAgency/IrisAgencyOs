@@ -41,6 +41,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     source: 'activated',
+    pinnedInGrid: item.pinnedInGrid || null,
   };
 }
 

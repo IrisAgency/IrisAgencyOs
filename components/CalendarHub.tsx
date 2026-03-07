@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare, Pin, PinOff } from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
 import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, CreativeCalendarItem, NotificationType } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
@@ -354,6 +354,37 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       alert('Failed to delete item');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Pin / Unpin item in Instagram Grid (max 3 pinned per month)
+  const handleTogglePin = async (item: CalendarItem) => {
+    const monthItems = calendarItems.filter(i => i.calendarMonthId === item.calendarMonthId);
+    const currentlyPinned = monthItems.filter(i => i.pinnedInGrid && i.pinnedInGrid > 0).sort((a, b) => (a.pinnedInGrid || 0) - (b.pinnedInGrid || 0));
+    const isCurrentlyPinned = item.pinnedInGrid && item.pinnedInGrid > 0;
+
+    try {
+      if (isCurrentlyPinned) {
+        // Unpin: clear pinnedInGrid, re-sequence remaining pins
+        await updateDoc(doc(db, 'calendar_items', item.id), { pinnedInGrid: null });
+        const remaining = currentlyPinned.filter(i => i.id !== item.id);
+        for (let idx = 0; idx < remaining.length; idx++) {
+          if (remaining[idx].pinnedInGrid !== idx + 1) {
+            await updateDoc(doc(db, 'calendar_items', remaining[idx].id), { pinnedInGrid: idx + 1 });
+          }
+        }
+      } else {
+        // Pin: check max 3
+        if (currentlyPinned.length >= 3) {
+          alert('Maximum 3 pinned items allowed. Unpin one first.');
+          return;
+        }
+        await updateDoc(doc(db, 'calendar_items', item.id), { pinnedInGrid: currentlyPinned.length + 1 });
+      }
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error toggling pin:', error);
+      alert('Failed to update pin status');
     }
   };
 
@@ -919,6 +950,13 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                 className="bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 group cursor-pointer hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] hover:-translate-y-1 flex flex-col h-full"
                 onClick={() => setDetailItem(item)}
               >
+                {/* Pinned Badge */}
+                {item.pinnedInGrid && item.pinnedInGrid > 0 && (
+                  <div className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/20">
+                    <Pin className="w-3.5 h-3.5 text-[#DF1E3C] rotate-45" />
+                  </div>
+                )}
+
                 {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
                 {thumbUrl ? (
                   <div className="relative w-full h-48 bg-black/50 overflow-hidden">
@@ -958,6 +996,19 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="text-base font-bold text-white tracking-tight flex-1 mr-3 group-hover:text-[#DF1E3C] transition-colors line-clamp-2">{item.autoName}</h3>
                     <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 rounded-lg p-1 border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
+                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                        <button
+                          onClick={() => handleTogglePin(item)}
+                          className={`p-1.5 rounded-md transition-all ${
+                            item.pinnedInGrid && item.pinnedInGrid > 0
+                              ? 'text-[#DF1E3C] bg-[#DF1E3C]/10 hover:bg-[#DF1E3C]/20'
+                              : 'text-slate-400 hover:text-amber-400 hover:bg-amber-400/10'
+                          }`}
+                          title={item.pinnedInGrid && item.pinnedInGrid > 0 ? `Unpin from Grid (Position ${item.pinnedInGrid})` : 'Pin to Grid Top'}
+                        >
+                          {item.pinnedInGrid && item.pinnedInGrid > 0 ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+                        </button>
+                      </PermissionGate>
                       <button
                         onClick={() => setDetailItem(item)}
                         className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-md transition-all"

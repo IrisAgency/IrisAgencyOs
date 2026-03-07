@@ -34,6 +34,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceLinks: item.referenceLinks || [],
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
+    pinnedInGrid: item.pinnedInGrid || null,
   };
 }
 

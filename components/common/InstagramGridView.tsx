@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ArrowUp, ArrowDown, Calendar, Play,
+  ArrowUp, ArrowDown, Calendar, Play, Pin,
 } from 'lucide-react';
 
 import {
@@ -29,7 +29,13 @@ const InstagramGridView: React.FC<InstagramGridViewProps> = ({
   onItemClick,
 }) => {
   const sortedItems = useMemo(() => {
-    const sorted = [...items].sort((a, b) => {
+    // Separate pinned items from the rest
+    const pinned = items.filter(i => i.pinnedInGrid && i.pinnedInGrid > 0)
+      .sort((a, b) => (a.pinnedInGrid || 0) - (b.pinnedInGrid || 0));
+    const unpinned = items.filter(i => !i.pinnedInGrid || i.pinnedInGrid <= 0);
+
+    // Sort unpinned by date
+    unpinned.sort((a, b) => {
       const dateA = a.publishAt ? new Date(a.publishAt).getTime() : Infinity;
       const dateB = b.publishAt ? new Date(b.publishAt).getTime() : Infinity;
       if (dateA === Infinity && dateB === Infinity) return 0;
@@ -37,7 +43,9 @@ const InstagramGridView: React.FC<InstagramGridViewProps> = ({
       if (dateB === Infinity) return 1;
       return sortDirection === 'asc' ? dateA - dateB : dateB - dateA;
     });
-    return sorted;
+
+    // Pinned items always appear first
+    return [...pinned, ...unpinned];
   }, [items, sortDirection]);
 
   return (
@@ -129,11 +137,18 @@ const GridCard: React.FC<{
         <TypeIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
       </div>
 
-      {/* Play icon for video/motion */}
+      {/* Pin badge for pinned items */}
+      {item.pinnedInGrid && item.pinnedInGrid > 0 && (
+        <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-10 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md">
+          <Pin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#DF1E3C] rotate-45" />
+        </div>
+      )}
+
+      {/* Play icon for video/motion — centered in card */}
       {(isVideo || isMotion) && thumbnailUrl && !imgErr && (
-        <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5">
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center">
-            <Play className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-gray-700 ml-px" />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center border border-white/20">
+            <Play className="w-3 h-3 sm:w-4 sm:h-4 text-white ml-0.5" fill="white" />
           </div>
         </div>
       )}
