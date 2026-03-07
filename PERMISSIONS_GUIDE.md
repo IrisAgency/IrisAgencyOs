@@ -408,6 +408,7 @@ The `PERMISSIONS` constant in `lib/permissions.ts` is organized into **23 module
 | `CALENDAR_ITEMS.CREATE` | `calendar.items.create` | Create calendar items. |
 | `CALENDAR_ITEMS.EDIT` | `calendar.items.edit` | Edit calendar items. |
 | `CALENDAR_ITEMS.DELETE` | `calendar.items.delete` | Delete calendar items. |
+| `CALENDAR.REQUEST_REVISION` | `calendar.request_revision` | Request creative revision on calendar items synced from Creative dept. |
 
 ### 5.23 Creative Direction
 
@@ -419,6 +420,9 @@ The `PERMISSIONS` constant in `lib/permissions.ts` is organized into **23 module
 | `CREATIVE.UPLOAD` | `creative.upload` | Upload creative assets. |
 | `CREATIVE.APPROVE` | `creative.approve` | Approve creative work. |
 | `CREATIVE.REJECT` | `creative.reject` | Reject creative work. |
+| `CREATIVE.REVISION_SUBMIT` | `creative.revision.submit` | Submit revised content for calendar revision requests. |
+| `CREATIVE.REVISION_APPROVE` | `creative.revision.approve` | Approve calendar revision submissions. |
+| `CREATIVE.REVISION_REJECT` | `creative.revision.reject` | Reject calendar revision submissions and send back for re-revision. |
 
 ### 5.24 Quality Control
 

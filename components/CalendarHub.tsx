@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare } from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
-import { Client, CalendarMonth, CalendarItem, CalendarContentType, User, CalendarReferenceLink } from '../types';
+import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, NotificationType } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,12 +10,19 @@ import LinkPreviewThumbnail from './common/LinkPreviewThumbnail';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, runTransaction, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { notifyUsers } from '../services/notificationService';
 
 interface CalendarHubProps {
   clients: Client[];
   calendarMonths: CalendarMonth[];
   calendarItems: CalendarItem[];
+  calendarItemRevisions: CalendarItemRevision[];
+  creativeProjects: CreativeProject[];
+  creativeCalendars: CreativeCalendar[];
+  users: User[];
   currentUser: User;
+  checkPermission: (permission: string) => boolean;
+  onNotify: (type: string, title: string, message: string) => void;
   onRefresh?: () => void;
 }
 
@@ -23,10 +30,16 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   clients,
   calendarMonths,
   calendarItems,
+  calendarItemRevisions,
+  creativeProjects,
+  creativeCalendars,
+  users,
   currentUser,
+  checkPermission,
+  onNotify,
   onRefresh
 }) => {
-  const { checkPermission } = useAuth();
+  // checkPermission comes from props now
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedMonthId, setSelectedMonthId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +72,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   });
 
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
+
+  // Revision workflow state
+  const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [revisionTargetItem, setRevisionTargetItem] = useState<CalendarItem | null>(null);
+  const [revisionNote, setRevisionNote] = useState('');
+  const [revisionRefLinks, setRevisionRefLinks] = useState<{ title: string; url: string }[]>([]);
+  const [showRevisionHistory, setShowRevisionHistory] = useState(false);
+  const [revisionHistoryItem, setRevisionHistoryItem] = useState<CalendarItem | null>(null);
 
   const canManage = checkPermission(PERMISSIONS.CALENDAR.MANAGE);
 
@@ -472,6 +493,187 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     }
   };
 
+  // ============================================
+  // REVISION WORKFLOW HELPERS
+  // ============================================
+
+  const getRevisionStatusColor = (status?: CalendarRevisionStatus) => {
+    switch (status) {
+      case 'REVISION_REQUESTED': return 'bg-amber-500/20 text-amber-300 border-amber-400/30';
+      case 'IN_CREATIVE_REVISION': return 'bg-blue-500/20 text-blue-300 border-blue-400/30';
+      case 'AWAITING_CREATIVE_APPROVAL': return 'bg-purple-500/20 text-purple-300 border-purple-400/30';
+      case 'APPROVED_BY_CREATIVE': return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30';
+      case 'SYNCED_TO_CALENDAR': return 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30';
+      default: return '';
+    }
+  };
+
+  const getRevisionStatusLabel = (status?: CalendarRevisionStatus) => {
+    switch (status) {
+      case 'REVISION_REQUESTED': return 'Revision Requested';
+      case 'IN_CREATIVE_REVISION': return 'In Creative Revision';
+      case 'AWAITING_CREATIVE_APPROVAL': return 'Awaiting Approval';
+      case 'APPROVED_BY_CREATIVE': return 'Approved (Ready to Sync)';
+      case 'SYNCED_TO_CALENDAR': return 'Synced';
+      default: return '';
+    }
+  };
+
+  const getRevisionsForItem = (itemId: string) => {
+    return calendarItemRevisions
+      .filter(r => r.calendarItemId === itemId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  };
+
+  const canRequestRevision = (item: CalendarItem): boolean => {
+    // Can only request revision if linked to creative and not already in revision workflow
+    if (!item.linkedCreativeItemId || !item.linkedCreativeCalendarId) return false;
+    const status = item.revisionStatus || 'NONE';
+    return status === 'NONE' || status === 'SYNCED_TO_CALENDAR';
+  };
+
+  const openRevisionRequest = (item: CalendarItem) => {
+    setRevisionTargetItem(item);
+    setRevisionNote('');
+    setRevisionRefLinks([]);
+    setShowRevisionModal(true);
+  };
+
+  const handleRequestRevision = async () => {
+    if (!revisionTargetItem || !revisionNote.trim()) {
+      alert('Please provide a revision note describing what needs to change.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const now = new Date().toISOString();
+      const batch = writeBatch(db);
+
+      // Create revision document
+      const revisionRef = doc(collection(db, 'calendar_item_revisions'));
+      const revisionData: Omit<CalendarItemRevision, 'id'> = {
+        calendarItemId: revisionTargetItem.id,
+        calendarMonthId: revisionTargetItem.calendarMonthId,
+        clientId: revisionTargetItem.clientId,
+        creativeCalendarId: revisionTargetItem.linkedCreativeCalendarId || null,
+        creativeItemId: revisionTargetItem.linkedCreativeItemId || null,
+        creativeProjectId: (() => {
+          const cal = creativeCalendars.find(c => c.id === revisionTargetItem.linkedCreativeCalendarId);
+          return cal?.creativeProjectId || null;
+        })(),
+        revisionNote: revisionNote.trim(),
+        revisionReferences: revisionRefLinks
+          .filter(l => l.url.trim())
+          .map(l => ({ type: 'link' as const, value: l.url, fileName: l.title })),
+        requestedBy: currentUser.id,
+        requestedAt: now,
+        status: 'REVISION_REQUESTED',
+        createdAt: now,
+        updatedAt: now,
+      };
+      batch.set(revisionRef, revisionData);
+
+      // Update calendar item with revision status
+      const calItemRef = doc(db, 'calendar_items', revisionTargetItem.id);
+      batch.update(calItemRef, {
+        revisionStatus: 'REVISION_REQUESTED',
+        activeRevisionId: revisionRef.id,
+        revisionCount: (revisionTargetItem.revisionCount || 0) + 1,
+        updatedAt: now,
+      });
+
+      await batch.commit();
+
+      // Notify the assigned copywriter
+      const creativeCalendar = creativeCalendars.find(c => c.id === revisionTargetItem.linkedCreativeCalendarId);
+      const creativeProject = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+      if (creativeProject?.assignedCopywriterId) {
+        const client = clients.find(c => c.id === revisionTargetItem.clientId);
+        await notifyUsers({
+          type: 'CALENDAR_REVISION_REQUESTED',
+          title: 'Calendar Revision Requested',
+          message: `${currentUser.name} requested a revision on "${revisionTargetItem.autoName}" for ${client?.name || 'Unknown Client'}`,
+          recipientIds: [creativeProject.assignedCopywriterId],
+          entityId: revisionRef.id,
+          actionUrl: '/creative',
+          sendPush: true,
+          createdBy: currentUser.id,
+        });
+      }
+
+      // Also notify the creative manager
+      const managerIds = users
+        .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser.id)
+        .map(u => u.id);
+      if (managerIds.length > 0) {
+        const client = clients.find(c => c.id === revisionTargetItem.clientId);
+        await notifyUsers({
+          type: 'CALENDAR_REVISION_REQUESTED',
+          title: 'Calendar Revision Requested',
+          message: `${currentUser.name} requested a revision on "${revisionTargetItem.autoName}" for ${client?.name || 'Unknown Client'}`,
+          recipientIds: managerIds,
+          entityId: revisionRef.id,
+          actionUrl: '/creative',
+          sendPush: true,
+          createdBy: currentUser.id,
+        });
+      }
+
+      setShowRevisionModal(false);
+      setRevisionTargetItem(null);
+      onNotify('system', 'Revision Requested', `Revision request sent for "${revisionTargetItem.autoName}"`);
+    } catch (error) {
+      console.error('Error requesting revision:', error);
+      alert('Failed to request revision');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSyncApprovedRevision = async (item: CalendarItem) => {
+    if (item.revisionStatus !== 'APPROVED_BY_CREATIVE' || !item.activeRevisionId) return;
+
+    setIsLoading(true);
+    try {
+      const revision = calendarItemRevisions.find(r => r.id === item.activeRevisionId);
+      if (!revision) throw new Error('Revision not found');
+
+      const now = new Date().toISOString();
+      const batch = writeBatch(db);
+
+      // Update the calendar item with the revised content
+      const calItemRef = doc(db, 'calendar_items', item.id);
+      const updateData: Record<string, any> = {
+        revisionStatus: 'SYNCED_TO_CALENDAR',
+        updatedAt: now,
+      };
+      if (revision.revisedBrief) updateData.primaryBrief = revision.revisedBrief;
+      if (revision.revisedNotes !== undefined) updateData.notes = revision.revisedNotes;
+      if (revision.revisedReferenceLinks) updateData.referenceLinks = revision.revisedReferenceLinks;
+      if (revision.revisedReferenceFiles) updateData.referenceFiles = revision.revisedReferenceFiles;
+      batch.update(calItemRef, updateData);
+
+      // Update revision status
+      const revisionRef = doc(db, 'calendar_item_revisions', revision.id);
+      batch.update(revisionRef, {
+        status: 'SYNCED_TO_CALENDAR',
+        syncedAt: now,
+        syncedBy: currentUser.id,
+        updatedAt: now,
+      });
+
+      await batch.commit();
+
+      onNotify('system', 'Revision Synced', `Approved revision synced to "${item.autoName}"`);
+    } catch (error) {
+      console.error('Error syncing revision:', error);
+      alert('Failed to sync revision');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (showPresentation) {
     return (
       <CalendarDeptPresentationView
@@ -754,6 +956,17 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                     <Clock className="w-3.5 h-3.5 text-slate-500" />
                     {new Date(item.publishAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </div>
+
+                  {/* Revision Status Badge */}
+                  {item.revisionStatus && item.revisionStatus !== 'NONE' && (
+                    <div className={`flex items-center gap-1.5 text-xs font-semibold mb-3 px-2.5 py-1 rounded-lg border w-fit ${getRevisionStatusColor(item.revisionStatus)}`}>
+                      <RotateCcw className="w-3 h-3" />
+                      {getRevisionStatusLabel(item.revisionStatus)}
+                      {item.revisionCount && item.revisionCount > 0 && (
+                        <span className="text-[10px] opacity-70">#{item.revisionCount}</span>
+                      )}
+                    </div>
+                  )}
 
                   <p className="text-sm text-slate-300 mb-5 line-clamp-3 flex-grow leading-relaxed" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
                     {item.primaryBrief}
@@ -1196,25 +1409,257 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="p-3 sm:p-5 border-t border-white/10 bg-white/[0.02] flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+            <div className="p-3 sm:p-5 border-t border-white/10 bg-white/[0.02] flex flex-col sm:flex-row justify-between gap-2 sm:gap-3">
+              <div className="flex gap-2">
+                {/* Revision History Button */}
+                {getRevisionsForItem(detailItem.id).length > 0 && (
+                  <button
+                    onClick={() => { setRevisionHistoryItem(detailItem); setShowRevisionHistory(true); }}
+                    className="px-4 py-2 bg-white/5 text-slate-300 rounded-xl hover:bg-white/10 transition-all font-medium text-sm flex items-center gap-2"
+                  >
+                    <History className="w-4 h-4" />
+                    History ({getRevisionsForItem(detailItem.id).length})
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <button
+                  onClick={() => setDetailItem(null)}
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium text-sm sm:text-base w-full sm:w-auto"
+                >
+                  Close
+                </button>
+
+                {/* Request Revision Button - only for items synced from creative */}
+                {canRequestRevision(detailItem) && checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) && (
+                  <button
+                    onClick={() => {
+                      setDetailItem(null);
+                      openRevisionRequest(detailItem);
+                    }}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-xl hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 font-medium text-sm sm:text-base w-full sm:w-auto"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Request Revision
+                  </button>
+                )}
+
+                {/* Sync Approved Revision Button */}
+                {detailItem.revisionStatus === 'APPROVED_BY_CREATIVE' && checkPermission(PERMISSIONS.CALENDAR.MANAGE) && (
+                  <button
+                    onClick={() => {
+                      handleSyncApprovedRevision(detailItem);
+                      setDetailItem(null);
+                    }}
+                    disabled={isLoading}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-emerald-500/20 text-sm sm:text-base w-full sm:w-auto disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    {isLoading ? 'Syncing...' : 'Sync Revision'}
+                  </button>
+                )}
+
+                <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                  <button
+                    onClick={() => {
+                      setDetailItem(null);
+                      openEditItem(detailItem);
+                    }}
+                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-blue-500/20 text-sm sm:text-base w-full sm:w-auto"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    Edit Content
+                  </button>
+                </PermissionGate>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* REVISION REQUEST MODAL */}
+      {showRevisionModal && revisionTargetItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRevisionModal(false)} />
+          <div className="relative w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/20 rounded-lg">
+                  <RotateCcw className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Request Revision</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{revisionTargetItem.autoName}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowRevisionModal(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">What needs to change? *</label>
+                <textarea
+                  value={revisionNote}
+                  onChange={e => setRevisionNote(e.target.value)}
+                  placeholder="Describe what needs to be revised..."
+                  rows={4}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/30 resize-none"
+                  dir="auto"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-300 mb-2">Reference Links (optional)</label>
+                {revisionRefLinks.map((link, idx) => (
+                  <div key={idx} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Title"
+                      value={link.title}
+                      onChange={e => {
+                        const updated = [...revisionRefLinks];
+                        updated[idx].title = e.target.value;
+                        setRevisionRefLinks(updated);
+                      }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400/50"
+                    />
+                    <input
+                      type="url"
+                      placeholder="https://..."
+                      value={link.url}
+                      onChange={e => {
+                        const updated = [...revisionRefLinks];
+                        updated[idx].url = e.target.value;
+                        setRevisionRefLinks(updated);
+                      }}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400/50"
+                    />
+                    <button
+                      onClick={() => setRevisionRefLinks(revisionRefLinks.filter((_, i) => i !== idx))}
+                      className="p-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setRevisionRefLinks([...revisionRefLinks, { title: '', url: '' }])}
+                  className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 mt-1"
+                >
+                  <Plus className="w-3 h-3" /> Add Reference Link
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-white/10 flex gap-3">
               <button
-                onClick={() => setDetailItem(null)}
-                className="px-4 sm:px-5 py-2 sm:py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium text-sm sm:text-base w-full sm:w-auto"
+                onClick={() => setShowRevisionModal(false)}
+                className="flex-1 px-4 py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRequestRevision}
+                disabled={isLoading || !revisionNote.trim()}
+                className="flex-1 px-4 py-2.5 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-all font-medium shadow-lg shadow-amber-500/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {isLoading ? 'Sending...' : 'Send Revision Request'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REVISION HISTORY MODAL */}
+      {showRevisionHistory && revisionHistoryItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRevisionHistory(false)} />
+          <div className="relative w-full max-w-2xl max-h-[80vh] bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/20 rounded-lg">
+                  <History className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">Revision History</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">{revisionHistoryItem.autoName}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowRevisionHistory(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+              {getRevisionsForItem(revisionHistoryItem.id).map((rev, idx) => {
+                const requester = users.find(u => u.id === rev.requestedBy);
+                const reviser = rev.revisedBy ? users.find(u => u.id === rev.revisedBy) : null;
+                const reviewer = rev.reviewedBy ? users.find(u => u.id === rev.reviewedBy) : null;
+                return (
+                  <div key={rev.id} className="bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${getRevisionStatusColor(rev.status)}`}>
+                          {getRevisionStatusLabel(rev.status)}
+                        </span>
+                        <span className="text-xs text-slate-500">#{getRevisionsForItem(revisionHistoryItem.id).length - idx}</span>
+                      </div>
+                      <span className="text-xs text-slate-500">{new Date(rev.createdAt).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* Request */}
+                    <div className="space-y-1">
+                      <div className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                        <MessageSquare className="w-3 h-3" /> Requested by {requester?.name || 'Unknown'}
+                      </div>
+                      <p className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                    </div>
+
+                    {/* Revised content */}
+                    {rev.revisedBy && (
+                      <div className="space-y-1 border-t border-white/5 pt-3">
+                        <div className="text-xs font-semibold text-slate-400">
+                          Revised by {reviser?.name || 'Unknown'} on {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
+                        </div>
+                        {rev.revisedBrief && (
+                          <p className="text-sm text-slate-300 bg-emerald-500/5 rounded-lg p-3 border border-emerald-500/10 whitespace-pre-wrap" dir="auto">{rev.revisedBrief}</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Review */}
+                    {rev.reviewedBy && (
+                      <div className="space-y-1 border-t border-white/5 pt-3">
+                        <div className="text-xs font-semibold text-slate-400">
+                          {rev.status === 'APPROVED_BY_CREATIVE' || rev.status === 'SYNCED_TO_CALENDAR' ? '✅ Approved' : '❌ Rejected'} by {reviewer?.name || 'Unknown'}
+                        </div>
+                        {rev.reviewNote && (
+                          <p className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap" dir="auto">{rev.reviewNote}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {getRevisionsForItem(revisionHistoryItem.id).length === 0 && (
+                <div className="text-center py-8 text-slate-500">No revision history for this item.</div>
+              )}
+            </div>
+
+            <div className="p-5 border-t border-white/10">
+              <button
+                onClick={() => setShowRevisionHistory(false)}
+                className="w-full px-4 py-2.5 bg-white/5 text-white rounded-xl hover:bg-white/10 transition-all font-medium"
               >
                 Close
               </button>
-              <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
-                <button
-                  onClick={() => {
-                    setDetailItem(null);
-                    openEditItem(detailItem);
-                  }}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-blue-500/20 text-sm sm:text-base w-full sm:w-auto"
-                >
-                  <Edit2 className="w-4 h-4" />
-                  Edit Content
-                </button>
-              </PermissionGate>
             </div>
           </div>
         </div>

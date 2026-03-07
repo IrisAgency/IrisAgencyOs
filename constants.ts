@@ -781,6 +781,7 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'calendar.items.create', module: 'Calendar', name: 'Create Calendar Items', description: 'Can add calendar items' },
   { code: 'calendar.items.edit', module: 'Calendar', name: 'Edit Calendar Items', description: 'Can edit calendar items' },
   { code: 'calendar.items.delete', module: 'Calendar', name: 'Delete Calendar Items', description: 'Can delete calendar items' },
+  { code: 'calendar.request_revision', module: 'Calendar', name: 'Request Revision', description: 'Can request creative revision on calendar items synced from Creative dept' },
 
   // ==================== ASSETS (Sidebar: "Assets") ====================
   // 🔹 Uncheck ALL permissions below to hide "Assets" from sidebar
@@ -885,6 +886,9 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'creative.upload', module: 'Creative Direction', name: 'Upload Creative Assets', description: 'Can upload assets to creative projects' },
   { code: 'creative.approve', module: 'Creative Direction', name: 'Approve Creative Work', description: 'Can approve creative deliverables' },
   { code: 'creative.reject', module: 'Creative Direction', name: 'Reject Creative Work', description: 'Can reject creative deliverables with feedback' },
+  { code: 'creative.revision.submit', module: 'Creative Direction', name: 'Submit Calendar Revision', description: 'Can submit revised content for calendar revision requests' },
+  { code: 'creative.revision.approve', module: 'Creative Direction', name: 'Approve Calendar Revision', description: 'Can approve calendar revision submissions' },
+  { code: 'creative.revision.reject', module: 'Creative Direction', name: 'Reject Calendar Revision', description: 'Can reject calendar revision submissions and send back for re-revision' },
 
   // ==================== QUALITY CONTROL ====================
   { code: 'qc.view', module: 'Quality Control', name: 'View Quality Control', description: '⭐ Controls sidebar visibility - Can access QC hub' },
@@ -952,6 +956,9 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      'creative.revision.submit', 'creative.revision.approve', 'creative.revision.reject',
+      // Calendar Revisions
+      'calendar.request_revision',
       // Quality Control (full access)
       'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
       // Admin
@@ -989,11 +996,12 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
       // Calendar (full management)
-      'calendar.manage',
+      'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      'creative.revision.approve', 'creative.revision.reject',
       // Quality Control (review)
       'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
@@ -1032,11 +1040,12 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage',
+      'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
       'creative.view', 'creative.manage', 'creative.review', 'creative.upload', 'creative.approve', 'creative.reject',
+      'creative.revision.approve', 'creative.revision.reject',
       // Quality Control (full access)
       'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
       // Notes
@@ -1069,7 +1078,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage',
+      'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (view only)
@@ -1138,8 +1147,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.view', 'calendar.manage',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
-      // Creative Direction (view + upload)
-      'creative.view', 'creative.upload',
+      // Creative Direction (view + upload + calendar revision)
+      'creative.view', 'creative.upload', 'creative.revision.submit',
       // Quality Control (review)
       'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
@@ -1203,7 +1212,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage',
+      'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes

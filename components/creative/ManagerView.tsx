@@ -3,20 +3,22 @@ import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'fireb
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
-import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, Client, User, CalendarMonth, CalendarItem, AgencyFile, ClientMarketingStrategy, NotificationType, CreativeRejectionReference } from '../../types';
+import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, CalendarItemRevision, Client, User, CalendarMonth, CalendarItem, AgencyFile, ClientMarketingStrategy, NotificationType, CreativeRejectionReference } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import SwipeReviewCard from './SwipeReviewCard';
 import { activateCreativeCalendar } from './CalendarActivation';
 import {
   Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
   ChevronDown, ChevronRight, Users, Calendar, Check, AlertTriangle, 
-  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2
+  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2,
+  MessageSquare, Send
 } from 'lucide-react';
 
 interface ManagerViewProps {
   creativeProjects: CreativeProject[];
   creativeCalendars: CreativeCalendar[];
   creativeCalendarItems: CreativeCalendarItem[];
+  calendarItemRevisions?: CalendarItemRevision[];
   clients: Client[];
   users: User[];
   calendarMonths: CalendarMonth[];
@@ -42,6 +44,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   creativeProjects,
   creativeCalendars,
   creativeCalendarItems,
+  calendarItemRevisions = [],
   clients,
   users,
   calendarMonths,
@@ -58,7 +61,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
 
   // State
-  const [activeTab, setActiveTab] = useState<'projects' | 'review'>('projects');
+  const [activeTab, setActiveTab] = useState<'projects' | 'review' | 'cal-revisions'>('projects');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStrategyModal, setShowStrategyModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
@@ -626,6 +629,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full" />
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('cal-revisions')}
+          className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
+            activeTab === 'cal-revisions' ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
+          }`}
+        >
+          Cal Revisions ({calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL').length})
+          {calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL').length > 0 && activeTab !== 'cal-revisions' && (
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-400 rounded-full" />
+          )}
+        </button>
       </div>
 
       {/* PROJECTS TAB */}
@@ -829,6 +843,163 @@ const ManagerView: React.FC<ManagerViewProps> = ({
               });
             })
           )}
+        </div>
+      )}
+
+      {/* CALENDAR REVISIONS TAB */}
+      {activeTab === 'cal-revisions' && (
+        <div className="space-y-4">
+          {(() => {
+            const awaitingApproval = calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL');
+            if (awaitingApproval.length === 0) {
+              return (
+                <div className={`${surface} rounded-xl p-8 text-center text-iris-white/60`}>
+                  <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-400/30" />
+                  <p>No calendar revisions awaiting your approval.</p>
+                </div>
+              );
+            }
+            return awaitingApproval.map(rev => {
+              const calItem = calendarItems.find(ci => ci.id === rev.calendarItemId);
+              const client = clients.find(c => c.id === rev.clientId);
+              const copywriter = rev.revisedBy ? users.find(u => u.id === rev.revisedBy) : null;
+              const requester = users.find(u => u.id === rev.requestedBy);
+
+              return (
+                <div key={rev.id} className={`${surface} rounded-xl p-5 space-y-4`}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-iris-white">{calItem?.autoName || 'Calendar Item'}</h3>
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-md border bg-purple-500/20 text-purple-400 border-purple-400/30">
+                        Awaiting Approval
+                      </span>
+                    </div>
+                    <span className="text-xs text-iris-white/50">{client?.name}</span>
+                  </div>
+
+                  {/* Original revision request */}
+                  <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
+                    <div className="text-xs font-semibold text-amber-400 mb-1 flex items-center gap-1">
+                      <MessageSquare className="w-3 h-3" />
+                      Revision Request by {requester?.name || 'Calendar Dept'}
+                    </div>
+                    <p className="text-sm text-iris-white/70 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                  </div>
+
+                  {/* Revised content */}
+                  {rev.revisedBrief && (
+                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
+                      <div className="text-xs font-semibold text-emerald-400 mb-1">
+                        Revised by {copywriter?.name || 'Copywriter'} on {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
+                      </div>
+                      <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisedBrief}</p>
+                      {rev.revisedNotes && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/10">
+                          <div className="text-xs font-semibold text-emerald-400/60 mb-1">Notes:</div>
+                          <p className="text-sm text-iris-white/60 whitespace-pre-wrap" dir="auto">{rev.revisedNotes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Original content for comparison */}
+                  {calItem && (
+                    <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3">
+                      <div className="text-xs font-semibold text-iris-white/40 mb-1">Original Calendar Brief:</div>
+                      <p className="text-sm text-iris-white/50 whitespace-pre-wrap line-clamp-4" dir="auto">{calItem.primaryBrief}</p>
+                    </div>
+                  )}
+
+                  {/* Approve / Reject */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Reject this revision? The copywriter will need to revise again.')) return;
+                        const rejectNote = prompt('Rejection reason (optional):') || '';
+                        try {
+                          const now = new Date().toISOString();
+                          await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                            status: 'REVISION_REQUESTED',
+                            reviewedBy: currentUser?.id,
+                            reviewedAt: now,
+                            reviewNote: rejectNote,
+                            revisedBrief: null,
+                            revisedNotes: null,
+                            revisedBy: null,
+                            revisedAt: null,
+                            updatedAt: now,
+                          });
+                          if (calItem) {
+                            await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                              revisionStatus: 'REVISION_REQUESTED',
+                              updatedAt: now,
+                            });
+                          }
+                          // Notify copywriter
+                          const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
+                          const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+                          if (project?.assignedCopywriterId) {
+                            await notifyUsers({
+                              type: 'CALENDAR_REVISION_REJECTED',
+                              title: 'Calendar Revision Rejected',
+                              message: `${currentUser?.name} rejected the revision for "${calItem?.autoName}". ${rejectNote ? `Reason: ${rejectNote}` : 'Please revise again.'}`,
+                              recipientIds: [project.assignedCopywriterId],
+                              entityId: rev.id,
+                              actionUrl: '/creative',
+                              sendPush: true,
+                              createdBy: currentUser?.id || 'system',
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error rejecting revision:', error);
+                          alert('Failed to reject revision');
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-rose-500/20 text-rose-400 border border-rose-400/30 rounded-lg text-sm font-medium hover:bg-rose-500/30 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <X className="w-4 h-4" /> Reject
+                    </button>
+                    <button
+                      onClick={async () => {
+                        try {
+                          const now = new Date().toISOString();
+                          await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                            status: 'APPROVED_BY_CREATIVE',
+                            reviewedBy: currentUser?.id,
+                            reviewedAt: now,
+                            updatedAt: now,
+                          });
+                          if (calItem) {
+                            await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                              revisionStatus: 'APPROVED_BY_CREATIVE',
+                              updatedAt: now,
+                            });
+                          }
+                          // Notify calendar department (the original requester)
+                          await notifyUsers({
+                            type: 'CALENDAR_REVISION_APPROVED',
+                            title: 'Calendar Revision Approved',
+                            message: `${currentUser?.name} approved the revision for "${calItem?.autoName}". Ready to sync.`,
+                            recipientIds: [rev.requestedBy],
+                            entityId: rev.id,
+                            actionUrl: '/calendar',
+                            sendPush: true,
+                            createdBy: currentUser?.id || 'system',
+                          });
+                        } catch (error) {
+                          console.error('Error approving revision:', error);
+                          alert('Failed to approve revision');
+                        }
+                      }}
+                      className="flex-1 px-4 py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" /> Approve
+                    </button>
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
 

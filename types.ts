@@ -1049,6 +1049,12 @@ export type NotificationType =
   | 'CREATIVE_SUBMITTED_FOR_REVIEW'
   | 'CREATIVE_REVISION_REQUESTED'
   | 'CREATIVE_APPROVED'
+  // Calendar → Creative Revision Workflow
+  | 'CALENDAR_REVISION_REQUESTED'
+  | 'CALENDAR_REVISION_SUBMITTED'
+  | 'CALENDAR_REVISION_APPROVED'
+  | 'CALENDAR_REVISION_REJECTED'
+  | 'CALENDAR_REVISION_SYNCED'
   // Quality Control
   | 'QC_REVIEW_REQUESTED'
   | 'QC_APPROVED'
@@ -1056,8 +1062,8 @@ export type NotificationType =
   | 'QC_NEEDS_INTERVENTION';
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
-export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'qc' | 'system';
-export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project';
+export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'calendar' | 'qc' | 'system';
+export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project' | 'calendar_item';
 
 export interface NotificationAction {
   label: string;
@@ -1350,6 +1356,15 @@ export interface CalendarMonth {
   updatedAt: string;
 }
 
+// Calendar → Creative Revision Workflow Status
+export type CalendarRevisionStatus =
+  | 'NONE'                            // No revision requested
+  | 'REVISION_REQUESTED'              // Calendar dept requested revision
+  | 'IN_CREATIVE_REVISION'            // Copywriter is working on revision
+  | 'AWAITING_CREATIVE_APPROVAL'      // Submitted back, awaiting manager approval
+  | 'APPROVED_BY_CREATIVE'            // Manager approved, ready to sync
+  | 'SYNCED_TO_CALENDAR';             // Synced back to calendar item
+
 export interface CalendarItem {
   id: string;
   calendarMonthId: string;
@@ -1367,9 +1382,62 @@ export interface CalendarItem {
   // Smart Project Creation - Task Link
   taskId?: string | null; // Link to generated delivery task
   
+  // Calendar → Creative Revision Workflow
+  revisionStatus?: CalendarRevisionStatus;
+  linkedCreativeCalendarId?: string | null;   // Creative calendar this item was synced from
+  linkedCreativeItemId?: string | null;       // Specific creative item this was synced from
+  activeRevisionId?: string | null;           // Current active revision request
+  revisionCount?: number;                     // How many times revision was requested
+  
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// Calendar Item Revision — tracks each revision request & lifecycle
+export interface CalendarItemRevision {
+  id: string;
+  calendarItemId: string;            // Which calendar item is being revised
+  calendarMonthId: string;
+  clientId: string;
+  
+  // Linked creative entities
+  creativeCalendarId: string | null;  // null if not from creative sync
+  creativeItemId: string | null;
+  creativeProjectId: string | null;
+  
+  // Revision request details (from Calendar dept)
+  revisionNote: string;               // What needs to change
+  revisionReferences: CalendarRevisionReference[];
+  requestedBy: string;                // Calendar user who requested
+  requestedAt: string;
+  
+  // Creative response (from Copywriter)
+  revisedBrief?: string;
+  revisedNotes?: string;
+  revisedReferenceLinks?: CalendarReferenceLink[];
+  revisedReferenceFiles?: CalendarReferenceFile[];
+  revisedBy?: string;
+  revisedAt?: string;
+  
+  // Manager review
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  
+  // Status & lifecycle
+  status: CalendarRevisionStatus;
+  syncedAt?: string;                  // When synced back to calendar item
+  syncedBy?: string;
+  
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CalendarRevisionReference {
+  type: 'link' | 'file';
+  value: string;                      // URL for link, downloadURL for file
+  fileName?: string;                  // For file type
 }
 
 // --- CREATIVE DIRECTION & QUALITY CONTROL ---

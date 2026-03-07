@@ -54,6 +54,11 @@ export async function activateCreativeCalendar(params: {
       referenceLinks: item.referenceLinks || [],
       referenceFiles: item.referenceFiles || [],
       publishAt: item.publishAt || '',
+      // Calendar → Creative revision workflow linking
+      linkedCreativeCalendarId: creativeCalendar.id,
+      linkedCreativeItemId: item.id,
+      revisionStatus: 'NONE',
+      revisionCount: 0,
       createdBy: userId,
       createdAt: now,
       updatedAt: now,

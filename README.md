@@ -352,16 +352,16 @@ The app is organized into **17 navigable views** (plus a fallback "Under Constru
 ### Creative Direction Hub
 - **File**: `components/CreativeDirectionHub.tsx`
 - **Sub-components**: 7 files in `components/creative/` — `CalendarActivation`, `CalendarPresentationView`, `CopywriterView`, `ManagerView`, `RejectionModal`, `ShareLinkManager`, `SwipeReviewCard`
-- **Features**: Role-based views (Manager vs Copywriter), creative project lifecycle (assign → draft → review → approve → activate), swipe card review UX, strategy upload, calendar activation to Calendar Department
+- **Features**: Role-based views (Manager vs Copywriter), creative project lifecycle (assign → draft → review → approve → activate), swipe card review UX, strategy upload, calendar activation to Calendar Department, **Calendar → Creative revision workflow** (Calendar dept requests revision → Copywriter revises → Manager approves → syncs back to calendar)
 - **Presentation View** (855 lines): Polished editorial layout for client presentation — 3-column grid, Google Drive thumbnail extraction, type/search filtering, print CSS, bidi Arabic/English text support, slide mode with keyboard navigation
 - **Share Link System**: `ShareLinkManager.tsx` generates cryptographically random tokens, stores in `presentation_shares` collection, tracks access count and last opened time. `PublicPresentationPage.tsx` (757 lines) renders the shared view externally without authentication
-- **Data objects**: `CreativeProject`, `CreativeCalendar`, `CreativeCalendarItem`
+- **Data objects**: `CreativeProject`, `CreativeCalendar`, `CreativeCalendarItem`, `CalendarItemRevision`
 
 ### Calendar Hub
-- **File**: `components/CalendarHub.tsx` (~1,210 lines)
+- **File**: `components/CalendarHub.tsx` (~1,400+ lines)
 - **Sub-components**: `components/calendar/CalendarDeptPresentationView.tsx` (~655 lines)
-- **Features**: Calendar month management, calendar item CRUD per client, unified calendar view, presentation view for Calendar Department
-- **Data objects**: `CalendarMonth`, `CalendarItem`
+- **Features**: Calendar month management, calendar item CRUD per client, unified calendar view, presentation view for Calendar Department, **revision request workflow** (request revision on synced creative items, view revision history, sync approved revisions)
+- **Data objects**: `CalendarMonth`, `CalendarItem`, `CalendarItemRevision`
 
 ### Posting Hub
 - **File**: `components/PostingHub.tsx`

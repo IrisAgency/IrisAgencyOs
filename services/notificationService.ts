@@ -101,6 +101,13 @@ const NOTIFICATION_METADATA: Record<
   CREATIVE_REVISION_REQUESTED: { category: 'creative' as any, severity: 'warning', entityType: 'creative_project' as any },
   CREATIVE_APPROVED: { category: 'creative' as any, severity: 'info', entityType: 'creative_project' as any },
 
+  // Calendar → Creative Revision Workflow
+  CALENDAR_REVISION_REQUESTED: { category: 'calendar' as any, severity: 'warning', entityType: 'calendar_item' as any },
+  CALENDAR_REVISION_SUBMITTED: { category: 'calendar' as any, severity: 'warning', entityType: 'calendar_item' as any },
+  CALENDAR_REVISION_APPROVED: { category: 'calendar' as any, severity: 'info', entityType: 'calendar_item' as any },
+  CALENDAR_REVISION_REJECTED: { category: 'calendar' as any, severity: 'warning', entityType: 'calendar_item' as any },
+  CALENDAR_REVISION_SYNCED: { category: 'calendar' as any, severity: 'info', entityType: 'calendar_item' as any },
+
   // Quality Control
   QC_REVIEW_REQUESTED: { category: 'qc' as any, severity: 'warning', entityType: 'task' },
   QC_APPROVED: { category: 'qc' as any, severity: 'info', entityType: 'task' },

@@ -253,6 +253,7 @@ export const PERMISSIONS = {
   CALENDAR: {
     VIEW: 'calendar.view',
     MANAGE: 'calendar.manage',
+    REQUEST_REVISION: 'calendar.request_revision',
   },
   CALENDAR_MONTHS: {
     CREATE: 'calendar.months.create',
@@ -273,6 +274,9 @@ export const PERMISSIONS = {
     UPLOAD: 'creative.upload',
     APPROVE: 'creative.approve',
     REJECT: 'creative.reject',
+    REVISION_SUBMIT: 'creative.revision.submit',
+    REVISION_APPROVE: 'creative.revision.approve',
+    REVISION_REJECT: 'creative.revision.reject',
   },
 
   // ========== Quality Control ==========

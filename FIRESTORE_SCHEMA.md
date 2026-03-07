@@ -15,6 +15,7 @@
 6. [Project Data Model](#6-project-data-model)
 7. [Task Data Model](#7-task-data-model)
 8. [Creative Direction Data](#8-creative-direction-data)
+8.5. [Calendar Department Data](#85-calendar-department-data)
 9. [Social Posting Data](#9-social-posting-data)
 10. [Production Data](#10-production-data)
 11. [Finance Data](#11-finance-data)
@@ -138,7 +139,8 @@ firestore/
 │
 ├── ─── CALENDAR ────────────────────────────────
 │   ├── calendar_months          Monthly calendar containers
-│   └── calendar_items           Individual calendar entries
+│   ├── calendar_items           Individual calendar entries
+│   └── calendar_item_revisions  Revision workflow between Calendar & Creative depts
 │
 ├── ─── HR & TEAM ───────────────────────────────
 │   ├── vendors                  Vendor companies
@@ -171,10 +173,10 @@ firestore/
 | Production | 7 | Medium–High |
 | Finance | 4 | Medium (100s) |
 | Notifications | 4 | High (10,000s) |
-| Calendar | 2 | Medium (100s) |
+| Calendar | 3 | Medium (100s) |
 | HR & Team | 6 | Low–Medium |
 | Admin & System | 4 | Low (10s) |
-| **Total** | **57** | — |
+| **Total** | **58** | — |
 
 ---
 
@@ -901,6 +903,126 @@ Shareable presentation links for client review.
 
 ---
 
+## 8.5. Calendar Department Data
+
+### `calendar_months`
+
+Monthly calendar containers that group calendar items.
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `id` | `string` | ✅ | Document ID |
+| `clientId` | `string` | ✅ | FK → `clients.id` |
+| `year` | `number` | ✅ | Calendar year |
+| `month` | `number` | ✅ | Calendar month (1-12) |
+| `name` | `string` | ✅ | Display name |
+| `status` | `string` | ✅ | Month status |
+| `createdAt` | `string` | ✅ | ISO 8601 |
+| `updatedAt` | `string` | ❌ | ISO 8601 |
+
+---
+
+### `calendar_items`
+
+Individual calendar entries within a monthly calendar.
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `id` | `string` | ✅ | Document ID |
+| `calendarMonthId` | `string` | ✅ | FK → `calendar_months.id` |
+| `clientId` | `string` | ✅ | FK → `clients.id` |
+| `title` | `string` | ✅ | Item title |
+| `brief` | `string` | ❌ | Content brief / description |
+| `publishDate` | `string` | ❌ | Target publish date |
+| `platform` | `string` | ❌ | Target platform |
+| `contentType` | `string` | ❌ | Content type (reel, story, post, etc.) |
+| `status` | `string` | ❌ | Production status |
+| `assignee` | `string` | ❌ | Assigned user ID |
+| `attachments` | `string[]` | ❌ | Visual asset URLs |
+| `linkedCreativeCalendarId` | `string` | ❌ | FK → `creative_calendars.id` — set during activation sync |
+| `linkedCreativeItemId` | `string` | ❌ | FK → `creative_calendar_items.id` — set during activation sync |
+| `revisionStatus` | `CalendarRevisionStatus` | ❌ | Current revision workflow status (see below) |
+| `activeRevisionId` | `string` | ❌ | FK → `calendar_item_revisions.id` — active revision doc |
+| `revisionCount` | `number` | ❌ | Total number of revisions requested for this item |
+| `createdAt` | `string` | ✅ | ISO 8601 |
+| `updatedAt` | `string` | ❌ | ISO 8601 |
+
+#### `CalendarRevisionStatus` Values
+
+| Status | Description |
+|--------|-------------|
+| `NONE` | No revision in progress (default) |
+| `REVISION_REQUESTED` | Calendar dept requested a revision |
+| `IN_CREATIVE_REVISION` | Copywriter is actively working on the revision |
+| `AWAITING_CREATIVE_APPROVAL` | Copywriter submitted revision, awaiting creative manager approval |
+| `APPROVED_BY_CREATIVE` | Creative manager approved the revision |
+| `SYNCED_TO_CALENDAR` | Revised content has been synced back to the calendar item |
+
+---
+
+### `calendar_item_revisions`
+
+Tracks the full lifecycle of a revision request from Calendar Department to Creative Direction and back.
+
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `id` | `string` | ✅ | Document ID |
+| **Request Fields** | | | |
+| `calendarItemId` | `string` | ✅ | FK → `calendar_items.id` — the item being revised |
+| `calendarMonthId` | `string` | ✅ | FK → `calendar_months.id` — for filtering |
+| `clientId` | `string` | ✅ | FK → `clients.id` |
+| `linkedCreativeCalendarId` | `string` | ✅ | FK → `creative_calendars.id` — the source creative calendar |
+| `linkedCreativeItemId` | `string` | ✅ | FK → `creative_calendar_items.id` — the source creative item |
+| `requestedBy` | `string` | ✅ | FK → `users.id` — who requested the revision |
+| `requestedAt` | `string` | ✅ | ISO 8601 |
+| `requestNote` | `string` | ✅ | Feedback / revision instructions |
+| `referenceLinks` | `Array<{url, label}>` | ❌ | Supporting reference links |
+| `originalBrief` | `string` | ❌ | Snapshot of the calendar item brief at request time |
+| **Revision Fields** | | | |
+| `status` | `CalendarRevisionStatus` | ✅ | Current lifecycle status |
+| `assignedCopywriterId` | `string` | ❌ | FK → `users.id` — copywriter from the creative calendar |
+| `revisedBrief` | `string` | ❌ | The revised content submitted by copywriter |
+| `revisionNote` | `string` | ❌ | Copywriter's note about changes made |
+| `revisedAt` | `string` | ❌ | ISO 8601 — when copywriter submitted |
+| **Review Fields** | | | |
+| `reviewedBy` | `string` | ❌ | FK → `users.id` — creative manager who reviewed |
+| `reviewedAt` | `string` | ❌ | ISO 8601 |
+| `reviewNote` | `string` | ❌ | Approval/rejection feedback |
+| **Sync Fields** | | | |
+| `syncedAt` | `string` | ❌ | ISO 8601 — when synced back to calendar |
+| `syncedBy` | `string` | ❌ | FK → `users.id` — who performed the sync |
+| **Metadata** | | | |
+| `createdAt` | `string` | ✅ | ISO 8601 |
+| `updatedAt` | `string` | ❌ | ISO 8601 |
+
+#### Workflow Flow
+
+```
+Calendar Dept                    Creative Direction
+─────────────                    ──────────────────
+[Request Revision]  ──────────→  status: REVISION_REQUESTED
+                                      │
+                                 [Copywriter starts]
+                                      │
+                                 status: IN_CREATIVE_REVISION
+                                      │
+                                 [Copywriter submits]
+                                      │
+                                 status: AWAITING_CREATIVE_APPROVAL
+                                      │
+                                 [Manager reviews]
+                                    ╱    ╲
+                              Approve    Reject
+                                │           │
+                    APPROVED_BY_CREATIVE   REVISION_REQUESTED
+                                │          (loops back)
+[Sync to Calendar]  ←──────────┘
+         │
+  SYNCED_TO_CALENDAR
+```
+
+---
+
 ## 9. Social Posting Data
 
 ### `social_posts`
@@ -1525,6 +1647,11 @@ service firebase.storage {
 | `approval_steps` | `taskId` | `tasks.id` |
 | `creative_calendars` | `clientId` | `clients.id` |
 | `creative_calendar_items` | `calendarId` | `creative_calendars.id` |
+| `calendar_items` | `linkedCreativeCalendarId` | `creative_calendars.id` |
+| `calendar_items` | `linkedCreativeItemId` | `creative_calendar_items.id` |
+| `calendar_item_revisions` | `calendarItemId` | `calendar_items.id` |
+| `calendar_item_revisions` | `linkedCreativeCalendarId` | `creative_calendars.id` |
+| `calendar_item_revisions` | `linkedCreativeItemId` | `creative_calendar_items.id` |
 | `social_posts` | `clientId` | `clients.id` |
 | `production_plans` | `clientId` | `clients.id` |
 | `production_assignments` | `userId` | `users.id` |

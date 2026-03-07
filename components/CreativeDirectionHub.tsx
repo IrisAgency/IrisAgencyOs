@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, Client, User, CalendarMonth, CalendarItem, AgencyFile, NotificationType } from '../types';
+import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, CalendarItemRevision, Client, User, CalendarMonth, CalendarItem, AgencyFile, NotificationType } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { PERMISSIONS } from '../lib/permissions';
 import ManagerView from './creative/ManagerView';
@@ -15,6 +15,7 @@ export interface CreativeDirectionHubProps {
   users: User[];
   calendarMonths: CalendarMonth[];
   calendarItems: CalendarItem[];
+  calendarItemRevisions: CalendarItemRevision[];
   files: AgencyFile[];
   currentUser: User | null;
   checkPermission: (permission: string) => boolean;

@@ -5,6 +5,7 @@ import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
 import type {
   CreativeProject, CreativeCalendar, CreativeCalendarItem,
+  CalendarItem, CalendarItemRevision, CalendarRevisionStatus,
   Client, User, AgencyFile, ClientMarketingStrategy,
   CalendarContentType, CalendarReferenceLink, CalendarReferenceFile,
   NotificationType, CreativeRejectionReference,
@@ -13,13 +14,15 @@ import {
   FileText, Upload, Plus, Trash2, Edit2, Save, Send, ExternalLink,
   Link as LinkIcon, Video, Image, Clapperboard, Calendar, Eye,
   AlertTriangle, CheckCircle2, Clock, RotateCcw, X, ChevronDown, ChevronRight,
-  Info
+  Info, MessageSquare
 } from 'lucide-react';
 
 interface CopywriterViewProps {
   creativeProjects: CreativeProject[];
   creativeCalendars: CreativeCalendar[];
   creativeCalendarItems: CreativeCalendarItem[];
+  calendarItems?: CalendarItem[];
+  calendarItemRevisions?: CalendarItemRevision[];
   clients: Client[];
   users: User[];
   files: AgencyFile[];
@@ -49,6 +52,8 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   creativeProjects,
   creativeCalendars,
   creativeCalendarItems,
+  calendarItems: deptCalendarItems = [],
+  calendarItemRevisions = [],
   clients,
   users,
   files,
@@ -627,6 +632,162 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
               )}
             </div>
           )}
+
+          {/* ============================================ */}
+          {/* CALENDAR REVISION REQUESTS SECTION */}
+          {/* ============================================ */}
+          {(() => {
+            // Find revision requests that belong to this copywriter's creative projects
+            const myProjectIds = myProjects.map(p => p.id);
+            const myCalendarIds = creativeCalendars
+              .filter(cc => myProjectIds.includes(cc.creativeProjectId))
+              .map(cc => cc.id);
+            const pendingRevisions = calendarItemRevisions.filter(
+              r => myCalendarIds.includes(r.creativeCalendarId || '') && 
+                   (r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION')
+            );
+
+            if (pendingRevisions.length === 0) return null;
+
+            return (
+              <div className={`${surface} rounded-xl p-5`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-amber-500/20 rounded-lg">
+                    <RotateCcw className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-iris-white">Calendar Revision Requests</h3>
+                    <p className="text-xs text-iris-white/50">{pendingRevisions.length} item{pendingRevisions.length !== 1 ? 's' : ''} need{pendingRevisions.length === 1 ? 's' : ''} revision from Calendar Department</p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {pendingRevisions.map(rev => {
+                    const calItem = deptCalendarItems.find(ci => ci.id === rev.calendarItemId);
+                    const client = clients.find(c => c.id === rev.clientId);
+                    const requester = users.find(u => u.id === rev.requestedBy);
+                    
+                    return (
+                      <div key={rev.id} className={`${elevated} rounded-xl p-4 space-y-3`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-iris-white text-sm">{calItem?.autoName || 'Calendar Item'}</span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              rev.status === 'REVISION_REQUESTED' ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' :
+                              'bg-blue-500/20 text-blue-400 border-blue-400/30'
+                            }`}>
+                              {rev.status === 'REVISION_REQUESTED' ? 'Needs Revision' : 'In Progress'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-iris-white/40">{client?.name}</span>
+                        </div>
+
+                        {/* Revision note */}
+                        <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
+                          <div className="text-xs font-semibold text-amber-400 mb-1 flex items-center gap-1">
+                            <MessageSquare className="w-3 h-3" />
+                            {requester?.name || 'Calendar Dept'} requested:
+                          </div>
+                          <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                          {rev.revisionReferences && rev.revisionReferences.length > 0 && (
+                            <div className="mt-2 space-y-1">
+                              {rev.revisionReferences.map((refItem, idx) => (
+                                <a key={idx} href={refItem.value} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                                  <ExternalLink className="w-3 h-3" /> {refItem.fileName || refItem.value}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Current content for reference */}
+                        {calItem && (
+                          <div className="bg-white/[0.02] rounded-lg p-3 text-xs space-y-1">
+                            <div className="font-semibold text-iris-white/50">Current Brief:</div>
+                            <p className="text-iris-white/60 line-clamp-3" dir="auto">{calItem.primaryBrief}</p>
+                          </div>
+                        )}
+
+                        {/* Action: Start Revision / Submit Revision */}
+                        {rev.status === 'REVISION_REQUESTED' && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                                  status: 'IN_CREATIVE_REVISION',
+                                  updatedAt: new Date().toISOString(),
+                                });
+                                if (calItem) {
+                                  await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                                    revisionStatus: 'IN_CREATIVE_REVISION',
+                                    updatedAt: new Date().toISOString(),
+                                  });
+                                }
+                              } catch (error) {
+                                console.error('Error starting revision:', error);
+                              }
+                            }}
+                            className="w-full px-4 py-2 bg-blue-500/20 text-blue-400 border border-blue-400/30 rounded-lg text-sm font-medium hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <Edit2 className="w-4 h-4" /> Start Working on Revision
+                          </button>
+                        )}
+
+                        {rev.status === 'IN_CREATIVE_REVISION' && (
+                          <CalendarRevisionEditor
+                            revision={rev}
+                            calendarItem={calItem}
+                            currentUser={currentUser}
+                            users={users}
+                            onSubmit={async (revisedBrief, revisedNotes) => {
+                              try {
+                                const now = new Date().toISOString();
+                                await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
+                                  revisedBrief,
+                                  revisedNotes,
+                                  revisedBy: currentUser?.id,
+                                  revisedAt: now,
+                                  status: 'AWAITING_CREATIVE_APPROVAL',
+                                  updatedAt: now,
+                                });
+                                if (calItem) {
+                                  await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                                    revisionStatus: 'AWAITING_CREATIVE_APPROVAL',
+                                    updatedAt: now,
+                                  });
+                                }
+                                // Notify creative manager
+                                const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
+                                const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+                                const managerIds = users
+                                  .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser?.id)
+                                  .map(u => u.id);
+                                if (managerIds.length > 0) {
+                                  await notifyUsers({
+                                    type: 'CALENDAR_REVISION_SUBMITTED',
+                                    title: 'Calendar Revision Submitted',
+                                    message: `${currentUser?.name} submitted a revised brief for "${calItem?.autoName}"`,
+                                    recipientIds: managerIds,
+                                    entityId: rev.id,
+                                    actionUrl: '/creative',
+                                    sendPush: true,
+                                    createdBy: currentUser?.id || 'system',
+                                  });
+                                }
+                              } catch (error) {
+                                console.error('Error submitting revision:', error);
+                                alert('Failed to submit revision');
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
 
@@ -812,6 +973,64 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// Inline sub-component for editing a calendar revision
+const CalendarRevisionEditor: React.FC<{
+  revision: CalendarItemRevision;
+  calendarItem: CalendarItem | undefined;
+  currentUser: User | null;
+  users: User[];
+  onSubmit: (revisedBrief: string, revisedNotes: string) => Promise<void>;
+}> = ({ revision, calendarItem, currentUser, users, onSubmit }) => {
+  const [brief, setBrief] = useState(calendarItem?.primaryBrief || '');
+  const [notes, setNotes] = useState(calendarItem?.notes || '');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!brief.trim()) {
+      alert('Brief cannot be empty');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit(brief, notes);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t border-iris-white/10 pt-3">
+      <div>
+        <label className="block text-xs font-semibold text-iris-white/60 mb-1">Revised Brief *</label>
+        <textarea
+          value={brief}
+          onChange={e => setBrief(e.target.value)}
+          rows={4}
+          className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
+          dir="auto"
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-iris-white/60 mb-1">Revised Notes</label>
+        <textarea
+          value={notes}
+          onChange={e => setNotes(e.target.value)}
+          rows={2}
+          className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
+          dir="auto"
+        />
+      </div>
+      <button
+        onClick={handleSubmit}
+        disabled={submitting || !brief.trim()}
+        className="w-full px-4 py-2.5 bg-emerald-500/20 text-emerald-400 border border-emerald-400/30 rounded-lg text-sm font-medium hover:bg-emerald-500/30 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+      >
+        <Send className="w-4 h-4" /> {submitting ? 'Submitting...' : 'Submit Revised Content for Approval'}
+      </button>
     </div>
   );
 };
