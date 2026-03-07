@@ -965,12 +965,14 @@ const RevisionRequestsSection: React.FC<{
                   calendarItem={calItem}
                   currentUser={currentUser}
                   users={users}
-                  onSubmit={async (revisedBrief, revisedNotes) => {
+                  onSubmit={async (revisedBrief, revisedNotes, revisedReferenceLinks, revisedReferenceFiles) => {
                     try {
                       const now = new Date().toISOString();
                       await updateDoc(doc(db, 'calendar_item_revisions', rev.id), {
                         revisedBrief,
                         revisedNotes,
+                        revisedReferenceLinks,
+                        revisedReferenceFiles,
                         revisedBy: currentUser?.id,
                         revisedAt: now,
                         status: 'AWAITING_CREATIVE_APPROVAL',
@@ -1021,11 +1023,61 @@ const CalendarRevisionEditor: React.FC<{
   calendarItem: CalendarItem | undefined;
   currentUser: User | null;
   users: User[];
-  onSubmit: (revisedBrief: string, revisedNotes: string) => Promise<void>;
+  onSubmit: (revisedBrief: string, revisedNotes: string, refLinks: CalendarReferenceLink[], refFiles: CalendarReferenceFile[]) => Promise<void>;
 }> = ({ revision, calendarItem, currentUser, users, onSubmit }) => {
   const [brief, setBrief] = useState(calendarItem?.primaryBrief || '');
   const [notes, setNotes] = useState(calendarItem?.notes || '');
   const [submitting, setSubmitting] = useState(false);
+
+  // Reference links
+  const [refLinks, setRefLinks] = useState<CalendarReferenceLink[]>(revision.revisedReferenceLinks || []);
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+
+  // Reference files
+  const [refFiles, setRefFiles] = useState<CalendarReferenceFile[]>(revision.revisedReferenceFiles || []);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addLink = () => {
+    if (!linkUrl.trim()) return;
+    setRefLinks(prev => [...prev, { title: linkTitle.trim() || linkUrl.trim(), url: linkUrl.trim() }]);
+    setLinkTitle('');
+    setLinkUrl('');
+  };
+
+  const removeLink = (idx: number) => {
+    setRefLinks(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    setUploadingFile(true);
+    try {
+      const storagePath = `calendar_revisions/${revision.id}/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      setRefFiles(prev => [...prev, {
+        fileName: file.name,
+        storagePath,
+        downloadURL,
+        uploadedBy: currentUser.id,
+        createdAt: new Date().toISOString(),
+      }]);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload file');
+    } finally {
+      setUploadingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (idx: number) => {
+    setRefFiles(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const handleSubmit = async () => {
     if (!brief.trim()) {
@@ -1034,7 +1086,7 @@ const CalendarRevisionEditor: React.FC<{
     }
     setSubmitting(true);
     try {
-      await onSubmit(brief, notes);
+      await onSubmit(brief, notes, refLinks, refFiles);
     } finally {
       setSubmitting(false);
     }
@@ -1062,6 +1114,75 @@ const CalendarRevisionEditor: React.FC<{
           dir="auto"
         />
       </div>
+
+      {/* Reference Links */}
+      <div>
+        <label className="block text-xs font-semibold text-iris-white/60 mb-1">Reference Links</label>
+        {refLinks.length > 0 && (
+          <div className="space-y-1.5 mb-2">
+            {refLinks.map((link, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5">
+                <LinkIcon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <a href={link.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline truncate flex-1">{link.title || link.url}</a>
+                <button onClick={() => removeLink(idx)} className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="Title (optional)"
+            value={linkTitle}
+            onChange={e => setLinkTitle(e.target.value)}
+            className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-xs focus:outline-none focus:border-blue-400/50"
+          />
+          <input
+            type="url"
+            placeholder="https://..."
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && addLink()}
+            className="flex-[2] px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-xs focus:outline-none focus:border-blue-400/50"
+          />
+          <button
+            onClick={addLink}
+            disabled={!linkUrl.trim()}
+            className="px-2.5 py-1.5 bg-blue-500/20 text-blue-400 border border-blue-400/30 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors disabled:opacity-40"
+          >
+            <Plus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Reference Files */}
+      <div>
+        <label className="block text-xs font-semibold text-iris-white/60 mb-1">Reference Files</label>
+        {refFiles.length > 0 && (
+          <div className="space-y-1.5 mb-2">
+            {refFiles.map((f, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5">
+                <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <a href={f.downloadURL} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 hover:underline truncate flex-1">{f.fileName}</a>
+                <button onClick={() => removeFile(idx)} className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingFile}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs text-iris-white/60 hover:text-iris-white hover:bg-white/10 transition-colors disabled:opacity-50"
+        >
+          <Upload className="w-3.5 h-3.5" /> {uploadingFile ? 'Uploading...' : 'Upload File'}
+        </button>
+      </div>
+
       <button
         onClick={handleSubmit}
         disabled={submitting || !brief.trim()}

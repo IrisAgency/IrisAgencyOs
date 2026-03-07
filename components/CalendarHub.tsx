@@ -1665,6 +1665,26 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                         {rev.revisedBrief && (
                           <p className="text-sm text-slate-300 bg-emerald-500/5 rounded-lg p-3 border border-emerald-500/10 whitespace-pre-wrap" dir="auto">{rev.revisedBrief}</p>
                         )}
+                        {rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0 && (
+                          <div className="space-y-1 mt-2">
+                            <div className="text-xs font-semibold text-slate-500">Reference Links:</div>
+                            {rev.revisedReferenceLinks.map((link, idx) => (
+                              <a key={idx} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-blue-400 hover:underline">
+                                <ExternalLink className="w-3 h-3 shrink-0" /> {link.title || link.url}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                        {rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0 && (
+                          <div className="space-y-1 mt-2">
+                            <div className="text-xs font-semibold text-slate-500">Reference Files:</div>
+                            {rev.revisedReferenceFiles.map((f, idx) => (
+                              <a key={idx} href={f.downloadURL} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline">
+                                <FileText className="w-3 h-3 shrink-0" /> {f.fileName}
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 

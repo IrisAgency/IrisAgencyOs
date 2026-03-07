@@ -917,6 +917,32 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           <p className="text-sm text-iris-white/60 whitespace-pre-wrap" dir="auto">{rev.revisedNotes}</p>
                         </div>
                       )}
+                      {/* Revised Reference Links */}
+                      {rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/10">
+                          <div className="text-xs font-semibold text-emerald-400/60 mb-1">Reference Links:</div>
+                          <div className="space-y-1">
+                            {rev.revisedReferenceLinks.map((link, idx) => (
+                              <a key={idx} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-blue-400 hover:underline">
+                                <LinkIcon className="w-3 h-3 shrink-0" /> {link.title || link.url}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {/* Revised Reference Files */}
+                      {rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-emerald-500/10">
+                          <div className="text-xs font-semibold text-emerald-400/60 mb-1">Reference Files:</div>
+                          <div className="space-y-1">
+                            {rev.revisedReferenceFiles.map((f, idx) => (
+                              <a key={idx} href={f.downloadURL} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline">
+                                <FileText className="w-3 h-3 shrink-0" /> {f.fileName}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -944,6 +970,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                             reviewNote: rejectNote,
                             revisedBrief: null,
                             revisedNotes: null,
+                            revisedReferenceLinks: null,
+                            revisedReferenceFiles: null,
                             revisedBy: null,
                             revisedAt: null,
                             updatedAt: now,
