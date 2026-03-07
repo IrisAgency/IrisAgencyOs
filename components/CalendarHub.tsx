@@ -535,7 +535,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     }
     // Try to find matching creative calendar by clientId + monthKey
     const matchingCalendar = creativeCalendars.find(
-      c => c.clientId === item.clientId && c.monthKey === item.monthKey && c.status === 'APPROVED'
+      c => c.clientId === item.clientId && c.monthKey === item.monthKey
     );
     if (!matchingCalendar) return null;
     // Try to find matching creative item by type + seqNumber

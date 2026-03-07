@@ -635,8 +635,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             activeTab === 'cal-revisions' ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
           }`}
         >
-          Cal Revisions ({calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL').length})
-          {calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL').length > 0 && activeTab !== 'cal-revisions' && (
+          Cal Revisions ({calendarItemRevisions.filter(r => r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE').length})
+          {calendarItemRevisions.filter(r => r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE').length > 0 && activeTab !== 'cal-revisions' && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-400 rounded-full" />
           )}
         </button>
@@ -850,16 +850,31 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       {activeTab === 'cal-revisions' && (
         <div className="space-y-4">
           {(() => {
-            const awaitingApproval = calendarItemRevisions.filter(r => r.status === 'AWAITING_CREATIVE_APPROVAL');
-            if (awaitingApproval.length === 0) {
+            const activeRevisions = calendarItemRevisions.filter(r => r.status !== 'SYNCED_TO_CALENDAR');
+            if (activeRevisions.length === 0) {
               return (
                 <div className={`${surface} rounded-xl p-8 text-center text-iris-white/60`}>
                   <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-emerald-400/30" />
-                  <p>No calendar revisions awaiting your approval.</p>
+                  <p>No active calendar revisions.</p>
                 </div>
               );
             }
-            return awaitingApproval.map(rev => {
+
+            // Status display helper
+            const getStatusBadge = (status: string) => {
+              switch (status) {
+                case 'REVISION_REQUESTED': return { label: 'Requested', color: 'bg-amber-500/20 text-amber-400 border-amber-400/30' };
+                case 'IN_CREATIVE_REVISION': return { label: 'In Progress', color: 'bg-blue-500/20 text-blue-400 border-blue-400/30' };
+                case 'AWAITING_CREATIVE_APPROVAL': return { label: 'Awaiting Approval', color: 'bg-purple-500/20 text-purple-400 border-purple-400/30' };
+                case 'APPROVED_BY_CREATIVE': return { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30' };
+                default: return { label: status, color: 'bg-white/10 text-white/60 border-white/10' };
+              }
+            };
+
+            return activeRevisions.sort((a, b) => {
+              const order: Record<string, number> = { 'AWAITING_CREATIVE_APPROVAL': 0, 'REVISION_REQUESTED': 1, 'IN_CREATIVE_REVISION': 2, 'APPROVED_BY_CREATIVE': 3 };
+              return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+            }).map(rev => {
               const calItem = calendarItems.find(ci => ci.id === rev.calendarItemId);
               const client = clients.find(c => c.id === rev.clientId);
               const copywriter = rev.revisedBy ? users.find(u => u.id === rev.revisedBy) : null;
@@ -870,8 +885,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <h3 className="font-bold text-iris-white">{calItem?.autoName || 'Calendar Item'}</h3>
-                      <span className="text-xs font-bold px-2 py-0.5 rounded-md border bg-purple-500/20 text-purple-400 border-purple-400/30">
-                        Awaiting Approval
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${getStatusBadge(rev.status).color}`}>
+                        {getStatusBadge(rev.status).label}
                       </span>
                     </div>
                     <span className="text-xs text-iris-white/50">{client?.name}</span>
@@ -910,7 +925,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     </div>
                   )}
 
-                  {/* Approve / Reject */}
+                  {/* Approve / Reject - only for AWAITING_CREATIVE_APPROVAL */}
+                  {rev.status === 'AWAITING_CREATIVE_APPROVAL' && (
                   <div className="flex gap-3">
                     <button
                       onClick={async () => {
@@ -996,6 +1012,24 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       <CheckCircle2 className="w-4 h-4" /> Approve
                     </button>
                   </div>
+                  )}
+
+                  {/* Status info for non-actionable states */}
+                  {rev.status === 'REVISION_REQUESTED' && (
+                    <div className="text-xs text-amber-400/70 italic flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Waiting for copywriter to start working on this revision
+                    </div>
+                  )}
+                  {rev.status === 'IN_CREATIVE_REVISION' && (
+                    <div className="text-xs text-blue-400/70 italic flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Copywriter is currently working on this revision
+                    </div>
+                  )}
+                  {rev.status === 'APPROVED_BY_CREATIVE' && (
+                    <div className="text-xs text-emerald-400/70 italic flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Approved — waiting for Calendar Dept to sync
+                    </div>
+                  )}
                 </div>
               );
             });

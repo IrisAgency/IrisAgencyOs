@@ -642,9 +642,18 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
             const myCalendarIds = creativeCalendars
               .filter(cc => myProjectIds.includes(cc.creativeProjectId))
               .map(cc => cc.id);
+            // Also get client IDs from my projects for fallback matching
+            const myClientIds = myProjects.map(p => p.clientId);
             const pendingRevisions = calendarItemRevisions.filter(
-              r => myCalendarIds.includes(r.creativeCalendarId || '') && 
-                   (r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION')
+              r => (r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION') &&
+                   (
+                     // Primary match: creativeCalendarId matches one of my creative calendars
+                     (r.creativeCalendarId && myCalendarIds.includes(r.creativeCalendarId)) ||
+                     // Fallback match: creativeProjectId matches one of my projects
+                     (r.creativeProjectId && myProjectIds.includes(r.creativeProjectId)) ||
+                     // Last resort: clientId matches one of my project clients (for old revisions without proper links)
+                     (!r.creativeCalendarId && !r.creativeProjectId && myClientIds.includes(r.clientId))
+                   )
             );
 
             if (pendingRevisions.length === 0) return null;
