@@ -745,6 +745,9 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
         calendarMonths={calendarMonths}
         calendarItems={calendarItems}
         clients={clients}
+        creativeProjects={creativeProjects}
+        creativeCalendars={creativeCalendars}
+        currentUser={currentUser}
         onBack={() => setShowPresentation(false)}
       />
     );

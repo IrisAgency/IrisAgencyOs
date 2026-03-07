@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type {
   CalendarMonth, CalendarItem, Client, CalendarContentType,
+  CreativeProject, CreativeCalendar, User,
 } from '../../types';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 import {
   Calendar, Presentation, Search, X, ArrowLeft,
-  Printer, ChevronDown, LayoutGrid, FileText as FileTextIcon,
+  Printer, ChevronDown, LayoutGrid, FileText as FileTextIcon, Share2,
 } from 'lucide-react';
 
 import {
@@ -20,6 +21,7 @@ import {
 
 import InstagramGridView from '../common/InstagramGridView';
 import GridItemDetailModal from '../common/GridItemDetailModal';
+import ShareLinkManager from '../creative/ShareLinkManager';
 
 // ============================================================================
 // PRESENTATION ITEM MAPPER
@@ -49,6 +51,9 @@ interface CalendarDeptPresentationViewProps {
   calendarMonths: CalendarMonth[];
   calendarItems: CalendarItem[];
   clients: Client[];
+  creativeProjects: CreativeProject[];
+  creativeCalendars: CreativeCalendar[];
+  currentUser: User;
   onBack: () => void;
 }
 
@@ -56,6 +61,9 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
   calendarMonths,
   calendarItems,
   clients,
+  creativeProjects,
+  creativeCalendars,
+  currentUser,
   onBack,
 }) => {
   const [filterType, setFilterType] = useState<CalendarContentType | 'ALL'>('ALL');
@@ -63,6 +71,7 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
   const [selectedMonthId, setSelectedMonthId] = useState<string | null>(null);
   const [driveModal, setDriveModal] = useState<{ url: string; title: string } | null>(null);
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [showShareManager, setShowShareManager] = useState(false);
 
   // View mode: editorial (default) or grid (Instagram)
   const [viewMode, setViewMode] = useState<'editorial' | 'grid'>('editorial');
@@ -199,11 +208,46 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
                 <LayoutGrid className="w-3.5 h-3.5" /> Grid
               </button>
             </div>
+            <button
+              onClick={() => setShowShareManager(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-blue-200 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Share
+            </button>
             <button onClick={() => window.print()} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-200 text-xs text-gray-500 hover:text-gray-800 hover:bg-gray-50 transition-colors">
               <Printer className="w-3.5 h-3.5" /> Print
             </button>
           </div>
         </div>
+
+        {/* Share Link Manager Modal */}
+        {showShareManager && selectedMonth && (() => {
+          const matchingCalendar = creativeCalendars.find(
+            c => c.clientId === selectedMonth.clientId && c.monthKey === selectedMonth.monthKey
+          );
+          const matchingProject = matchingCalendar
+            ? creativeProjects.find(p => p.id === matchingCalendar.creativeProjectId)
+            : null;
+          if (!matchingCalendar || !matchingProject) return (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" onClick={() => setShowShareManager(false)}>
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+              <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-sm text-center" onClick={e => e.stopPropagation()}>
+                <p className="text-sm text-gray-600 mb-4">No linked creative project found for this calendar month. Share links require a creative project.</p>
+                <button onClick={() => setShowShareManager(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">Close</button>
+              </div>
+            </div>
+          );
+          return (
+            <ShareLinkManager
+              creativeProjectId={matchingProject.id}
+              creativeCalendarId={matchingCalendar.id}
+              calendarMonthId={selectedMonth.id}
+              clientId={selectedMonth.clientId}
+              currentUserId={currentUser.id}
+              onClose={() => setShowShareManager(false)}
+            />
+          );
+        })()}
 
         {/* MASTHEAD */}
         <header className="mb-10 border-b-2 border-gray-900 pb-6">
