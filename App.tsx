@@ -2063,6 +2063,7 @@ const App: React.FC = () => {
             calendarItemRevisions={calendarItemRevisions}
             creativeProjects={creativeProjects}
             creativeCalendars={creativeCalendars}
+            creativeCalendarItems={creativeCalendarItems}
             users={activeUsers}
             currentUser={user}
             checkPermission={checkPermission}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare } from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
-import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, NotificationType } from '../types';
+import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, CreativeCalendarItem, NotificationType } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,7 @@ interface CalendarHubProps {
   calendarItemRevisions: CalendarItemRevision[];
   creativeProjects: CreativeProject[];
   creativeCalendars: CreativeCalendar[];
+  creativeCalendarItems: CreativeCalendarItem[];
   users: User[];
   currentUser: User;
   checkPermission: (permission: string) => boolean;
@@ -33,6 +34,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
   calendarItemRevisions,
   creativeProjects,
   creativeCalendars,
+  creativeCalendarItems,
   users,
   currentUser,
   checkPermission,
@@ -525,9 +527,29 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
+  // Auto-resolve creative linkage for items created before linking fields were added
+  const resolveCreativeLink = (item: CalendarItem): { calendarId: string; itemId: string } | null => {
+    // If already linked, use existing link
+    if (item.linkedCreativeCalendarId && item.linkedCreativeItemId) {
+      return { calendarId: item.linkedCreativeCalendarId, itemId: item.linkedCreativeItemId };
+    }
+    // Try to find matching creative calendar by clientId + monthKey
+    const matchingCalendar = creativeCalendars.find(
+      c => c.clientId === item.clientId && c.monthKey === item.monthKey && c.status === 'APPROVED'
+    );
+    if (!matchingCalendar) return null;
+    // Try to find matching creative item by type + seqNumber
+    const matchingItem = creativeCalendarItems.find(
+      ci => ci.creativeCalendarId === matchingCalendar.id && ci.type === item.type && item.seqNumber !== undefined
+    );
+    // Even if we can't match a specific item, having a matching calendar is enough
+    return { calendarId: matchingCalendar.id, itemId: matchingItem?.id || '' };
+  };
+
   const canRequestRevision = (item: CalendarItem): boolean => {
-    // Can only request revision if linked to creative and not already in revision workflow
-    if (!item.linkedCreativeItemId || !item.linkedCreativeCalendarId) return false;
+    // Can request revision if linked (or auto-linkable) to creative and not already in active revision workflow
+    const link = resolveCreativeLink(item);
+    if (!link) return false;
     const status = item.revisionStatus || 'NONE';
     return status === 'NONE' || status === 'SYNCED_TO_CALENDAR';
   };
@@ -550,18 +572,22 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       const now = new Date().toISOString();
       const batch = writeBatch(db);
 
+      // Auto-resolve creative linkage
+      const resolvedLink = resolveCreativeLink(revisionTargetItem);
+      const resolvedCalendarId = resolvedLink?.calendarId || null;
+      const resolvedItemId = resolvedLink?.itemId || null;
+      const resolvedCal = creativeCalendars.find(c => c.id === resolvedCalendarId);
+      const resolvedProjectId = resolvedCal?.creativeProjectId || null;
+
       // Create revision document
       const revisionRef = doc(collection(db, 'calendar_item_revisions'));
       const revisionData: Omit<CalendarItemRevision, 'id'> = {
         calendarItemId: revisionTargetItem.id,
         calendarMonthId: revisionTargetItem.calendarMonthId,
         clientId: revisionTargetItem.clientId,
-        creativeCalendarId: revisionTargetItem.linkedCreativeCalendarId || null,
-        creativeItemId: revisionTargetItem.linkedCreativeItemId || null,
-        creativeProjectId: (() => {
-          const cal = creativeCalendars.find(c => c.id === revisionTargetItem.linkedCreativeCalendarId);
-          return cal?.creativeProjectId || null;
-        })(),
+        creativeCalendarId: resolvedCalendarId,
+        creativeItemId: resolvedItemId,
+        creativeProjectId: resolvedProjectId,
         revisionNote: revisionNote.trim(),
         revisionReferences: revisionRefLinks
           .filter(l => l.url.trim())
@@ -574,19 +600,27 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       };
       batch.set(revisionRef, revisionData);
 
-      // Update calendar item with revision status
+      // Update calendar item with revision status + backfill linking fields if missing
       const calItemRef = doc(db, 'calendar_items', revisionTargetItem.id);
-      batch.update(calItemRef, {
+      const calItemUpdate: Record<string, any> = {
         revisionStatus: 'REVISION_REQUESTED',
         activeRevisionId: revisionRef.id,
         revisionCount: (revisionTargetItem.revisionCount || 0) + 1,
         updatedAt: now,
-      });
+      };
+      // Backfill linking fields for items created before this feature
+      if (!revisionTargetItem.linkedCreativeCalendarId && resolvedCalendarId) {
+        calItemUpdate.linkedCreativeCalendarId = resolvedCalendarId;
+      }
+      if (!revisionTargetItem.linkedCreativeItemId && resolvedItemId) {
+        calItemUpdate.linkedCreativeItemId = resolvedItemId;
+      }
+      batch.update(calItemRef, calItemUpdate);
 
       await batch.commit();
 
       // Notify the assigned copywriter
-      const creativeCalendar = creativeCalendars.find(c => c.id === revisionTargetItem.linkedCreativeCalendarId);
+      const creativeCalendar = resolvedCal;
       const creativeProject = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
       if (creativeProject?.assignedCopywriterId) {
         const client = clients.find(c => c.id === revisionTargetItem.clientId);
@@ -1431,7 +1465,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                 </button>
 
                 {/* Request Revision Button - only for items synced from creative */}
-                {canRequestRevision(detailItem) && checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) && (
+                {canRequestRevision(detailItem) && (checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) || checkPermission(PERMISSIONS.CALENDAR.MANAGE)) && (
                   <button
                     onClick={() => {
                       setDetailItem(null);
