@@ -310,12 +310,34 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // ============================================
   // REVIEW LOGIC
   // ============================================
-  const handleItemApprove = (itemId: string) => {
+  const handleItemApprove = async (itemId: string) => {
     setReviewResults(prev => ({ ...prev, [itemId]: { status: 'APPROVED' } }));
+    // Persist immediately so progress survives exit
+    try {
+      await updateDoc(doc(db, 'creative_calendar_items', itemId), {
+        reviewStatus: 'APPROVED',
+        rejectionNote: null,
+        rejectionReferences: [],
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error saving approve:', err);
+    }
   };
 
-  const handleItemReject = (itemId: string, note: string, references: CreativeRejectionReference[]) => {
+  const handleItemReject = async (itemId: string, note: string, references: CreativeRejectionReference[]) => {
     setReviewResults(prev => ({ ...prev, [itemId]: { status: 'REJECTED', note, references } }));
+    // Persist immediately so progress survives exit
+    try {
+      await updateDoc(doc(db, 'creative_calendar_items', itemId), {
+        reviewStatus: 'REJECTED',
+        rejectionNote: note || '',
+        rejectionReferences: references || [],
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (err) {
+      console.error('Error saving reject:', err);
+    }
   };
 
   const handleReviewComplete = () => {
@@ -328,30 +350,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
 
     try {
       const now = new Date().toISOString();
-      const calendarItemsForReview = creativeCalendarItems.filter(
-        i => i.creativeCalendarId === reviewingCalendar.id
-      );
-
-      // Update each item's reviewStatus
-      for (const item of calendarItemsForReview) {
-        const result = reviewResults[item.id];
-        if (!result) continue;
-
-        const updateData: any = {
-          reviewStatus: result.status,
-          updatedAt: now,
-        };
-
-        if (result.status === 'REJECTED') {
-          updateData.rejectionNote = result.note || '';
-          updateData.rejectionReferences = result.references || [];
-        } else {
-          updateData.rejectionNote = null;
-          updateData.rejectionReferences = [];
-        }
-
-        await updateDoc(doc(db, 'creative_calendar_items', item.id), updateData);
-      }
+      // Items are already saved to Firestore as they were reviewed — no need to batch-update them again
 
       const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
       const project = creativeProjects.find(p => p.id === reviewingCalendar.creativeProjectId);
@@ -479,7 +478,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
     );
     const isRevisionReview = reviewingCalendar.status === 'UPDATED';
 
-    // For revision reviews: only show items that need re-review (not already approved)
+    // For revision reviews: only show items that need re-review (not already approved from previous session)
     // For first reviews: show everything
     const calendarItemsForReview = isRevisionReview
       ? allCalendarItems.filter(i => i.reviewStatus !== 'APPROVED')
@@ -488,6 +487,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
     const alreadyApprovedCount = isRevisionReview
       ? allCalendarItems.filter(i => i.reviewStatus === 'APPROVED').length
       : 0;
+
+    // Items still needing review (not yet in reviewResults)
+    const unreviewedItems = calendarItemsForReview.filter(item => !reviewResults[item.id]);
 
     const client = clients.find(c => c.id === reviewingCalendar.clientId);
     const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
@@ -511,9 +513,23 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                   </span>
                 )}
               </p>
+              {/* Progress bar */}
+              {Object.keys(reviewResults).length > 0 && (
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="flex-1 h-1.5 rounded-full bg-iris-white/10 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-iris-red transition-all"
+                      style={{ width: `${(Object.keys(reviewResults).length / calendarItemsForReview.length) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs text-iris-white/50 shrink-0">
+                    {Object.keys(reviewResults).length}/{calendarItemsForReview.length} reviewed
+                  </span>
+                </div>
+              )}
             </div>
             <button
-              onClick={() => { setReviewingCalendar(null); setReviewComplete(false); setReviewResults({}); }}
+              onClick={() => { setReviewingCalendar(null); setReviewComplete(false); }}
               className="p-2 text-iris-white/60 hover:text-iris-white rounded-lg hover:bg-iris-white/10 transition-colors"
             >
               <X className="w-5 h-5" />
@@ -522,9 +538,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         </div>
 
         {/* Swipe Cards or Completion */}
-        {!reviewComplete && calendarItemsForReview.length > 0 ? (
+        {!reviewComplete && !allReviewed && unreviewedItems.length > 0 ? (
           <SwipeReviewCard
-            items={calendarItemsForReview}
+            items={unreviewedItems}
             clientId={reviewingCalendar.clientId}
             projectId={reviewingCalendar.creativeProjectId}
             onApprove={handleItemApprove}
@@ -842,10 +858,24 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         </p>
                       </div>
                       <button
-                        onClick={() => setReviewingCalendar(cal)}
+                        onClick={() => {
+                          // Pre-populate reviewResults from items already reviewed in this session
+                          const calItems = creativeCalendarItems.filter(i => i.creativeCalendarId === cal.id);
+                          const existing: Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }> = {};
+                          for (const item of calItems) {
+                            if (item.reviewStatus === 'APPROVED') {
+                              existing[item.id] = { status: 'APPROVED' };
+                            } else if (item.reviewStatus === 'REJECTED') {
+                              existing[item.id] = { status: 'REJECTED', note: item.rejectionNote || '', references: item.rejectionReferences || [] };
+                            }
+                          }
+                          setReviewResults(existing);
+                          setReviewComplete(false);
+                          setReviewingCalendar(cal);
+                        }}
                         className="px-4 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg text-sm font-medium hover:brightness-110 transition-all"
                       >
-                        Start Review
+                        {creativeCalendarItems.filter(i => i.creativeCalendarId === cal.id).some(i => i.reviewStatus === 'APPROVED' || i.reviewStatus === 'REJECTED') ? 'Continue Review' : 'Start Review'}
                       </button>
                     </div>
                   </div>

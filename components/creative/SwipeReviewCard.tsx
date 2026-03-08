@@ -257,7 +257,7 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                 return (
                   <div>
                     <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">References & Media</span>
-                    <div className="mt-2 grid grid-cols-2 gap-2" onClick={e => e.stopPropagation()}>
+                    <div className="mt-2 grid grid-cols-2 gap-2">
                       {media.map((m, idx) => (
                         <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
                       ))}
