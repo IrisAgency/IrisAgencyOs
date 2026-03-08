@@ -298,8 +298,8 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
             if (editingTask) {
                 // PERMISSION CHECK
-                const canEditAll = checkPermission('tasks.edit.all');
-                const canEditOwn = checkPermission('tasks.edit.own');
+                const canEditAll = checkPermission(PERMISSIONS.TASKS.EDIT_ALL);
+                const canEditOwn = checkPermission(PERMISSIONS.TASKS.EDIT_OWN);
                 const isAssigneeOrCreator = (editingTask.assigneeIds || []).includes(currentUser.id) || editingTask.createdBy === currentUser.id;
 
                 if (!canEditAll && !(canEditOwn && isAssigneeOrCreator)) {
@@ -317,7 +317,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     priority,
                     dueDate: dueDate ? new Date(dueDate).toISOString() : editingTask.dueDate,
                     milestoneId: milestoneId || undefined,
-                    workflowTemplateId: checkPermission('workflows.override_task_workflow') ? (workflowId || editingTask.workflowTemplateId) : editingTask.workflowTemplateId,
+                    workflowTemplateId: checkPermission(PERMISSIONS.WORKFLOWS.OVERRIDE_TASK_WORKFLOW) ? (workflowId || editingTask.workflowTemplateId) : editingTask.workflowTemplateId,
                     requiresSocialPost: requiresSocial,
                     socialPlatforms: requiresSocial ? socialPlatforms : [],
                     socialManagerId: requiresSocial ? socialManagerId : null,
@@ -346,7 +346,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 const workflow = workflowTemplates.find(w => w.id === finalWorkflowId);
 
                 const canAssignOthers = 
-                    checkPermission('tasks.manage_assignees') || 
+                    checkPermission(PERMISSIONS.TASKS.MANAGE_ASSIGNEES) || 
                     checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || 
                     checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT);
 
@@ -430,7 +430,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             value={projectId}
                             onChange={e => setProjectId(e.target.value)}
                             className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
-                            disabled={!!editingTask && !checkPermission('tasks.edit.all')}
+                            disabled={!!editingTask && !checkPermission(PERMISSIONS.TASKS.EDIT_ALL)}
                         >
                             <option value="" className="bg-[#121212]">Select Project</option>
                             {projects.filter(p => p.status === 'active' || p.status === 'planning').map(p => (
@@ -444,7 +444,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                             value={milestoneId}
                             onChange={e => setMilestoneId(e.target.value)}
                             className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
-                            disabled={!projectId || (!!editingTask && !checkPermission('tasks.edit.all'))}
+                            disabled={!projectId || (!!editingTask && !checkPermission(PERMISSIONS.TASKS.EDIT_ALL))}
                         >
                             <option value="" className="bg-[#121212]">Select Milestone</option>
                             {milestones.filter(m => m.projectId === projectId).map(m => (
@@ -459,7 +459,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                 value={taskType}
                                 onChange={e => setTaskType(e.target.value as TaskType)}
                                 className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
-                                disabled={!!editingTask && !checkPermission('tasks.edit.all')}
+                                disabled={!!editingTask && !checkPermission(PERMISSIONS.TASKS.EDIT_ALL)}
                             >
                                 {taskTypes.map(t => <option key={t} value={t} className="bg-[#121212]">{t.replace('_', ' ').toUpperCase()}</option>)}
                             </select>
@@ -478,7 +478,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                 value={department}
                                 onChange={e => setDepartment(e.target.value as Department)}
                                 className="w-full px-3 py-2 bg-[#121212] border border-[#49454F] rounded-lg text-[#E6E1E5] focus:ring-[#DF1E3C] focus:border-[#DF1E3C] disabled:bg-[#0a0a0a] disabled:text-gray-600"
-                                disabled={!!editingTask && !checkPermission('tasks.edit.all')}
+                                disabled={!!editingTask && !checkPermission(PERMISSIONS.TASKS.EDIT_ALL)}
                             >
                                 {Object.values(Department).map(d => <option key={d} value={d} className="bg-[#121212]">{d}</option>)}
                             </select>
@@ -766,7 +766,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                     </div>
 
                     {/* Assignees Selection */}
-                    {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
+                    {(checkPermission(PERMISSIONS.TASKS.MANAGE_ASSIGNEES) || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
                         <div>
                             <label className="block text-sm font-medium text-[#E6E1E5] mb-1">Assign Team Members</label>
                             <div className="border border-[#49454F] rounded-lg p-2 max-h-48 overflow-y-auto space-y-1 custom-scrollbar bg-[#121212]">

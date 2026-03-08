@@ -9,6 +9,7 @@ import ClientMarketingStrategies from './ClientMarketingStrategies';
 import ClientMeetings from './ClientMeetings';
 import ClientBrandAssets from './ClientBrandAssets';
 import DropdownMenu from './common/DropdownMenu';
+import { PERMISSIONS } from '../lib/permissions';
 
 interface ClientsHubProps {
   clients: Client[];
@@ -550,7 +551,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
           title="Clients"
           subtitle="Manage relationships and company profiles."
           actions={
-            checkPermission('clients.create') && (
+            checkPermission(PERMISSIONS.CLIENTS.CREATE) && (
               <button
                 onClick={() => {
                   setIsEditing(false);
@@ -698,7 +699,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                           </button>
                         }
                         items={[
-                          ...(checkPermission('clients.edit') ? [{
+                          ...(checkPermission(PERMISSIONS.CLIENTS.EDIT) ? [{
                             label: 'Edit',
                             icon: <Edit2 className="w-4 h-4" />,
                             onClick: () => {
@@ -719,7 +720,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                               setIsClientModalOpen(true);
                             }
                           }] : []),
-                          ...(checkPermission('clients.archive') ? [{
+                          ...(checkPermission(PERMISSIONS.CLIENTS.ARCHIVE) ? [{
                             label: 'Archive',
                             icon: <Archive className="w-4 h-4" />,
                             onClick: () => {
@@ -727,7 +728,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                               onUpdateClient(updated);
                             }
                           }] : []),
-                          ...(checkPermission('clients.delete') ? [{
+                          ...(checkPermission(PERMISSIONS.CLIENTS.DELETE) ? [{
                             label: 'Delete',
                             icon: <Trash2 className="w-4 h-4" />,
                             onClick: () => handleDeleteClient(client.id),
@@ -829,7 +830,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
           {/* Actions */}
           <div className="flex gap-2">
-            {checkPermission('clients.edit') && (
+            {checkPermission(PERMISSIONS.CLIENTS.EDIT) && (
               <button
                 onClick={() => {
                   setClientForm({
@@ -853,7 +854,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 <span>Edit</span>
               </button>
             )}
-            {checkPermission('clients.archive') && (
+            {checkPermission(PERMISSIONS.CLIENTS.ARCHIVE) && (
               <button
                 onClick={handleArchiveClient}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)] text-slate-100 hover:border-[color:var(--dash-outline)]"
@@ -861,7 +862,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                 <Archive className="w-4 h-4" />
               </button>
             )}
-            {checkPermission('clients.delete') && (
+            {checkPermission(PERMISSIONS.CLIENTS.DELETE) && (
               <button
                 onClick={() => handleDeleteClient(selectedClient.id)}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[color:var(--dash-glass-border)] text-red-300 hover:border-red-400"
@@ -1148,7 +1149,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
           {activeTab === 'notes' && (
             <div className="space-y-4">
-              {checkPermission('client.notes.create') && (
+              {checkPermission(PERMISSIONS.CLIENT_NOTES.CREATE) && (
                 <form onSubmit={handleAddNote} className={`${elevatedSurface} rounded-lg p-4`}>
                   <textarea
                     value={newNoteText}
@@ -1179,7 +1180,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                       <p className="text-slate-100 wrap-anywhere">{note.text}</p>
                       <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
                         <span>{note.createdByName} • {new Date(note.createdAt).toLocaleDateString()}</span>
-                        {checkPermission('client.notes.delete') && (
+                        {checkPermission(PERMISSIONS.CLIENT_NOTES.DELETE) && (
                           <button
                             onClick={() => onDeleteNote?.(note.id)}
                             className="text-red-300 hover:text-red-200"

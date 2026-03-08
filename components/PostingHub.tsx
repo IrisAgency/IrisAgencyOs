@@ -8,6 +8,7 @@ import {
   Paperclip, FileText, Image as ImageIcon, ExternalLink, ShieldAlert, RotateCcw
 } from 'lucide-react';
 import PageContainer from './layout/PageContainer';
+import { PERMISSIONS } from '../lib/permissions';
 import PageHeader from './layout/PageHeader';
 import PageControls from './layout/PageControls';
 import PageContent from './layout/PageContent';
@@ -95,8 +96,8 @@ const PostingHub: React.FC<PostingHubProps> = ({
   }, [socialPosts, currentUser.id]);
 
   // Debug permissions
-  const canManage = checkPermission('posting.edit');
-  const canView = checkPermission('posting.view.dept');
+  const canManage = checkPermission(PERMISSIONS.POSTING.EDIT);
+  const canView = checkPermission(PERMISSIONS.POSTING.VIEW_DEPT);
   // Enhanced Filter Logic
   const filteredPosts = socialPosts.filter(p => {
     // Search filter

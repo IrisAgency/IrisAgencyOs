@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClientBrandAsset, User, AgencyFile } from '../types';
 import { Plus, Edit2, Trash2, ExternalLink, FileText, Image as ImageIcon, Type, Palette, Book, Layout, MoreHorizontal, X, Upload, Link as LinkIcon, Eye } from 'lucide-react';
+import { PERMISSIONS } from '../lib/permissions';
 
 interface ClientBrandAssetsProps {
   clientId: string;
@@ -45,8 +46,8 @@ const ClientBrandAssets: React.FC<ClientBrandAssetsProps> = ({
   const [previewAsset, setPreviewAsset] = useState<ClientBrandAsset | null>(null);
 
   const clientAssets = (assets || []).filter(a => a.clientId === clientId);
-  const canManage = checkPermission('client.brand_assets.manage');
-  const canView = checkPermission('client.brand_assets.view');
+  const canManage = checkPermission(PERMISSIONS.CLIENT_BRAND_ASSETS.MANAGE);
+  const canView = checkPermission(PERMISSIONS.CLIENT_BRAND_ASSETS.VIEW);
 
   if (!canView) {
     return (

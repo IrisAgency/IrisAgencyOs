@@ -46,15 +46,15 @@ IRIS Agency OS uses a **scope-aware, role-based access control (RBAC)** system. 
 
 | File | Layer | Responsibility |
 |---|---|---|
-| `lib/permissions.ts` | **Core** | `PERMISSIONS` catalog, `PermissionScope` enum, `ScopeContext` interface, `can()` function, scope helpers, convenience checkers (`canViewClient`, `canViewTask`, etc.), `getAllPermissions()`, `getPermissionsByModule()`. |
-| `constants.ts` (`DEFAULT_ROLES`) | **Seed data** | Array of `RoleDefinition` objects used to seed the Firestore `roles` collection on first run and to sync new permissions additively. |
-| `contexts/AuthContext.tsx` | **State** | Loads roles from Firestore (`onSnapshot`), resolves user role → permission array, exposes `checkPermission()`, `hasAnyPermission()`, `hasAllPermissions()` via React context. Handles role seeding & permission sync. |
+| `lib/permissions.ts` | **Core** | `PERMISSIONS` catalog, `PermissionScope` enum, `ScopeContext` interface, `can()` function (with `isAdmin` bypass), scope helpers, convenience checkers (`canViewClient`, `canViewTask`, etc.), `getAllPermissions()`, `getPermissionsByModule()`, `DANGEROUS_PERMISSIONS` set, `PERMISSION_DEPENDENCIES` map, `validatePermissionSet()`. |
+| `constants.ts` (`DEFAULT_ROLES`) | **Seed data** | Array of `RoleDefinition` objects with `isSystem`, `riskLevel` flags, used to seed the Firestore `roles` collection on first run and to sync new permissions additively. |
+| `contexts/AuthContext.tsx` | **State** | Loads roles from Firestore (`onSnapshot`), resolves user role → permission array, tracks `isAdmin` state, exposes `checkPermission()`, `hasAnyPermission()`, `hasAllPermissions()`, `isAdmin` via React context. Handles role seeding, permission sync, `roleId` storage. |
 | `hooks/usePermissions.ts` | **Hooks** | `usePermission`, `useAnyPermission`, `useAllPermissions`, `usePermissionCheck` — thin wrappers around `can()` using context state. |
 | `components/PermissionGate.tsx` | **UI Gates** | `PermissionGate`, `AnyPermissionGate`, `RequirePermission`, `ConditionalRender` — declarative JSX wrappers that show/hide children. |
 | `components/RolesManager.tsx` | **Admin UI** | CRUD interface for roles — create, rename, delete roles and toggle individual permissions. |
 | `components/PermissionMatrix.tsx` | **Admin UI** | Grid view of roles × permissions with search, filter, expand/collapse by module, bulk toggle, copy role, and JSON export. |
-| `firestore.rules` | **Server** | `hasPermission()` helper that reads the user's role doc from the `roles` collection and checks for `isAdmin` or `permission in roleData.permissions`. |
-| `types.ts` | **Types** | `RoleDefinition`, `Permission`, `UserRole` enum, `Department` enum. |
+| `firestore.rules` | **Server** | `getUserData()`, `getRoleData()`, `isAdmin()`, `hasPermission()`, `isAuthenticated()` helpers. Uses `user.roleId` to resolve the role document. Admin-only write for sensitive collections, immutability for audit/activity logs. |
+| `types.ts` | **Types** | `RoleDefinition` (with `isSystem`, `riskLevel`, `slug`, `createdAt`, `updatedAt`, `updatedBy`), `Permission`, `UserRole` enum (legacy — `User.role` is now `string`), `Department` enum, `RiskLevel` type, `AuditLog` (with `userName`, `metadata`). |
 
 ### Data Flow
 
@@ -518,7 +518,8 @@ export function can(
   user: User | null,
   permissionKey: string,
   userPermissions: string[],
-  context?: ScopeContext
+  context?: ScopeContext,
+  isAdmin?: boolean        // ← NEW: admin bypass (added in RBAC hardening)
 ): boolean
 ```
 
@@ -526,18 +527,20 @@ export function can(
 
 ```
 1. Return false if user or permissionKey is null/undefined.
-2. Check if userPermissions[] includes the exact permissionKey.
+2. **Admin bypass** — if isAdmin is true, return true immediately.
+   Admin users always pass every permission check.
+3. Check if userPermissions[] includes the exact permissionKey.
    a. If YES and no context is provided → return true.
    b. If YES and context is provided:
       - Parse the scope suffix from the key.
       - Validate scope against context (OWN/DEPT/PROJECT/ALL).
       - Return result of scope check.
-3. If exact key NOT found, check for higher-scope permissions:
+4. If exact key NOT found, check for higher-scope permissions:
    - For 'own' → check if user has 'dept', 'project', or 'all' variant.
    - For 'dept' → check if user has 'all' variant.
    - For 'project' → check if user has 'all' variant.
    - If higher scope found → return true (no context check needed — higher scope is less restrictive).
-4. Return false.
+5. Return false.
 ```
 
 ### 7.3 Important Behavior Notes
@@ -561,7 +564,10 @@ export function can(
 | Function | Returns | Purpose |
 |---|---|---|
 | `getAllPermissions()` | `string[]` | Flat array of every permission key from the `PERMISSIONS` constant. Useful for the role editor UI. |
-| `getPermissionsByModule()` | `Record<string, string[]>` | Permissions grouped by human-readable module name (23 groups). Used by `PermissionMatrix`. |
+| `getPermissionsByModule()` | `Record<string, string[]>` | Permissions grouped by human-readable module name (24 groups). Used by `PermissionMatrix`. |
+| `DANGEROUS_PERMISSIONS` | `Set<string>` | Set of 12 high-risk permission keys (user management, role management, finance write, admin access). Used by `RolesManager` and `PermissionMatrix` to warn admins. |
+| `PERMISSION_DEPENDENCIES` | `Map<string, string[]>` | Map of permission keys to their dependencies (e.g., `roles.edit` requires `roles.view`). |
+| `validatePermissionSet(perms)` | `string[]` | Returns an array of warning messages for missing dependencies in a permission set. Used in `RolesManager` to surface validation issues. |
 
 ---
 
@@ -712,19 +718,40 @@ IRIS Agency OS enforces permissions at **three layers**:
 
 ### Layer 3: Firestore Security Rules (Server-Side)
 
-The `firestore.rules` file includes a `hasPermission()` helper function:
+The `firestore.rules` file includes helper functions for permission checking:
 
 ```javascript
+function getUserData() {
+  return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+}
+
+function getRoleData() {
+  let user = getUserData();
+  return get(/databases/$(database)/documents/roles/$(user.roleId)).data;
+}
+
+function isAdmin() {
+  return request.auth != null && getRoleData().isAdmin == true;
+}
+
 function hasPermission(permission) {
-  let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-  let roleData = get(/databases/$(database)/documents/roles/$(user.role)).data;
+  let roleData = getRoleData();
   return roleData.isAdmin == true || permission in roleData.permissions;
 }
 ```
 
-**Current state:** Most collections use `allow read, write: if request.auth != null` or the catch-all `allow read, write: if true` rule. The `hasPermission()` helper exists but is not yet applied to all collections. See [Section 13: Security Considerations](#13-security-considerations) and [Section 15: Future Improvements](#15-future-improvements).
+**Current state (post-hardening):**
 
-> **Key takeaway:** Real security enforcement at the Firestore level is a work-in-progress. Currently, the primary enforcement is at the UI and application logic layers.
+| Category | Rule | Collections |
+|---|---|---|
+| **Admin-only write** | `isAdmin()` for create/update/delete | `roles`, `settings`, `departments`, `dashboard_banners` |
+| **Immutable (append-only)** | Create allowed, update/delete denied | `audit_logs`, `project_activity_logs`, `task_activity_logs`, `calendar_item_revisions` |
+| **User-scoped** | `request.auth.uid == resource.data.userId` | `notifications`, `notification_preferences`, `notification_tokens` |
+| **Permission-gated write** | `hasPermission('workflows.manage')` | `workflow_templates` |
+| **Authenticated read/write** | `isAuthenticated()` | All other business data collections |
+| **Default catch-all** | `isAuthenticated()` | Any unmatched collection |
+
+> **Key takeaway:** The catch-all `if true` rule has been **removed**. All access now requires authentication at minimum, and sensitive collections have additional restrictions. See [Section 13: Security Considerations](#13-security-considerations) for remaining gaps.
 
 ---
 
@@ -736,9 +763,14 @@ A CRUD interface embedded in the Admin Hub for managing roles.
 
 **Features:**
 - **Create roles** — Name + description, starts with empty permission set.
-- **Delete roles** — With confirmation dialog; protected against accidental deletion.
-- **Select a role** — Left panel shows all roles; selected role is highlighted.
+- **Clone roles** — Clone permissions from an existing role into a new role via a dropdown selector.
+- **Delete roles** — With confirmation dialog; **system roles cannot be deleted** (enforced by `isSystem` flag). Roles with active users show a user count warning.
+- **Select a role** — Left panel shows all roles; selected role is highlighted. System roles display a Lock icon. User count badges show how many users hold each role.
 - **Toggle permissions** — Right panel lists all permissions; click to toggle on/off for the selected role.
+- **Permission search** — Filter the permission list by keyword to quickly find specific permissions.
+- **Dangerous permission warnings** — Permissions in the `DANGEROUS_PERMISSIONS` set are highlighted in amber with an AlertTriangle icon.
+- **Validation feedback** — After toggling permissions, `validatePermissionSet()` checks for missing dependencies and displays warnings.
+- **Role metadata display** — Shows `isSystem` badge, `riskLevel` badge, and `updatedAt` / `updatedBy` timestamps.
 - **Real-time persistence** — Changes are written to Firestore immediately via `onUpdateRole` callback.
 
 **Data flow:**
@@ -753,11 +785,13 @@ RolesManager → onUpdateRole(role) → AdminHub → Firestore doc update →
 A comprehensive grid view showing **roles vs. permissions**.
 
 **Features:**
-- **Grouped by module** — Permissions are organized into expandable module sections (23 modules).
+- **Grouped by module** — Permissions are organized into expandable module sections (24 modules).
 - **Search & filter** — Search by permission name, code, or description.
 - **Toggle individual permissions** — Click a cell to toggle a permission for a role.
 - **Bulk toggle** — Toggle all permissions in a module for a role at once.
-- **Copy role permissions** — Copy all permissions from one role to another.
+- **Copy role permissions** — Copy all permissions from a source role to a **target role** via dropdown selector.
+- **Dangerous permission highlighting** — Cells for dangerous permissions use an amber background (`bg-amber-50`) and amber check icons. Permission rows show an AlertTriangle icon for dangerous keys.
+- **Legend** — Includes a "Dangerous" entry with amber indicator alongside Granted/Not Granted.
 - **JSON export** — Export the entire matrix as a JSON file for backup or documentation.
 - **Sync button** — Trigger manual permission sync from `DEFAULT_ROLES`.
 
@@ -831,28 +865,44 @@ const loadUserPermissions = (userRole: UserRole) => {
 
 ## 13. Security Considerations
 
-### Current Vulnerabilities
+### Resolved Vulnerabilities (RBAC Hardening)
+
+| Issue | Status | Resolution |
+|---|---|---|
+| **Catch-all `if true` rule** | ✅ **Fixed** | Replaced with `if isAuthenticated()`. All access now requires Firebase Auth. |
+| **World-writable sensitive collections** | ✅ **Fixed** | `roles`, `settings`, `departments`, `dashboard_banners` are now admin-write only. `audit_logs`, activity logs, and revisions are append-only (immutable). |
+| **Broken `hasPermission()` in rules** | ✅ **Fixed** | Now uses `user.roleId` (e.g. "r1") instead of `user.role` (display name). Added `getUserData()`, `getRoleData()`, `isAdmin()`, and `isAuthenticated()` helpers. |
+| **`can()` didn't check `isAdmin`** | ✅ **Fixed** | 5th parameter `isAdmin?: boolean` added. Admin users bypass all permission checks. `AuthContext` passes `userIsAdmin` to every call. |
+| **Raw permission strings in components** | ✅ **Fixed** | All 52 raw strings replaced with `PERMISSIONS.*` constants across 9 files. Verified by grep: zero raw strings remain. |
+| **System roles unprotected** | ✅ **Fixed** | `isSystem` flag on all 12 default roles. `RolesManager` prevents deletion/renaming of system roles. |
+
+### Remaining Vulnerabilities
 
 | Issue | Severity | Detail |
 |---|---|---|
-| **Catch-all Firestore rule** | 🔴 Critical | `match /{document=**} { allow read, write: if true; }` allows unauthenticated access to any collection not explicitly matched above it. |
-| **Most collections use `auth != null` only** | 🟠 High | Being authenticated is not the same as being authorized. Any logged-in user can read/write most collections. |
-| **UI-only enforcement** | 🟡 Medium | Permission checks happen in React components. A user with devtools or API access can bypass them. |
+| **Most business collections use `auth != null` only** | 🟠 High | Being authenticated is not the same as being authorized. Any logged-in user can read/write clients, projects, tasks, etc. |
+| **UI-only enforcement for business logic** | 🟡 Medium | Permission checks happen in React components. A user with devtools or API access can bypass them for non-sensitive collections. |
 | **No server-side scope validation** | 🟡 Medium | The `hasPermission()` Firestore function checks if a key is in the role but does not validate scope (OWN/DEPT/ALL). |
+| **Existing users may lack `roleId`** | 🟡 Medium | Users created before RBAC hardening don't have `roleId` on their document. The `getRoleData()` Firestore helper will fail for these users until their profile is updated. |
 
 ### Mitigations in Place
 
-- The `hasPermission()` helper in Firestore rules is ready to use and checks both `isAdmin` and permission membership.
-- Notifications enforce user-scoped access (`request.auth.uid == resource.data.userId`).
-- The `roles` and `users` collections are readable by authenticated users (needed for role resolution).
+- All Firestore access requires authentication (no anonymous access).
+- Sensitive collections have admin-only write rules.
+- Audit logs, activity logs, and revisions are immutable (no update/delete).
+- Notifications enforce user-scoped access.
+- `hasPermission()` is used for `workflow_templates` writes.
+- `DANGEROUS_PERMISSIONS` set warns admins when granting high-risk permissions.
+- `validatePermissionSet()` checks for missing permission dependencies.
+- `isSystem` flag prevents accidental deletion/modification of built-in roles.
 
 ### Recommendations
 
-1. **Remove the catch-all rule** and explicitly define rules for every collection.
-2. **Apply `hasPermission()`** to all collection rules (clients, projects, tasks, etc.).
-3. **Add scope validation to Firestore rules** — check department membership, project membership, or ownership in addition to permission keys.
-4. **Use Cloud Functions** for sensitive operations (finance, user management) to add a server-side authorization layer.
-5. **Audit logging** — Log permission-sensitive actions with user ID, action, and timestamp.
+1. **Apply `hasPermission()`** to more collection rules (clients, projects, tasks, etc.) for server-side permission enforcement.
+2. **Add scope validation to Firestore rules** — check department membership, project membership, or ownership in addition to permission keys.
+3. **Use Cloud Functions** for sensitive operations (finance, user management) to add a server-side authorization layer.
+4. **Backfill `roleId`** on existing user documents via a migration script or Cloud Function.
+5. **Permission audit logging** — Extend `audit_logs` to capture who accessed/modified what, when, and with which permissions.
 
 ---
 
@@ -885,8 +935,10 @@ const loadUserPermissions = (userRole: UserRole) => {
 ### Adding a New Role
 
 1. Add a new entry to `DEFAULT_ROLES` in `constants.ts` with a unique `id` (e.g., `r13`).
-2. Add the role name to the `UserRole` enum in `types.ts` if it should be a first-class type.
-3. The role will be seeded on fresh deployments. For existing deployments, use the Admin Hub to create it manually, or clear the `roles` collection to trigger re-seeding.
+2. Include `isSystem: true` and a `riskLevel` (`'critical' | 'high' | 'medium' | 'low'`) in the definition.
+3. The `UserRole` enum in `types.ts` is no longer the single source of truth for role names — `User.role` is now typed as `string` to support custom admin-created roles.
+4. The role will be seeded on fresh deployments. For existing deployments, use the Admin Hub to create it manually, or clear the `roles` collection to trigger re-seeding.
+5. System roles (`isSystem: true`) are protected from deletion and renaming in the Admin UI.
 
 ### Best Practices
 
@@ -924,17 +976,23 @@ const visible = canViewTask(currentUser, userPermissions, task.assigneeId, task.
 
 ## 15. Future Improvements
 
-| Improvement | Priority | Description |
-|---|---|---|
-| **Enforce Firestore rules per collection** | 🔴 High | Replace the catch-all `allow read, write: if true` with collection-specific rules using `hasPermission()`. |
-| **Server-side scope validation** | 🔴 High | Extend `hasPermission()` in Firestore rules to also validate scope (check department, project membership). |
-| **Cloud Functions for sensitive writes** | 🟠 Medium | Finance operations, user creation, and role changes should go through Cloud Functions with server-side auth. |
-| **Permission audit logging** | 🟠 Medium | Log who accessed/modified what, when, and with which permissions. |
-| **Role inheritance** | 🟡 Low | Allow roles to inherit from a parent role (e.g., Art Director inherits from Designer + extra). |
-| **Time-based permissions** | 🟡 Low | Temporary permission grants (e.g., freelancer access expires after project ends). |
-| **Permission caching** | 🟡 Low | Cache `can()` results for the same key+context to avoid redundant checks in hot render paths. |
-| **Multi-role support** | 🟡 Low | Allow users to hold multiple roles simultaneously with merged permissions. |
-| **Attribute-based access control (ABAC)** | ⚪ Future | Extend beyond RBAC to include resource attributes (e.g., "can edit tasks where priority > high"). |
+| Improvement | Priority | Status | Description |
+|---|---|---|---|
+| ~~Enforce Firestore rules per collection~~ | ~~🔴 High~~ | ✅ Done | Catch-all removed, all collections have explicit rules, sensitive collections locked to admin. |
+| ~~Fix `hasPermission()` in rules~~ | ~~🔴 High~~ | ✅ Done | Uses `roleId` field, added `isAdmin()`, `isAuthenticated()`, `getUserData()`, `getRoleData()` helpers. |
+| ~~Admin bypass in `can()`~~ | ~~🔴 High~~ | ✅ Done | `isAdmin` parameter added; `AuthContext` passes it to every `can()` call. |
+| ~~System role protection~~ | ~~🟠 Medium~~ | ✅ Done | `isSystem` flag, deletion protection, dangerous permission warnings, validation feedback. |
+| ~~Eliminate raw permission strings~~ | ~~🟠 Medium~~ | ✅ Done | All 52 raw strings replaced with `PERMISSIONS.*` constants. |
+| **Apply `hasPermission()` to business collections** | 🔴 High | ⬜ Todo | Currently business data (clients, projects, tasks) only requires authentication. Add permission-level checks for write operations. |
+| **Server-side scope validation** | 🔴 High | ⬜ Todo | Extend `hasPermission()` in Firestore rules to also validate scope (check department, project membership). |
+| **Backfill `roleId` on existing users** | 🟠 Medium | ⬜ Todo | Users created before RBAC hardening lack `roleId`. A Cloud Function or migration script should backfill this field. |
+| **Cloud Functions for sensitive writes** | 🟠 Medium | ⬜ Todo | Finance operations, user creation, and role changes should go through Cloud Functions with server-side auth. |
+| **Permission audit logging** | 🟠 Medium | ⬜ Todo | Log who accessed/modified what, when, and with which permissions. |
+| **Role inheritance** | 🟡 Low | ⬜ Todo | Allow roles to inherit from a parent role (e.g., Art Director inherits from Designer + extra). |
+| **Time-based permissions** | 🟡 Low | ⬜ Todo | Temporary permission grants (e.g., freelancer access expires after project ends). |
+| **Permission caching** | 🟡 Low | ⬜ Todo | Cache `can()` results for the same key+context to avoid redundant checks in hot render paths. |
+| **Multi-role support** | 🟡 Low | ⬜ Todo | Allow users to hold multiple roles simultaneously with merged permissions. |
+| **Attribute-based access control (ABAC)** | ⚪ Future | ⬜ Todo | Extend beyond RBAC to include resource attributes (e.g., "can edit tasks where priority > high"). |
 
 ---
 
@@ -942,14 +1000,15 @@ const visible = canViewTask(currentUser, userPermissions, task.assigneeId, task.
 
 | Aspect | Implementation |
 |---|---|
-| **Model** | Role-based access control (RBAC) with scope-aware permissions. |
-| **Permission format** | `module.action[.scope]` — ~120+ keys across 23 modules. |
+| **Model** | Role-based access control (RBAC) with scope-aware permissions + admin bypass. |
+| **Permission format** | `module.action[.scope]` — ~130+ keys across 24 modules. |
 | **Scope hierarchy** | `OWN → DEPT / PROJECT → ALL` — higher includes lower. |
-| **Core function** | `can(user, key, perms, context?)` in `lib/permissions.ts`. |
+| **Core function** | `can(user, key, perms, context?, isAdmin?)` in `lib/permissions.ts`. |
 | **React integration** | 4 hooks (`usePermission`, `useAnyPermission`, `useAllPermissions`, `usePermissionCheck`) + 4 gate components. |
-| **State management** | `AuthContext` loads roles via Firestore `onSnapshot`, resolves user role → permissions array. |
-| **Admin UI** | `RolesManager` for CRUD, `PermissionMatrix` for grid view + bulk operations. |
-| **Sync strategy** | Additive merge — new code permissions are synced into Firestore roles without overwriting admin changes. |
-| **Storage** | Firestore `roles` collection (source of truth), `DEFAULT_ROLES` in code (seed + sync source). |
-| **12 built-in roles** | GM (full access) → Client (minimal portal access), covering all agency positions. |
-| **Security gap** | Firestore rules currently use a permissive catch-all. Server-side enforcement is the top priority improvement. |
+| **State management** | `AuthContext` loads roles via Firestore `onSnapshot`, resolves user role → permissions array, tracks `isAdmin` state. |
+| **Admin UI** | `RolesManager` for CRUD (system role protection, permission search, danger warnings, clone, validation), `PermissionMatrix` for grid view + bulk operations + danger highlighting. |
+| **Sync strategy** | Additive merge — new code permissions are synced into Firestore roles without overwriting admin changes. Syncs `isSystem` and `riskLevel` fields. |
+| **Storage** | Firestore `roles` collection (source of truth), `DEFAULT_ROLES` in code (seed + sync source). User docs store `roleId` for rule resolution. |
+| **12 built-in roles** | GM (full access) → Client (minimal portal access), covering all agency positions. All marked `isSystem: true` with risk levels. |
+| **Firestore rules** | Catch-all removed. All access requires auth. Sensitive collections (roles, settings, departments, audit_logs) have admin-only write or immutability rules. |
+| **Remaining gap** | Business data collections (clients, projects, tasks) still use auth-only rules. Adding per-collection `hasPermission()` checks is the next priority. |

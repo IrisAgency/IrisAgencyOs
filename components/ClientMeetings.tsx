@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ClientMeeting, User, AgencyFile, FileFolder } from '../types';
 import { Calendar, Clock, MapPin, Video, Users, FileText, Plus, Edit2, Trash2, CheckCircle, XCircle, Upload, ChevronRight, ChevronDown } from 'lucide-react';
+import { PERMISSIONS } from '../lib/permissions';
 
 interface ClientMeetingsProps {
   clientId: string;
@@ -329,7 +330,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
             </div>
 
             <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-[color:var(--dash-glass-border)]">
-              {(checkPermission('client.meetings.edit') || checkPermission('client.meetings.delete')) && (
+              {(checkPermission(PERMISSIONS.CLIENT_MEETINGS.EDIT) || checkPermission(PERMISSIONS.CLIENT_MEETINGS.DELETE)) && (
                 <>
                   {meeting.status === 'scheduled' && (
                     <>
@@ -370,7 +371,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
     );
   };
 
-  if (!checkPermission('client.meetings.view')) {
+  if (!checkPermission(PERMISSIONS.CLIENT_MEETINGS.VIEW)) {
     return (
       <div className={`${surface} p-8 text-center text-slate-400 rounded-xl`}>
         <p>You do not have permission to view meetings.</p>
@@ -409,7 +410,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
           </div>
         </div>
 
-        {checkPermission('client.meetings.create') && (
+        {checkPermission(PERMISSIONS.CLIENT_MEETINGS.CREATE) && (
           <button
             onClick={() => handleOpenModal()}
             className="flex items-center space-x-2 bg-[color:var(--dash-primary)] text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:shadow-[0_10px_30px_-12px_rgba(230,60,60,0.7)]"

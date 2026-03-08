@@ -815,8 +815,8 @@ const TaskDetailView = ({
                     </div>
 
                     <div className="flex items-center space-x-2">
-                        {(checkPermission('tasks.edit.all') || (checkPermission('tasks.edit.own') && ((task.assigneeIds || []).includes(currentUser.id) || task.createdBy === currentUser.id))) && 
-                         ((!task.isArchived && task.status !== TaskStatus.COMPLETED) || checkPermission('tasks.edit_completed')) && (
+                        {(checkPermission(PERMISSIONS.TASKS.EDIT_ALL) || (checkPermission(PERMISSIONS.TASKS.EDIT_OWN) && ((task.assigneeIds || []).includes(currentUser.id) || task.createdBy === currentUser.id))) && 
+                         ((!task.isArchived && task.status !== TaskStatus.COMPLETED) || checkPermission(PERMISSIONS.TASKS.EDIT_COMPLETED)) && (
                             <button
                                 onClick={() => onEditTask(task)}
                                 className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600"
@@ -844,7 +844,7 @@ const TaskDetailView = ({
                                     return u ? <img key={uid} src={u.avatar} className="w-8 h-8 rounded-full border-2 border-white" title={u.name} /> : null;
                                 })
                             ) : <span className="text-xs text-slate-400 italic px-2">Unassigned</span>}
-                            {(checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
+                            {(checkPermission(PERMISSIONS.TASKS.MANAGE_ASSIGNEES) || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT)) && (
                                 <button
                                     onClick={() => setShowAssignModal(true)}
                                     className="w-8 h-8 rounded-full bg-white border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-300"
@@ -948,7 +948,7 @@ const TaskDetailView = ({
                     )}
 
                     {/* Reopen / Unarchive Action */}
-                    {(task.status === TaskStatus.COMPLETED || task.isArchived) && checkPermission('tasks.reopen') && onReopenTask && (
+                    {(task.status === TaskStatus.COMPLETED || task.isArchived) && checkPermission(PERMISSIONS.TASKS.REOPEN) && onReopenTask && (
                         <button
                             onClick={() => onReopenTask(task)}
                             className="flex items-center space-x-2 bg-amber-100 text-amber-700 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-amber-200 shadow-sm transition-colors border border-amber-200"
@@ -959,7 +959,7 @@ const TaskDetailView = ({
                     )}
 
                     {/* Delete Action */}
-                    {checkPermission('tasks.delete') && (
+                    {checkPermission(PERMISSIONS.TASKS.DELETE) && (
                         <button
                             onClick={() => onDeleteTask(task)}
                             className="flex items-center space-x-2 bg-red-50 text-red-600 px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-100 shadow-sm transition-colors border border-red-200"
@@ -998,7 +998,7 @@ const TaskDetailView = ({
                                 <div className="bg-white p-4 rounded-xl border border-slate-200">
                                     <div className="flex items-center justify-between mb-3">
                                         <label className="block text-xs font-bold text-slate-400 uppercase">Description</label>
-                                        {checkPermission('tasks.edit.all') || checkPermission('tasks.edit.own') ? (
+                                        {checkPermission(PERMISSIONS.TASKS.EDIT_ALL) || checkPermission(PERMISSIONS.TASKS.EDIT_OWN) ? (
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -1088,7 +1088,7 @@ const TaskDetailView = ({
                                 <div className="bg-white p-4 rounded-xl border border-slate-200">
                                     <div className="flex items-center justify-between mb-3">
                                         <label className="block text-xs font-bold text-slate-400 uppercase">Voice Over Script</label>
-                                        {checkPermission('tasks.edit.all') || checkPermission('tasks.edit.own') ? (
+                                        {checkPermission(PERMISSIONS.TASKS.EDIT_ALL) || checkPermission(PERMISSIONS.TASKS.EDIT_OWN) ? (
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -1220,7 +1220,7 @@ const TaskDetailView = ({
                                                     className="w-full p-2 border border-indigo-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-indigo-500"
                                                     value={task.socialManagerId || ''}
                                                     onChange={e => onUpdateTask({ ...task, socialManagerId: e.target.value || null })}
-                                                    disabled={!checkPermission('tasks.manage_publishing')}
+                                                    disabled={!checkPermission(PERMISSIONS.TASKS.MANAGE_PUBLISHING)}
                                                 >
                                                     <option value="">Select Manager</option>
                                                     {users.filter(u => u.role === 'Social Manager' || u.department === 'Marketing').map(u => (
@@ -1236,7 +1236,7 @@ const TaskDetailView = ({
                                                     placeholder="Instructions for the social team..."
                                                     value={task.publishingNotes || ''}
                                                     onChange={e => onUpdateTask({ ...task, publishingNotes: e.target.value })}
-                                                    disabled={!checkPermission('tasks.manage_publishing')}
+                                                    disabled={!checkPermission(PERMISSIONS.TASKS.MANAGE_PUBLISHING)}
                                                 />
                                             </div>
 
@@ -1298,7 +1298,7 @@ const TaskDetailView = ({
                                             >
                                                 <CornerUpLeft className="w-3 h-3 rotate-45" />
                                             </a>
-                                            {!isProductionView && checkPermission('tasks.references.delete') && (
+                                            {!isProductionView && checkPermission(PERMISSIONS.TASKS.REFERENCES_DELETE) && (
                                                 <button
                                                     onClick={(e) => {
                                                         e.preventDefault();
@@ -1363,7 +1363,7 @@ const TaskDetailView = ({
                                                 >
                                                     <Download className="w-3 h-3" />
                                                 </a>
-                                                {!isProductionView && checkPermission('tasks.references.delete') && (
+                                                {!isProductionView && checkPermission(PERMISSIONS.TASKS.REFERENCES_DELETE) && (
                                                     <button
                                                         onClick={() => handleDeleteReferenceImage(img.id, img.storagePath)}
                                                         className="bg-white/20 hover:bg-rose-500/80 backdrop-blur-sm text-white p-1.5 rounded transition-colors"
@@ -1562,7 +1562,7 @@ const TaskDetailView = ({
                                                         >
                                                             <ExternalLink className="w-3.5 h-3.5" />
                                                         </a>
-                                                        {!isProductionView && checkPermission('tasks.references.delete') && (
+                                                        {!isProductionView && checkPermission(PERMISSIONS.TASKS.REFERENCES_DELETE) && (
                                                             <button
                                                                 onClick={() => handleDeleteDeliveryLink(link.id)}
                                                                 className="p-1 text-slate-400 hover:text-rose-600 transition-colors"

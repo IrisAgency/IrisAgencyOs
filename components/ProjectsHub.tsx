@@ -831,7 +831,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                         </button>
                       }
                       items={[
-                        ...(checkPermission('projects.edit') ? [{
+                        ...(checkPermission(PERMISSIONS.PROJECTS.EDIT) ? [{
                           label: 'Edit',
                           icon: <Edit2 className="w-4 h-4" />,
                           onClick: () => {
@@ -840,14 +840,14 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
                             setViewMode('detail');
                           }
                         }] : []),
-                        ...(checkPermission('projects.archive') ? [{
+                        ...(checkPermission(PERMISSIONS.PROJECTS.ARCHIVE) ? [{
                           label: project.archived ? 'Unarchive' : 'Archive',
                           icon: <Archive className="w-4 h-4" />,
                           onClick: () => {
                             onUpdateProject({ ...project, archived: !project.archived });
                           }
                         }] : []),
-                        ...(checkPermission('projects.delete') ? [{
+                        ...(checkPermission(PERMISSIONS.PROJECTS.DELETE) ? [{
                           label: 'Delete',
                           icon: <Trash2 className="w-4 h-4" />,
                           onClick: () => {
@@ -934,7 +934,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             </div>
 
             {/* Smart Project Creation Section */}
-            {(checkPermission('calendar.view') || checkPermission('calendar.manage')) && formClientId && (
+            {(checkPermission(PERMISSIONS.CALENDAR.VIEW) || checkPermission(PERMISSIONS.CALENDAR.MANAGE)) && formClientId && (
               <div className="border-t border-[color:var(--dash-glass-border)] pt-4 mt-4 space-y-4">
                 <h3 className="text-sm font-semibold text-slate-200 flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -1942,7 +1942,7 @@ const OverviewTab = ({ project, milestones, dynamicMilestones, calendarMonths, c
               <Briefcase className="w-4 h-4 text-slate-300" />
               Marketing Strategies
             </h3>
-            {checkPermission('projects.marketing_assets_manage') && (
+            {checkPermission(PERMISSIONS.PROJECTS.MARKETING_ASSETS_MANAGE) && (
               <button onClick={() => openAssetModal()} className="text-[color:var(--dash-primary)] hover:bg-[color:var(--dash-primary)]/10 p-1 rounded transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
@@ -1985,7 +1985,7 @@ const OverviewTab = ({ project, milestones, dynamicMilestones, calendarMonths, c
                           </button>
                         );
                       })()}
-                      {checkPermission('projects.marketing_assets_manage') && (
+                      {checkPermission(PERMISSIONS.PROJECTS.MARKETING_ASSETS_MANAGE) && (
                         <>
                           <button onClick={() => openAssetModal(asset)} className="p-1.5 text-slate-300 hover:text-[color:var(--dash-primary)] rounded">
                             <Settings className="w-3.5 h-3.5" />

@@ -791,7 +791,14 @@ export const PERMISSIONS_LIST: Permission[] = [
   { code: 'assets.edit_metadata', module: 'Assets', name: 'Edit Asset Metadata', description: 'Can edit asset information' },
   { code: 'assets.delete', module: 'Assets', name: 'Delete Assets', description: 'Can delete assets' },
   { code: 'assets.link_to_task', module: 'Assets', name: 'Link to Task', description: 'Can link assets to tasks' },
+  { code: 'assets.view.own', module: 'Assets', name: 'View Own Assets', description: 'Can view own uploaded assets' },
   { code: 'assets.archive', module: 'Assets', name: 'Archive Assets', description: 'Can archive assets' },
+
+  // ==================== WORKFLOWS ====================
+  { code: 'workflows.override_task_workflow', module: 'Workflows', name: 'Override Task Workflow', description: 'Can skip or override the configured workflow for a task' },
+
+  // ==================== PROJECTS (Marketing Assets) ====================
+  { code: 'projects.marketing_assets_manage', module: 'Projects', name: 'Manage Marketing Assets', description: 'Can manage marketing assets on projects' },
 
   // ==================== PRODUCTION (Sidebar: "Production Hub" - Currently Hidden) ====================
   // 🔹 Uncheck ALL permissions below to hide "Production Hub" from sidebar
@@ -904,6 +911,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r1',
     name: UserRole.GENERAL_MANAGER,
     description: 'Full system access - complete control over all modules',
+    isSystem: true,
+    riskLevel: 'critical' as const,
     permissions: [
       // Auth & Users
       'auth.login', 'users.view.all', 'users.create', 'users.edit', 'users.disable', 'users.force_password_reset',
@@ -925,7 +934,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'tasks.view.all', 'tasks.create', 'tasks.edit.all', 'tasks.assign.all', 'tasks.reassign.all',
       'tasks.advance', 'tasks.submit_for_review', 'tasks.request_revision', 'tasks.approve', 'tasks.reject',
       'tasks.archive', 'tasks.archive.view', 'tasks.manual_close.approve', 'tasks.manual_close.reject',
-      'tasks.delete', 'tasks.reopen', 'tasks.edit_completed',
+      'tasks.delete', 'tasks.reopen', 'tasks.edit_completed', 'tasks.manage_assignees',
+      'tasks.references.view', 'tasks.references.add', 'tasks.references.delete',
       'task_files.upload', 'task_files.delete', 'task_files.view',
       // Approvals
       'approvals.view.all', 'approvals.act', 'approvals.configure',
@@ -961,6 +971,12 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.request_revision',
       // Quality Control (full access)
       'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
+      // Workflows
+      'workflows.override_task_workflow',
+      // Marketing Assets
+      'projects.marketing_assets_manage',
+      // Dashboard
+      'dashboard.view_gm_urgent',
       // Admin
       'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
       'admin.settings.view', 'admin.settings.edit'
@@ -971,6 +987,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r2',
     name: UserRole.ACCOUNT_MANAGER,
     description: 'Client and project management, task oversight',
+    isSystem: true,
+    riskLevel: 'high' as const,
     permissions: [
       'auth.login',
       // Clients (full access)
@@ -996,7 +1014,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
       // Calendar (full management)
-      'calendar.manage', 'calendar.request_revision',
+      'calendar.view', 'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
@@ -1013,6 +1031,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r3',
     name: UserRole.CREATIVE_DIRECTOR,
     description: 'Creative oversight, approvals, team management',
+    isSystem: true,
+    riskLevel: 'high' as const,
     permissions: [
       'auth.login',
       // Clients (view all)
@@ -1040,7 +1060,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage', 'calendar.request_revision',
+      'calendar.view', 'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (full access)
@@ -1057,6 +1077,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r4',
     name: UserRole.ART_DIRECTOR,
     description: 'Design team lead, approval authority',
+    isSystem: true,
+    riskLevel: 'medium' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1078,7 +1100,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage', 'calendar.request_revision',
+      'calendar.view', 'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Creative Direction (view only)
@@ -1094,6 +1116,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r5',
     name: UserRole.DESIGNER,
     description: 'Creative execution - own tasks only',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients (view only)
@@ -1126,6 +1150,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r6',
     name: UserRole.COPYWRITER,
     description: 'Content creation - own tasks only',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1160,6 +1186,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r7',
     name: UserRole.SOCIAL_MANAGER,
     description: 'Social media content and posting management',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1189,6 +1217,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r8',
     name: UserRole.PRODUCER,
     description: 'Production management and scheduling',
+    isSystem: true,
+    riskLevel: 'medium' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1212,7 +1242,7 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Calendar (full management)
-      'calendar.manage', 'calendar.request_revision',
+      'calendar.view', 'calendar.manage', 'calendar.request_revision',
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
@@ -1224,6 +1254,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r9',
     name: 'Videographer',
     description: 'Video production - own tasks and production access',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1249,6 +1281,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r10',
     name: 'Finance Manager',
     description: 'Financial management and reporting',
+    isSystem: true,
+    riskLevel: 'high' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1272,6 +1306,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r11',
     name: 'Freelancer',
     description: 'External contractor - own tasks only',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients
@@ -1292,6 +1328,8 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
     id: 'r12',
     name: UserRole.CLIENT,
     description: 'Client portal access - view and approve only',
+    isSystem: true,
+    riskLevel: 'low' as const,
     permissions: [
       'auth.login',
       // Clients (own only)

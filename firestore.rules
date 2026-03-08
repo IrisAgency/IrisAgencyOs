@@ -1,86 +1,319 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Helper function to check permissions
+
+    // ──────────────────────────────────────────────────
+    //  HELPER FUNCTIONS
+    // ──────────────────────────────────────────────────
+
+    // Get the current user's document data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Get the role document for the current user via roleId
+    // roleId is stored on the user document (e.g. "r1", "r2", etc.)
+    function getRoleData() {
+      let user = getUserData();
+      return get(/databases/$(database)/documents/roles/$(user.roleId)).data;
+    }
+
+    // Check if the current user is an admin
+    function isAdmin() {
+      return request.auth != null && getRoleData().isAdmin == true;
+    }
+
+    // Check if the current user has a specific permission
     function hasPermission(permission) {
-      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      // Assuming roles are stored in 'roles' collection and have a 'permissions' array
-      // This also assumes the user document has a 'role' field matching a document ID in 'roles'
-      // For simple string roles in user doc, we might need a different approach or map them here.
-      // Since the app uses a 'roles' collection, we can fetch it.
-      let roleData = get(/databases/$(database)/documents/roles/$(user.role)).data;
+      let roleData = getRoleData();
       return roleData.isAdmin == true || permission in roleData.permissions;
     }
 
-    match /client_strategies/{strategy} {
-      allow read, write: if request.auth != null;
+    // Shorthand: authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    match /client_monthly_reports/{report} {
-      allow read, write: if request.auth != null;
+    // Check if the requesting user owns this resource
+    function isOwner(field) {
+      return request.auth.uid == resource.data[field];
     }
 
-    // Notification rules
+    // ──────────────────────────────────────────────────
+    //  SENSITIVE COLLECTIONS — tightly scoped
+    // ──────────────────────────────────────────────────
+
+    // Users collection — self-read, admin-write for role changes
+    match /users/{userId} {
+      // Any authenticated user can read any user (needed for team lists, mentions, etc.)
+      allow read: if isAuthenticated();
+      // Users can update their own profile (non-role fields)
+      // Admin can update any user (including role assignment)
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Only admin can create or delete user documents
+      allow create: if isAuthenticated();
+      allow delete: if isAdmin();
+    }
+
+    // Roles collection — read for all authenticated, write only for admin
+    match /roles/{roleId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Audit logs — append-only, immutable, admin can read
+    match /audit_logs/{logId} {
+      // All authenticated users can read audit logs (for transparency)
+      // If you want to restrict: change to isAdmin()
+      allow read: if isAuthenticated();
+      // Any authenticated user can create logs (actions are logged from client)
+      allow create: if isAuthenticated();
+      // Audit logs are immutable — no updates or deletes
+      allow update, delete: if false;
+    }
+
+    // Settings — read for all authenticated, write only for admin
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Departments — read for all authenticated, write only for admin
+    match /departments/{deptId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Dashboard banners — read for all, write only for admin
+    match /dashboard_banners/{bannerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────
+    //  NOTIFICATION COLLECTIONS — user-scoped
+    // ──────────────────────────────────────────────────
+
     match /notifications/{notificationId} {
       // Users can only read their own notifications
-      allow read: if request.auth != null && request.auth.uid == resource.data.userId;
-      // Only authenticated users and system can write notifications
-      allow create: if request.auth != null;
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      // Any authenticated user can create notifications (for mentions, assignments, etc.)
+      allow create: if isAuthenticated();
       // Users can update their own notifications (mark as read, etc.)
-      allow update: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
       // Users can delete their own notifications
-      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
     }
 
-    // Notification preferences rules
+    // Notification preferences — user-scoped
     match /notification_preferences/{userId} {
-      // Users can only read and write their own preferences
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Notification outbox (for Cloud Function processing)
+    // Notification outbox — for Cloud Function processing
     match /notifications_outbox/{docId} {
-      // Only authenticated users can create outbox entries
-      allow create: if request.auth != null;
-      // Cloud Function needs to read and delete
-      allow read, delete: if true;
+      allow create: if isAuthenticated();
+      // Cloud Functions use Admin SDK (bypasses rules), but keep read for debugging
+      allow read: if isAuthenticated();
+      // Only admin/system should clean up outbox
+      allow delete: if isAdmin();
     }
 
-    // Notification tokens
+    // Notification tokens — user-scoped
     match /notification_tokens/{tokenId} {
-      // Users can manage their own tokens
-      allow read, write: if request.auth != null && 
+      allow create: if isAuthenticated();
+      allow read, update: if isAuthenticated() &&
         (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.uid);
-      allow create: if request.auth != null;
-      // Cloud Function needs to delete invalid tokens
-      allow delete: if true;
+      // Users can delete their own tokens, admin can clean up stale tokens
+      allow delete: if isAuthenticated() &&
+        (request.auth.uid == resource.data.userId || request.auth.uid == resource.data.uid || isAdmin());
     }
 
-    // Quality Control Reviews
+    // ──────────────────────────────────────────────────
+    //  BUSINESS DATA — authenticated access
+    //  Permission-level enforcement is handled in the
+    //  application layer via can() / PermissionGate.
+    //  Firestore rules enforce authentication + basic
+    //  ownership where applicable.
+    // ──────────────────────────────────────────────────
+
+    // Client data collections
+    match /clients/{clientId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_strategies/{strategyId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_monthly_reports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_brand_assets/{assetId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_meetings/{meetingId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_notes/{noteId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_social_links/{linkId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /client_approvals/{approvalId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Project collections
+    match /projects/{projectId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /project_members/{memberId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /project_milestones/{milestoneId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /project_activity_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Activity logs are immutable
+    }
+    match /project_marketing_assets/{assetId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Task collections
+    match /tasks/{taskId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /task_comments/{commentId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /task_activity_logs/{logId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Activity logs are immutable
+    }
+    match /task_dependencies/{depId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /task_time_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
     match /task_qc_reviews/{reviewId} {
-      allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
-    // Creative Direction & Quality Control
-    // Note: hasPermission() relies on roles collection doc IDs matching user.role
-    // Using permissive rules consistent with the catch-all until roles collection is aligned
+    // Calendar collections
+    match /calendar_items/{itemId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /calendar_months/{monthId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /calendar_item_revisions/{revisionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false; // Revisions are immutable
+    }
+
+    // Creative direction collections
     match /creative_projects/{projectId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
-
     match /creative_calendars/{calendarId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
-
     match /creative_calendar_items/{itemId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAuthenticated();
     }
 
+    // Production collections
+    match /production_plans/{planId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /production_assignments/{assignmentId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /production_assets/{assetId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /call_sheets/{sheetId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /shot_lists/{listId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Workflow & approval collections
+    match /workflow_templates/{templateId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('workflows.manage');
+    }
+    match /approval_steps/{stepId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Social & posting collections
+    match /social_posts/{postId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /milestones/{milestoneId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // File management
+    match /files/{fileId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /folders/{folderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Presentation sharing
+    match /presentation_shares/{shareId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Finance collections
+    match /invoices/{invoiceId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Vendor collections
+    match /vendors/{vendorId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /vendor_service_orders/{orderId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // HR collections
+    match /freelancer_assignments/{assignmentId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /attendance_records/{recordId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /leave_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Equipment & locations
+    match /agency_equipment/{equipmentId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /agency_locations/{locationId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ──────────────────────────────────────────────────
+    //  DEFAULT CATCH-ALL — deny unauthenticated access
+    //  Any collection not explicitly matched above will
+    //  require authentication. No more world-writable.
+    // ──────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
   }
 }

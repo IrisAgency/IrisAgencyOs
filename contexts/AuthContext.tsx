@@ -15,6 +15,7 @@ import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, writ
 import bcrypt from 'bcryptjs';
 import { auth, db, firebaseConfig } from '../lib/firebase';
 import { User, UserRole, Department, RoleDefinition } from '../types';
+// Note: UserRole kept for backward compat in fallback profile creation
 import { DEFAULT_ROLES } from '../constants';
 import { can, ScopeContext } from '../lib/permissions';
 
@@ -24,6 +25,7 @@ interface AuthContextType {
   roles: RoleDefinition[];
   loading: boolean;
   allowSignUp: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   inviteUser: (payload: InviteUserPayload) => Promise<{ tempPassword: string }>;
@@ -37,7 +39,7 @@ interface AuthContextType {
 interface InviteUserPayload {
   name: string;
   email: string;
-  role: UserRole;
+  role: string;
   department: Department;
   jobTitle?: string;
 }
@@ -59,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [allowSignUp, setAllowSignUp] = useState(false);
   const [checkingUsers, setCheckingUsers] = useState(true);
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   const generateTempPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -104,15 +107,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           for (const defaultRole of DEFAULT_ROLES) {
             const firestoreRole = loadedRoles.find(r => r.id === defaultRole.id);
             if (firestoreRole) {
+              const updates: Record<string, any> = {};
+
+              // Sync new permissions
               const existingPerms = new Set(firestoreRole.permissions || []);
               const newPerms = (defaultRole.permissions || []).filter(p => !existingPerms.has(p));
               if (newPerms.length > 0) {
                 console.log(`🔄 Syncing ${newPerms.length} new permissions to role "${firestoreRole.name}":`, newPerms);
                 const mergedPermissions = [...(firestoreRole.permissions || []), ...newPerms];
-                syncBatch.update(doc(db, 'roles', defaultRole.id), { permissions: mergedPermissions });
-                needsSync = true;
-                // Update local state immediately so UI reflects changes
+                updates.permissions = mergedPermissions;
                 firestoreRole.permissions = mergedPermissions;
+              }
+
+              // Sync isSystem flag from defaults
+              if (!firestoreRole.isSystem && (defaultRole as any).isSystem) {
+                updates.isSystem = true;
+                firestoreRole.isSystem = true;
+              }
+
+              // Sync riskLevel from defaults if not yet set
+              if (!firestoreRole.riskLevel && (defaultRole as any).riskLevel) {
+                updates.riskLevel = (defaultRole as any).riskLevel;
+                firestoreRole.riskLevel = (defaultRole as any).riskLevel;
+              }
+
+              if (Object.keys(updates).length > 0) {
+                syncBatch.update(doc(db, 'roles', defaultRole.id), updates);
+                needsSync = true;
               }
             }
           }
@@ -169,12 +190,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             
             const newRole = isFirstUser ? UserRole.GENERAL_MANAGER : UserRole.CLIENT;
             const newDept = isFirstUser ? Department.MANAGEMENT : Department.ACCOUNTS;
+            // Resolve roleId from role name for Firestore rule lookups
+            const matchedRole = DEFAULT_ROLES.find(r => r.name === newRole);
 
             const newUserProfile: User = {
               id: firebaseUser.uid,
               name: firebaseUser.displayName || 'New User',
               email: firebaseUser.email || '',
               role: newRole,
+              roleId: matchedRole?.id || '',
               department: newDept,
               avatar: firebaseUser.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(firebaseUser.email || 'User')}`,
               status: 'active',
@@ -256,11 +280,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newUserCredential = await createUserWithEmailAndPassword(secondaryAuth, email, tempPassword);
       const newFirebaseUser = newUserCredential.user;
 
+      // Resolve roleId from role name for Firestore rule lookups
+      const matchedRole = roles.find(r => r.name === role) || DEFAULT_ROLES.find(r => r.name === role);
+
       const newUserDoc: User = {
         id: newFirebaseUser.uid,
         name,
         email,
         role,
+        roleId: matchedRole?.id || '',
         department,
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
         status: 'active',
@@ -311,10 +339,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Load user permissions based on their role
-  const loadUserPermissions = (userRole: UserRole) => {
+  const loadUserPermissions = (userRole: string) => {
     if (!roles || !Array.isArray(roles)) {
       console.warn('⚠️ Roles not loaded or not an array');
       setUserPermissions([]);
+      setUserIsAdmin(false);
       return;
     }
     
@@ -326,20 +355,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
       if (defaultRoleDef) {
         setUserPermissions(defaultRoleDef.permissions || []);
+        setUserIsAdmin(!!defaultRoleDef.isAdmin);
         return;
       }
       setUserPermissions([]);
+      setUserIsAdmin(false);
       return;
     }
     
     // Use Firestore role as the single source of truth
     // Admin panel changes are now respected immediately
     const permissions = userRoleDef.permissions || [];
-    console.log(`🔐 Loading permissions for ${userRole}:`, permissions.length, 'permissions');
+    const isAdmin = !!userRoleDef.isAdmin;
+    console.log(`🔐 Loading permissions for ${userRole}:`, permissions.length, 'permissions', isAdmin ? '(ADMIN)' : '');
     console.log('📋 Task permissions:', permissions.filter(p => p.startsWith('tasks.')));
     console.log('📋 Project permissions:', permissions.filter(p => p.startsWith('projects.')));
     console.log('📋 Client permissions:', permissions.filter(p => p.startsWith('clients.')));
     setUserPermissions(permissions);
+    setUserIsAdmin(isAdmin);
   };
 
   // Reload permissions whenever roles update (admin changes permissions)
@@ -352,19 +385,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // New permission checking with scope support
   const checkPermission = (permissionCode: string, context?: ScopeContext): boolean => {
     if (!currentUser) return false;
-    const result = can(currentUser, permissionCode, userPermissions, context);
-    return result;
+    return can(currentUser, permissionCode, userPermissions, context, userIsAdmin);
   };
 
   const hasAnyPermission = (permissionCodes: string[], context?: ScopeContext): boolean => {
     if (!currentUser) return false;
-    const result = permissionCodes.some(code => can(currentUser, code, userPermissions, context));
-    return result;
+    return permissionCodes.some(code => can(currentUser, code, userPermissions, context, userIsAdmin));
   };
 
   const hasAllPermissions = (permissionCodes: string[], context?: ScopeContext): boolean => {
     if (!currentUser) return false;
-    return permissionCodes.every(code => can(currentUser, code, userPermissions, context));
+    return permissionCodes.every(code => can(currentUser, code, userPermissions, context, userIsAdmin));
   };
 
   return (
@@ -373,7 +404,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       userPermissions,
       roles, 
       loading: loading || checkingUsers, 
-      allowSignUp, 
+      allowSignUp,
+      isAdmin: userIsAdmin, 
       login, 
       signup, 
       inviteUser, 

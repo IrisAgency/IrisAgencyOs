@@ -23,7 +23,8 @@ export type UserStatus = 'active' | 'inactive' | 'on_leave';
 export interface User {
   id: string;
   name: string;
-  role: UserRole;
+  role: string;  // Role name — supports both UserRole enum values and custom role names
+  roleId?: string; // Firestore role document ID — used by security rules for permission lookups
   department: Department;
   avatar: string;
   passwordHash: string;
@@ -1180,12 +1181,21 @@ export interface Permission {
   description: string;
 }
 
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
 export interface RoleDefinition {
   id: string;
-  name: string;        // matches UserRole enum values
+  name: string;        // matches UserRole enum values for system roles, free-form for custom
+  slug?: string;       // URL-safe identifier (auto-generated from name)
   description: string;
   permissions: string[]; // list of permission codes
   isAdmin: boolean;
+  isSystem?: boolean;   // true for built-in roles — protected from deletion
+  isActive?: boolean;   // false to disable role without deleting (defaults to true)
+  riskLevel?: RiskLevel; // visual indicator in admin UI
+  createdAt?: string;   // ISO timestamp
+  updatedAt?: string;   // ISO timestamp
+  updatedBy?: string;   // User ID who last modified
 }
 
 export interface AppSettings {
@@ -1217,10 +1227,12 @@ export interface DashboardBanner {
 export interface AuditLog {
   id: string;
   userId: string;
+  userName?: string;        // Denormalized for readability in audit viewer
   action: string;
   entityType: string;
   entityId: string | null;
   description: string;
+  metadata?: Record<string, any>; // Structured data (e.g., { oldPermissions: [], newPermissions: [] })
   createdAt: string;
 }
 

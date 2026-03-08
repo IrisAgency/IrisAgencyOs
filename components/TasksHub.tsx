@@ -348,7 +348,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
                     Workflows
                   </button>
                 </div>
-                {checkPermission('tasks.create') && (
+                {checkPermission(PERMISSIONS.TASKS.CREATE) && (
                   <button
                     onClick={() => setIsCreateModalOpen(true)}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[color:var(--dash-primary)] text-white text-sm font-semibold shadow-lg shadow-[color:var(--dash-primary)]/20 hover:scale-[1.01] transition-transform"
@@ -447,7 +447,7 @@ const TasksHub: React.FC<TasksHubProps> = ({
                       <label className="text-[11px] text-slate-400 uppercase tracking-wide">Assignee</label>
                       <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="w-full p-2 bg-[color:var(--dash-surface)] border border-[color:var(--dash-glass-border)] rounded-lg text-sm text-slate-100">
                         <option value="all">Anyone</option>
-                        {((checkPermission('tasks.manage_assignees') || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT))
+                        {((checkPermission(PERMISSIONS.TASKS.MANAGE_ASSIGNEES) || checkPermission(PERMISSIONS.TASKS.ASSIGN_ALL) || checkPermission(PERMISSIONS.TASKS.ASSIGN_DEPT))
                           ? users
                           : users.filter(u => projectMembers.some(pm => pm.userId === u.id && projects.some(p => p.id === pm.projectId)))
                         ).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}

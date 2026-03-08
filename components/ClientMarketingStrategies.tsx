@@ -3,6 +3,7 @@ import { ClientMarketingStrategy, AgencyFile, FileFolder, User } from '../types'
 import { db } from '../lib/firebase';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Plus, Search, FileText, Link as LinkIcon, ExternalLink, Eye, Trash2, Edit2, MoreHorizontal, Calendar, Upload, X } from 'lucide-react';
+import { PERMISSIONS } from '../lib/permissions';
 
 interface ClientMarketingStrategiesProps {
   clientId: string;
@@ -47,8 +48,8 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canManage = checkPermission('client.marketing_strategies.manage');
-  const canView = checkPermission('client.marketing_strategies.view');
+  const canManage = checkPermission(PERMISSIONS.CLIENT_MARKETING.MANAGE);
+  const canView = checkPermission(PERMISSIONS.CLIENT_MARKETING.VIEW);
 
   if (!canView) {
     return (

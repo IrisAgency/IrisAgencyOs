@@ -10,7 +10,7 @@
  * - scope: who/what you can affect (own, dept, project, all)
  */
 
-import { User, Department, UserRole } from '../types';
+import { User, Department } from '../types';
 
 // ============================================================================
 // PERMISSION CATALOG - Single Source of Truth
@@ -94,6 +94,7 @@ export const PERMISSIONS = {
     EDIT: 'projects.edit', // Kept for backward compatibility
     ARCHIVE: 'projects.archive',
     DELETE: 'projects.delete',
+    MARKETING_ASSETS_MANAGE: 'projects.marketing_assets_manage',
   },
   MILESTONES: {
     VIEW: 'milestones.view',
@@ -117,6 +118,13 @@ export const PERMISSIONS = {
     ASSIGN_DEPT: 'tasks.assign.dept',
     MANAGE_ASSIGNEES: 'tasks.manage_assignees',
     MANAGE_PUBLISHING: 'tasks.manage_publishing',
+    ADVANCE: 'tasks.advance',
+    SUBMIT_FOR_REVIEW: 'tasks.submit_for_review',
+    REQUEST_REVISION: 'tasks.request_revision',
+    APPROVE: 'tasks.approve',
+    REJECT: 'tasks.reject',
+    REASSIGN_DEPT: 'tasks.reassign.dept',
+    REASSIGN_ALL: 'tasks.reassign.all',
     REOPEN: 'tasks.reopen',
     EDIT_COMPLETED: 'tasks.edit_completed',
     ARCHIVE: 'tasks.archive',
@@ -162,6 +170,7 @@ export const PERMISSIONS = {
 
   // ========== Files & Assets ==========
   ASSETS: {
+    VIEW_OWN: 'assets.view.own',
     VIEW_DEPT: 'assets.view.dept',
     VIEW_ALL: 'assets.view.all',
     UPLOAD: 'assets.upload',
@@ -288,6 +297,11 @@ export const PERMISSIONS = {
     REVIEW_COMMENT: 'qc.review.comment',
     ASSIGN_REVIEWERS: 'qc.review.assign_reviewers',
   },
+
+  // ========== Workflows ==========
+  WORKFLOWS: {
+    OVERRIDE_TASK_WORKFLOW: 'workflows.override_task_workflow',
+  },
 } as const;
 
 // ============================================================================
@@ -334,9 +348,14 @@ export function can(
   user: User | null,
   permissionKey: string,
   userPermissions: string[],
-  context?: ScopeContext
+  context?: ScopeContext,
+  isAdmin?: boolean
 ): boolean {
   if (!user || !permissionKey) return false;
+
+  // Admin bypass — matches Firestore rules and PermissionMatrix behavior
+  // Users with isAdmin role always pass permission checks
+  if (isAdmin) return true;
 
   // Check if user has the exact permission
   if (userPermissions.includes(permissionKey)) {
@@ -538,6 +557,96 @@ export function canViewFinance(
   );
 }
 
+// ============================================================================
+// DANGEROUS PERMISSIONS - Flagged in admin UI with warnings
+// ============================================================================
+
+export const DANGEROUS_PERMISSIONS = new Set([
+  PERMISSIONS.ROLES.CREATE,
+  PERMISSIONS.ROLES.EDIT,
+  PERMISSIONS.ROLES.DELETE,
+  PERMISSIONS.PERMISSIONS_ADMIN.MANAGE,
+  PERMISSIONS.USERS.CREATE,
+  PERMISSIONS.USERS.DISABLE,
+  PERMISSIONS.TASKS.DELETE,
+  PERMISSIONS.PROJECTS.DELETE,
+  PERMISSIONS.CLIENTS.DELETE,
+  PERMISSIONS.FINANCE.DELETE_INVOICE,
+  PERMISSIONS.FINANCE.APPROVE_PAYMENT,
+  PERMISSIONS.ADMIN_SETTINGS.EDIT,
+]);
+
+// ============================================================================
+// PERMISSION DEPENDENCY VALIDATION
+// ============================================================================
+
+export interface PermissionValidationResult {
+  valid: boolean;
+  warnings: { permission: string; message: string }[];
+  errors: { permission: string; message: string }[];
+}
+
+/**
+ * Permission dependency rules — keys require their listed dependencies.
+ * If a user has the key but not at least one of the deps (or a higher scope), warn.
+ */
+const PERMISSION_DEPENDENCIES: Record<string, string[]> = {
+  // Can't approve/reject without viewing
+  [PERMISSIONS.TASKS.APPROVE]: [PERMISSIONS.TASKS.VIEW_OWN, PERMISSIONS.TASKS.VIEW_DEPT, PERMISSIONS.TASKS.VIEW_ALL],
+  [PERMISSIONS.TASKS.REJECT]: [PERMISSIONS.TASKS.VIEW_OWN, PERMISSIONS.TASKS.VIEW_DEPT, PERMISSIONS.TASKS.VIEW_ALL],
+  [PERMISSIONS.POSTING.APPROVE]: [PERMISSIONS.POSTING.VIEW_DEPT, PERMISSIONS.POSTING.VIEW_ALL],
+  [PERMISSIONS.CREATIVE.APPROVE]: [PERMISSIONS.CREATIVE.VIEW],
+  [PERMISSIONS.CREATIVE.REJECT]: [PERMISSIONS.CREATIVE.VIEW],
+  [PERMISSIONS.QC.REVIEW_APPROVE]: [PERMISSIONS.QC.VIEW],
+  [PERMISSIONS.QC.REVIEW_REJECT]: [PERMISSIONS.QC.VIEW],
+  // Can't delete without edit
+  [PERMISSIONS.TASKS.DELETE]: [PERMISSIONS.TASKS.EDIT_OWN, PERMISSIONS.TASKS.EDIT_DEPT, PERMISSIONS.TASKS.EDIT_ALL],
+  [PERMISSIONS.PROJECTS.DELETE]: [PERMISSIONS.PROJECTS.EDIT, PERMISSIONS.PROJECTS.EDIT_OWN, PERMISSIONS.PROJECTS.EDIT_DEPT, PERMISSIONS.PROJECTS.EDIT_ALL],
+  [PERMISSIONS.CLIENTS.DELETE]: [PERMISSIONS.CLIENTS.EDIT],
+  // Can't assign without view
+  [PERMISSIONS.TASKS.ASSIGN_DEPT]: [PERMISSIONS.TASKS.VIEW_DEPT, PERMISSIONS.TASKS.VIEW_ALL],
+  [PERMISSIONS.TASKS.ASSIGN_ALL]: [PERMISSIONS.TASKS.VIEW_ALL],
+  [PERMISSIONS.ROLES.ASSIGN]: [PERMISSIONS.ROLES.VIEW],
+  // Can't manage without view
+  [PERMISSIONS.ROLES.EDIT]: [PERMISSIONS.ROLES.VIEW],
+  [PERMISSIONS.ROLES.DELETE]: [PERMISSIONS.ROLES.VIEW],
+  [PERMISSIONS.PERMISSIONS_ADMIN.MANAGE]: [PERMISSIONS.PERMISSIONS_ADMIN.VIEW],
+};
+
+/**
+ * Validate a set of permissions for consistency.
+ * Returns warnings for missing dependencies and errors for unknown keys.
+ */
+export function validatePermissionSet(permissions: string[]): PermissionValidationResult {
+  const permSet = new Set(permissions);
+  const warnings: { permission: string; message: string }[] = [];
+  const errors: { permission: string; message: string }[] = [];
+  const allKnown = new Set(getAllPermissions());
+
+  // Check for unknown permission keys
+  for (const perm of permissions) {
+    if (!allKnown.has(perm)) {
+      errors.push({ permission: perm, message: `Unknown permission key: ${perm}` });
+    }
+  }
+
+  // Check dependency rules
+  for (const [perm, deps] of Object.entries(PERMISSION_DEPENDENCIES)) {
+    if (permSet.has(perm)) {
+      const hasSomeDep = deps.some(d => permSet.has(d));
+      if (!hasSomeDep) {
+        const depNames = deps.slice(0, 2).join(' or ');
+        warnings.push({ 
+          permission: perm, 
+          message: `Requires ${depNames}` 
+        });
+      }
+    }
+  }
+
+  return { valid: errors.length === 0, warnings, errors };
+}
+
 /**
  * Get all permissions as a flat array (useful for role editor)
  */
@@ -586,5 +695,6 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'Calendar': [...Object.values(PERMISSIONS.CALENDAR), ...Object.values(PERMISSIONS.CALENDAR_MONTHS), ...Object.values(PERMISSIONS.CALENDAR_ITEMS)],
     'Creative Direction': Object.values(PERMISSIONS.CREATIVE),
     'Quality Control': Object.values(PERMISSIONS.QC),
+    'Workflows': Object.values(PERMISSIONS.WORKFLOWS),
   };
 }

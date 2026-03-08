@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { RoleDefinition, Permission } from '../types';
-import { Search, Download, Copy, RefreshCw, ChevronDown, ChevronRight, Check, X } from 'lucide-react';
+import { DANGEROUS_PERMISSIONS } from '../lib/permissions';
+import { Search, Download, Copy, RefreshCw, ChevronDown, ChevronRight, Check, X, AlertTriangle } from 'lucide-react';
 
 interface PermissionMatrixProps {
   roles: RoleDefinition[];
@@ -253,7 +254,12 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
                     >
                       <td className="sticky left-0 bg-white z-10 px-4 py-3 border-b border-r">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-slate-900">{perm.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-slate-900">{perm.name}</span>
+                            {DANGEROUS_PERMISSIONS.has(perm.code) && (
+                              <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" title="Dangerous permission" />
+                            )}
+                          </div>
                           <span className="text-xs text-slate-500">{perm.description}</span>
                           <span className="text-xs text-slate-400 font-mono mt-1">{perm.code}</span>
                         </div>
@@ -269,14 +275,20 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
                               granted
                                 ? isFromAdmin
                                   ? 'bg-indigo-50 hover:bg-indigo-100'
-                                  : 'bg-green-50 hover:bg-green-100'
+                                  : DANGEROUS_PERMISSIONS.has(perm.code)
+                                    ? 'bg-amber-50 hover:bg-amber-100'
+                                    : 'bg-green-50 hover:bg-green-100'
                                 : 'bg-white hover:bg-slate-50'
                             }`}
                             onClick={() => !role.isAdmin && togglePermission(role, perm.code)}
                           >
                             {granted ? (
                               <div className="flex items-center justify-center">
-                                <Check className={`w-5 h-5 ${isFromAdmin ? 'text-indigo-600' : 'text-green-600'}`} />
+                                <Check className={`w-5 h-5 ${
+                                  isFromAdmin ? 'text-indigo-600' 
+                                  : DANGEROUS_PERMISSIONS.has(perm.code) ? 'text-amber-600' 
+                                  : 'text-green-600'
+                                }`} />
                               </div>
                             ) : (
                               <div className="flex items-center justify-center">
@@ -309,6 +321,10 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
               <span>Explicitly Granted</span>
             </div>
             <div className="flex items-center gap-2">
+              <div className="w-3 h-3 bg-amber-500 rounded"></div>
+              <span>Dangerous</span>
+            </div>
+            <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-indigo-500 rounded"></div>
               <span>Admin (All Access)</span>
             </div>
@@ -316,19 +332,41 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
         </div>
       </div>
 
-      {/* Role Copy Panel (Optional) */}
+      {/* Role Copy Panel */}
       {selectedRole && (
         <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-medium text-blue-900">
-              Copy permissions from: {roles.find(r => r.id === selectedRole)?.name}
+              Copy permissions from: <strong>{roles.find(r => r.id === selectedRole)?.name}</strong>
             </span>
-            <button
-              onClick={() => setSelectedRole(null)}
-              className="text-blue-700 hover:text-blue-900"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <select
+                className="text-sm border border-blue-200 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                defaultValue=""
+                onChange={(e) => {
+                  const targetId = e.target.value;
+                  if (!targetId) return;
+                  const sourceRole = roles.find(r => r.id === selectedRole);
+                  const targetRole = roles.find(r => r.id === targetId);
+                  if (sourceRole && targetRole) {
+                    copyRolePermissions(sourceRole, targetRole);
+                    setSelectedRole(null);
+                  }
+                  e.target.value = '';
+                }}
+              >
+                <option value="">Select target role...</option>
+                {roles.filter(r => r.id !== selectedRole).map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSelectedRole(null)}
+                className="text-blue-700 hover:text-blue-900 p-1 rounded hover:bg-blue-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}
