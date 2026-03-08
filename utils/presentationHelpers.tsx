@@ -431,6 +431,178 @@ export const MediaThumb: React.FC<{
 // EDITORIAL ROW (used in both presentation views)
 // ============================================================================
 
+/**
+ * Dark-theme MediaThumb — identical logic to MediaThumb but styled for dark backgrounds.
+ * Used in Cal Revisions (ManagerView) and other dark-themed panels.
+ */
+export const DarkMediaThumb: React.FC<{
+  media: MediaEntry;
+  onDriveClick: (url: string, title: string) => void;
+}> = ({ media, onDriveClick }) => {
+  const [imgErr, setImgErr] = useState(false);
+  const [vidErr, setVidErr] = useState(false);
+
+  const thumbSrc = media.driveId
+    ? getDriveThumbnailUrl(media.driveId)
+    : media.isImg ? media.url : null;
+
+  const canVideoPreview = media.isVid && !media.isDrive && !vidErr;
+
+  const handleClick = () => {
+    if (media.isDrive) {
+      onDriveClick(media.url, media.name);
+    } else {
+      window.open(media.url, '_blank');
+    }
+  };
+
+  // 1. Image thumbnail
+  if (thumbSrc && !imgErr) {
+    return (
+      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-white/10 hover:border-white/25 hover:shadow-lg transition-all group bg-white/5" title={media.name}>
+        <div className="w-full aspect-[16/10] bg-black/30 overflow-hidden">
+          <img src={thumbSrc} alt={media.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+        </div>
+        {(media.isVid || (media.isDrive && !media.isImg)) && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
+              <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+            </div>
+          </div>
+        )}
+        {media.isImg && !media.isDrive && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition-colors">
+            <div className="w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600" />
+            </div>
+          </div>
+        )}
+        {media.isDrive && (
+          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm flex items-center gap-1">
+            <ExternalLink className="w-2.5 h-2.5 text-white/70" />
+            <span className="text-[9px] font-semibold text-white/70">Drive</span>
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  // 2. Video preview
+  if (canVideoPreview) {
+    return (
+      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-white/10 hover:border-white/25 hover:shadow-lg transition-all group bg-white/5" title={media.name}>
+        <div className="w-full aspect-[16/10] bg-black overflow-hidden">
+          <video src={media.url} className="w-full h-full object-cover" muted preload="metadata" onError={() => setVidErr(true)} />
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+          <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
+            <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+          </div>
+        </div>
+        {media.isFirebase && (
+          <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-sm">
+            <span className="text-[9px] font-semibold text-purple-300">Video</span>
+          </div>
+        )}
+      </button>
+    );
+  }
+
+  // 3. Website link with favicon
+  if (media.isWebsite) {
+    const favicon = getWebsiteFavicon(media.url);
+    const domain = getDomainFromUrl(media.url);
+    return (
+      <button onClick={handleClick} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all text-left group" title={media.url}>
+        <div className="shrink-0 w-9 h-9 rounded-lg bg-white/10 border border-white/5 flex items-center justify-center overflow-hidden">
+          {favicon ? <img src={favicon} alt="" className="w-5 h-5" loading="lazy" /> : <LinkIcon className="w-4 h-4 text-white/40" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="block text-xs font-medium text-white/80 truncate">{media.name !== 'Link' ? media.name : domain}</span>
+          <span className="block text-[10px] text-white/40 truncate">{domain}</span>
+        </div>
+        <ExternalLink className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
+      </button>
+    );
+  }
+
+  // 4. Generic fallback
+  return (
+    <button onClick={handleClick} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all text-left group" title={media.name}>
+      <div className="shrink-0 w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
+        {media.isVid ? <Video className="w-4 h-4 text-purple-400" /> :
+         media.isImg ? <Image className="w-4 h-4 text-blue-400" /> :
+         <FileText className="w-4 h-4 text-white/40" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className="block text-xs font-medium text-white/80 truncate">{media.name}</span>
+        <span className="block text-[10px] text-white/40 truncate">{media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}</span>
+      </div>
+      <ExternalLink className="w-3.5 h-3.5 text-white/20 group-hover:text-white/50 shrink-0 transition-colors" />
+    </button>
+  );
+};
+
+/**
+ * Build MediaEntry[] from CalendarRevisionReference[] (the request attachments).
+ * Adapts the simpler { type, value, fileName } shape to MediaEntry.
+ */
+export function collectRevisionRefMedia(refs: Array<{ type: 'link' | 'file'; value: string; fileName?: string }>): MediaEntry[] {
+  const entries: MediaEntry[] = [];
+  for (const r of refs) {
+    const url = r.value;
+    if (!url) continue;
+    const isDrive = isGoogleDriveUrl(url);
+    const isFirebase = isFirebaseStorageUrl(url);
+    const name = r.fileName || (r.type === 'file' ? 'File' : 'Link');
+    const isImg = isDirectImageUrl(url) || (isFirebase && isImageFile(name)) || (r.type === 'file' && isImageFile(name));
+    const isVid = (isFirebase && isVideoFile(name)) || (r.type === 'file' && isVideoFile(name));
+    entries.push({
+      url, name, isDrive, isFirebase, isImg, isVid,
+      isWebsite: !isDrive && !isFirebase && !isImg && !isVid && r.type === 'link',
+      driveId: isDrive ? extractDriveFileId(url) : null,
+    });
+  }
+  return entries;
+}
+
+/**
+ * Build MediaEntry[] from CalendarReferenceLink[] + CalendarReferenceFile[].
+ * Same as collectMediaEntries but accepts them separately (for revision responses).
+ */
+export function collectRevisionResponseMedia(
+  links: Array<{ title: string; url: string }>,
+  files: Array<{ fileName: string; downloadURL: string; [k: string]: any }>
+): MediaEntry[] {
+  const entries: MediaEntry[] = [];
+  for (const link of links) {
+    const norm = normalizeUrl(link.url);
+    if (!norm) continue;
+    const isDrive = isGoogleDriveUrl(norm);
+    const isFirebase = isFirebaseStorageUrl(norm);
+    const isImg = isDirectImageUrl(norm) || (isFirebase && isImageFile(link.title || ''));
+    const isVid = isFirebase && isVideoFile(link.title || '');
+    entries.push({
+      url: norm, name: link.title || 'Link', isDrive, isFirebase, isImg, isVid,
+      isWebsite: !isDrive && !isFirebase && !isImg && !isVid,
+      driveId: isDrive ? extractDriveFileId(norm) : null,
+    });
+  }
+  for (const file of files) {
+    const url = file.downloadURL;
+    if (!url) continue;
+    const isDrive = isGoogleDriveUrl(url);
+    const isFirebase = isFirebaseStorageUrl(url);
+    const isImg = isImageFile(file.fileName) || isDirectImageUrl(url);
+    const isVid = isVideoFile(file.fileName);
+    entries.push({
+      url, name: file.fileName || 'File', isDrive, isFirebase, isImg, isVid,
+      isWebsite: false, driveId: isDrive ? extractDriveFileId(url) : null,
+    });
+  }
+  return entries;
+}
+
 export const EditorialRow: React.FC<{
   item: PresentationItem;
   index?: number;

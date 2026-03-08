@@ -8,6 +8,11 @@ import { PERMISSIONS } from '../../lib/permissions';
 import SwipeReviewCard from './SwipeReviewCard';
 import { activateCreativeCalendar } from './CalendarActivation';
 import {
+  DarkMediaThumb, DrivePreviewModal,
+  collectRevisionRefMedia, collectRevisionResponseMedia,
+  type MediaEntry,
+} from '../../utils/presentationHelpers';
+import {
   Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
   ChevronDown, ChevronRight, ChevronUp, Users, Calendar, Check, AlertTriangle, 
   Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2,
@@ -69,6 +74,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [showStrategyModal, setShowStrategyModal] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [revisionFilter, setRevisionFilter] = useState<'active' | 'completed' | 'archived'>('active');
+  const [drivePreview, setDrivePreview] = useState<{ url: string; title: string } | null>(null);
   const [reviewingCalendar, setReviewingCalendar] = useState<CreativeCalendar | null>(null);
   const [reviewComplete, setReviewComplete] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -988,24 +994,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       </div>
                       <p className="text-sm text-iris-white/70 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
                       
-                      {/* Request references (links/files attached by requester) */}
-                      {rev.revisionReferences && rev.revisionReferences.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {rev.revisionReferences.map((ref, idx) => (
-                            <a
-                              key={idx}
-                              href={ref.value}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border border-amber-500/15 transition-colors"
-                            >
-                              {ref.type === 'file' ? <FileText className="w-3 h-3 shrink-0" /> : <LinkIcon className="w-3 h-3 shrink-0" />}
-                              {ref.fileName || (ref.value.length > 40 ? ref.value.slice(0, 40) + '…' : ref.value)}
-                              <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                            </a>
-                          ))}
-                        </div>
-                      )}
+                      {/* Request references — rich media thumbnails */}
+                      {rev.revisionReferences && rev.revisionReferences.length > 0 && (() => {
+                        const media = collectRevisionRefMedia(rev.revisionReferences);
+                        return (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                            {media.map((m, idx) => (
+                              <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* STEP 2: Creative Response (from Copywriter) */}
@@ -1033,49 +1032,23 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           </div>
                         )}
 
-                        {/* Revised Reference Links */}
-                        {rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0 && (
-                          <div className="pt-1 border-t border-emerald-500/10">
-                            <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-1">Updated Links</div>
-                            <div className="flex flex-wrap gap-2">
-                              {rev.revisedReferenceLinks.map((link, idx) => (
-                                <a
-                                  key={idx}
-                                  href={link.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/15 transition-colors"
-                                >
-                                  <LinkIcon className="w-3 h-3 shrink-0" />
-                                  {link.title || (link.url.length > 35 ? link.url.slice(0, 35) + '…' : link.url)}
-                                  <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                                </a>
-                              ))}
+                        {/* Revised media — rich thumbnails for links + files combined */}
+                        {((rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0) || (rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0)) && (() => {
+                          const media = collectRevisionResponseMedia(
+                            rev.revisedReferenceLinks || [],
+                            rev.revisedReferenceFiles || []
+                          );
+                          return (
+                            <div className="pt-1 border-t border-emerald-500/10">
+                              <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-1.5">Updated Media & References</div>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {media.map((m, idx) => (
+                                  <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )}
-
-                        {/* Revised Reference Files */}
-                        {rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0 && (
-                          <div className="pt-1 border-t border-emerald-500/10">
-                            <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-1">Updated Files</div>
-                            <div className="flex flex-wrap gap-2">
-                              {rev.revisedReferenceFiles.map((f, idx) => (
-                                <a
-                                  key={idx}
-                                  href={f.downloadURL}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/15 transition-colors"
-                                >
-                                  <FileText className="w-3 h-3 shrink-0" />
-                                  {f.fileName}
-                                  <ExternalLink className="w-2.5 h-2.5 opacity-50" />
-                                </a>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     ) : (
                       // No creative response yet
@@ -1519,6 +1492,15 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             </form>
           </div>
         </div>
+      )}
+
+      {/* Drive Preview Modal */}
+      {drivePreview && (
+        <DrivePreviewModal
+          url={drivePreview.url}
+          title={drivePreview.title}
+          onClose={() => setDrivePreview(null)}
+        />
       )}
     </div>
   );
