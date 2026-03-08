@@ -385,10 +385,30 @@ The app is organized into **17 navigable views** (plus a fallback "Under Constru
 - **Features**: Vendor registry, service orders, project assignment
 - **Data objects**: `Vendor`, `VendorServiceOrder`, `FreelancerAssignment`
 
-### Team Hub
-- **File**: `components/TeamHub.tsx`
-- **Features**: HR management, leave requests, attendance records, role assignments
-- **Data objects**: `User`, `LeaveRequest`, `AttendanceRecord`
+### Team Hub (HR Module)
+- **File**: `components/TeamHub.tsx` — 8-tab HR management interface
+- **Sub-components**: 16 files in `components/hr/`
+  - `EmployeeDirectory.tsx` — Filterable employee grid with search, department/status filters
+  - `EmployeeProfileDrawer.tsx` — Full employee detail view/edit form (personal info, employment, emergency contact)
+  - `OrgStructureView.tsx` — Department → Team → Member hierarchy with tree/flat view toggle
+  - `LeaveBoard.tsx` — Manager leave approval queue with stats, approve/reject, rejection reason modal
+  - `LeaveCalendar.tsx` — Monthly calendar grid showing approved leaves with user avatars
+  - `LeaveRequestForm.tsx` — Self-service leave request with balance preview, working-day calculation
+  - `LeaveBalanceSummary.tsx` — Per-employee leave balance cards with progress bars
+  - `AttendanceDashboard.tsx` — Clock in/out, today's team board, monthly summary, corrections view
+  - `AttendanceCorrectionForm.tsx` — Correction request form with original record display
+  - `OnboardingWorkflow.tsx` — 10 default onboarding steps, progress tracking, step completion
+  - `OffboardingWorkflow.tsx` — 10 default offboarding steps, HR-sensitive audit trail
+  - `AssetAssignment.tsx` — Asset CRUD with assign/return, overdue detection, search/filter
+  - `PerformanceReviewForm.tsx` — Self-assessment + manager assessment, 8 score categories (1-5)
+  - `PerformanceReviewList.tsx` — Review cycle dashboard with stats, status filter, average scores
+  - `CapacityDashboard.tsx` — Team stats, department capacity bars, 7-day leave forecast, task distribution
+  - `HRStatusBadge.tsx` — Reusable status badge with type-aware color mapping
+- **Tabs**: Employees, Org Structure, Leave (Board/Request/Calendar/Balance), Attendance, On/Offboarding, Assets, Performance, Capacity
+- **Firestore Collections**: `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes`
+- **Data objects**: `EmployeeProfile`, `Team`, `LeavePolicy`, `LeaveBalance`, `AttendanceCorrection`, `OnboardingChecklist`, `OffboardingChecklist`, `EmployeeAsset`, `PerformanceReview`, `EmployeeStatusChange`, `ChecklistStep`, `PerformanceScore`
+- **RBAC**: 25 HR permission keys under `hr.*` (employees, leave, attendance, performance, assets, onboarding, offboarding, org, confidential) with own/dept/all scopes
+- **Notifications**: 11 HR notification types (leave lifecycle, onboarding/offboarding, attendance corrections, performance reviews, asset management)
 
 ### Analytics Hub
 - **File**: `components/AnalyticsHub.tsx`
@@ -478,7 +498,7 @@ Modules are not isolated — they form a **directed graph of dependencies** that
 
 ### Overview
 
-IRIS OS implements a comprehensive Role-Based Access Control system with **28 permission categories** containing **120+ individual permission keys**, supporting **scope-based access** (SELF → DEPARTMENT → PROJECT → ALL).
+IRIS OS implements a comprehensive Role-Based Access Control system with **29 permission categories** containing **145+ individual permission keys**, supporting **scope-based access** (SELF → DEPARTMENT → PROJECT → ALL).
 
 ### Architecture
 
@@ -1153,9 +1173,9 @@ Currently, the system uses **console logging** only:
 iris-agency-os/
 ├── index.html              # HTML entry point
 ├── index.tsx               # React entry point + public URL interceptor
-├── App.tsx                 # Main orchestration (2,509 lines, 52 Firestore subs)
-├── types.ts                # All TypeScript interfaces (1,459 lines, 65+ interfaces)
-├── constants.ts            # Roles, departments, collection names (1,408 lines)
+├── App.tsx                 # Main orchestration (~2,800 lines, 62 Firestore subs)
+├── types.ts                # All TypeScript interfaces (~1,800 lines, 80+ interfaces)
+├── constants.ts            # Roles, departments, collection names (~1,500 lines)
 ├── index.css               # Global styles + Tailwind directives
 ├── vite.config.ts          # Vite + PWA + Workbox configuration
 ├── firebase.json           # Firebase hosting config
@@ -1167,7 +1187,7 @@ iris-agency-os/
 ├── postcss.config.js       # PostCSS configuration
 ├── package.json            # Dependencies and scripts
 │
-├── components/             # ~92 component files
+├── components/             # ~108 component files
 │   ├── *.tsx               # 38 root-level hub & shared components
 │   ├── admin/              # Admin hub sub-components (6 files)
 │   ├── analytics/          # Analytics views & KPI cards (5 files)
@@ -1177,6 +1197,15 @@ iris-agency-os/
 │   ├── creative/           # Creative direction: manager/copywriter views,
 │   │                         presentation, share links, swipe review (7 files)
 │   ├── dashboard/          # Dashboard cards (8 files) + widgets/ (8 files)
+│   ├── hr/                 # HR module sub-components (16 files):
+│   │                         EmployeeDirectory, EmployeeProfileDrawer,
+│   │                         OrgStructureView, LeaveBoard, LeaveCalendar,
+│   │                         LeaveRequestForm, LeaveBalanceSummary,
+│   │                         AttendanceDashboard, AttendanceCorrectionForm,
+│   │                         OnboardingWorkflow, OffboardingWorkflow,
+│   │                         AssetAssignment, PerformanceReviewForm,
+│   │                         PerformanceReviewList, CapacityDashboard,
+│   │                         HRStatusBadge
 │   ├── layout/             # Page layout primitives (4 files)
 │   ├── production/         # Production widgets & planning (2 files)
 │   ├── public/             # Public-facing pages — PublicPresentationPage (1 file)
@@ -1247,7 +1276,7 @@ iris-agency-os/
 
 ## Data Models
 
-All types are defined in `types.ts` (1,459 lines). Key entities and their relationships:
+All types are defined in `types.ts` (~1,800 lines). Key entities and their relationships:
 
 ### Core Entity Relationships
 
@@ -1307,7 +1336,7 @@ CreativeProject ── Client
 | **Production** | `production_assets`, `shot_lists`, `call_sheets`, `agency_locations`, `agency_equipment`, `production_plans` |
 | **Finance** | `invoices`, `payments`, `quotations`, `expenses` |
 | **Vendors** | `vendors`, `freelancer_assignments`, `vendor_service_orders` |
-| **HR** | `leave_requests`, `attendance_records` |
+| **HR** | `leave_requests`, `attendance_records`, `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` |
 | **Notifications** | `notifications`, `notification_preferences`, `notification_tokens`, `notifications_outbox` |
 | **Admin** | `settings`, `audit_logs`, `workflow_templates`, `dashboard_banners` |
 | **Files** | `files`, `folders` |
@@ -1320,8 +1349,8 @@ CreativeProject ── Client
 
 | Limitation | Impact | Cause |
 |---|---|---|
-| **Monolithic orchestrator** | `App.tsx` (2,508 lines) is a single point of complexity. All state, subscriptions, and handlers live here. | Centralized design choice — simple but doesn't scale to 100+ modules. |
-| **53 always-on Firestore listeners** | All subscriptions are active regardless of which view the user is on. Wastes reads and memory for idle collections. | No lazy-loading of subscriptions per view. |
+| **Monolithic orchestrator** | `App.tsx` (~2,800 lines) is a single point of complexity. All state, subscriptions, and handlers live here. | Centralized design choice — simple but doesn't scale to 100+ modules. |
+| **62 always-on Firestore listeners** | All subscriptions are active regardless of which view the user is on. Wastes reads and memory for idle collections. | No lazy-loading of subscriptions per view. |
 | **No server-side authorization** | Firestore rules have a catch-all `allow read, write: if true`. Any authenticated (or unauthenticated) user can access any collection directly. | Security rules not yet aligned with RBAC model. |
 | **Client-side only rendering** | No SSR/SSG — initial load requires downloading the full JS bundle before rendering. SEO is not applicable (internal tool), but first-paint is slower. | SPA architecture on Firebase Hosting. |
 | **No automated tests** | Vitest is installed but no test suite runs. Regressions are caught manually. | Tests not written yet. |
@@ -1452,6 +1481,13 @@ modules/
 ### Security
 - Firestore catch-all rule allows unrestricted read/write — security is enforced only at the application level
 - `firebase-messaging-sw.js` has hardcoded production config (acceptable tradeoff)
+
+### HR Module (New)
+- **Firestore collections are empty** — `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` all need initial data or seed scripts
+- **Cross-module integration pending** — Leave balances not auto-deducted on leave approval; attendance not synced with task time logs; performance reviews not linked to project metrics
+- **Data migration needed** — Existing `users` collection data should be merged into `employee_profiles` for complete employee records
+- **Leave policies not seeded** — Default leave policies (annual, sick, emergency, etc.) need to be created in Firestore for leave balance calculations to work
+- **43 pre-existing TypeScript errors** remain across non-HR files (voiceOver prop, TaskType references, etc.)
 
 ---
 
