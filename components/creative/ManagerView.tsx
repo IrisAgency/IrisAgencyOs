@@ -16,7 +16,7 @@ import {
   Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
   ChevronDown, ChevronRight, ChevronUp, Users, Calendar, Check, AlertTriangle, 
   Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2,
-  MessageSquare, Send, Inbox
+  MessageSquare, Send, Inbox, Layers
 } from 'lucide-react';
 
 interface ManagerViewProps {
@@ -619,6 +619,12 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       item.type === 'PHOTO' ? 'bg-blue-500/20 text-blue-400' :
                       'bg-amber-500/20 text-amber-400'
                     }`}>{item.type}</span>
+                    {item.isCarousel && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 flex items-center gap-0.5">
+                        <Layers className="w-3 h-3" />
+                        Carousel
+                      </span>
+                    )}
                   </div>
                 );
               })}

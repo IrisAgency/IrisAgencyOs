@@ -14,7 +14,7 @@ import {
   FileText, Upload, Plus, Trash2, Edit2, Save, Send, ExternalLink,
   Link as LinkIcon, Video, Image, Clapperboard, Calendar, Eye,
   AlertTriangle, CheckCircle2, Clock, RotateCcw, X, ChevronDown, ChevronRight,
-  Info, MessageSquare
+  Info, MessageSquare, Layers
 } from 'lucide-react';
 
 interface CopywriterViewProps {
@@ -83,6 +83,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
     briefDescription: '',
     notes: '',
     publishAt: '',
+    isCarousel: false,
     referenceLinks: [] as CalendarReferenceLink[],
     referenceFiles: [] as CalendarReferenceFile[],
   });
@@ -151,6 +152,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         briefDescription: item.briefDescription,
         notes: item.notes,
         publishAt: item.publishAt || '',
+        isCarousel: item.isCarousel || false,
         referenceLinks: item.referenceLinks || [],
         referenceFiles: item.referenceFiles || [],
       });
@@ -163,6 +165,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         briefDescription: '',
         notes: '',
         publishAt: '',
+        isCarousel: false,
         referenceLinks: [],
         referenceFiles: [],
       });
@@ -187,6 +190,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           briefDescription: itemForm.briefDescription.trim(),
           notes: itemForm.notes.trim(),
           publishAt: itemForm.publishAt,
+          isCarousel: itemForm.isCarousel,
           referenceLinks: itemForm.referenceLinks,
           referenceFiles: itemForm.referenceFiles,
           // If this was a rejected item being edited, reset to PENDING
@@ -204,6 +208,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           briefDescription: itemForm.briefDescription.trim(),
           notes: itemForm.notes.trim(),
           publishAt: itemForm.publishAt,
+          isCarousel: itemForm.isCarousel,
           referenceLinks: itemForm.referenceLinks,
           referenceFiles: itemForm.referenceFiles,
           reviewStatus: 'PENDING',
@@ -557,6 +562,12 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                             <TypeIcon className="w-3 h-3" />
                             {item.type}
                           </span>
+                          {item.isCarousel && (
+                            <span className={`${pill} text-[10px] bg-indigo-500/20 text-indigo-400 border-indigo-400/30`}>
+                              <Layers className="w-3 h-3" />
+                              Carousel
+                            </span>
+                          )}
                           {item.reviewStatus !== 'PENDING' && (
                             <span className={`${pill} text-[10px] ${STATUS_COLORS[item.reviewStatus]}`}>
                               {item.reviewStatus}
@@ -706,6 +717,24 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                   ))}
                 </div>
               </div>
+
+              {/* Carousel Toggle */}
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={itemForm.isCarousel}
+                    onChange={e => setItemForm(prev => ({ ...prev, isCarousel: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 rounded-full bg-iris-white/10 border border-iris-white/10 peer-checked:bg-indigo-500 peer-checked:border-indigo-400 transition-all" />
+                  <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-iris-white/50 peer-checked:bg-white peer-checked:translate-x-4 transition-all" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm font-medium text-iris-white/70 group-hover:text-iris-white transition-colors">Carousel Post</span>
+                </div>
+              </label>
 
               {/* Title */}
               <div>

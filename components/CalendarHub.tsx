@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare, Pin, PinOff } from 'lucide-react';
+import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare, Pin, PinOff, Layers } from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
 import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, CreativeCalendarItem, NotificationType } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
@@ -65,12 +65,14 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
     notes: string;
     referenceLinks: CalendarReferenceLink[];
     publishAt: string;
+    isCarousel: boolean;
   }>({
     type: 'VIDEO',
     primaryBrief: '',
     notes: '',
     referenceLinks: [],
-    publishAt: ''
+    publishAt: '',
+    isCarousel: false
   });
 
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
@@ -240,6 +242,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
           referenceLinks: itemForm.referenceLinks,
           referenceFiles,
           publishAt: itemForm.publishAt,
+          isCarousel: itemForm.isCarousel,
           createdBy: currentUser.id,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
@@ -301,6 +304,7 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
         referenceLinks: itemForm.referenceLinks,
         referenceFiles: [...editingItem.referenceFiles, ...newFiles],
         publishAt: itemForm.publishAt,
+        isCarousel: itemForm.isCarousel,
         updatedAt: new Date().toISOString()
       };
 
@@ -463,7 +467,8 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       primaryBrief: '',
       notes: '',
       referenceLinks: [],
-      publishAt: ''
+      publishAt: '',
+      isCarousel: false
     });
     setUploadingFiles([]);
   };
@@ -481,7 +486,8 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
       primaryBrief: item.primaryBrief,
       notes: item.notes,
       referenceLinks: item.referenceLinks,
-      publishAt: item.publishAt
+      publishAt: item.publishAt,
+      isCarousel: item.isCarousel || false
     });
     setUploadingFiles([]);
     setShowItemModal(true);
@@ -997,7 +1003,15 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                   <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
                   
                   <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-base font-bold text-white tracking-tight flex-1 mr-3 group-hover:text-[#DF1E3C] transition-colors line-clamp-2">{item.autoName}</h3>
+                    <div className="flex-1 mr-3 min-w-0">
+                      <h3 className="text-base font-bold text-white tracking-tight group-hover:text-[#DF1E3C] transition-colors line-clamp-2">{item.autoName}</h3>
+                      {item.isCarousel && (
+                        <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
+                          <Layers className="w-3 h-3" />
+                          Carousel
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 rounded-lg p-1 border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
                       <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                         <button
@@ -1196,6 +1210,20 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
               </select>
             </div>
 
+            {/* Carousel Toggle */}
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={itemForm.isCarousel}
+                onChange={e => setItemForm(prev => ({ ...prev, isCarousel: e.target.checked }))}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
+              />
+              <div className="flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-indigo-500" />
+                <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">Carousel Post</span>
+              </div>
+            </label>
+
             <div>
               <label className="block text-sm font-medium text-white/70 mb-2">Primary Brief *</label>
               <textarea
@@ -1357,6 +1385,11 @@ const CalendarHub: React.FC<CalendarHubProps> = ({
                 <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 sm:gap-1.5 shadow-sm shrink-0 ${getTypeColor(detailItem.type)}`}>
                   {getTypeIcon(detailItem.type)} <span className="hidden sm:inline">{detailItem.type}</span>
                 </div>
+                {detailItem.isCarousel && (
+                  <span className="px-2 py-1 rounded-lg text-xs font-bold border flex items-center gap-1.5 shadow-sm shrink-0 bg-indigo-500/20 text-indigo-400 border-indigo-400/30">
+                    <Layers className="w-3 h-3" /> <span className="hidden sm:inline">Carousel</span>
+                  </span>
+                )}
                 <h2 className="text-base sm:text-xl font-bold text-white tracking-tight truncate">{detailItem.autoName}</h2>
               </div>
               <button

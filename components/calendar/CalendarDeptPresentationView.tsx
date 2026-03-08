@@ -40,6 +40,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
+    isCarousel: item.isCarousel || false,
   };
 }
 

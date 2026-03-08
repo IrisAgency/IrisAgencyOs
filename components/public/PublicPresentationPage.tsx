@@ -12,7 +12,7 @@ import type {
 import {
   Video, Image, Clapperboard, Calendar, ExternalLink, FileText,
   Search, X, Link as LinkIcon, Play, Loader2, ShieldX, Clock,
-  AlertTriangle,
+  AlertTriangle, Layers,
 } from 'lucide-react';
 
 // ============================================================================
@@ -136,6 +136,7 @@ interface PresentationItem {
   referenceLinks: CalendarReferenceLink[];
   referenceFiles: CalendarReferenceFile[];
   seqLabel: string;
+  isCarousel?: boolean;
 }
 
 function calItemToPres(item: CalendarItem): PresentationItem {
@@ -151,6 +152,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     presentationNotes: item.presentationNotes || '',
+    isCarousel: item.isCarousel || false,
   };
 }
 
@@ -167,6 +169,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     referenceFiles: item.referenceFiles || [],
     seqLabel: `#${idx + 1}`,
     presentationNotes: item.presentationNotes || '',
+    isCarousel: item.isCarousel || false,
   };
 }
 
@@ -361,6 +364,12 @@ const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: strin
         <span className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
           <TypeIcon className="w-3 h-3" />{item.type}
         </span>
+        {item.isCarousel && (
+          <span className="sm:mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-indigo-50 text-indigo-600 border-indigo-200">
+            <Layers className="w-3 h-3" />
+            Carousel
+          </span>
+        )}
       </div>
 
       <div className="py-3 px-4 sm:py-4 sm:px-5 min-w-0">

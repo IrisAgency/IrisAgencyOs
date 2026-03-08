@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ArrowUp, ArrowDown, Calendar, Play, Pin,
+  ArrowUp, ArrowDown, Calendar, Play, Pin, Layers,
 } from 'lucide-react';
 
 import {
@@ -169,6 +169,13 @@ const GridCard: React.FC<{
       {item.pinnedInGrid && item.pinnedInGrid > 0 && (
         <div className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 z-10 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-md">
           <Pin className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-[#DF1E3C] rotate-45" />
+        </div>
+      )}
+
+      {/* Carousel badge */}
+      {item.isCarousel && (
+        <div className={`absolute ${item.pinnedInGrid && item.pinnedInGrid > 0 ? 'top-7 sm:top-8' : 'top-1 sm:top-1.5'} right-1 sm:right-1.5 z-10 flex items-center gap-0.5 px-1 py-0.5 rounded bg-indigo-600/90 backdrop-blur-sm shadow-md`}>
+          <Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
         </div>
       )}
 

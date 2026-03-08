@@ -1406,6 +1406,9 @@ export interface CalendarItem {
 
   // Presentation notes (added via presentation view detail modal)
   presentationNotes?: string;
+
+  // Carousel post flag
+  isCarousel?: boolean;
   
   createdBy: string;
   createdAt: string;
@@ -1526,6 +1529,7 @@ export interface CreativeCalendarItem {
   rejectionNote: string | null;
   rejectionReferences: CreativeRejectionReference[];
   presentationNotes?: string;
+  isCarousel?: boolean;
   createdAt: string;
   updatedAt: string;
 }

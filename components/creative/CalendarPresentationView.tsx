@@ -45,6 +45,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     source: 'activated',
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
+    isCarousel: item.isCarousel || false,
   };
 }
 
@@ -62,6 +63,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     seqLabel: `#${idx + 1}`,
     source: 'creative',
     presentationNotes: item.presentationNotes || '',
+    isCarousel: item.isCarousel || false,
   };
 }
 

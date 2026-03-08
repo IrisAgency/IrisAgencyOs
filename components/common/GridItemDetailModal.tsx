@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   X, Calendar, ExternalLink, FileText, ChevronLeft, ChevronRight,
-  Play, Link as LinkIcon, Save, Loader2, StickyNote,
+  Play, Link as LinkIcon, Save, Loader2, StickyNote, Layers,
 } from 'lucide-react';
 
 import {
@@ -89,6 +89,12 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
               <TypeIcon className="w-3 h-3" />
               {item.type}
             </span>
+            {item.isCarousel && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shrink-0 bg-indigo-50 text-indigo-600 border-indigo-200">
+                <Layers className="w-3 h-3" />
+                Carousel
+              </span>
+            )}
             <h2
               dir="auto"
               style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}

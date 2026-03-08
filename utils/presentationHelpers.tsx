@@ -7,7 +7,7 @@ import type {
 
 import {
   Video, Image, Clapperboard, ExternalLink, FileText,
-  Link as LinkIcon, Play, X,
+  Link as LinkIcon, Play, X, Layers,
 } from 'lucide-react';
 
 // ============================================================================
@@ -193,6 +193,7 @@ export interface PresentationItem {
   source?: 'activated' | 'creative';
   pinnedInGrid?: number | null;
   presentationNotes?: string;
+  isCarousel?: boolean;
 }
 
 export interface MediaEntry {
@@ -691,6 +692,12 @@ export const EditorialRow: React.FC<{
           <TypeIcon className="w-3 h-3" />
           {item.type}
         </span>
+        {item.isCarousel && (
+          <span className="sm:mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-indigo-50 text-indigo-600 border-indigo-200">
+            <Layers className="w-3 h-3" />
+            Carousel
+          </span>
+        )}
       </div>
 
       {/* CONTENT column */}

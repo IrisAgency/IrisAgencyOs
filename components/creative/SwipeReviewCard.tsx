@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useSpring, animated } from '@react-spring/web';
 import { useDrag } from '@use-gesture/react';
-import { Video, Image, Clapperboard, Calendar, ExternalLink, FileText, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Video, Image, Clapperboard, Calendar, ExternalLink, FileText, Check, X, ChevronLeft, ChevronRight, Layers } from 'lucide-react';
 import type { CreativeCalendarItem, CreativeRejectionReference } from '../../types';
 import RejectionModal from './RejectionModal';
 import {
@@ -213,6 +213,12 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                       <TypeIcon className="w-3 h-3" />
                       {currentItem.type}
                     </span>
+                    {currentItem.isCarousel && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border bg-indigo-500/20 text-indigo-400 border-indigo-400/30">
+                        <Layers className="w-3 h-3" />
+                        Carousel
+                      </span>
+                    )}
                     {currentItem.publishAt && (
                       <span className="inline-flex items-center gap-1 text-xs text-iris-white/50">
                         <Calendar className="w-3 h-3" />
