@@ -4,6 +4,10 @@ import { useDrag } from '@use-gesture/react';
 import { Video, Image, Clapperboard, Calendar, ExternalLink, FileText, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { CreativeCalendarItem, CreativeRejectionReference } from '../../types';
 import RejectionModal from './RejectionModal';
+import {
+  DarkMediaThumb, DrivePreviewModal,
+  collectRevisionResponseMedia,
+} from '../../utils/presentationHelpers';
 
 interface SwipeReviewCardProps {
   items: CreativeCalendarItem[];
@@ -37,6 +41,7 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [rejectingItem, setRejectingItem] = useState<CreativeCalendarItem | null>(null);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const [drivePreview, setDrivePreview] = useState<{ url: string; title: string } | null>(null);
   const [gone] = useState(new Set<number>());
 
   const SWIPE_THRESHOLD = 120;
@@ -242,49 +247,24 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
                 </div>
               )}
 
-              {/* Reference Links */}
-              {currentItem.referenceLinks?.length > 0 && (
-                <div>
-                  <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Links</span>
-                  <div className="mt-1 space-y-1">
-                    {currentItem.referenceLinks.map((link, i) => (
-                      <a
-                        key={i}
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-sm text-blue-400 hover:text-blue-300 transition-colors"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <ExternalLink className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{link.title || link.url}</span>
-                      </a>
-                    ))}
+              {/* Reference Media (Links + Files) */}
+              {((currentItem.referenceLinks?.length > 0) || (currentItem.referenceFiles?.length > 0)) && (() => {
+                const media = collectRevisionResponseMedia(
+                  currentItem.referenceLinks || [],
+                  currentItem.referenceFiles || []
+                );
+                if (media.length === 0) return null;
+                return (
+                  <div>
+                    <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">References & Media</span>
+                    <div className="mt-2 grid grid-cols-2 gap-2" onClick={e => e.stopPropagation()}>
+                      {media.map((m, idx) => (
+                        <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
-
-              {/* Reference Files */}
-              {currentItem.referenceFiles?.length > 0 && (
-                <div>
-                  <span className="text-xs font-semibold text-iris-white/50 uppercase tracking-wide">Reference Files</span>
-                  <div className="mt-1 space-y-1">
-                    {currentItem.referenceFiles.map((file, i) => (
-                      <a
-                        key={i}
-                        href={file.downloadURL}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-1.5 text-sm text-iris-red hover:text-iris-red/80 transition-colors"
-                        onClick={e => e.stopPropagation()}
-                      >
-                        <FileText className="w-3 h-3 shrink-0" />
-                        <span className="truncate">{file.fileName}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
         </animated.div>
@@ -319,6 +299,15 @@ const SwipeReviewCard: React.FC<SwipeReviewCardProps> = ({
             setRejectingItem(null);
             api.start({ x: 0, rot: 0, scale: 1 });
           }}
+        />
+      )}
+
+      {/* Drive Preview Modal */}
+      {drivePreview && (
+        <DrivePreviewModal
+          url={drivePreview.url}
+          title={drivePreview.title}
+          onClose={() => setDrivePreview(null)}
         />
       )}
     </div>
