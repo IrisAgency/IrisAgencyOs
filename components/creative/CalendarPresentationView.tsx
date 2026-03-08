@@ -308,7 +308,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
 
         {/* MAGAZINE MASTHEAD */}
         <header className="mb-10 border-b-2 border-gray-900 pb-6">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 uppercase">
                 {selectedClient?.name || 'Client'}
@@ -319,17 +319,19 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
             </div>
 
             {approvedProjects.length > 1 && (
-              <div className="relative no-print">
+              <div className="relative no-print w-full sm:w-auto">
                 <button
                   onClick={() => setSelectorOpen(!selectorOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="w-full sm:w-auto flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                 >
-                  <Calendar className="w-4 h-4" />
-                  {selectedCalendar?.monthKey || 'Select'}
-                  <ChevronDown className={`w-4 h-4 transition-transform ${selectorOpen ? 'rotate-180' : ''}`} />
+                  <Calendar className="w-4 h-4 shrink-0" />
+                  <span className="truncate">{selectedClient?.name || 'Client'}</span>
+                  <span className="text-gray-300 shrink-0">·</span>
+                  <span className="shrink-0">{selectedCalendar?.monthKey || 'Select'}</span>
+                  <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${selectorOpen ? 'rotate-180' : ''}`} />
                 </button>
                 {selectorOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
+                  <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 w-full sm:w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
                     {approvedProjects.map(proj => {
                       const client = clients.find(c => c.id === proj.clientId);
                       const cal = approvedCalendars.find(c => c.creativeProjectId === proj.id);
@@ -340,7 +342,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
                           onClick={() => { setSelectedProjectId(proj.id); setSelectorOpen(false); }}
                           className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${isActive ? 'bg-gray-100 font-medium text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
-                          {client?.name || 'Client'} — {cal?.monthKey || ''}
+                          {client?.name || 'Client'} · {cal?.monthKey || ''}
                         </button>
                       );
                     })}
