@@ -292,11 +292,106 @@ service cloud.firestore {
     match /freelancer_assignments/{assignmentId} {
       allow read, write: if isAuthenticated();
     }
-    match /attendance_records/{recordId} {
-      allow read, write: if isAuthenticated();
+
+    // HR Module — Employee Profiles (sensitive — read restricted)
+    match /employee_profiles/{profileId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('hr.employees.create');
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        hasPermission('hr.employees.edit')
+      );
+      allow delete: if isAdmin();
     }
+
+    // HR Module — Teams
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('hr.org.manage');
+    }
+
+    // HR Module — Leave Requests (own-read + managers + HR)
     match /leave_requests/{requestId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('hr.leave.create');
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        hasPermission('hr.leave.approve') ||
+        hasPermission('hr.leave.reject') ||
+        hasPermission('hr.leave.cancel')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // HR Module — Leave Policies (admin-managed)
+    match /leave_policies/{policyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // HR Module — Leave Balances (own-read + HR-write)
+    match /leave_balances/{balanceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        hasPermission('hr.leave.approve') ||
+        isAdmin()
+      );
+    }
+
+    // HR Module — Attendance Records
+    match /attendance_records/{recordId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.userId ||
+        hasPermission('hr.attendance.manage')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // HR Module — Attendance Corrections
+    match /attendance_corrections/{correctionId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && hasPermission('hr.attendance.manage');
+      allow delete: if isAdmin();
+    }
+
+    // HR Module — Onboarding Checklists
+    match /onboarding_checklists/{checklistId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('hr.onboarding.manage');
+    }
+
+    // HR Module — Offboarding Checklists
+    match /offboarding_checklists/{checklistId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('hr.offboarding.manage');
+    }
+
+    // HR Module — Employee Assets
+    match /employee_assets/{assetId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('hr.assets.manage');
+    }
+
+    // HR Module — Performance Reviews
+    match /performance_reviews/{reviewId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('hr.performance.manage');
+      allow update: if isAuthenticated() && (
+        request.auth.uid == resource.data.employeeId ||
+        request.auth.uid == resource.data.reviewerId ||
+        hasPermission('hr.performance.manage')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // HR Module — Employee Status Changes (append-only audit trail)
+    match /employee_status_changes/{changeId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if false;
     }
 
     // Equipment & locations

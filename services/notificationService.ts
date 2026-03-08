@@ -113,6 +113,20 @@ const NOTIFICATION_METADATA: Record<
   QC_APPROVED: { category: 'qc' as any, severity: 'info', entityType: 'task' },
   QC_REJECTED: { category: 'qc' as any, severity: 'warning', entityType: 'task' },
   QC_NEEDS_INTERVENTION: { category: 'qc' as any, severity: 'urgent', entityType: 'task' },
+
+  // HR & Team
+  LEAVE_REQUESTED: { category: 'hr' as any, severity: 'warning', entityType: 'leave_request' as any },
+  LEAVE_APPROVED: { category: 'hr' as any, severity: 'info', entityType: 'leave_request' as any },
+  LEAVE_REJECTED: { category: 'hr' as any, severity: 'warning', entityType: 'leave_request' as any },
+  LEAVE_CANCELLED: { category: 'hr' as any, severity: 'info', entityType: 'leave_request' as any },
+  ONBOARDING_STARTED: { category: 'hr' as any, severity: 'info', entityType: 'employee_profile' as any },
+  OFFBOARDING_STARTED: { category: 'hr' as any, severity: 'warning', entityType: 'employee_profile' as any },
+  ATTENDANCE_CORRECTION_REQUESTED: { category: 'hr' as any, severity: 'warning', entityType: 'attendance' as any },
+  ATTENDANCE_CORRECTION_REVIEWED: { category: 'hr' as any, severity: 'info', entityType: 'attendance' as any },
+  PERFORMANCE_REVIEW_SUBMITTED: { category: 'hr' as any, severity: 'info', entityType: 'performance_review' as any },
+  PERFORMANCE_REVIEW_FINALIZED: { category: 'hr' as any, severity: 'info', entityType: 'performance_review' as any },
+  ASSET_ASSIGNED: { category: 'hr' as any, severity: 'info', entityType: 'employee_profile' as any },
+  ASSET_RETURN_OVERDUE: { category: 'hr' as any, severity: 'urgent', entityType: 'employee_profile' as any },
 };
 
 /**

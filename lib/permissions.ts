@@ -298,6 +298,36 @@ export const PERMISSIONS = {
     ASSIGN_REVIEWERS: 'qc.review.assign_reviewers',
   },
 
+  // ========== HR & Team ==========
+  HR: {
+    EMPLOYEES_VIEW_OWN: 'hr.employees.view.own',
+    EMPLOYEES_VIEW_DEPT: 'hr.employees.view.dept',
+    EMPLOYEES_VIEW_ALL: 'hr.employees.view.all',
+    EMPLOYEES_CREATE: 'hr.employees.create',
+    EMPLOYEES_EDIT: 'hr.employees.edit',
+    LEAVE_VIEW_OWN: 'hr.leave.view.own',
+    LEAVE_VIEW_DEPT: 'hr.leave.view.dept',
+    LEAVE_VIEW_ALL: 'hr.leave.view.all',
+    LEAVE_CREATE: 'hr.leave.create',
+    LEAVE_APPROVE: 'hr.leave.approve',
+    LEAVE_REJECT: 'hr.leave.reject',
+    LEAVE_CANCEL: 'hr.leave.cancel',
+    ATTENDANCE_VIEW_OWN: 'hr.attendance.view.own',
+    ATTENDANCE_VIEW_DEPT: 'hr.attendance.view.dept',
+    ATTENDANCE_VIEW_ALL: 'hr.attendance.view.all',
+    ATTENDANCE_MANAGE: 'hr.attendance.manage',
+    PERFORMANCE_VIEW_OWN: 'hr.performance.view.own',
+    PERFORMANCE_VIEW_DEPT: 'hr.performance.view.dept',
+    PERFORMANCE_VIEW_ALL: 'hr.performance.view.all',
+    PERFORMANCE_MANAGE: 'hr.performance.manage',
+    ASSETS_VIEW: 'hr.assets.view',
+    ASSETS_MANAGE: 'hr.assets.manage',
+    ONBOARDING_MANAGE: 'hr.onboarding.manage',
+    OFFBOARDING_MANAGE: 'hr.offboarding.manage',
+    ORG_MANAGE: 'hr.org.manage',
+    CONFIDENTIAL_VIEW: 'hr.confidential.view',
+  },
+
   // ========== Workflows ==========
   WORKFLOWS: {
     OVERRIDE_TASK_WORKFLOW: 'workflows.override_task_workflow',
@@ -574,6 +604,10 @@ export const DANGEROUS_PERMISSIONS = new Set([
   PERMISSIONS.FINANCE.DELETE_INVOICE,
   PERMISSIONS.FINANCE.APPROVE_PAYMENT,
   PERMISSIONS.ADMIN_SETTINGS.EDIT,
+  PERMISSIONS.HR.CONFIDENTIAL_VIEW,
+  PERMISSIONS.HR.EMPLOYEES_EDIT,
+  PERMISSIONS.HR.ORG_MANAGE,
+  PERMISSIONS.HR.OFFBOARDING_MANAGE,
 ]);
 
 // ============================================================================
@@ -611,6 +645,14 @@ const PERMISSION_DEPENDENCIES: Record<string, string[]> = {
   [PERMISSIONS.ROLES.EDIT]: [PERMISSIONS.ROLES.VIEW],
   [PERMISSIONS.ROLES.DELETE]: [PERMISSIONS.ROLES.VIEW],
   [PERMISSIONS.PERMISSIONS_ADMIN.MANAGE]: [PERMISSIONS.PERMISSIONS_ADMIN.VIEW],
+  // HR: Can't approve leave without viewing
+  [PERMISSIONS.HR.LEAVE_APPROVE]: [PERMISSIONS.HR.LEAVE_VIEW_DEPT, PERMISSIONS.HR.LEAVE_VIEW_ALL],
+  [PERMISSIONS.HR.LEAVE_REJECT]: [PERMISSIONS.HR.LEAVE_VIEW_DEPT, PERMISSIONS.HR.LEAVE_VIEW_ALL],
+  [PERMISSIONS.HR.PERFORMANCE_MANAGE]: [PERMISSIONS.HR.PERFORMANCE_VIEW_DEPT, PERMISSIONS.HR.PERFORMANCE_VIEW_ALL],
+  [PERMISSIONS.HR.ASSETS_MANAGE]: [PERMISSIONS.HR.ASSETS_VIEW],
+  [PERMISSIONS.HR.ONBOARDING_MANAGE]: [PERMISSIONS.HR.EMPLOYEES_VIEW_ALL],
+  [PERMISSIONS.HR.OFFBOARDING_MANAGE]: [PERMISSIONS.HR.EMPLOYEES_VIEW_ALL],
+  [PERMISSIONS.HR.ORG_MANAGE]: [PERMISSIONS.HR.EMPLOYEES_VIEW_ALL],
 };
 
 /**
@@ -695,6 +737,7 @@ export function getPermissionsByModule(): Record<string, string[]> {
     'Calendar': [...Object.values(PERMISSIONS.CALENDAR), ...Object.values(PERMISSIONS.CALENDAR_MONTHS), ...Object.values(PERMISSIONS.CALENDAR_ITEMS)],
     'Creative Direction': Object.values(PERMISSIONS.CREATIVE),
     'Quality Control': Object.values(PERMISSIONS.QC),
+    'HR & Team': Object.values(PERMISSIONS.HR),
     'Workflows': Object.values(PERMISSIONS.WORKFLOWS),
   };
 }

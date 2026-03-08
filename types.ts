@@ -20,6 +20,63 @@ export enum Department {
 
 export type UserStatus = 'active' | 'inactive' | 'on_leave';
 
+// ============================================================================
+// HR MODULE — Employment & Workforce Types
+// ============================================================================
+
+export type EmploymentType = 'full-time' | 'part-time' | 'freelancer' | 'contractor' | 'intern';
+export type EmploymentStatus = 'active' | 'probation' | 'on-leave' | 'suspended' | 'resigned' | 'terminated';
+export type WorkMode = 'on-site' | 'hybrid' | 'remote';
+
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+  email?: string;
+}
+
+export interface EmployeeProfile {
+  id: string;             // Document ID (e.g. 'emp_xxx')
+  userId: string;         // Links to users/{userId} — Firebase Auth UID
+  fullName: string;
+  preferredName?: string;
+  email: string;
+  phone?: string;
+  profilePhoto?: string;
+  departmentId: string;   // Links to departments/{deptId}
+  teamId?: string;        // Links to teams/{teamId}
+  roleId?: string;        // Links to roles/{roleId}
+  jobTitle: string;
+  directManagerId?: string; // userId of direct manager
+  employmentType: EmploymentType;
+  employmentStatus: EmploymentStatus;
+  joinDate: string;         // ISO date
+  probationEndDate?: string;
+  contractStartDate?: string;
+  contractEndDate?: string;
+  workLocation?: string;
+  workMode: WorkMode;
+  salaryGrade?: string;
+  nationalId?: string;
+  emergencyContact?: EmergencyContact;
+  bankReference?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  departmentId: string;  // Links to departments/{deptId}
+  leadId?: string;       // userId of team lead
+  memberIds: string[];   // userId[]
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -41,25 +98,221 @@ export interface User {
   location?: string;
 }
 
+export type LeaveType = 'annual' | 'sick' | 'unpaid' | 'emergency' | 'maternity' | 'paternity' | 'compensatory' | 'other';
+export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
 export interface LeaveRequest {
   id: string;
   userId: string;
   startDate: string;
   endDate: string;
-  type: 'annual' | 'sick' | 'unpaid' | 'other';
+  totalDays: number;
+  type: LeaveType;
   reason: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: LeaveRequestStatus;
   approverId?: string;
+  approvedAt?: string;
+  rejectionReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
+  attachmentUrls?: string[];
   createdAt: string;
+  updatedAt?: string;
+  updatedBy?: string;
 }
+
+export interface LeavePolicy {
+  id: string;
+  leaveType: LeaveType;
+  name: string;               // e.g. "Annual Leave"
+  defaultDaysPerYear: number;
+  accrualRate?: number;       // days accrued per month (optional)
+  carryOverLimit: number;     // max days that carry to next year
+  requiresAttachment: boolean;
+  requiresApproval: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveBalance {
+  id: string;
+  employeeId: string;   // userId
+  leaveType: LeaveType;
+  year: number;
+  entitled: number;
+  used: number;
+  remaining: number;
+  carried: number;     // carried from previous year
+  updatedAt: string;
+}
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'remote' | 'on_leave' | 'holiday' | 'half-day';
+export type CorrectionStatus = 'pending' | 'approved' | 'rejected';
 
 export interface AttendanceRecord {
   id: string;
   userId: string;
   date: string;
-  status: 'present' | 'absent' | 'remote' | 'on_leave';
+  status: AttendanceStatus;
   checkInTime?: string;
   checkOutTime?: string;
+  totalHours?: number;
+  overtimeHours?: number;
+  workMode?: WorkMode;
+  notes?: string;
+  correctionRequested?: boolean;
+  correctionStatus?: CorrectionStatus;
+  createdAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface AttendanceCorrection {
+  id: string;
+  attendanceRecordId: string;
+  employeeId: string;      // userId
+  field: string;           // which field is being corrected
+  oldValue: string;
+  newValue: string;
+  correctedCheckIn?: string;   // ISO time string
+  correctedCheckOut?: string;  // ISO time string
+  reason: string;
+  status: CorrectionStatus;
+  correctionStatus?: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
+// HR MODULE — Onboarding / Offboarding
+// ============================================================================
+
+export type ChecklistStatus = 'not_started' | 'in_progress' | 'completed' | 'cancelled';
+
+export interface ChecklistStep {
+  id: string;
+  title: string;
+  description?: string;
+  assigneeId?: string;   // userId responsible for this step
+  assignedTo?: string;   // alias for assigneeId used in UI components
+  category?: string;     // step category (paperwork, it, orientation, etc.)
+  isRequired?: boolean;
+  isCompleted?: boolean; // convenience flag: true if status === 'completed'
+  status: 'pending' | 'completed' | 'skipped';
+  dueDate?: string;
+  completedAt?: string;
+  completedBy?: string;
+  order: number;
+}
+
+// Aliases used by onboarding/offboarding components
+export type OnboardingStep = ChecklistStep;
+export type OffboardingStep = ChecklistStep;
+
+export interface OnboardingChecklist {
+  id: string;
+  employeeId: string;    // userId of the new hire
+  userId?: string;       // alias for employeeId used in some components
+  steps: ChecklistStep[];
+  status: ChecklistStatus;
+  startedBy: string;
+  startedAt: string;
+  startDate?: string;    // alias for startedAt used in some components
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OffboardingChecklist {
+  id: string;
+  employeeId: string;    // userId of the departing employee
+  userId?: string;       // alias for employeeId used in some components
+  steps: ChecklistStep[];
+  status: ChecklistStatus;
+  finalWorkingDate?: string;
+  reason?: 'resignation' | 'termination' | 'contract_end' | 'other';
+  startedBy: string;
+  startedAt: string;
+  startDate?: string;    // alias for startedAt used in some components
+  completedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
+// HR MODULE — Employee Assets
+// ============================================================================
+
+export type EmployeeAssetStatus = 'assigned' | 'returned' | 'lost' | 'damaged';
+
+export interface EmployeeAsset {
+  id: string;
+  employeeId: string;     // userId
+  assetId?: string;       // links to agency_equipment/{id} if applicable
+  assetType: string;      // 'laptop' | 'phone' | 'camera' | 'access_card' | 'other'
+  assetName: string;      // descriptive name
+  serialNumber?: string;
+  assignedAt: string;
+  assignedBy: string;     // userId
+  returnedAt?: string;
+  conditionOnAssign?: string;
+  conditionOnReturn?: string;
+  notes?: string;
+  status: EmployeeAssetStatus;
+}
+
+// ============================================================================
+// HR MODULE — Performance Reviews
+// ============================================================================
+
+export type ReviewStatus = 'draft' | 'submitted' | 'acknowledged' | 'in-review' | 'finalized';
+export type PerformanceReviewStatus = ReviewStatus;
+
+export interface PerformanceScore {
+  category: string;       // e.g. 'Communication', 'Technical Skills', 'Teamwork'
+  score: number;          // 1-5
+  weight?: number;        // optional weighting
+  comments?: string;      // per-category comments
+}
+
+export interface PerformanceReview {
+  id: string;
+  employeeId: string;     // userId of the employee being reviewed
+  userId?: string;        // alias for employeeId used in some components
+  reviewerId: string;     // userId of the reviewer (usually manager)
+  reviewCycle: string;    // e.g. 'Q1-2026', 'H1-2026', '2026'
+  reviewPeriodStart: string;
+  reviewPeriodEnd: string;
+  scores: PerformanceScore[];
+  selfAssessment?: PerformanceScore[];    // employee self-assessment scores
+  managerAssessment?: PerformanceScore[]; // manager assessment scores
+  goals?: string;         // goals for next period
+  strengths: string;
+  areasForImprovement: string;
+  managerComments: string;
+  employeeComments?: string;
+  overallRating: number;  // 1-5
+  status: ReviewStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================================================
+// HR MODULE — Employee Status Changes (Audit Trail)
+// ============================================================================
+
+export interface EmployeeStatusChange {
+  id: string;
+  employeeId: string;     // userId
+  fromStatus: EmploymentStatus;
+  toStatus: EmploymentStatus;
+  reason: string;
+  effectiveDate: string;
+  changedBy: string;      // userId of the person making the change
+  createdAt: string;
 }
 
 export enum TaskStatus {
@@ -1060,11 +1313,24 @@ export type NotificationType =
   | 'QC_REVIEW_REQUESTED'
   | 'QC_APPROVED'
   | 'QC_REJECTED'
-  | 'QC_NEEDS_INTERVENTION';
+  | 'QC_NEEDS_INTERVENTION'
+  // HR & Team
+  | 'LEAVE_REQUESTED'
+  | 'LEAVE_APPROVED'
+  | 'LEAVE_REJECTED'
+  | 'LEAVE_CANCELLED'
+  | 'ONBOARDING_STARTED'
+  | 'OFFBOARDING_STARTED'
+  | 'ATTENDANCE_CORRECTION_REQUESTED'
+  | 'ATTENDANCE_CORRECTION_REVIEWED'
+  | 'PERFORMANCE_REVIEW_SUBMITTED'
+  | 'PERFORMANCE_REVIEW_FINALIZED'
+  | 'ASSET_ASSIGNED'
+  | 'ASSET_RETURN_OVERDUE';
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
-export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'calendar' | 'qc' | 'system';
-export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project' | 'calendar_item';
+export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'calendar' | 'qc' | 'hr' | 'system';
+export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project' | 'calendar_item' | 'employee_profile' | 'leave_request' | 'attendance' | 'performance_review';
 
 export interface NotificationAction {
   label: string;

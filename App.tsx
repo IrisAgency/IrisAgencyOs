@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, CalendarItemRevision, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem, QCReview } from './types';
+import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES, LEAVE_POLICIES, LEAVE_BALANCES, EMPLOYEE_PROFILES } from './constants';
+import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, CalendarItemRevision, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem, QCReview, EmployeeProfile, Team, LeavePolicy, LeaveBalance, AttendanceCorrection, OnboardingChecklist, OffboardingChecklist, EmployeeAsset, PerformanceReview, EmployeeStatusChange } from './types';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import Dashboard from './components/Dashboard';
@@ -141,6 +141,16 @@ const App: React.FC = () => {
   // HR Module State
   const [leaveRequests] = useFirestoreCollection<LeaveRequest>('leave_requests', LEAVE_REQUESTS);
   const [attendanceRecords] = useFirestoreCollection<AttendanceRecord>('attendance_records', ATTENDANCE_RECORDS);
+  const [employeeProfiles] = useFirestoreCollection<EmployeeProfile>('employee_profiles', EMPLOYEE_PROFILES);
+  const [teams] = useFirestoreCollection<Team>('teams', []);
+  const [leavePolicies] = useFirestoreCollection<LeavePolicy>('leave_policies', LEAVE_POLICIES);
+  const [leaveBalances] = useFirestoreCollection<LeaveBalance>('leave_balances', LEAVE_BALANCES);
+  const [attendanceCorrections] = useFirestoreCollection<AttendanceCorrection>('attendance_corrections', []);
+  const [onboardingChecklists] = useFirestoreCollection<OnboardingChecklist>('onboarding_checklists', []);
+  const [offboardingChecklists] = useFirestoreCollection<OffboardingChecklist>('offboarding_checklists', []);
+  const [employeeAssets] = useFirestoreCollection<EmployeeAsset>('employee_assets', []);
+  const [performanceReviews] = useFirestoreCollection<PerformanceReview>('performance_reviews', []);
+  const [employeeStatusChanges] = useFirestoreCollection<EmployeeStatusChange>('employee_status_changes', []);
 
   // Notifications State
   const [fetchedNotifications] = useFirestoreCollection<Notification>('notifications', []);
@@ -989,13 +999,251 @@ const App: React.FC = () => {
     await updateDoc(doc(db, 'users', updatedUser.id), updatedUser as any);
     addAuditLog('update_user', 'User', updatedUser.id, `Updated user ${updatedUser.name}`);
   };
+
+  // -- Employee Profile Handlers --
+  const handleCreateEmployeeProfile = async (profile: EmployeeProfile) => {
+    await setDoc(doc(db, 'employee_profiles', profile.id), profile);
+    addAuditLog('create_employee_profile', 'EmployeeProfile', profile.id, `Created employee profile for ${profile.fullName}`);
+    // Auto-create leave balances from active policies
+    for (const policy of leavePolicies.filter(p => p.isActive)) {
+      const balance: LeaveBalance = {
+        id: `lb_${profile.userId}_${policy.leaveType}_${new Date().getFullYear()}`,
+        employeeId: profile.userId,
+        leaveType: policy.leaveType,
+        year: new Date().getFullYear(),
+        entitled: policy.defaultDaysPerYear,
+        used: 0,
+        remaining: policy.defaultDaysPerYear,
+        carried: 0,
+        updatedAt: new Date().toISOString(),
+      };
+      await setDoc(doc(db, 'leave_balances', balance.id), balance);
+    }
+  };
+  const handleUpdateEmployeeProfile = async (profile: EmployeeProfile) => {
+    await updateDoc(doc(db, 'employee_profiles', profile.id), { ...profile, updatedAt: new Date().toISOString(), updatedBy: user?.id } as any);
+    addAuditLog('update_employee_profile', 'EmployeeProfile', profile.id, `Updated employee profile for ${profile.fullName}`);
+  };
+
+  // -- Leave Handlers (fixed: no more hardcoded u1) --
   const handleAddLeaveRequest = async (req: LeaveRequest) => {
-    await setDoc(doc(db, 'leave_requests', req.id), req);
-    handleNotify('system', 'Leave Request Submitted', 'Your request has been sent for approval.');
+    const reqToSave = { ...req, updatedAt: new Date().toISOString() };
+    await setDoc(doc(db, 'leave_requests', req.id), reqToSave);
+    addAuditLog('leave_request_created', 'LeaveRequest', req.id, `${users.find(u => u.id === req.userId)?.name} requested ${req.type} leave (${req.totalDays} days)`);
+    // Find direct manager from employee profile to notify
+    const empProfile = employeeProfiles.find(ep => ep.userId === req.userId);
+    const managerId = empProfile?.directManagerId;
+    if (managerId) {
+      handleNotify('LEAVE_REQUESTED', 'Leave Request Submitted', `${users.find(u => u.id === req.userId)?.name} has requested ${req.type} leave for ${req.totalDays} days.`, [managerId], req.id);
+    }
+    handleNotify('system', 'Leave Request Submitted', 'Your leave request has been sent for approval.');
+  };
+  const handleApproveLeaveRequest = async (req: LeaveRequest) => {
+    const updatedReq: LeaveRequest = { ...req, status: 'approved', approverId: user?.id, approvedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: user?.id };
+    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
+    // Update leave balance
+    const balanceId = `lb_${req.userId}_${req.type}_${new Date().getFullYear()}`;
+    const balanceDoc = leaveBalances.find(b => b.id === balanceId);
+    if (balanceDoc) {
+      await updateDoc(doc(db, 'leave_balances', balanceId), { used: balanceDoc.used + req.totalDays, remaining: balanceDoc.remaining - req.totalDays, updatedAt: new Date().toISOString() });
+    }
+    // Update user status if currently on leave dates
+    const reqUser = users.find(u => u.id === req.userId);
+    const now = new Date().toISOString().split('T')[0];
+    if (reqUser && req.startDate <= now && req.endDate >= now) {
+      await updateDoc(doc(db, 'users', req.userId), { status: 'on_leave' });
+    }
+    addAuditLog('leave_request_approved', 'LeaveRequest', req.id, `Approved ${req.type} leave for ${reqUser?.name}`);
+    handleNotify('LEAVE_APPROVED', 'Leave Approved', `Your ${req.type} leave request (${req.startDate} to ${req.endDate}) has been approved.`, [req.userId], req.id);
+  };
+  const handleRejectLeaveRequest = async (req: LeaveRequest, rejectionReason: string) => {
+    const updatedReq: LeaveRequest = { ...req, status: 'rejected', approverId: user?.id, rejectionReason, updatedAt: new Date().toISOString(), updatedBy: user?.id };
+    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
+    const reqUser = users.find(u => u.id === req.userId);
+    addAuditLog('leave_request_rejected', 'LeaveRequest', req.id, `Rejected ${req.type} leave for ${reqUser?.name}: ${rejectionReason}`);
+    handleNotify('LEAVE_REJECTED', 'Leave Rejected', `Your ${req.type} leave request has been rejected. Reason: ${rejectionReason}`, [req.userId], req.id);
+  };
+  const handleCancelLeaveRequest = async (req: LeaveRequest) => {
+    const updatedReq: LeaveRequest = { ...req, status: 'cancelled', cancelledBy: user?.id, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: user?.id };
+    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
+    // Restore balance if was approved
+    if (req.status === 'approved') {
+      const balanceId = `lb_${req.userId}_${req.type}_${new Date().getFullYear()}`;
+      const balanceDoc = leaveBalances.find(b => b.id === balanceId);
+      if (balanceDoc) {
+        await updateDoc(doc(db, 'leave_balances', balanceId), { used: Math.max(0, balanceDoc.used - req.totalDays), remaining: balanceDoc.remaining + req.totalDays, updatedAt: new Date().toISOString() });
+      }
+    }
+    addAuditLog('leave_request_cancelled', 'LeaveRequest', req.id, `Cancelled ${req.type} leave request`);
   };
   const handleUpdateLeaveRequest = async (req: LeaveRequest) => {
-    await updateDoc(doc(db, 'leave_requests', req.id), req as any);
-    if (req.status === 'approved') handleNotify('system', 'Leave Approved', 'Your leave request was approved.');
+    await updateDoc(doc(db, 'leave_requests', req.id), { ...req, updatedAt: new Date().toISOString() } as any);
+  };
+  const handleDeleteLeaveRequest = async (id: string) => {
+    await deleteDoc(doc(db, 'leave_requests', id));
+    addAuditLog('leave_request_deleted', 'LeaveRequest', id, `Deleted leave request ${id}`);
+  };
+
+  // -- Attendance / Timekeeping Handlers --
+  const handleCheckIn = async () => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString();
+    const recordId = `ar_${user.id}_${today}`;
+    const existing = attendanceRecords.find(r => r.id === recordId);
+    if (existing?.checkInTime) {
+      handleNotify('system', 'Already Checked In', 'You have already checked in today.');
+      return;
+    }
+    const record: AttendanceRecord = {
+      id: recordId,
+      userId: user.id,
+      date: today,
+      status: 'present',
+      checkInTime: now,
+      workMode: 'on-site',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await setDoc(doc(db, 'attendance_records', recordId), record);
+    addAuditLog('attendance_clock_in', 'Attendance', recordId, `${user.name} clocked in`);
+    handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`);
+  };
+  const handleCheckOut = async () => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    const now = new Date().toISOString();
+    const recordId = `ar_${user.id}_${today}`;
+    const existing = attendanceRecords.find(r => r.id === recordId);
+    if (!existing?.checkInTime) {
+      handleNotify('system', 'Not Checked In', 'You must check in before checking out.');
+      return;
+    }
+    if (existing?.checkOutTime) {
+      handleNotify('system', 'Already Checked Out', 'You have already checked out today.');
+      return;
+    }
+    const checkInMs = new Date(existing.checkInTime).getTime();
+    const checkOutMs = new Date(now).getTime();
+    const totalHours = Math.round(((checkOutMs - checkInMs) / (1000 * 60 * 60)) * 100) / 100;
+    const overtimeHours = Math.max(0, totalHours - 8);
+    await updateDoc(doc(db, 'attendance_records', recordId), {
+      checkOutTime: now,
+      totalHours,
+      overtimeHours,
+      updatedAt: now,
+    });
+    addAuditLog('attendance_clock_out', 'Attendance', recordId, `${user.name} clocked out (${totalHours}h)`);
+    handleNotify('system', 'Checked Out', `Clock-out recorded. Total: ${totalHours}h.`);
+  };
+  const handleSubmitAttendanceCorrection = async (correction: AttendanceCorrection) => {
+    await setDoc(doc(db, 'attendance_corrections', correction.id), correction);
+    addAuditLog('attendance_correction_requested', 'AttendanceCorrection', correction.id, `${user?.name} requested attendance correction`);
+  };
+  const handleApproveAttendanceCorrection = async (correctionId: string) => {
+    const correction = attendanceCorrections.find(c => c.id === correctionId);
+    if (!correction) return;
+    await updateDoc(doc(db, 'attendance_corrections', correctionId), {
+      correctionStatus: 'approved',
+      reviewedBy: user?.id,
+      reviewedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    // Update the original attendance record with corrected values
+    if (correction.attendanceRecordId) {
+      const updatePayload: Record<string, unknown> = { updatedAt: new Date().toISOString(), updatedBy: user?.id };
+      if (correction.correctedCheckIn) updatePayload.checkIn = correction.correctedCheckIn;
+      if (correction.correctedCheckOut) updatePayload.checkOut = correction.correctedCheckOut;
+      await updateDoc(doc(db, 'attendance_records', correction.attendanceRecordId), updatePayload);
+    }
+    addAuditLog('attendance_correction_approved', 'AttendanceCorrection', correctionId, `${user?.name} approved attendance correction for ${correction.employeeId}`);
+    handleNotify('ATTENDANCE_CORRECTION_REQUESTED', 'Attendance Correction Approved', 'Your attendance correction has been approved.', [correction.employeeId], correctionId);
+  };
+
+  // -- Onboarding / Offboarding Handlers --
+  const handleStartOnboarding = async (checklist: OnboardingChecklist) => {
+    await setDoc(doc(db, 'onboarding_checklists', checklist.id), checklist);
+    addAuditLog('onboarding_started', 'OnboardingChecklist', checklist.id, `Started onboarding for employee ${checklist.employeeId}`);
+    handleNotify('ONBOARDING_STARTED', 'Onboarding Started', `Onboarding has been initiated.`, [checklist.employeeId], checklist.id);
+  };
+  const handleCompleteOnboardingStep = async (checklistId: string, stepId: string) => {
+    const checklist = onboardingChecklists.find(c => c.id === checklistId);
+    if (!checklist) return;
+    const updatedSteps = checklist.steps.map(s =>
+      s.id === stepId ? { ...s, status: 'completed' as const, completedAt: new Date().toISOString(), completedBy: user?.id } : s
+    );
+    const allDone = updatedSteps.every(s => s.status === 'completed' || s.status === 'skipped');
+    await updateDoc(doc(db, 'onboarding_checklists', checklistId), {
+      steps: updatedSteps,
+      status: allDone ? 'completed' : 'in_progress',
+      completedAt: allDone ? new Date().toISOString() : null,
+      updatedAt: new Date().toISOString(),
+    });
+    addAuditLog('onboarding_step_completed', 'OnboardingChecklist', checklistId, `Completed onboarding step: ${stepId}`);
+  };
+  const handleStartOffboarding = async (checklist: OffboardingChecklist) => {
+    await setDoc(doc(db, 'offboarding_checklists', checklist.id), checklist);
+    // Update employee status
+    const profile = employeeProfiles.find(p => p.userId === checklist.employeeId);
+    if (profile) {
+      const statusChange: EmployeeStatusChange = {
+        id: `esc_${Date.now()}`,
+        employeeId: checklist.employeeId,
+        fromStatus: profile.employmentStatus,
+        toStatus: checklist.reason === 'termination' ? 'terminated' : 'resigned',
+        reason: checklist.reason || 'offboarding',
+        effectiveDate: checklist.finalWorkingDate || new Date().toISOString(),
+        changedBy: user?.id || '',
+        createdAt: new Date().toISOString(),
+      };
+      await setDoc(doc(db, 'employee_status_changes', statusChange.id), statusChange);
+    }
+    addAuditLog('offboarding_started', 'OffboardingChecklist', checklist.id, `Started offboarding for employee ${checklist.employeeId}`);
+    handleNotify('OFFBOARDING_STARTED', 'Offboarding Started', `Offboarding process has been initiated.`, [checklist.employeeId], checklist.id);
+  };
+
+  // -- Employee Asset Handlers --
+  const handleAssignEmployeeAsset = async (asset: EmployeeAsset) => {
+    await setDoc(doc(db, 'employee_assets', asset.id), asset);
+    // Update agency_equipment status if linked
+    if (asset.assetId) {
+      await updateDoc(doc(db, 'agency_equipment', asset.assetId), { status: 'checked_out', checkedOutBy: asset.employeeId, checkedOutAt: asset.assignedAt } as any);
+    }
+    addAuditLog('asset_assigned', 'EmployeeAsset', asset.id, `Assigned ${asset.assetName} to employee ${asset.employeeId}`);
+    handleNotify('ASSET_ASSIGNED', 'Asset Assigned', `${asset.assetName} has been assigned to you.`, [asset.employeeId], asset.id);
+  };
+  const handleReturnEmployeeAsset = async (assetId: string) => {
+    const asset = employeeAssets.find(a => a.id === assetId);
+    if (!asset) return;
+    await updateDoc(doc(db, 'employee_assets', assetId), { status: 'returned', returnedAt: new Date().toISOString() });
+    // Restore agency_equipment status if linked
+    if (asset.assetId) {
+      await updateDoc(doc(db, 'agency_equipment', asset.assetId), { status: 'available', checkedOutBy: null, checkedOutAt: null } as any);
+    }
+    addAuditLog('asset_returned', 'EmployeeAsset', assetId, `${asset.assetName} returned by employee ${asset.employeeId}`);
+  };
+
+  // -- Performance Review Handlers --
+  const handleCreatePerformanceReview = async (review: PerformanceReview) => {
+    await setDoc(doc(db, 'performance_reviews', review.id), review);
+    addAuditLog('performance_review_created', 'PerformanceReview', review.id, `Created performance review for employee ${review.employeeId}`);
+  };
+  const handleSubmitPerformanceReview = async (reviewId: string) => {
+    const review = performanceReviews.find(r => r.id === reviewId);
+    if (!review) return;
+    await updateDoc(doc(db, 'performance_reviews', reviewId), { status: 'submitted', updatedAt: new Date().toISOString() });
+    addAuditLog('performance_review_submitted', 'PerformanceReview', reviewId, `Submitted performance review for employee ${review.employeeId}`);
+    handleNotify('PERFORMANCE_REVIEW_SUBMITTED', 'Performance Review Submitted', `A performance review has been submitted for your review period ${review.reviewCycle}.`, [review.employeeId], reviewId);
+  };
+  const handleFinalizePerformanceReview = async (reviewId: string) => {
+    const review = performanceReviews.find(r => r.id === reviewId);
+    if (!review) return;
+    await updateDoc(doc(db, 'performance_reviews', reviewId), { status: 'finalized', updatedAt: new Date().toISOString() });
+    addAuditLog('performance_review_finalized', 'PerformanceReview', reviewId, `Finalized performance review for employee ${review.employeeId}`);
+    handleNotify('PERFORMANCE_REVIEW_FINALIZED', 'Performance Review Finalized', `Your performance review for ${review.reviewCycle} has been finalized.`, [review.employeeId], reviewId);
+  };
+  const handleUpdatePerformanceReview = async (review: PerformanceReview) => {
+    await updateDoc(doc(db, 'performance_reviews', review.id), { ...review, updatedAt: new Date().toISOString() } as any);
   };
 
 
@@ -2222,12 +2470,38 @@ const App: React.FC = () => {
             onUpdateUser={handleUpdateUser}
             onAddLeaveRequest={handleAddLeaveRequest}
             onUpdateLeaveRequest={handleUpdateLeaveRequest}
-            onDeleteLeaveRequest={() => { }} // Placeholder if not defined
-            onClockIn={() => { }} // Placeholder
-            onClockOut={() => { }} // Placeholder
+            onDeleteLeaveRequest={handleDeleteLeaveRequest}
+            onApproveLeaveRequest={handleApproveLeaveRequest}
+            onRejectLeaveRequest={handleRejectLeaveRequest}
+            onCancelLeaveRequest={handleCancelLeaveRequest}
+            onClockIn={handleCheckIn}
+            onClockOut={handleCheckOut}
             onAddDepartment={handleAddDepartment}
             onUpdateDepartment={handleUpdateDepartment}
             onDeleteDepartment={handleDeleteDepartment}
+            employeeProfiles={employeeProfiles}
+            teams={teams}
+            leavePolicies={leavePolicies}
+            leaveBalances={leaveBalances}
+            attendanceCorrections={attendanceCorrections}
+            onboardingChecklists={onboardingChecklists}
+            offboardingChecklists={offboardingChecklists}
+            employeeAssets={employeeAssets}
+            performanceReviews={performanceReviews}
+            equipment={equipment}
+            onCreateEmployeeProfile={handleCreateEmployeeProfile}
+            onUpdateEmployeeProfile={handleUpdateEmployeeProfile}
+            onSubmitAttendanceCorrection={handleSubmitAttendanceCorrection}
+            onApproveAttendanceCorrection={handleApproveAttendanceCorrection}
+            onStartOnboarding={handleStartOnboarding}
+            onCompleteOnboardingStep={handleCompleteOnboardingStep}
+            onStartOffboarding={handleStartOffboarding}
+            onAssignEmployeeAsset={handleAssignEmployeeAsset}
+            onReturnEmployeeAsset={handleReturnEmployeeAsset}
+            onCreatePerformanceReview={handleCreatePerformanceReview}
+            onSubmitPerformanceReview={handleSubmitPerformanceReview}
+            onFinalizePerformanceReview={handleFinalizePerformanceReview}
+            onUpdatePerformanceReview={handleUpdatePerformanceReview}
           />
         );
       case 'schedule':

@@ -1,4 +1,4 @@
-import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, Note } from './types';
+import { UserRole, Department, TaskStatus, Priority, User, Task, Project, ProductionAsset, Invoice, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, AgencyLocation, AgencyEquipment, ShotList, CallSheet, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, AppBranding, AppSettings, Permission, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, Note, LeavePolicy, LeaveBalance, EmployeeProfile } from './types';
 
 export const USERS: User[] = [
   {
@@ -29,9 +29,23 @@ export const USERS: User[] = [
 ];
 
 export const LEAVE_REQUESTS: LeaveRequest[] = [
-  { id: 'lr1', userId: 'u3', startDate: '2024-06-10', endDate: '2024-06-15', type: 'annual', reason: 'Summer Vacation', status: 'pending', createdAt: '2024-05-20' },
-  { id: 'lr2', userId: 'u5', startDate: '2024-05-20', endDate: '2024-05-25', type: 'sick', reason: 'Flu', status: 'approved', approverId: 'u1', createdAt: '2024-05-19' }
+  { id: 'lr1', userId: 'u3', startDate: '2024-06-10', endDate: '2024-06-15', totalDays: 5, type: 'annual', reason: 'Summer Vacation', status: 'pending', createdAt: '2024-05-20' },
+  { id: 'lr2', userId: 'u5', startDate: '2024-05-20', endDate: '2024-05-25', totalDays: 5, type: 'sick', reason: 'Flu', status: 'approved', approverId: 'u1', approvedAt: '2024-05-19', createdAt: '2024-05-19' }
 ];
+
+export const LEAVE_POLICIES: LeavePolicy[] = [
+  { id: 'lp1', leaveType: 'annual', name: 'Annual Leave', defaultDaysPerYear: 21, carryOverLimit: 5, requiresAttachment: false, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp2', leaveType: 'sick', name: 'Sick Leave', defaultDaysPerYear: 10, carryOverLimit: 0, requiresAttachment: true, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp3', leaveType: 'unpaid', name: 'Unpaid Leave', defaultDaysPerYear: 30, carryOverLimit: 0, requiresAttachment: false, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp4', leaveType: 'emergency', name: 'Emergency Leave', defaultDaysPerYear: 5, carryOverLimit: 0, requiresAttachment: false, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp5', leaveType: 'maternity', name: 'Maternity Leave', defaultDaysPerYear: 90, carryOverLimit: 0, requiresAttachment: true, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp6', leaveType: 'paternity', name: 'Paternity Leave', defaultDaysPerYear: 5, carryOverLimit: 0, requiresAttachment: true, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+  { id: 'lp7', leaveType: 'compensatory', name: 'Compensatory Leave', defaultDaysPerYear: 0, carryOverLimit: 0, requiresAttachment: false, requiresApproval: true, isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
+];
+
+export const LEAVE_BALANCES: LeaveBalance[] = [];
+
+export const EMPLOYEE_PROFILES: EmployeeProfile[] = [];
 
 export const ATTENDANCE_RECORDS: AttendanceRecord[] = [
   { id: 'ar1', userId: 'u1', date: '2024-05-22', status: 'present', checkInTime: '09:00', checkOutTime: '18:00' },
@@ -979,7 +993,15 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'dashboard.view_gm_urgent',
       // Admin
       'admin.branding.view', 'admin.branding.edit', 'admin.branding.upload_assets',
-      'admin.settings.view', 'admin.settings.edit'
+      'admin.settings.view', 'admin.settings.edit',
+      // HR & Team (full access)
+      'hr.employees.view.all', 'hr.employees.create', 'hr.employees.edit',
+      'hr.leave.view.all', 'hr.leave.create', 'hr.leave.approve', 'hr.leave.reject', 'hr.leave.cancel',
+      'hr.attendance.view.all', 'hr.attendance.manage',
+      'hr.performance.view.all', 'hr.performance.manage',
+      'hr.assets.view', 'hr.assets.manage',
+      'hr.onboarding.manage', 'hr.offboarding.manage',
+      'hr.org.manage', 'hr.confidential.view'
     ],
     isAdmin: true
   },
@@ -1023,7 +1045,12 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Quality Control (review)
       'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (dept-level management)
+      'hr.employees.view.dept', 'hr.leave.view.dept', 'hr.leave.create',
+      'hr.leave.approve', 'hr.leave.reject',
+      'hr.attendance.view.dept', 'hr.performance.view.dept',
+      'hr.assets.view'
     ],
     isAdmin: false
   },
@@ -1069,7 +1096,12 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Quality Control (full access)
       'qc.view', 'qc.manage', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment', 'qc.review.assign_reviewers',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (dept-level management)
+      'hr.employees.view.dept', 'hr.leave.view.dept', 'hr.leave.create',
+      'hr.leave.approve', 'hr.leave.reject',
+      'hr.attendance.view.dept', 'hr.performance.view.dept', 'hr.performance.manage',
+      'hr.assets.view'
     ],
     isAdmin: false
   },
@@ -1108,7 +1140,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Quality Control (view only)
       'qc.view',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (dept leave view, own attendance)
+      'hr.employees.view.dept', 'hr.leave.view.dept', 'hr.leave.create',
+      'hr.attendance.view.own', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1142,7 +1177,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Quality Control (view only)
       'qc.view',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (own only)
+      'hr.employees.view.own', 'hr.leave.view.own', 'hr.leave.create',
+      'hr.attendance.view.own', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1178,7 +1216,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Quality Control (review)
       'qc.view', 'qc.review.approve', 'qc.review.reject', 'qc.review.comment',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (own only)
+      'hr.employees.view.own', 'hr.leave.view.own', 'hr.leave.create',
+      'hr.attendance.view.own', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1209,7 +1250,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.dept', 'analytics.view.dept',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (own only)
+      'hr.employees.view.own', 'hr.leave.view.own', 'hr.leave.create',
+      'hr.attendance.view.own', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1246,7 +1290,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       'calendar.months.create', 'calendar.months.edit', 'calendar.months.delete',
       'calendar.items.create', 'calendar.items.edit', 'calendar.items.delete',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (dept-level for crew availability)
+      'hr.employees.view.dept', 'hr.leave.view.dept', 'hr.leave.create',
+      'hr.attendance.view.dept', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1273,7 +1320,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Calendar (view only)
       'calendar.view',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (own only)
+      'hr.employees.view.own', 'hr.leave.view.own', 'hr.leave.create',
+      'hr.attendance.view.own', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
@@ -1298,7 +1348,10 @@ export const DEFAULT_ROLES: RoleDefinition[] = [
       // Reports
       'reports.view.all', 'reports.export', 'analytics.view.all',
       // Notes
-      'notes.create', 'notes.edit_own', 'notes.delete_own'
+      'notes.create', 'notes.edit_own', 'notes.delete_own',
+      // HR & Team (view all for headcount/payroll context)
+      'hr.employees.view.all', 'hr.leave.view.all',
+      'hr.attendance.view.all', 'hr.performance.view.own'
     ],
     isAdmin: false
   },
