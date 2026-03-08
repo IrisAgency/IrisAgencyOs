@@ -1436,6 +1436,11 @@ export interface CalendarItemRevision {
   syncedAt?: string;                  // When synced back to calendar item
   syncedBy?: string;
   
+  // Archive
+  isArchived?: boolean;
+  archivedAt?: string;
+  archivedBy?: string;
+  
   createdAt: string;
   updatedAt: string;
 }
