@@ -1,1580 +1,273 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { USERS, TASKS, PROJECTS, INVOICES, PRODUCTION_ASSETS, CLIENTS, CLIENT_SOCIAL_LINKS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MONTHLY_REPORTS, PROJECT_MEMBERS, PROJECT_MILESTONES, PROJECT_ACTIVITY_LOGS, TASK_COMMENTS, TASK_TIME_LOGS, TASK_DEPENDENCIES, TASK_ACTIVITY_LOGS, APPROVAL_STEPS, CLIENT_APPROVALS, FILES, FOLDERS, AGENCY_LOCATIONS, AGENCY_EQUIPMENT, SHOT_LISTS, CALL_SHEETS, QUOTATIONS, PAYMENTS, EXPENSES, VENDORS, FREELANCERS, FREELANCER_ASSIGNMENTS, VENDOR_SERVICE_ORDERS, LEAVE_REQUESTS, ATTENDANCE_RECORDS, DEFAULT_BRANDING, DEFAULT_SETTINGS, DEFAULT_ROLES, AUDIT_LOGS, WORKFLOW_TEMPLATES, PROJECT_MARKETING_ASSETS, SOCIAL_POSTS, NOTES, LEAVE_POLICIES, LEAVE_BALANCES, EMPLOYEE_PROFILES } from './constants';
-import type { Task, Project, Invoice, ProductionAsset, TaskStatus, User, UserRole, Client, ClientSocialLink, ClientNote, ClientMeeting, ClientBrandAsset, ClientMonthlyReport, ProjectMember, ProjectMilestone, ProjectActivityLog, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, FileFolder, ShotList, CallSheet, AgencyLocation, AgencyEquipment, Quotation, Payment, Expense, Vendor, Freelancer, FreelancerAssignment, VendorServiceOrder, LeaveRequest, AttendanceRecord, Notification, NotificationPreference, NotificationType, AppBranding, AppSettings, RoleDefinition, AuditLog, WorkflowTemplate, ProjectMarketingAsset, SocialPost, DepartmentDefinition, Note, CalendarMonth, CalendarItem, CalendarItemRevision, ProductionPlan, Milestone, DashboardBanner, CreativeProject, CreativeCalendar, CreativeCalendarItem, QCReview, EmployeeProfile, Team, LeavePolicy, LeaveBalance, AttendanceCorrection, OnboardingChecklist, OffboardingChecklist, EmployeeAsset, PerformanceReview, EmployeeStatusChange } from './types';
+/**
+ * App.tsx — Layout shell and store orchestrator.
+ *
+ * Phase 2 rewrite: Reads from Zustand stores instead of 63 useFirestoreCollection hooks.
+ * Still passes props to child components (children will be individually migrated in Phase 3).
+ * Uses React Router for navigation instead of switch/case on activeView string.
+ */
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+
+// Layout components
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
-import Dashboard from './components/Dashboard';
-import TasksHub from './components/TasksHub';
-import ProductionHub from './components/ProductionHub';
-import FinanceHub from './components/FinanceHub';
-import ProjectsHub from './components/ProjectsHub';
-import TeamHub from './components/TeamHub';
-import AnalyticsHub from './components/AnalyticsHub';
 import AIAssistant from './components/AIAssistant';
-import ClientsHub from './components/ClientsHub';
-import FilesHub from './components/FilesHub';
-import VendorsHub from './components/VendorsHub';
-import NotificationsHub from './components/NotificationsHub';
-import NotificationConsole, { ManualNotificationPayload } from './components/NotificationConsole';
-import AdminHub from './components/AdminHub';
-import PostingHub from './components/PostingHub';
-import UnifiedCalendar from './components/UnifiedCalendar';
-import CalendarHub from './components/CalendarHub';
-import CreativeDirectionHub from './components/CreativeDirectionHub';
-import QualityControlHub from './components/QualityControlHub';
+import SplashScreen from './components/SplashScreen';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
-import SplashScreen from './components/SplashScreen';
-import ReloadPrompt from './components/ReloadPrompt';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
+import TaskDetailView from './components/tasks/TaskDetailView';
+
+// Contexts & hooks
 import { useAuth } from './contexts/AuthContext';
 import { useBranding } from './contexts/BrandingContext';
-import { PERMISSIONS } from './lib/permissions';
-import { X, Bell, ChevronRight } from 'lucide-react';
-import TaskDetailView from './components/tasks/TaskDetailView';
-import { notifyUsers } from './services/notificationService';
-import { useFirestoreCollection } from './hooks/useFirestore';
 import { useMessagingToken } from './hooks/useMessagingToken';
+import { PERMISSIONS } from './lib/permissions';
+import { startOverflowMonitoring } from './utils/overflowDetector';
+import { archiveTask } from './utils/archiveUtils';
+import { notifyUsers } from './services/notificationService';
+
+// Stores
+import { useUIStore } from './stores/useUIStore';
+import { useClientStore } from './stores/useClientStore';
+import { useProjectStore } from './stores/useProjectStore';
+import { useTaskStore } from './stores/useTaskStore';
+import { useNotificationStore } from './stores/useNotificationStore';
+import { useFileStore } from './stores/useFileStore';
+import { useFinanceStore } from './stores/useFinanceStore';
+import { useHRStore } from './stores/useHRStore';
+import { useProductionStore } from './stores/useProductionStore';
+import { usePostingStore } from './stores/usePostingStore';
+import { useCreativeStore } from './stores/useCreativeStore';
+import { useCalendarStore } from './stores/useCalendarStore';
+import { useAdminStore } from './stores/useAdminStore';
+import { useNetworkStore } from './stores/useNetworkStore';
+import { useNotesStore } from './stores/useNotesStore';
+import { useQCStore } from './stores/useQCStore';
+
+// Constants & types
+import { DEFAULT_SETTINGS, DEFAULT_ROLES } from './constants';
+import type {
+  Task, TaskStatus, ApprovalStep, ProjectMember, RoleDefinition,
+  NotificationType, NotificationPreference, AppSettings,
+  AgencyFile, User,
+} from './types';
+import { X, Bell, ChevronRight } from 'lucide-react';
 import { doc, setDoc, updateDoc, addDoc, collection, deleteDoc, writeBatch, query, where, getDocs, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from './lib/firebase';
-import { archiveTask } from './utils/archiveUtils';
-import {
-  createClientFolderStructure,
-  createProjectFolder,
-  createTaskFolder,
-  categorizeFileType,
-  generateFileName,
-  getDestinationFolder
-} from './utils/folderUtils';
-import { startOverflowMonitoring } from './utils/overflowDetector';
-import { initializeQCBlock, shouldEnableQC, resetQCForResubmission } from './utils/qcUtils';
 
-// Helper hook for LocalStorage persistence
-function useStickyState<T>(defaultValue: T, key: string): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const [value, setValue] = useState<T>(() => {
-    const stickyValue = window.localStorage.getItem(key);
-    return stickyValue !== null ? JSON.parse(stickyValue) : defaultValue;
-  });
+// Lazy-loaded route components
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const ClientsHub = lazy(() => import('./components/ClientsHub'));
+const ProjectsHub = lazy(() => import('./components/ProjectsHub'));
+const TasksHub = lazy(() => import('./components/TasksHub'));
+const PostingHub = lazy(() => import('./components/PostingHub'));
+const CalendarHub = lazy(() => import('./components/CalendarHub'));
+const CreativeDirectionHub = lazy(() => import('./components/CreativeDirectionHub'));
+const QualityControlHub = lazy(() => import('./components/QualityControlHub'));
+const FilesHub = lazy(() => import('./components/FilesHub'));
+const ProductionHub = lazy(() => import('./components/ProductionHub'));
+const VendorsHub = lazy(() => import('./components/VendorsHub'));
+const FinanceHub = lazy(() => import('./components/FinanceHub'));
+const TeamHub = lazy(() => import('./components/TeamHub'));
+const UnifiedCalendar = lazy(() => import('./components/UnifiedCalendar'));
+const AnalyticsHub = lazy(() => import('./components/AnalyticsHub'));
+const NotificationsHub = lazy(() => import('./components/NotificationsHub'));
+const NotificationConsole = lazy(() => import('./components/NotificationConsole'));
+const AdminHub = lazy(() => import('./components/AdminHub'));
 
-  useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
+const RouteFallback: React.FC = () => (
+  <div className="flex items-center justify-center h-full min-h-[400px]">
+    <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
-  return [value, setValue];
-}
+// ─────────────────────────────────────────────
+// Path ↔ viewKey mapping for Sidebar compat
+// ─────────────────────────────────────────────
+const pathToViewKey: Record<string, string> = {
+  '/': 'dashboard', '/clients': 'clients', '/projects': 'projects',
+  '/tasks': 'tasks', '/posting': 'posting', '/calendar': 'calendar',
+  '/creative': 'creative', '/quality-control': 'quality-control',
+  '/assets': 'assets', '/production': 'production', '/network': 'network',
+  '/finance': 'finance', '/hr': 'hr', '/schedule': 'schedule',
+  '/analytics': 'analytics', '/notifications': 'notifications', '/admin': 'admin',
+};
+const viewKeyToPath: Record<string, string> = Object.fromEntries(
+  Object.entries(pathToViewKey).map(([k, v]) => [v, k]),
+);
 
 const App: React.FC = () => {
-  const [activeView, setActiveView] = useState('dashboard');
-  const [targetProjectId, setTargetProjectId] = useState<string | null>(null);
-  const [targetTaskId, setTargetTaskId] = useState<string | null>(null);
-  const [isAIOpen, setIsAIOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [toast, setToast] = useState<{ title: string, message: string } | null>(null);
-  const [splashFinished, setSplashFinished] = useState(false);
-  const [hidePushPrompt, setHidePushPrompt] = useStickyState<boolean>(false, 'iris_hide_push_prompt');
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  // Overflow detection in development mode
+  // ─── Auth & Branding ─────────────────────
+  const { currentUser: user, loading, logout, checkPermission } = useAuth();
+  const { branding, loading: brandingLoading } = useBranding();
+
+  // ─── UI Store ─────────────────────────────
+  const {
+    targetProjectId, targetTaskId, isAIOpen, isSidebarOpen,
+    toast, splashFinished, hidePushPrompt,
+    setTargetProjectId, setTargetTaskId, setIsAIOpen,
+    toggleSidebar, closeSidebar,
+    showToast, clearToast, setSplashFinished, setHidePushPrompt,
+  } = useUIStore();
+
+  // Derive activeView from URL for Sidebar
+  const activeView = pathToViewKey[location.pathname] || 'dashboard';
+
+  // ─── Domain Store State (subscribe on mount) ─────
+  const clientStore = useClientStore();
+  const projectStore = useProjectStore();
+  const taskStore = useTaskStore();
+  const notifStore = useNotificationStore();
+  const fileStore = useFileStore();
+  const financeStore = useFinanceStore();
+  const hrStore = useHRStore();
+  const productionStore = useProductionStore();
+  const postingStore = usePostingStore();
+  const creativeStore = useCreativeStore();
+  const calendarStore = useCalendarStore();
+  const adminStore = useAdminStore();
+  const networkStore = useNetworkStore();
+  const notesStore = useNotesStore();
+  const qcStore = useQCStore();
+
+  // Subscribe all stores on mount, unsubscribe on unmount
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const cleanup = startOverflowMonitoring();
-      return cleanup;
-    }
+    clientStore.subscribe();
+    projectStore.subscribe();
+    taskStore.subscribe();
+    notifStore.subscribe();
+    fileStore.subscribe();
+    financeStore.subscribe();
+    hrStore.subscribe();
+    productionStore.subscribe();
+    postingStore.subscribe();
+    creativeStore.subscribe();
+    calendarStore.subscribe();
+    adminStore.subscribe();
+    networkStore.subscribe();
+    notesStore.subscribe();
+    qcStore.subscribe();
+
+    return () => {
+      clientStore.unsubscribe();
+      projectStore.unsubscribe();
+      taskStore.unsubscribe();
+      notifStore.unsubscribe();
+      fileStore.unsubscribe();
+      financeStore.unsubscribe();
+      hrStore.unsubscribe();
+      productionStore.unsubscribe();
+      postingStore.unsubscribe();
+      creativeStore.unsubscribe();
+      calendarStore.unsubscribe();
+      adminStore.unsubscribe();
+      networkStore.unsubscribe();
+      notesStore.unsubscribe();
+      qcStore.unsubscribe();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // -- Application State (Persisted) --
-  const { currentUser: user, loading, logout, checkPermission } = useAuth();
-  const [tasks] = useFirestoreCollection<Task>('tasks', TASKS);
-  const activeTasks = tasks.filter(t => !t.isDeleted);
-  const [projects] = useFirestoreCollection<Project>('projects', PROJECTS);
-  const [users] = useFirestoreCollection<User>('users', USERS);
-  const [clients] = useFirestoreCollection<Client>('clients', CLIENTS);
-  const [clientSocialLinks] = useFirestoreCollection<ClientSocialLink>('client_social_links', CLIENT_SOCIAL_LINKS);
-  const [clientNotes] = useFirestoreCollection<ClientNote>('client_notes', CLIENT_NOTES);
-  const [clientMeetings] = useFirestoreCollection<ClientMeeting>('client_meetings', CLIENT_MEETINGS);
-  const [clientBrandAssets] = useFirestoreCollection<ClientBrandAsset>('client_brand_assets', CLIENT_BRAND_ASSETS);
-  const [clientMonthlyReports] = useFirestoreCollection<ClientMonthlyReport>('client_monthly_reports', CLIENT_MONTHLY_REPORTS);
-
-  // Finance State
-  const [invoices] = useFirestoreCollection<Invoice>('invoices', INVOICES);
-  const [quotations] = useFirestoreCollection<Quotation>('quotations', QUOTATIONS);
-  const [payments] = useFirestoreCollection<Payment>('payments', PAYMENTS);
-  const [expenses] = useFirestoreCollection<Expense>('expenses', EXPENSES);
-
-  // Project Related State
-  const [projectMembers] = useFirestoreCollection<ProjectMember>('project_members', PROJECT_MEMBERS);
-  const [projectMilestones] = useFirestoreCollection<ProjectMilestone>('project_milestones', PROJECT_MILESTONES);
-  const [projectLogs] = useFirestoreCollection<ProjectActivityLog>('project_activity_logs', PROJECT_ACTIVITY_LOGS);
-  const [projectMarketingAssets] = useFirestoreCollection<ProjectMarketingAsset>('project_marketing_assets', PROJECT_MARKETING_ASSETS);
-
-  // Social Media State
-  const [socialPosts] = useFirestoreCollection<SocialPost>('social_posts', SOCIAL_POSTS);
-
-  // Task Related State
-  const [taskComments] = useFirestoreCollection<TaskComment>('task_comments', TASK_COMMENTS);
-  const [taskTimeLogs] = useFirestoreCollection<TaskTimeLog>('task_time_logs', TASK_TIME_LOGS);
-  const [taskDependencies] = useFirestoreCollection<TaskDependency>('task_dependencies', TASK_DEPENDENCIES);
-  const [taskLogs] = useFirestoreCollection<TaskActivityLog>('task_activity_logs', TASK_ACTIVITY_LOGS);
-
-  // Approval Workflow State
-  const [approvalSteps] = useFirestoreCollection<ApprovalStep>('approval_steps', APPROVAL_STEPS);
-  const [clientApprovals] = useFirestoreCollection<ClientApproval>('client_approvals', CLIENT_APPROVALS);
-
-  // File Management State
-  const [files] = useFirestoreCollection<AgencyFile>('files', FILES);
-  const [folders] = useFirestoreCollection<FileFolder>('folders', FOLDERS);
-
-  // Production Module State
-  const [productionAssets] = useFirestoreCollection<ProductionAsset>('production_assets', PRODUCTION_ASSETS); // Legacy
-  const [shotLists] = useFirestoreCollection<ShotList>('shot_lists', SHOT_LISTS);
-  const [callSheets] = useFirestoreCollection<CallSheet>('call_sheets', CALL_SHEETS);
-  const [locations] = useFirestoreCollection<AgencyLocation>('agency_locations', AGENCY_LOCATIONS);
-  const [equipment] = useFirestoreCollection<AgencyEquipment>('agency_equipment', AGENCY_EQUIPMENT);
-  const [productionPlans] = useFirestoreCollection<ProductionPlan>('production_plans', []);
-
-  // Vendors & Freelancers Module State
-  const [vendors] = useFirestoreCollection<Vendor>('vendors', VENDORS);
-  const [freelancers] = useFirestoreCollection<Freelancer>('freelancers', FREELANCERS);
-  const [assignments] = useFirestoreCollection<FreelancerAssignment>('freelancer_assignments', FREELANCER_ASSIGNMENTS);
-  const [serviceOrders] = useFirestoreCollection<VendorServiceOrder>('vendor_service_orders', VENDOR_SERVICE_ORDERS);
-
-  // HR Module State
-  const [leaveRequests] = useFirestoreCollection<LeaveRequest>('leave_requests', LEAVE_REQUESTS);
-  const [attendanceRecords] = useFirestoreCollection<AttendanceRecord>('attendance_records', ATTENDANCE_RECORDS);
-  const [employeeProfiles] = useFirestoreCollection<EmployeeProfile>('employee_profiles', EMPLOYEE_PROFILES);
-  const [teams] = useFirestoreCollection<Team>('teams', []);
-  const [leavePolicies] = useFirestoreCollection<LeavePolicy>('leave_policies', LEAVE_POLICIES);
-  const [leaveBalances] = useFirestoreCollection<LeaveBalance>('leave_balances', LEAVE_BALANCES);
-  const [attendanceCorrections] = useFirestoreCollection<AttendanceCorrection>('attendance_corrections', []);
-  const [onboardingChecklists] = useFirestoreCollection<OnboardingChecklist>('onboarding_checklists', []);
-  const [offboardingChecklists] = useFirestoreCollection<OffboardingChecklist>('offboarding_checklists', []);
-  const [employeeAssets] = useFirestoreCollection<EmployeeAsset>('employee_assets', []);
-  const [performanceReviews] = useFirestoreCollection<PerformanceReview>('performance_reviews', []);
-  const [employeeStatusChanges] = useFirestoreCollection<EmployeeStatusChange>('employee_status_changes', []);
-
-  // Notifications State
-  const [fetchedNotifications] = useFirestoreCollection<Notification>('notifications', []);
-  const notifications = useMemo(() => {
-    if (!user) return [] as Notification[];
-    return [...fetchedNotifications.filter(n => n.userId === user.id)].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [fetchedNotifications, user]);
-
-  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference>({
-    userId: user?.id || 'placeholder',
-    mutedCategories: [],
-    mutedProjects: [],
-    severityThreshold: 'info',
-    inAppEnabled: true,
-    emailEnabled: false,
-    pushEnabled: true,
-    delivery: {
-      inApp: true,
-      email: false,
-      push: true,
-    },
-  });
-
-  // Load notification preferences from Firestore
+  // Load notification preferences
   useEffect(() => {
-    if (!user) return;
-    
-    const loadPreferences = async () => {
-      try {
-        const prefsDoc = await getDoc(doc(db, 'notification_preferences', user.id));
-        if (prefsDoc.exists()) {
-          const prefs = prefsDoc.data() as NotificationPreference;
-          setNotificationPreferences(prefs);
-        } else {
-          // Create default preferences if none exist
-          const defaultPrefs: NotificationPreference = {
-            userId: user.id,
-            mutedCategories: [],
-            mutedProjects: [],
-            severityThreshold: 'info',
-            inAppEnabled: true,
-            emailEnabled: false,
-            pushEnabled: true,
-            delivery: {
-              inApp: true,
-              email: false,
-              push: true,
-            },
-          };
-          await setDoc(doc(db, 'notification_preferences', user.id), defaultPrefs);
-          setNotificationPreferences(defaultPrefs);
-        }
-      } catch (error) {
-        console.error('Failed to load notification preferences:', error);
-      }
-    };
-    
-    loadPreferences();
+    if (user) notifStore.loadPreferences(user.id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // Notes State
-  const [notes] = useFirestoreCollection<Note>('notes', NOTES);
-
-  // Calendar State
-  const [calendarMonths] = useFirestoreCollection<CalendarMonth>('calendar_months', []);
-  const [calendarItems] = useFirestoreCollection<CalendarItem>('calendar_items', []);
-  const [calendarItemRevisions] = useFirestoreCollection<CalendarItemRevision>('calendar_item_revisions', []);
-
-  // Creative Direction State
-  const [creativeProjects] = useFirestoreCollection<CreativeProject>('creative_projects', []);
-  const [creativeCalendars] = useFirestoreCollection<CreativeCalendar>('creative_calendars', []);
-  const [creativeCalendarItems] = useFirestoreCollection<CreativeCalendarItem>('creative_calendar_items', []);
-
-  // Quality Control State
-  const [qcReviews] = useFirestoreCollection<QCReview>('task_qc_reviews', []);
-
-  // Smart Project Creation - Dynamic Milestones
-  const [milestones] = useFirestoreCollection<Milestone>('milestones', []);
-
-  // Admin & Settings State
-  // const [appBranding, setAppBranding] = useStickyState<AppBranding>(DEFAULT_BRANDING, 'iris_branding');
-  // const [appSettings, setAppSettings] = useStickyState<AppSettings>(DEFAULT_SETTINGS, 'iris_settings');
-  const [systemRoles] = useFirestoreCollection<RoleDefinition>('roles', DEFAULT_ROLES);
-  const [auditLogs] = useFirestoreCollection<AuditLog>('audit_logs', AUDIT_LOGS);
-  const [workflowTemplates] = useFirestoreCollection<WorkflowTemplate>('workflow_templates', WORKFLOW_TEMPLATES);
-  const [departments] = useFirestoreCollection<DepartmentDefinition>('departments', []);
-  const [dashboardBanners] = useFirestoreCollection<DashboardBanner>('dashboard_banners', []);
-
-  // Get the active banner (first active one)
-  const dashboardBanner = dashboardBanners.find(b => b.isActive) || null;
-
-  const { branding, loading: brandingLoading } = useBranding();
-  const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
-
-  // Defensive check for users array
-  const safeUsers = Array.isArray(users) ? users : [];
+  // ─── Derived Data ─────────────────────────
+  const tasks = taskStore.tasks;
+  const activeTasks = tasks.filter(t => !t.isDeleted);
+  const projects = projectStore.projects;
+  const clients = clientStore.clients;
+  const safeUsers = Array.isArray(hrStore.users) ? hrStore.users : [];
   const activeUsers = safeUsers.filter(u => u && u.status !== 'inactive');
+  const { files, folders } = fileStore;
+  const { invoices, quotations, payments, expenses } = financeStore;
+  const { systemRoles, auditLogs, workflowTemplates, departments, dashboardBanners } = adminStore;
+  const dashboardBanner = dashboardBanners.find(b => b.isActive) || null;
+  const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const canSendNotifications = checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW);
 
-  // Show splash screen during initial load, hide loading states behind splash
-  const showSplash = !splashFinished || loading || brandingLoading;
+  const notifications = useMemo(() => {
+    if (!user) return [];
+    return [...notifStore.allNotifications.filter(n => n.userId === user.id)].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [notifStore.allNotifications, user]);
 
+  // ─── Messaging ────────────────────────────
   const { requestPermissionAndRegister, permissionState, token: messagingToken } = useMessagingToken(user);
-  const shouldShowPushPrompt = permissionState === 'default' && !hidePushPrompt && permissionState !== 'unsupported';
+  const shouldShowPushPrompt = permissionState === 'default' && !hidePushPrompt && permissionState !== ('unsupported' as any);
 
   useEffect(() => {
-    if (permissionState === 'granted') {
-      setHidePushPrompt(true);
-    }
+    if (permissionState === 'granted') setHidePushPrompt(true);
   }, [permissionState, setHidePushPrompt]);
 
-  if (showSplash) {
-    return (
-      <SplashScreen 
-        onFinish={() => setSplashFinished(true)} 
-        minimumDisplayDuration={3000}
-      />
-    );
-  }
+  // Overflow detection in dev
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') return startOverflowMonitoring();
+  }, []);
 
-  if (!user) {
-    return <Login />;
-  }
+  // ─── Loading & Auth Gates ─────────────────
+  const showSplash = !splashFinished || loading || brandingLoading;
+  if (showSplash) return <SplashScreen onFinish={() => setSplashFinished(true)} minimumDisplayDuration={3000} />;
+  if (!user) return <Login />;
+  if (user.forcePasswordChange) return <ForcePasswordChange />;
 
-  if (user.forcePasswordChange) {
-    return <ForcePasswordChange />;
-  }
+  // ─── Handlers (bridge — delegates to stores) ─────
 
-  // --- Handlers ---
-
-  const handleEnablePushNotifications = async () => {
-    try {
-      await requestPermissionAndRegister();
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        setHidePushPrompt(true);
-      }
-    } catch (error) {
-      console.error('Failed to enable push notifications', error);
-    }
+  const handleNavigate = (viewKey: string) => {
+    navigate(viewKeyToPath[viewKey] || '/');
+    closeSidebar();
   };
 
-  const handleDismissPushPrompt = () => {
-    setHidePushPrompt(true);
+  const handleNavigateToTask = (taskId: string) => setTargetTaskId(taskId);
+
+  const handleOpenProject = (projectId: string) => {
+    setTargetProjectId(projectId);
+    navigate('/projects');
   };
 
-  const handleLogout = async () => {
-    await logout();
-  };
+  const handleLogout = async () => { await logout(); };
 
-  const handleNavigateToTask = (taskId: string) => {
-    setTargetTaskId(taskId);
-  };
-
-  // Global task detail overlay helpers
-  const globalSelectedTask = activeTasks.find(t => t.id === targetTaskId) || null;
-
-  const globalGetStatusColor = (s: TaskStatus): string => {
-    switch (s) {
-      case 'new' as TaskStatus: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
-      case 'assigned' as TaskStatus: return 'bg-blue-500/10 text-blue-100 border-blue-500/25';
-      case 'in_progress' as TaskStatus: return 'bg-indigo-500/10 text-indigo-100 border-indigo-500/25';
-      case 'awaiting_review' as TaskStatus: return 'bg-amber-500/10 text-amber-100 border-amber-500/20';
-      case 'revisions_required' as TaskStatus: return 'bg-rose-500/10 text-rose-100 border-rose-500/25';
-      case 'approved' as TaskStatus: return 'bg-emerald-500/10 text-emerald-100 border-emerald-500/25';
-      case 'client_review' as TaskStatus: return 'bg-purple-500/10 text-purple-100 border-purple-500/25';
-      case 'client_approved' as TaskStatus: return 'bg-teal-500/10 text-teal-100 border-teal-500/25';
-      case 'completed' as TaskStatus: return 'bg-emerald-600/15 text-emerald-100 border-emerald-400/40';
-      case 'archived' as TaskStatus: return 'bg-slate-800/60 text-slate-300 border-[color:var(--dash-glass-border)]';
-      default: return 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]';
-    }
-  };
-
-  const globalResolveApprover = (step: any, task: Task): string | null => {
-    if (step.specificUserId) return step.specificUserId;
-    if (step.projectRoleKey) {
-      const member = projectMembers.find((pm: ProjectMember) => pm.projectId === task.projectId && pm.roleInProject === step.projectRoleKey);
-      return member ? member.userId : null;
-    }
-    if (step.roleId) {
-      const roleDef = systemRoles.find((r: RoleDefinition) => r.id === step.roleId);
-      if (roleDef) {
-        const projectUserIds = projectMembers.filter((pm: ProjectMember) => pm.projectId === task.projectId).map((pm: ProjectMember) => pm.userId);
-        const projectApprover = activeUsers.find(u => u.role === roleDef.name && projectUserIds.includes(u.id));
-        if (projectApprover) return projectApprover.id;
-        const deptApprover = activeUsers.find(u => u.role === roleDef.name && u.department === task.department);
-        if (deptApprover) return deptApprover.id;
-        const anyApprover = activeUsers.find(u => u.role === roleDef.name);
-        if (anyApprover) return anyApprover.id;
-      }
-    }
-    return null;
-  };
-
-  const resolveNotificationTargetUserIds = (payload: ManualNotificationPayload): string[] => {
-    switch (payload.targetType) {
-      case 'user':
-        return payload.targetIds;
-      case 'role':
-        return activeUsers.filter(u => payload.targetIds.includes(u.role)).map(u => u.id);
-      case 'project':
-        return projectMembers
-          .filter(pm => payload.targetIds.includes(pm.projectId))
-          .map(pm => pm.userId);
-      case 'all':
-      default:
-        return activeUsers.map(u => u.id);
-    }
-  };
-
-  const handleManualNotificationSend = async (payload: ManualNotificationPayload) => {
-    const recipientIds = Array.from(new Set(resolveNotificationTargetUserIds(payload)));
-    const createdAt = new Date().toISOString();
-
-    await addDoc(collection(db, 'notifications_outbox'), {
-      title: payload.title,
-      body: payload.body,
-      targetType: payload.targetType,
-      targetIds: payload.targetIds,
-      targetUserIds: recipientIds,
-      createdAt,
-      createdBy: user?.id || 'system'
-    });
-
-    if (recipientIds.length > 0) {
-      const batch = writeBatch(db);
-      recipientIds.forEach((uid) => {
-        const notificationRef = doc(collection(db, 'notifications'));
-        batch.set(notificationRef, {
-          userId: uid,
-          type: 'system',
-          title: payload.title,
-          message: payload.body,
-          severity: 'info',
-          category: 'system',
-          isRead: false,
-          createdAt
-        });
-      });
-      await batch.commit();
-    }
-
-    setToast({ title: 'Notification queued', message: `Sent to ${recipientIds.length || activeUsers.length} recipient(s).` });
-  };
-
-  // Notification Logic
+  // Toast helper
   const handleNotify = async (type: NotificationType, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
-    // Show toast for immediate feedback
-    setToast({ title, message });
-    setTimeout(() => setToast(null), 4000);
-    
-    // Create persistent notification if recipients specified
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
     if (recipientIds.length > 0) {
       try {
-        await notifyUsers({
-          type,
-          title,
-          message,
-          recipientIds,
-          entityId,
-          actionUrl,
-          sendPush: false, // Push handled separately via manual console
-          createdBy: user?.id || 'system',
-        });
-      } catch (error) {
-        console.error('Failed to create notification:', error);
-      }
+        await notifyUsers({ type, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: user?.id || 'system' });
+      } catch (error) { console.error('Failed to create notification:', error); }
     }
   };
 
-  const handleMarkNotificationRead = async (id: string) => {
-    try {
-      await updateDoc(doc(db, 'notifications', id), {
-        isRead: true,
-        readAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error('Failed to mark notification read', error);
-    }
-  };
-
-  const handleMarkAllNotificationsRead = async () => {
+  // Audit log helper
+  const addAuditLog = async (action: string, entityType: string, entityId: string | null, description: string) => {
     if (!user) return;
-    try {
-      const q = query(collection(db, 'notifications'), where('userId', '==', user.id));
-      const snap = await getDocs(q);
-      const batch = writeBatch(db);
-      snap.docs.forEach((d) => batch.update(d.ref, { isRead: true, readAt: new Date().toISOString() }));
-      await batch.commit();
-    } catch (error) {
-      console.error('Failed to mark all notifications read', error);
-    }
+    await adminStore.addAuditLog(user.id, action, entityType, entityId, description);
   };
 
-  const handleDeleteNotification = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'notifications', id));
-    } catch (error) {
-      console.error('Failed to delete notification', error);
-    }
-  };
-
-  const handleUpdatePreferences = async (prefs: NotificationPreference) => {
-    try {
-      // Sync direct fields with delivery object
-      const syncedPrefs = {
-        ...prefs,
-        inAppEnabled: prefs.delivery?.inApp ?? prefs.inAppEnabled,
-        emailEnabled: prefs.delivery?.email ?? prefs.emailEnabled,
-        pushEnabled: prefs.delivery?.push ?? prefs.pushEnabled,
-        delivery: {
-          inApp: prefs.delivery?.inApp ?? prefs.inAppEnabled,
-          email: prefs.delivery?.email ?? prefs.emailEnabled,
-          push: prefs.delivery?.push ?? prefs.pushEnabled,
-        },
-      };
-      
-      await setDoc(doc(db, 'notification_preferences', prefs.userId), syncedPrefs);
-      setNotificationPreferences(syncedPrefs);
-    } catch (error) {
-      console.error('Failed to update notification preferences:', error);
-      setToast({ title: 'Error', message: 'Failed to save notification preferences' });
-    }
-  };
-
-
-  // -- Task Handlers --
-  const handleAddTask = async (newTask: Task) => {
-    await setDoc(doc(db, 'tasks', newTask.id), newTask);
-
-    // Auto-create task folder
-    try {
-      const project = projects.find(p => p.id === newTask.projectId);
-      if (project) {
-        await createTaskFolder(
-          newTask.id,
-          newTask.title,
-          newTask.projectId,
-          project.clientId
-        );
-      }
-    } catch (error) {
-      console.error('Error creating task folder:', error);
-    }
-
-    const log: TaskActivityLog = {
-      id: `tal${Date.now()}`, taskId: newTask.id, userId: user!.id, type: 'status_change', message: 'Task created', createdAt: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'task_activity_logs', log.id), log);
-
-    // Create notifications for assigned users
-    if (newTask.assigneeIds && newTask.assigneeIds.length > 0) {
-      const project = projects.find(p => p.id === newTask.projectId);
-      const creatorName = users.find(u => u.id === user?.id)?.name || 'Someone';
-      
-      await notifyUsers({
-        type: 'TASK_ASSIGNED',
-        title: 'New Task Assigned',
-        message: `${creatorName} assigned you to "${newTask.title}"${project ? ` in ${project.name}` : ''}`,
-        recipientIds: newTask.assigneeIds.filter(id => id !== user?.id), // Don't notify creator
-        entityId: newTask.id,
-        actionUrl: `/tasks/${newTask.id}`,
-        sendPush: true,
-        createdBy: user?.id || 'system',
-      });
-    }
-
-    // Recalculate Milestone Progress if linked
-    if (newTask.milestoneId) {
-      const milestoneTasksQuery = query(collection(db, 'tasks'), where('milestoneId', '==', newTask.milestoneId));
-      const snapshot = await getDocs(milestoneTasksQuery);
-      const tasks = snapshot.docs.map(d => d.data() as Task);
-      const totalTasks = tasks.length;
-      const completedTasks = tasks.filter(t => t.status === 'completed').length;
-      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-      // Update Milestone
-      const milestoneRef = doc(db, 'project_milestones', newTask.milestoneId);
-      await updateDoc(milestoneRef, { progressPercent: progress });
-    }
+  // Task handlers → delegates to store
+  const handleAddTask = async (task: Task) => {
+    await taskStore.addTask(task, projects, hrStore.users, user!.id);
   };
 
   const handleUpdateTask = async (updatedTask: Task) => {
-    const oldTask = tasks.find(t => t.id === updatedTask.id);
-    
-    // Remove undefined fields to avoid Firestore errors
-    const taskToSave = Object.fromEntries(
-      Object.entries(updatedTask).filter(([_, value]) => value !== undefined)
-    );
-    
-    await updateDoc(doc(db, 'tasks', updatedTask.id), taskToSave as any);
-
-    const log: TaskActivityLog = {
-      id: `tal${Date.now()}`, taskId: updatedTask.id, userId: user!.id, type: 'status_change', message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'task_activity_logs', log.id), log);
-
-    // Notify on status changes
-    if (oldTask && oldTask.status !== updatedTask.status) {
-      // --- QC Trigger ---
-      if (updatedTask.status === ('awaiting_review' as TaskStatus)) {
-        const template = workflowTemplates.find(w => w.id === updatedTask.workflowTemplateId);
-        const qcEnabled = shouldEnableQC(updatedTask, (template as any)?.requiresQC);
-        console.log('[QC Trigger]', { taskId: updatedTask.id, title: updatedTask.title, templateId: updatedTask.workflowTemplateId, templateRequiresQC: (template as any)?.requiresQC, qcEnabled, qcOverride: updatedTask.qcOverride, hasExistingQC: !!updatedTask.qc?.enabled });
-
-        if (qcEnabled) {
-          // If resubmission after revision, reset QC
-          if (oldTask.status === ('revisions_required' as TaskStatus) && oldTask.qc?.enabled) {
-            try {
-              await resetQCForResubmission(updatedTask.id, qcReviews, oldTask.qc);
-            } catch (err) {
-              console.error('Failed to reset QC for resubmission:', err);
-            }
-          }
-
-          // Initialize QC block if not already enabled
-          if (!updatedTask.qc?.enabled) {
-            const qcBlock = initializeQCBlock(updatedTask, projectMembers, activeUsers, systemRoles);
-            console.log('[QC Block Initialized]', { reviewers: qcBlock.reviewers, requiredApprovals: qcBlock.requiredApprovals, status: qcBlock.status });
-            await updateDoc(doc(db, 'tasks', updatedTask.id), { qc: qcBlock });
-
-            // Notify QC reviewers
-            if (qcBlock.reviewers.length > 0) {
-              await notifyUsers({
-                type: 'QC_REVIEW_REQUESTED',
-                title: `QC Review Needed: ${updatedTask.title}`,
-                message: `Task "${updatedTask.title}" requires Quality Control review`,
-                recipientIds: qcBlock.reviewers.filter(id => id !== user?.id),
-                entityId: updatedTask.id,
-                actionUrl: `/quality-control`,
-                sendPush: true,
-                createdBy: user?.id || 'system',
-              });
-            }
-          } else {
-            // Re-enable with reset status
-            await updateDoc(doc(db, 'tasks', updatedTask.id), {
-              'qc.status': 'PENDING',
-              'qc.lastUpdatedAt': new Date().toISOString(),
-            });
-          }
-        }
-      }
-
-      const statusMessages: Record<string, string> = {
-        'assigned': 'Task has been assigned',
-        'in_progress': 'Task is now in progress',
-        'awaiting_review': 'Task submitted for review',
-        'revisions_required': 'Revisions requested on task',
-        'approved': 'Task has been approved',
-        'client_review': 'Task sent for client review',
-        'client_approved': 'Task approved by client',
-        'completed': 'Task has been completed',
-        'archived': 'Task has been archived',
-      };
-      
-      const message = statusMessages[updatedTask.status] || `Task status changed to ${updatedTask.status}`;
-      const recipientIds = updatedTask.assigneeIds || [];
-      
-      if (recipientIds.length > 0) {
-        await notifyUsers({
-          type: 'TASK_STATUS_CHANGED',
-          title: `Task Updated: ${updatedTask.title}`,
-          message,
-          recipientIds: recipientIds.filter(id => id !== user?.id),
-          entityId: updatedTask.id,
-          actionUrl: `/tasks/${updatedTask.id}`,
-          sendPush: true,
-          createdBy: user?.id || 'system',
-        });
-      }
-    }
-
-    // Notify on assignment changes
-    if (oldTask && oldTask.assigneeIds && updatedTask.assigneeIds) {
-      const oldAssignees = new Set(oldTask.assigneeIds);
-      const newAssignees = new Set(updatedTask.assigneeIds);
-      
-      // Find newly assigned users
-      const addedAssignees = [...newAssignees].filter(id => !oldAssignees.has(id));
-      if (addedAssignees.length > 0) {
-        await notifyUsers({
-          type: 'TASK_ASSIGNED',
-          title: 'New Task Assigned',
-          message: `You've been assigned to "${updatedTask.title}"`,
-          recipientIds: addedAssignees.filter(id => id !== user?.id),
-          entityId: updatedTask.id,
-          actionUrl: `/tasks/${updatedTask.id}`,
-          sendPush: true,
-          createdBy: user?.id || 'system',
-        });
-      }
-      
-      // Find removed assignees
-      const removedAssignees = [...oldAssignees].filter(id => !newAssignees.has(id));
-      if (removedAssignees.length > 0) {
-        await notifyUsers({
-          type: 'TASK_UNASSIGNED',
-          title: 'Task Assignment Removed',
-          message: `You've been unassigned from "${updatedTask.title}"`,
-          recipientIds: removedAssignees.filter(id => id !== user?.id),
-          entityId: updatedTask.id,
-          sendPush: true,
-          createdBy: user?.id || 'system',
-        });
-      }
-    }
-
-    // Notify on due date changes
-    if (oldTask && oldTask.dueDate !== updatedTask.dueDate && updatedTask.dueDate) {
-      const recipientIds = updatedTask.assigneeIds || [];
-      if (recipientIds.length > 0) {
-        const dueDate = new Date(updatedTask.dueDate);
-        const formattedDate = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        await notifyUsers({
-          type: 'TASK_DUE_DATE_CHANGED',
-          title: `Due Date Updated: ${updatedTask.title}`,
-          message: `Task due date ${oldTask.dueDate ? 'changed' : 'set'} to ${formattedDate}`,
-          recipientIds: recipientIds.filter(id => id !== user?.id),
-          entityId: updatedTask.id,
-          actionUrl: `/tasks/${updatedTask.id}`,
-          sendPush: true,
-          createdBy: user?.id || 'system',
-        });
-      }
-    }
-
-    // Recalculate Milestone Progress if linked
-    if (updatedTask.milestoneId) {
-      const milestoneTasksQuery = query(collection(db, 'tasks'), where('milestoneId', '==', updatedTask.milestoneId));
-      const snapshot = await getDocs(milestoneTasksQuery);
-      const tasks = snapshot.docs.map(d => d.data() as Task);
-      const totalTasks = tasks.length;
-      const completedTasks = tasks.filter(t => t.status === 'completed').length;
-      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-      // Update Milestone
-      const milestoneRef = doc(db, 'project_milestones', updatedTask.milestoneId);
-      await updateDoc(milestoneRef, { progressPercent: progress });
-    }
+    await taskStore.updateTask(updatedTask, {
+      tasks, userId: user!.id, workflowTemplates,
+      qcReviews: qcStore.qcReviews,
+      projectMembers: projectStore.projectMembers,
+      activeUsers, systemRoles,
+    });
   };
 
   const handleDeleteTask = async (task: Task) => {
-    if (!checkPermission(PERMISSIONS.TASKS.DELETE)) {
-      setToast({ title: 'Access Denied', message: 'You do not have permission to delete tasks.' });
-      return;
-    }
-
-    if (!window.confirm(`Are you sure you want to delete "${task.title}"? This action cannot be undone.`)) return;
-
-    try {
-      // Soft Delete
-      await updateDoc(doc(db, 'tasks', task.id), {
-        isDeleted: true,
-        deletedAt: new Date().toISOString(),
-        deletedBy: user?.id
-      });
-
-      // Cancel pending approvals
-      const pendingSteps = approvalSteps.filter(s => s.taskId === task.id && s.status === 'pending');
-      const batch = writeBatch(db);
-      pendingSteps.forEach(step => {
-        batch.update(doc(db, 'approval_steps', step.id), { status: 'cancelled' });
-      });
-      await batch.commit();
-
-      await addAuditLog('delete_task', 'Task', task.id, `Soft deleted task ${task.title}`);
-      setToast({ title: 'Task Deleted', message: 'Task has been moved to trash.' });
-    } catch (error) {
-      console.error("Error deleting task:", error);
-      setToast({ title: 'Error', message: 'Failed to delete task.' });
-    }
-  };
-
-  const handleAddTaskComment = async (comment: TaskComment) => {
-    await setDoc(doc(db, 'task_comments', comment.id), comment);
-  };
-
-  const handleAddTaskTimeLog = async (log: TaskTimeLog) => {
-    await setDoc(doc(db, 'task_time_logs', log.id), log);
-  };
-
-  const handleAddTaskDependency = async (dep: TaskDependency) => {
-    await setDoc(doc(db, 'task_dependencies', dep.id), dep);
-  };
-
-  const handleUpdateApprovalStep = async (updatedStep: ApprovalStep) => {
-    await updateDoc(doc(db, 'approval_steps', updatedStep.id), updatedStep as any);
-  };
-
-  const handleAddApprovalSteps = async (newSteps: ApprovalStep[]) => {
-    const batch = writeBatch(db);
-    newSteps.forEach(step => {
-      batch.set(doc(db, 'approval_steps', step.id), step);
-    });
-    await batch.commit();
-  };
-
-  const handleUpdateClientApproval = async (updatedCA: ClientApproval) => {
-    await updateDoc(doc(db, 'client_approvals', updatedCA.id), updatedCA as any);
-  };
-
-  const handleAddClientApproval = async (newCA: ClientApproval) => {
-    await setDoc(doc(db, 'client_approvals', newCA.id), newCA);
-  };  // -- File Handlers --
-  const handleUploadFile = async (file: AgencyFile) => {
-    try {
-      // Show upload starting toast
-      setToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
-
-      let fileUrl = file.url;
-
-      // Check if we have a raw file object to upload
-      const rawFile = (file as any).file;
-
-      if (rawFile) {
-        // Determine storage path based on file type/category
-        let storagePath: string;
-        
-        // Check if this is a client report
-        if (file.category === 'document' && file.folderId?.startsWith('client_reports_')) {
-          const clientId = file.folderId.replace('client_reports_', '');
-          storagePath = `clients/${clientId}/reports/${file.id}_${rawFile.name}`;
-        } else {
-          // Find associated entities for organized storage
-          const project = projects.find(p => p.id === file.projectId);
-          const client = project ? clients.find(c => c.id === project.clientId) : null;
-
-          // Build organized storage path: clients/{clientId}/projects/{projectId}/assets/{fileName}
-          const clientId = client?.id || 'unknown-client';
-          const projectId = file.projectId || 'unknown-project';
-          storagePath = `clients/${clientId}/projects/${projectId}/assets/${file.id}_${rawFile.name}`;
-        }
-
-        const storageRef = ref(storage, storagePath);
-        const snapshot = await uploadBytes(storageRef, rawFile);
-        fileUrl = await getDownloadURL(snapshot.ref);
-      } else if (!fileUrl) {
-        // Fallback if no file and no URL
-        fileUrl = 'https://picsum.photos/800/600';
-      }
-
-      // Categorize file type
-      const category = file.category || categorizeFileType(file.name, file.type);
-
-      // Find associated entities
-      const project = projects.find(p => p.id === file.projectId);
-      const task = file.taskId ? activeTasks.find(t => t.id === file.taskId) : null;
-      const client = project ? clients.find(c => c.id === project.clientId) : null;
-
-      // Generate standardized file name if we have context
-      let finalFileName = file.name;
-      if (client && task) {
-        const clientCode = client.name.substring(0, 3).toUpperCase();
-        finalFileName = generateFileName(file.name, clientCode, task.title, file.version);
-      }
-
-      // Determine destination folder intelligently
-      let destinationFolder = file.folderId;
-      if (!destinationFolder && client) {
-        destinationFolder = await getDestinationFolder(
-          category,
-          file.taskId || undefined,
-          file.projectId,
-          client.id
-        );
-      }
-
-      const fileToSave = {
-        ...file,
-        url: fileUrl,
-        category,
-        originalName: file.name,
-        name: finalFileName,
-        folderId: destinationFolder,
-        clientId: client?.id || null
-      };
-
-      // Remove the raw file object before saving to Firestore
-      delete (fileToSave as any).file;
-
-      await setDoc(doc(db, 'files', file.id), fileToSave);
-
-      setToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
-      handleNotify('system', 'File Uploaded', `${file.name} was uploaded successfully to ${task ? task.title : 'project'}.`);
-      
-      return fileToSave; // Return the saved file with URL
-    } catch (error: any) {
-      console.error("Error uploading file:", error);
-      console.error("Error details:", error.message, error.code);
-      setToast({
-        title: 'Upload Failed',
-        message: error.message || 'Failed to upload file to storage. Please check permissions.'
-      });
-      throw error; // Re-throw to handle in calling function
-    }
-  };
-
-  const handleCreateFolder = async (folder: FileFolder) => {
-    await setDoc(doc(db, 'folders', folder.id), folder);
-  };
-
-  const handleDeleteFolder = async (folderId: string) => {
-    try {
-      const folder = folders.find(f => f.id === folderId);
-      if (!folder) {
-        setToast({ title: 'Error', message: 'Folder not found.' });
-        return;
-      }
-
-      // Check if folder has subfolders
-      const hasSubfolders = folders.some(f => f.parentId === folderId);
-      // Check if folder has files
-      const folderFiles = files.filter(f => f.folderId === folderId);
-      const hasFiles = folderFiles.length > 0;
-
-      // Build confirmation message
-      let confirmMessage = `Are you sure you want to delete the folder "${folder.name}"?\n\n`;
-
-      if (hasSubfolders || hasFiles) {
-        confirmMessage += '⚠️ Warning: This folder contains:\n';
-        if (hasSubfolders) confirmMessage += '• Subfolders\n';
-        if (hasFiles) confirmMessage += `• ${folderFiles.length} file(s)\n`;
-        confirmMessage += '\nAll contents will be permanently deleted!\n\n';
-      }
-
-      confirmMessage += 'This action CANNOT be undone.';
-
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-
-      const batch = writeBatch(db);
-
-      // Delete all files in this folder
-      const filesQuery = query(collection(db, 'files'), where('folderId', '==', folderId));
-      const filesSnapshot = await getDocs(filesQuery);
-      filesSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // Delete all subfolders recursively
-      const deleteSubfolders = async (parentId: string, batchRef: any) => {
-        const subfoldersQuery = query(collection(db, 'folders'), where('parentId', '==', parentId));
-        const subfoldersSnapshot = await getDocs(subfoldersQuery);
-
-        for (const subfolderDoc of subfoldersSnapshot.docs) {
-          // Recursively delete children
-          await deleteSubfolders(subfolderDoc.id, batchRef);
-
-          // Delete files in subfolder
-          const subFilesQuery = query(collection(db, 'files'), where('folderId', '==', subfolderDoc.id));
-          const subFilesSnapshot = await getDocs(subFilesQuery);
-          subFilesSnapshot.docs.forEach(fileDoc => {
-            batchRef.delete(fileDoc.ref);
-          });
-
-          // Delete the subfolder itself
-          batchRef.delete(subfolderDoc.ref);
-        }
-      };
-
-      await deleteSubfolders(folderId, batch);
-
-      // Delete the folder itself
-      batch.delete(doc(db, 'folders', folderId));
-
-      await batch.commit();
-
-      addAuditLog('delete', 'Folder', folderId,
-        `Deleted folder "${folder.name}" and all its contents (${folderFiles.length} files)`);
-      setToast({
-        title: 'Success',
-        message: `Folder "${folder.name}" and all contents deleted successfully.`
-      });
-    } catch (error) {
-      console.error("Error deleting folder:", error);
-      setToast({ title: 'Error', message: 'Failed to delete folder.' });
-    }
-  };
-
-  const handleDeleteFile = async (fileId: string) => {
-    try {
-      const file = files.find(f => f.id === fileId);
-      if (!file) {
-        setToast({ title: 'Error', message: 'File not found.' });
-        return;
-      }
-
-      // Delete from Firestore
-      await deleteDoc(doc(db, 'files', fileId));
-
-      // Optionally: Delete from Firebase Storage (if using real storage)
-      // const storageRef = ref(storage, file.url);
-      // await deleteObject(storageRef);
-
-      // Log activity
-      if (file.projectId && user) {
-        const log: ProjectActivityLog = {
-          id: `log${Date.now()}`,
-          projectId: file.projectId,
-          userId: user.id,
-          type: 'file_upload',
-          message: `Deleted file: ${file.name}`,
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'project_activity_logs', log.id), log);
-      }
-
-      handleNotify('system', 'File Deleted', `${file.name} has been deleted.`);
-    } catch (error) {
-      console.error("Error deleting file:", error);
-      setToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
-    }
-  };
-
-  // -- Production Handlers --
-  const handleAddShotList = async (sl: ShotList) => await setDoc(doc(db, 'shot_lists', sl.id), sl);
-  const handleAddCallSheet = async (cs: CallSheet) => {
-    await setDoc(doc(db, 'call_sheets', cs.id), cs);
-    handleNotify('production_update', 'Call Sheet Published', `Call sheet for ${cs.date} is now available.`);
-  };
-  const handleAddLocation = async (loc: AgencyLocation) => await setDoc(doc(db, 'agency_locations', loc.id), loc);
-  const handleAddEquipment = async (eq: AgencyEquipment) => await setDoc(doc(db, 'agency_equipment', eq.id), eq);
-  const handleUpdateEquipment = async (eq: AgencyEquipment) => await updateDoc(doc(db, 'agency_equipment', eq.id), eq as any);
-
-  // -- Network Handlers --
-  const handleAddVendor = async (v: Vendor) => await setDoc(doc(db, 'vendors', v.id), v);
-  const handleUpdateVendor = async (v: Vendor) => await updateDoc(doc(db, 'vendors', v.id), v as any);
-  const handleAddFreelancer = async (f: Freelancer) => await setDoc(doc(db, 'freelancers', f.id), f);
-  const handleUpdateFreelancer = async (f: Freelancer) => await updateDoc(doc(db, 'freelancers', f.id), f as any);
-  const handleAddFreelancerAssignment = async (a: FreelancerAssignment) => await setDoc(doc(db, 'freelancer_assignments', a.id), a);
-
-  // -- HR Handlers --
-  const handleAddUser = async (newUser: User) => {
-    const userToSave: User = {
-      ...newUser,
-      passwordHash: newUser.passwordHash || '',
-      forcePasswordChange: typeof newUser.forcePasswordChange === 'boolean' ? newUser.forcePasswordChange : false
-    };
-    await setDoc(doc(db, 'users', userToSave.id), userToSave);
-    addAuditLog('create_user', 'User', newUser.id, `Created user ${newUser.name}`);
-  };
-  const handleUpdateUser = async (updatedUser: User) => {
-    await updateDoc(doc(db, 'users', updatedUser.id), updatedUser as any);
-    addAuditLog('update_user', 'User', updatedUser.id, `Updated user ${updatedUser.name}`);
-  };
-
-  // -- Employee Profile Handlers --
-  const handleCreateEmployeeProfile = async (profile: EmployeeProfile) => {
-    await setDoc(doc(db, 'employee_profiles', profile.id), profile);
-    addAuditLog('create_employee_profile', 'EmployeeProfile', profile.id, `Created employee profile for ${profile.fullName}`);
-    // Auto-create leave balances from active policies
-    for (const policy of leavePolicies.filter(p => p.isActive)) {
-      const balance: LeaveBalance = {
-        id: `lb_${profile.userId}_${policy.leaveType}_${new Date().getFullYear()}`,
-        employeeId: profile.userId,
-        leaveType: policy.leaveType,
-        year: new Date().getFullYear(),
-        entitled: policy.defaultDaysPerYear,
-        used: 0,
-        remaining: policy.defaultDaysPerYear,
-        carried: 0,
-        updatedAt: new Date().toISOString(),
-      };
-      await setDoc(doc(db, 'leave_balances', balance.id), balance);
-    }
-  };
-  const handleUpdateEmployeeProfile = async (profile: EmployeeProfile) => {
-    await updateDoc(doc(db, 'employee_profiles', profile.id), { ...profile, updatedAt: new Date().toISOString(), updatedBy: user?.id } as any);
-    addAuditLog('update_employee_profile', 'EmployeeProfile', profile.id, `Updated employee profile for ${profile.fullName}`);
-  };
-
-  // -- Leave Handlers (fixed: no more hardcoded u1) --
-  const handleAddLeaveRequest = async (req: LeaveRequest) => {
-    const reqToSave = { ...req, updatedAt: new Date().toISOString() };
-    await setDoc(doc(db, 'leave_requests', req.id), reqToSave);
-    addAuditLog('leave_request_created', 'LeaveRequest', req.id, `${users.find(u => u.id === req.userId)?.name} requested ${req.type} leave (${req.totalDays} days)`);
-    // Find direct manager from employee profile to notify
-    const empProfile = employeeProfiles.find(ep => ep.userId === req.userId);
-    const managerId = empProfile?.directManagerId;
-    if (managerId) {
-      handleNotify('LEAVE_REQUESTED', 'Leave Request Submitted', `${users.find(u => u.id === req.userId)?.name} has requested ${req.type} leave for ${req.totalDays} days.`, [managerId], req.id);
-    }
-    handleNotify('system', 'Leave Request Submitted', 'Your leave request has been sent for approval.');
-  };
-  const handleApproveLeaveRequest = async (req: LeaveRequest) => {
-    const updatedReq: LeaveRequest = { ...req, status: 'approved', approverId: user?.id, approvedAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: user?.id };
-    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
-    // Update leave balance
-    const balanceId = `lb_${req.userId}_${req.type}_${new Date().getFullYear()}`;
-    const balanceDoc = leaveBalances.find(b => b.id === balanceId);
-    if (balanceDoc) {
-      await updateDoc(doc(db, 'leave_balances', balanceId), { used: balanceDoc.used + req.totalDays, remaining: balanceDoc.remaining - req.totalDays, updatedAt: new Date().toISOString() });
-    }
-    // Update user status if currently on leave dates
-    const reqUser = users.find(u => u.id === req.userId);
-    const now = new Date().toISOString().split('T')[0];
-    if (reqUser && req.startDate <= now && req.endDate >= now) {
-      await updateDoc(doc(db, 'users', req.userId), { status: 'on_leave' });
-    }
-    addAuditLog('leave_request_approved', 'LeaveRequest', req.id, `Approved ${req.type} leave for ${reqUser?.name}`);
-    handleNotify('LEAVE_APPROVED', 'Leave Approved', `Your ${req.type} leave request (${req.startDate} to ${req.endDate}) has been approved.`, [req.userId], req.id);
-  };
-  const handleRejectLeaveRequest = async (req: LeaveRequest, rejectionReason: string) => {
-    const updatedReq: LeaveRequest = { ...req, status: 'rejected', approverId: user?.id, rejectionReason, updatedAt: new Date().toISOString(), updatedBy: user?.id };
-    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
-    const reqUser = users.find(u => u.id === req.userId);
-    addAuditLog('leave_request_rejected', 'LeaveRequest', req.id, `Rejected ${req.type} leave for ${reqUser?.name}: ${rejectionReason}`);
-    handleNotify('LEAVE_REJECTED', 'Leave Rejected', `Your ${req.type} leave request has been rejected. Reason: ${rejectionReason}`, [req.userId], req.id);
-  };
-  const handleCancelLeaveRequest = async (req: LeaveRequest) => {
-    const updatedReq: LeaveRequest = { ...req, status: 'cancelled', cancelledBy: user?.id, cancelledAt: new Date().toISOString(), updatedAt: new Date().toISOString(), updatedBy: user?.id };
-    await updateDoc(doc(db, 'leave_requests', req.id), updatedReq as any);
-    // Restore balance if was approved
-    if (req.status === 'approved') {
-      const balanceId = `lb_${req.userId}_${req.type}_${new Date().getFullYear()}`;
-      const balanceDoc = leaveBalances.find(b => b.id === balanceId);
-      if (balanceDoc) {
-        await updateDoc(doc(db, 'leave_balances', balanceId), { used: Math.max(0, balanceDoc.used - req.totalDays), remaining: balanceDoc.remaining + req.totalDays, updatedAt: new Date().toISOString() });
-      }
-    }
-    addAuditLog('leave_request_cancelled', 'LeaveRequest', req.id, `Cancelled ${req.type} leave request`);
-  };
-  const handleUpdateLeaveRequest = async (req: LeaveRequest) => {
-    await updateDoc(doc(db, 'leave_requests', req.id), { ...req, updatedAt: new Date().toISOString() } as any);
-  };
-  const handleDeleteLeaveRequest = async (id: string) => {
-    await deleteDoc(doc(db, 'leave_requests', id));
-    addAuditLog('leave_request_deleted', 'LeaveRequest', id, `Deleted leave request ${id}`);
-  };
-
-  // -- Attendance / Timekeeping Handlers --
-  const handleCheckIn = async () => {
-    if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toISOString();
-    const recordId = `ar_${user.id}_${today}`;
-    const existing = attendanceRecords.find(r => r.id === recordId);
-    if (existing?.checkInTime) {
-      handleNotify('system', 'Already Checked In', 'You have already checked in today.');
-      return;
-    }
-    const record: AttendanceRecord = {
-      id: recordId,
-      userId: user.id,
-      date: today,
-      status: 'present',
-      checkInTime: now,
-      workMode: 'on-site',
-      createdAt: now,
-      updatedAt: now,
-    };
-    await setDoc(doc(db, 'attendance_records', recordId), record);
-    addAuditLog('attendance_clock_in', 'Attendance', recordId, `${user.name} clocked in`);
-    handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`);
-  };
-  const handleCheckOut = async () => {
-    if (!user) return;
-    const today = new Date().toISOString().split('T')[0];
-    const now = new Date().toISOString();
-    const recordId = `ar_${user.id}_${today}`;
-    const existing = attendanceRecords.find(r => r.id === recordId);
-    if (!existing?.checkInTime) {
-      handleNotify('system', 'Not Checked In', 'You must check in before checking out.');
-      return;
-    }
-    if (existing?.checkOutTime) {
-      handleNotify('system', 'Already Checked Out', 'You have already checked out today.');
-      return;
-    }
-    const checkInMs = new Date(existing.checkInTime).getTime();
-    const checkOutMs = new Date(now).getTime();
-    const totalHours = Math.round(((checkOutMs - checkInMs) / (1000 * 60 * 60)) * 100) / 100;
-    const overtimeHours = Math.max(0, totalHours - 8);
-    await updateDoc(doc(db, 'attendance_records', recordId), {
-      checkOutTime: now,
-      totalHours,
-      overtimeHours,
-      updatedAt: now,
-    });
-    addAuditLog('attendance_clock_out', 'Attendance', recordId, `${user.name} clocked out (${totalHours}h)`);
-    handleNotify('system', 'Checked Out', `Clock-out recorded. Total: ${totalHours}h.`);
-  };
-  const handleSubmitAttendanceCorrection = async (correction: AttendanceCorrection) => {
-    await setDoc(doc(db, 'attendance_corrections', correction.id), correction);
-    addAuditLog('attendance_correction_requested', 'AttendanceCorrection', correction.id, `${user?.name} requested attendance correction`);
-  };
-  const handleApproveAttendanceCorrection = async (correctionId: string) => {
-    const correction = attendanceCorrections.find(c => c.id === correctionId);
-    if (!correction) return;
-    await updateDoc(doc(db, 'attendance_corrections', correctionId), {
-      correctionStatus: 'approved',
-      reviewedBy: user?.id,
-      reviewedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-    // Update the original attendance record with corrected values
-    if (correction.attendanceRecordId) {
-      const updatePayload: Record<string, unknown> = { updatedAt: new Date().toISOString(), updatedBy: user?.id };
-      if (correction.correctedCheckIn) updatePayload.checkIn = correction.correctedCheckIn;
-      if (correction.correctedCheckOut) updatePayload.checkOut = correction.correctedCheckOut;
-      await updateDoc(doc(db, 'attendance_records', correction.attendanceRecordId), updatePayload);
-    }
-    addAuditLog('attendance_correction_approved', 'AttendanceCorrection', correctionId, `${user?.name} approved attendance correction for ${correction.employeeId}`);
-    handleNotify('ATTENDANCE_CORRECTION_REQUESTED', 'Attendance Correction Approved', 'Your attendance correction has been approved.', [correction.employeeId], correctionId);
-  };
-
-  // -- Onboarding / Offboarding Handlers --
-  const handleStartOnboarding = async (checklist: OnboardingChecklist) => {
-    await setDoc(doc(db, 'onboarding_checklists', checklist.id), checklist);
-    addAuditLog('onboarding_started', 'OnboardingChecklist', checklist.id, `Started onboarding for employee ${checklist.employeeId}`);
-    handleNotify('ONBOARDING_STARTED', 'Onboarding Started', `Onboarding has been initiated.`, [checklist.employeeId], checklist.id);
-  };
-  const handleCompleteOnboardingStep = async (checklistId: string, stepId: string) => {
-    const checklist = onboardingChecklists.find(c => c.id === checklistId);
-    if (!checklist) return;
-    const updatedSteps = checklist.steps.map(s =>
-      s.id === stepId ? { ...s, status: 'completed' as const, completedAt: new Date().toISOString(), completedBy: user?.id } : s
-    );
-    const allDone = updatedSteps.every(s => s.status === 'completed' || s.status === 'skipped');
-    await updateDoc(doc(db, 'onboarding_checklists', checklistId), {
-      steps: updatedSteps,
-      status: allDone ? 'completed' : 'in_progress',
-      completedAt: allDone ? new Date().toISOString() : null,
-      updatedAt: new Date().toISOString(),
-    });
-    addAuditLog('onboarding_step_completed', 'OnboardingChecklist', checklistId, `Completed onboarding step: ${stepId}`);
-  };
-  const handleStartOffboarding = async (checklist: OffboardingChecklist) => {
-    await setDoc(doc(db, 'offboarding_checklists', checklist.id), checklist);
-    // Update employee status
-    const profile = employeeProfiles.find(p => p.userId === checklist.employeeId);
-    if (profile) {
-      const statusChange: EmployeeStatusChange = {
-        id: `esc_${Date.now()}`,
-        employeeId: checklist.employeeId,
-        fromStatus: profile.employmentStatus,
-        toStatus: checklist.reason === 'termination' ? 'terminated' : 'resigned',
-        reason: checklist.reason || 'offboarding',
-        effectiveDate: checklist.finalWorkingDate || new Date().toISOString(),
-        changedBy: user?.id || '',
-        createdAt: new Date().toISOString(),
-      };
-      await setDoc(doc(db, 'employee_status_changes', statusChange.id), statusChange);
-    }
-    addAuditLog('offboarding_started', 'OffboardingChecklist', checklist.id, `Started offboarding for employee ${checklist.employeeId}`);
-    handleNotify('OFFBOARDING_STARTED', 'Offboarding Started', `Offboarding process has been initiated.`, [checklist.employeeId], checklist.id);
-  };
-
-  // -- Employee Asset Handlers --
-  const handleAssignEmployeeAsset = async (asset: EmployeeAsset) => {
-    await setDoc(doc(db, 'employee_assets', asset.id), asset);
-    // Update agency_equipment status if linked
-    if (asset.assetId) {
-      await updateDoc(doc(db, 'agency_equipment', asset.assetId), { status: 'checked_out', checkedOutBy: asset.employeeId, checkedOutAt: asset.assignedAt } as any);
-    }
-    addAuditLog('asset_assigned', 'EmployeeAsset', asset.id, `Assigned ${asset.assetName} to employee ${asset.employeeId}`);
-    handleNotify('ASSET_ASSIGNED', 'Asset Assigned', `${asset.assetName} has been assigned to you.`, [asset.employeeId], asset.id);
-  };
-  const handleReturnEmployeeAsset = async (assetId: string) => {
-    const asset = employeeAssets.find(a => a.id === assetId);
-    if (!asset) return;
-    await updateDoc(doc(db, 'employee_assets', assetId), { status: 'returned', returnedAt: new Date().toISOString() });
-    // Restore agency_equipment status if linked
-    if (asset.assetId) {
-      await updateDoc(doc(db, 'agency_equipment', asset.assetId), { status: 'available', checkedOutBy: null, checkedOutAt: null } as any);
-    }
-    addAuditLog('asset_returned', 'EmployeeAsset', assetId, `${asset.assetName} returned by employee ${asset.employeeId}`);
-  };
-
-  // -- Performance Review Handlers --
-  const handleCreatePerformanceReview = async (review: PerformanceReview) => {
-    await setDoc(doc(db, 'performance_reviews', review.id), review);
-    addAuditLog('performance_review_created', 'PerformanceReview', review.id, `Created performance review for employee ${review.employeeId}`);
-  };
-  const handleSubmitPerformanceReview = async (reviewId: string) => {
-    const review = performanceReviews.find(r => r.id === reviewId);
-    if (!review) return;
-    await updateDoc(doc(db, 'performance_reviews', reviewId), { status: 'submitted', updatedAt: new Date().toISOString() });
-    addAuditLog('performance_review_submitted', 'PerformanceReview', reviewId, `Submitted performance review for employee ${review.employeeId}`);
-    handleNotify('PERFORMANCE_REVIEW_SUBMITTED', 'Performance Review Submitted', `A performance review has been submitted for your review period ${review.reviewCycle}.`, [review.employeeId], reviewId);
-  };
-  const handleFinalizePerformanceReview = async (reviewId: string) => {
-    const review = performanceReviews.find(r => r.id === reviewId);
-    if (!review) return;
-    await updateDoc(doc(db, 'performance_reviews', reviewId), { status: 'finalized', updatedAt: new Date().toISOString() });
-    addAuditLog('performance_review_finalized', 'PerformanceReview', reviewId, `Finalized performance review for employee ${review.employeeId}`);
-    handleNotify('PERFORMANCE_REVIEW_FINALIZED', 'Performance Review Finalized', `Your performance review for ${review.reviewCycle} has been finalized.`, [review.employeeId], reviewId);
-  };
-  const handleUpdatePerformanceReview = async (review: PerformanceReview) => {
-    await updateDoc(doc(db, 'performance_reviews', review.id), { ...review, updatedAt: new Date().toISOString() } as any);
-  };
-
-
-  // -- Finance Handlers --
-  const handleAddInvoice = async (inv: Invoice) => await setDoc(doc(db, 'invoices', inv.id), inv);
-  const handleUpdateInvoice = async (inv: Invoice) => await updateDoc(doc(db, 'invoices', inv.id), inv as any);
-  const handleAddQuotation = async (quo: Quotation) => await setDoc(doc(db, 'quotations', quo.id), quo);
-  const handleUpdateQuotation = async (quo: Quotation) => await updateDoc(doc(db, 'quotations', quo.id), quo as any);
-
-  const handleAddPayment = async (pay: Payment) => {
-    await setDoc(doc(db, 'payments', pay.id), pay);
-    // Update Invoice status automatically
-    const invoice = invoices.find(i => i.id === pay.invoiceId);
-    if (invoice) {
-      const newPaid = invoice.paid + pay.amount;
-      const newBalance = invoice.total - newPaid;
-      let newStatus: any = 'partially_paid';
-      if (newBalance <= 0) newStatus = 'paid';
-      const updatedInvoice = { ...invoice, paid: newPaid, balance: newBalance, status: newStatus };
-      await handleUpdateInvoice(updatedInvoice);
-      handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${pay.amount} recorded for ${invoice.invoiceNumber}.`);
-    }
-  };
-
-  const handleAddExpense = async (exp: Expense) => {
-    await setDoc(doc(db, 'expenses', exp.id), exp);
-    // If linked to project, update project spent amount
-    if (exp.projectId) {
-      const project = projects.find(p => p.id === exp.projectId);
-      if (project) {
-        await handleUpdateProject({ ...project, spent: project.spent + exp.amount });
-      }
-    }
-  };
-
-  // -- Project Handlers --
-
-  const handleAddProject = async (newProject: Project) => {
-    await setDoc(doc(db, 'projects', newProject.id), newProject);
-
-    // Auto-create project folder structure
-    try {
-      await createProjectFolder(
-        newProject.id,
-        newProject.name,
-        newProject.clientId,
-        newProject.code
-      );
-    } catch (error) {
-      console.error('Error creating project folders:', error);
-    }
-
-    if (user) {
-      // 1. Log Activity
-      const log: ProjectActivityLog = {
-        id: `log${Date.now()}`,
-        projectId: newProject.id,
-        userId: user.id,
-        type: 'status_change',
-        message: 'Project created',
-        createdAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'project_activity_logs', log.id), log);
-
-      // 2. Add Creator as Project Member (Project Lead)
-      const member: ProjectMember = {
-        id: `pm${Date.now()}`,
-        projectId: newProject.id,
-        userId: user.id,
-        roleInProject: 'Project Lead',
-        isExternal: false
-      };
-      await setDoc(doc(db, 'project_members', member.id), member);
-
-      // 3. Add Assigned Manager if different from creator
-      if (newProject.accountManagerId && newProject.accountManagerId !== user.id) {
-        const managerMember: ProjectMember = {
-          id: `pm${Date.now()}_mgr`,
-          projectId: newProject.id,
-          userId: newProject.accountManagerId,
-          roleInProject: 'Account Manager',
-          isExternal: false
-        };
-        await setDoc(doc(db, 'project_members', managerMember.id), managerMember);
-      }
-
-      // Notify project members and account manager
-      const recipientIds: string[] = [];
-      if (newProject.accountManagerId && newProject.accountManagerId !== user.id) {
-        recipientIds.push(newProject.accountManagerId);
-      }
-      if (newProject.memberIds && newProject.memberIds.length > 0) {
-        newProject.memberIds.forEach(id => {
-          if (id !== user.id && !recipientIds.includes(id)) {
-            recipientIds.push(id);
-          }
-        });
-      }
-
-      if (recipientIds.length > 0) {
-        const client = clients.find(c => c.id === newProject.clientId);
-        await notifyUsers({
-          type: 'PROJECT_CREATED',
-          title: 'New Project Created',
-          message: `${user.name} created project "${newProject.name}"${client ? ` for ${client.name}` : ''}`,
-          recipientIds,
-          entityId: newProject.id,
-          actionUrl: `/projects/${newProject.id}`,
-          sendPush: true,
-          createdBy: user.id,
-        });
-      }
-    }
-  };
-
-  const handleUpdateProject = async (updatedProject: Project) => {
-    await updateDoc(doc(db, 'projects', updatedProject.id), updatedProject as any);
-    if (user) {
-      const log: ProjectActivityLog = {
-        id: `log${Date.now()}`,
-        projectId: updatedProject.id,
-        userId: user.id,
-        type: 'status_change',
-        message: `Status updated to ${updatedProject.status}`,
-        createdAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'project_activity_logs', log.id), log);
-    }
-  };
-
-  const handleAddProjectMember = async (member: ProjectMember) => {
-    await setDoc(doc(db, 'project_members', member.id), member);
-    
-    // Notify the new member
-    if (user && member.userId !== user.id) {
-      const project = projects.find(p => p.id === member.projectId);
-      if (project) {
-        await notifyUsers({
-          type: 'PROJECT_MEMBER_ADDED',
-          title: 'Added to Project',
-          message: `${user.name} added you to project "${project.name}" as ${member.roleInProject}`,
-          recipientIds: [member.userId],
-          entityId: project.id,
-          actionUrl: `/projects/${project.id}`,
-          sendPush: true,
-          createdBy: user.id,
-        });
-      }
-    }
-  };
-
-  const handleRemoveProjectMember = async (memberId: string) => {
-    await deleteDoc(doc(db, 'project_members', memberId));
-  };
-
-  const handleRemoveFreelancerAssignment = async (assignmentId: string) => {
-    await deleteDoc(doc(db, 'freelancer_assignments', assignmentId));
-  };
-
-  const handleAddProjectMilestone = async (milestone: ProjectMilestone) => {
-    await setDoc(doc(db, 'project_milestones', milestone.id), milestone);
-    
-    // Notify project team members about new milestone
-    if (user) {
-      const project = projects.find(p => p.id === milestone.projectId);
-      const projectMembersForMilestone = projectMembers.filter(pm => pm.projectId === milestone.projectId);
-      const recipientIds = projectMembers
-        .map(pm => pm.userId)
-        .filter(id => id !== user.id);
-
-      if (recipientIds.length > 0 && project) {
-        await notifyUsers({
-          type: 'MILESTONE_CREATED',
-          title: 'New Milestone',
-          message: `${user.name} created milestone "${milestone.name}" in ${project.name}`,
-          recipientIds,
-          entityId: milestone.id,
-          actionUrl: `/projects/${milestone.projectId}`,
-          sendPush: true,
-          createdBy: user.id,
-        });
-      }
-    }
-  };
-
-  const handleUpdateProjectMilestone = async (milestone: ProjectMilestone) => {
-    await updateDoc(doc(db, 'project_milestones', milestone.id), milestone as any);
-    if (user && milestone.status === 'completed') {
-      const log: ProjectActivityLog = {
-        id: `log${Date.now()}`,
-        projectId: milestone.projectId,
-        userId: user.id,
-        type: 'milestone_completed',
-        message: `Milestone completed: ${milestone.name}`,
-        createdAt: new Date().toISOString()
-      };
-      await setDoc(doc(db, 'project_activity_logs', log.id), log);
-    }
-  };
-
-  // Smart Project Creation - Milestone Handlers
-  const handleAddMilestone = async (milestone: Milestone) => {
-    await setDoc(doc(db, 'milestones', milestone.id), milestone);
-  };
-
-  const handleUpdateMilestone = async (milestone: Milestone) => {
-    await updateDoc(doc(db, 'milestones', milestone.id), milestone as any);
-  };
-
-  const handleAddProjectMarketingAsset = async (asset: ProjectMarketingAsset) => {
-    await setDoc(doc(db, 'project_marketing_assets', asset.id), asset);
-    handleNotify('system', 'Marketing Asset Added', `Added ${asset.name} to project strategy.`);
-  };
-
-  const handleUpdateProjectMarketingAsset = async (asset: ProjectMarketingAsset) => {
-    await updateDoc(doc(db, 'project_marketing_assets', asset.id), asset as any);
-  };
-
-  const handleDeleteProjectMarketingAsset = async (assetId: string) => {
-    await deleteDoc(doc(db, 'project_marketing_assets', assetId));
-  };
-
-  const handleDeleteProject = async (projectId: string) => {
-    try {
-      const project = projects.find(p => p.id === projectId);
-      if (!project) {
-        setToast({ title: 'Error', message: 'Project not found.' });
-        return;
-      }
-
-      const confirmMessage = `Are you sure you want to delete the project "${project.name}"?\n\n` +
-        `⚠️ Warning: This will permanently delete:\n` +
-        `• The project\n` +
-        `• All linked tasks\n` +
-        `• All project files and folders\n` +
-        `• All milestones and activity logs\n` +
-        `• All project members and assignments\n\n` +
-        `This action CANNOT be undone!`;
-
-      if (!window.confirm(confirmMessage)) {
-        return;
-      }
-
-      const batch = writeBatch(db);
-
-      // 1. Delete the project
-      batch.delete(doc(db, 'projects', projectId));
-
-      // 2. Delete all tasks linked to this project
-      const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
-      const tasksSnapshot = await getDocs(tasksQuery);
-      tasksSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 3. Delete all project folders
-      const foldersQuery = query(collection(db, 'folders'), where('projectId', '==', projectId));
-      const foldersSnapshot = await getDocs(foldersQuery);
-      foldersSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 4. Delete all project files
-      const filesQuery = query(collection(db, 'files'), where('projectId', '==', projectId));
-      const filesSnapshot = await getDocs(filesQuery);
-      filesSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 5. Delete project milestones
-      const milestonesQuery = query(collection(db, 'project_milestones'), where('projectId', '==', projectId));
-      const milestonesSnapshot = await getDocs(milestonesQuery);
-      milestonesSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 6. Delete project members
-      const membersQuery = query(collection(db, 'project_members'), where('projectId', '==', projectId));
-      const membersSnapshot = await getDocs(membersQuery);
-      membersSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 7. Delete project activity logs
-      const logsQuery = query(collection(db, 'project_activity_logs'), where('projectId', '==', projectId));
-      const logsSnapshot = await getDocs(logsQuery);
-      logsSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 8. Delete project marketing assets
-      const assetsQuery = query(collection(db, 'project_marketing_assets'), where('projectId', '==', projectId));
-      const assetsSnapshot = await getDocs(assetsQuery);
-      assetsSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      // 9. Delete freelancer assignments
-      const assignmentsQuery = query(collection(db, 'freelancer_assignments'), where('projectId', '==', projectId));
-      const assignmentsSnapshot = await getDocs(assignmentsQuery);
-      assignmentsSnapshot.docs.forEach(docSnap => {
-        batch.delete(docSnap.ref);
-      });
-
-      await batch.commit();
-
-      addAuditLog('delete', 'Project', projectId,
-        `Deleted project "${project.name}" and all associated data (${tasksSnapshot.docs.length} tasks, ${filesSnapshot.docs.length} files)`);
-      setToast({
-        title: 'Success',
-        message: `Project "${project.name}" and all related data deleted successfully.`
-      });
-    } catch (error) {
-      console.error("Error deleting project:", error);
-      setToast({ title: 'Error', message: 'Failed to delete project.' });
-    }
-  };
-
-  // -- Social Media Handlers --
-  const handleAddSocialPost = async (post: SocialPost) => {
-    await setDoc(doc(db, 'social_posts', post.id), post);
-  };
-
-  const handleUpdateSocialPost = async (post: SocialPost) => {
-    try {
-      await updateDoc(doc(db, 'social_posts', post.id), post as any);
-      handleNotify('system', 'Post Updated', `Social post "${post.title}" updated successfully.`);
-    } catch (error) {
-      console.error("Error updating social post:", error);
-      handleNotify('system', 'Update Failed', 'Failed to update social post.');
-    }
+    await taskStore.deleteTask(task, user!.id, checkPermission, showToast, addAuditLog);
   };
 
   const handleArchiveTask = async (task: Task) => {
@@ -1583,1039 +276,264 @@ const App: React.FC = () => {
     handleNotify('system', 'Task Archived', `Task "${task.title}" has been archived.`);
   };
 
-  const handleAddClient = async (newClient: Client) => {
-    await setDoc(doc(db, 'clients', newClient.id), newClient);
-
-    // Auto-create client folder structure
+  // File handlers → delegates to store
+  const handleUploadFile = async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
     try {
-      await createClientFolderStructure(newClient.id, newClient.name);
-      handleNotify('system', 'Client Added', `Client "${newClient.name}" created with folder structure.`);
-    } catch (error) {
-      console.error('Error creating client folders:', error);
-      handleNotify('system', 'Client Added', `Client created but folder setup failed.`);
+      const savedFile = await fileStore.uploadFile(file, { projects, clients, activeTasks, folders });
+      showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+      return savedFile;
+    } catch (error: any) {
+      showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+      throw error;
     }
   };
 
-  const handleUpdateClient = async (updatedClient: Client) => {
-    await updateDoc(doc(db, 'clients', updatedClient.id), updatedClient as any);
-  };
-
-  const handleAddSocialLink = async (link: ClientSocialLink) => {
-    await setDoc(doc(db, 'client_social_links', link.id), link);
-  };
-
-  const handleUpdateSocialLink = async (link: ClientSocialLink) => {
-    await updateDoc(doc(db, 'client_social_links', link.id), link as any);
-  };
-
-  const handleDeleteSocialLink = async (linkId: string) => {
-    await deleteDoc(doc(db, 'client_social_links', linkId));
-  };
-
-  const handleAddClientNote = async (note: ClientNote) => {
-    await setDoc(doc(db, 'client_notes', note.id), note);
-  };
-
-  const handleUpdateClientNote = async (note: ClientNote) => {
-    await updateDoc(doc(db, 'client_notes', note.id), note as any);
-  };
-
-  const handleDeleteClientNote = async (noteId: string) => {
-    await deleteDoc(doc(db, 'client_notes', noteId));
-  };
-
-  const handleAddClientMeeting = async (meeting: ClientMeeting) => {
-    // 1. Ensure Client Meetings Root Folder
-    let meetingsRoot = folders.find(f => f.clientId === meeting.clientId && f.name === 'Meetings' && f.isArchiveRoot === false);
-
-    if (!meetingsRoot) {
-      const newRootId = `f_meetings_${meeting.clientId}`;
-      meetingsRoot = {
-        id: newRootId,
-        clientId: meeting.clientId,
-        projectId: null,
-        parentId: null,
-        name: 'Meetings',
-        isArchiveRoot: false,
-        isTaskArchiveFolder: false,
-        isProjectArchiveFolder: false,
-        isMeetingFolder: false,
-        meetingId: null
-      };
-      await setDoc(doc(db, 'folders', newRootId), meetingsRoot);
-    }
-
-    // 2. Create Folder for this Meeting
-    const meetingFolderId = `f_mtg_${meeting.id}`;
-    const meetingDate = new Date(meeting.date).toISOString().split('T')[0];
-    const meetingFolder: FileFolder = {
-      id: meetingFolderId,
-      clientId: meeting.clientId,
-      projectId: null,
-      parentId: meetingsRoot.id,
-      name: `${meetingDate} – ${meeting.title}`,
-      isArchiveRoot: false,
-      isTaskArchiveFolder: false,
-      isProjectArchiveFolder: false,
-      isMeetingFolder: true,
-      meetingId: meeting.id
-    };
-    await setDoc(doc(db, 'folders', meetingFolderId), meetingFolder);
-
-    // 3. Save Meeting with folderId
-    const meetingWithFolder = { ...meeting, meetingFolderId };
-    await setDoc(doc(db, 'client_meetings', meeting.id), meetingWithFolder);
-
-    handleNotify('system', 'Meeting Scheduled', `Meeting "${meeting.title}" has been scheduled.`);
-  };
-
-  const handleUpdateClientMeeting = async (meeting: ClientMeeting) => {
-    await updateDoc(doc(db, 'client_meetings', meeting.id), meeting as any);
-  };
-
-  const handleDeleteClientMeeting = async (meetingId: string) => {
-    await deleteDoc(doc(db, 'client_meetings', meetingId));
-  };
-
-  const handleAddBrandAsset = async (asset: ClientBrandAsset) => {
-    await setDoc(doc(db, 'client_brand_assets', asset.id), asset);
-  };
-
-  const handleUpdateBrandAsset = async (asset: ClientBrandAsset) => {
-    await updateDoc(doc(db, 'client_brand_assets', asset.id), asset as any);
-  };
-
-  const handleDeleteBrandAsset = async (assetId: string) => {
-    await deleteDoc(doc(db, 'client_brand_assets', assetId));
-  };
-
-  const handleAddMonthlyReport = async (report: ClientMonthlyReport) => {
-    await setDoc(doc(db, 'client_monthly_reports', report.id), report);
-  };
-
-  const handleUpdateMonthlyReport = async (report: ClientMonthlyReport) => {
-    await updateDoc(doc(db, 'client_monthly_reports', report.id), report as any);
-  };
-
-  const handleDeleteMonthlyReport = async (reportId: string) => {
-    await deleteDoc(doc(db, 'client_monthly_reports', reportId));
-  };
-
-  const handleDeleteClient = async (clientId: string) => {
+  const handleDeleteFile = async (fileId: string) => {
     try {
-      const batch = writeBatch(db);
-
-      // 1. Delete Client
-      batch.delete(doc(db, 'clients', clientId));
-
-      // 2. Delete Projects & Tasks
-      const projectsQuery = query(collection(db, 'projects'), where('clientId', '==', clientId));
-      const projectsSnapshot = await getDocs(projectsQuery);
-
-      const projectIds = projectsSnapshot.docs.map(doc => doc.id);
-
-      // Delete projects
-      projectsSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // Delete tasks associated with these projects
-      for (const projectId of projectIds) {
-        const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
-        const tasksSnapshot = await getDocs(tasksQuery);
-        tasksSnapshot.docs.forEach((doc) => {
-          batch.delete(doc.ref);
-        });
-      }
-
-      // 3. Delete Invoices
-      const invoicesQuery = query(collection(db, 'invoices'), where('clientId', '==', clientId));
-      const invoicesSnapshot = await getDocs(invoicesQuery);
-      invoicesSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 4. Delete Quotations
-      const quotationsQuery = query(collection(db, 'quotations'), where('clientId', '==', clientId));
-      const quotationsSnapshot = await getDocs(quotationsQuery);
-      quotationsSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 5. Delete Client Approvals
-      const approvalsQuery = query(collection(db, 'client_approvals'), where('clientId', '==', clientId));
-      const approvalsSnapshot = await getDocs(approvalsQuery);
-      approvalsSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 6. Delete Payments
-      const paymentsQuery = query(collection(db, 'payments'), where('clientId', '==', clientId));
-      const paymentsSnapshot = await getDocs(paymentsQuery);
-      paymentsSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 7. Delete Social Links
-      const socialLinksQuery = query(collection(db, 'client_social_links'), where('clientId', '==', clientId));
-      const socialLinksSnapshot = await getDocs(socialLinksQuery);
-      socialLinksSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 8. Delete Client Notes
-      const notesQuery = query(collection(db, 'client_notes'), where('clientId', '==', clientId));
-      const notesSnapshot = await getDocs(notesQuery);
-      notesSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      // 9. Delete Client Meetings
-      const meetingsQuery = query(collection(db, 'client_meetings'), where('clientId', '==', clientId));
-      const meetingsSnapshot = await getDocs(meetingsQuery);
-      meetingsSnapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-      });
-
-      await batch.commit();
-
-      // Ask if user wants to delete client folders and files from Assets Management
-      const deleteAssets = window.confirm(
-        'Do you also want to delete all folders and files for this client from Assets Management?\n\n' +
-        '⚠️ This will permanently delete:\n' +
-        '• All client folders\n' +
-        '• All uploaded files (videos, photos, documents, etc.)\n' +
-        '• All project and task folders\n\n' +
-        'This action CANNOT be undone!\n\n' +
-        'Click OK to delete folders and files, or Cancel to keep them.'
-      );
-
-      if (deleteAssets) {
-        try {
-          const assetBatch = writeBatch(db);
-          let deletedFolders = 0;
-          let deletedFiles = 0;
-
-          // 10. Delete all folders associated with this client
-          const foldersQuery = query(collection(db, 'folders'), where('clientId', '==', clientId));
-          const foldersSnapshot = await getDocs(foldersQuery);
-          foldersSnapshot.docs.forEach((doc) => {
-            assetBatch.delete(doc.ref);
-            deletedFolders++;
-          });
-
-          // 11. Delete all files associated with this client
-          const filesQuery = query(collection(db, 'files'), where('clientId', '==', clientId));
-          const filesSnapshot = await getDocs(filesQuery);
-          filesSnapshot.docs.forEach((doc) => {
-            assetBatch.delete(doc.ref);
-            deletedFiles++;
-          });
-
-          await assetBatch.commit();
-
-          addAuditLog('delete', 'Client Assets', clientId,
-            `Deleted client and all associated data including ${deletedFolders} folders and ${deletedFiles} files from Assets Management`);
-          setToast({
-            title: 'Success',
-            message: `Client deleted successfully. Removed ${deletedFolders} folders and ${deletedFiles} files from Assets Management.`
-          });
-        } catch (assetError) {
-          console.error("Error deleting client assets:", assetError);
-          setToast({
-            title: 'Warning',
-            message: 'Client data deleted, but some assets may remain. Please check Assets Management.'
-          });
-        }
-      } else {
-        addAuditLog('delete', 'Client', clientId, `Deleted client and all associated data (kept assets)`);
-        setToast({ title: 'Success', message: 'Client deleted successfully. Assets Management files were kept.' });
-      }
-
+      await fileStore.deleteFile(fileId, { userId: user!.id });
+      handleNotify('system', 'File Deleted', 'File has been deleted.');
     } catch (error) {
-      console.error("Error deleting client:", error);
-      setToast({ title: 'Error', message: 'Failed to delete client data completely.' });
+      showToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
     }
   };
 
-  const addAuditLog = async (action: string, entityType: string, entityId: string | null, description: string) => {
-    if (!user) return;
-    const newLog: AuditLog = {
-      id: `audit${Date.now()}`,
-      userId: user.id,
-      action,
-      entityType,
-      entityId,
-      description,
-      createdAt: new Date().toISOString()
-    };
-    await setDoc(doc(db, 'audit_logs', newLog.id), newLog);
-  };
+  const handleCreateFolder = async (folder: any) => await fileStore.createFolder(folder);
 
-  const handleUpdateRole = async (newRole: RoleDefinition) => {
-    await updateDoc(doc(db, 'roles', newRole.id), newRole as any);
-    await addAuditLog('update_role', 'Role', newRole.id, `Updated permissions for ${newRole.name}`);
-  };
-
-  const handleAddRole = async (newRole: RoleDefinition) => {
-    await setDoc(doc(db, 'roles', newRole.id), newRole);
-    await addAuditLog('create_role', 'Role', newRole.id, `Created role ${newRole.name}`);
-  };
-
-  const handleDeleteRole = async (roleId: string) => {
-    await deleteDoc(doc(db, 'roles', roleId));
-    await addAuditLog('delete_role', 'Role', roleId, `Deleted role ${roleId}`);
-  };
-
-  const handleUpdateWorkflow = async (wf: WorkflowTemplate) => {
+  const handleDeleteFolder = async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) { showToast({ title: 'Error', message: 'Folder not found.' }); return; }
+    const hasSubfolders = folders.some(f => f.parentId === folderId);
+    const folderFiles = files.filter(f => f.folderId === folderId);
+    let confirmMessage = `Are you sure you want to delete the folder "${folder.name}"?\n\n`;
+    if (hasSubfolders || folderFiles.length > 0) {
+      confirmMessage += '⚠️ Warning: This folder contains:\n';
+      if (hasSubfolders) confirmMessage += '• Subfolders\n';
+      if (folderFiles.length > 0) confirmMessage += `• ${folderFiles.length} file(s)\n`;
+      confirmMessage += '\nAll contents will be permanently deleted!\n\n';
+    }
+    confirmMessage += 'This action CANNOT be undone.';
+    if (!window.confirm(confirmMessage)) return;
     try {
-      await updateDoc(doc(db, 'workflow_templates', wf.id), wf as any);
-      setToast({ title: 'Success', message: 'Workflow updated successfully' });
-    } catch (error) {
-      console.error("Error updating workflow:", error);
-      setToast({ title: 'Error', message: 'Failed to update workflow' });
+      await fileStore.deleteFolder(folderId);
+      addAuditLog('delete', 'Folder', folderId, `Deleted folder "${folder.name}"`);
+      showToast({ title: 'Success', message: `Folder "${folder.name}" deleted successfully.` });
+    } catch {
+      showToast({ title: 'Error', message: 'Failed to delete folder.' });
     }
   };
 
-  const handleAddWorkflow = async (wf: WorkflowTemplate) => {
-    await setDoc(doc(db, 'workflow_templates', wf.id), wf);
-    setToast({ title: 'Success', message: 'Workflow created successfully' });
+  // Project handlers → delegates to store
+  const handleAddProject = async (p: any) => await projectStore.addProject(p, user!, clients);
+  const handleUpdateProject = async (p: any) => await projectStore.updateProject(p, user!.id);
+  const handleDeleteProject = async (id: string) => {
+    await projectStore.deleteProject(id, showToast, addAuditLog);
+  };
+  const handleAddProjectMember = async (m: any) => await projectStore.addMember(m, user!);
+  const handleRemoveProjectMember = async (id: string) => await deleteDoc(doc(db, 'project_members', id));
+  const handleAddProjectMilestone = async (m: any) => await projectStore.addMilestone(m, user!.id);
+  const handleUpdateProjectMilestone = async (m: any) => await projectStore.updateMilestone(m, user!.id);
+  const handleAddMilestone = async (m: any) => await projectStore.addDynamicMilestone(m);
+  const handleUpdateMilestone = async (m: any) => await projectStore.updateDynamicMilestone(m);
+  const handleAddProjectMarketingAsset = async (a: any) => { await projectStore.addMarketingAsset(a); handleNotify('system', 'Marketing Asset Added', `Added ${a.name} to project strategy.`); };
+  const handleUpdateProjectMarketingAsset = async (a: any) => await projectStore.updateMarketingAsset(a);
+  const handleDeleteProjectMarketingAsset = async (id: string) => await projectStore.deleteMarketingAsset(id);
+  const handleArchiveProject = async (id: string) => {
+    await projectStore.archiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
+  };
+  const handleUnarchiveProject = async (id: string) => {
+    await projectStore.unarchiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
   };
 
-  const handleDeleteWorkflow = async (wfId: string) => {
-    await deleteDoc(doc(db, 'workflow_templates', wfId));
-    setToast({ title: 'Success', message: 'Workflow deleted successfully' });
+  // Client handlers → delegates to store
+  const handleAddClient = async (c: any) => { await clientStore.addClient(c, (type, title, msg) => handleNotify(type as any, title, msg)); };
+  const handleUpdateClient = async (c: any) => await clientStore.updateClient(c);
+  const handleDeleteClient = async (id: string) => await clientStore.deleteClient(id, folders, user!.id, addAuditLog, showToast);
+  const handleAddSocialLink = async (l: any) => await clientStore.addSocialLink(l);
+  const handleUpdateSocialLink = async (l: any) => await clientStore.updateSocialLink(l);
+  const handleDeleteSocialLink = async (id: string) => await clientStore.deleteSocialLink(id);
+  const handleAddClientNote = async (n: any) => await clientStore.addNote(n);
+  const handleUpdateClientNote = async (n: any) => await clientStore.updateNote(n);
+  const handleDeleteClientNote = async (id: string) => await clientStore.deleteNote(id);
+  const handleAddClientMeeting = async (m: any) => { await clientStore.addMeeting(m, folders); handleNotify('system' as any, 'Meeting Scheduled', `Meeting "${m.title}" has been scheduled.`); };
+  const handleUpdateClientMeeting = async (m: any) => await clientStore.updateMeeting(m);
+  const handleDeleteClientMeeting = async (id: string) => await clientStore.deleteMeeting(id);
+  const handleAddBrandAsset = async (a: any) => await clientStore.addBrandAsset(a);
+  const handleUpdateBrandAsset = async (a: any) => await clientStore.updateBrandAsset(a);
+  const handleDeleteBrandAsset = async (id: string) => await clientStore.deleteBrandAsset(id);
+  const handleAddMonthlyReport = async (r: any) => await clientStore.addMonthlyReport(r);
+  const handleUpdateMonthlyReport = async (r: any) => await clientStore.updateMonthlyReport(r);
+  const handleDeleteMonthlyReport = async (id: string) => await clientStore.deleteMonthlyReport(id);
+
+  // Finance handlers
+  const handleAddInvoice = async (inv: any) => await financeStore.addInvoice(inv);
+  const handleUpdateInvoice = async (inv: any) => await financeStore.updateInvoice(inv);
+  const handleAddQuotation = async (q: any) => await financeStore.addQuotation(q);
+  const handleUpdateQuotation = async (q: any) => await financeStore.updateQuotation(q);
+  const handleAddPayment = async (p: any) => { await financeStore.addPayment(p); handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${p.amount} recorded.`); };
+  const handleAddExpense = async (e: any) => await financeStore.addExpense(e, handleUpdateProject, projects);
+
+  // HR handlers
+  const handleAddUser = async (u: User) => await hrStore.addUser(u, addAuditLog);
+  const handleUpdateUser = async (u: User) => await hrStore.updateUser(u, addAuditLog);
+  const handleCreateEmployeeProfile = async (p: any) => await hrStore.createEmployeeProfile(p, addAuditLog);
+  const handleUpdateEmployeeProfile = async (p: any) => await hrStore.updateEmployeeProfile(p, user!.id, addAuditLog);
+  const handleAddLeaveRequest = async (r: any) => await hrStore.addLeaveRequest(r, addAuditLog, handleNotify);
+  const handleApproveLeaveRequest = async (r: any) => await hrStore.approveLeaveRequest(r, user!.id, addAuditLog, handleNotify);
+  const handleRejectLeaveRequest = async (r: any, reason: string) => await hrStore.rejectLeaveRequest(r, reason, user!.id, addAuditLog, handleNotify);
+  const handleCancelLeaveRequest = async (r: any) => await hrStore.cancelLeaveRequest(r, user!.id, addAuditLog);
+  const handleUpdateLeaveRequest = async (r: any) => await hrStore.updateLeaveRequest(r);
+  const handleDeleteLeaveRequest = async (id: string) => await hrStore.deleteLeaveRequest(id, addAuditLog);
+  const handleCheckIn = async () => { const msg = await hrStore.checkIn(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`); };
+  const handleCheckOut = async () => { const msg = await hrStore.checkOut(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked Out', 'Clock-out recorded.'); };
+  const handleSubmitAttendanceCorrection = async (c: any) => await hrStore.submitAttendanceCorrection(c, addAuditLog);
+  const handleApproveAttendanceCorrection = async (id: string) => await hrStore.approveAttendanceCorrection(id, user!.id, user!.name, addAuditLog, handleNotify);
+  const handleStartOnboarding = async (c: any) => await hrStore.startOnboarding(c, addAuditLog, handleNotify);
+  const handleCompleteOnboardingStep = async (cId: string, sId: string) => await hrStore.completeOnboardingStep(cId, sId, user!.id, addAuditLog);
+  const handleStartOffboarding = async (c: any) => await hrStore.startOffboarding(c, user!.id, addAuditLog, handleNotify);
+  const handleAssignEmployeeAsset = async (a: any) => await hrStore.assignEmployeeAsset(a, addAuditLog, handleNotify);
+  const handleReturnEmployeeAsset = async (id: string) => await hrStore.returnEmployeeAsset(id, addAuditLog);
+  const handleCreatePerformanceReview = async (r: any) => await hrStore.createPerformanceReview(r, addAuditLog);
+  const handleSubmitPerformanceReview = async (id: string) => await hrStore.submitPerformanceReview(id, addAuditLog, handleNotify);
+  const handleFinalizePerformanceReview = async (id: string) => await hrStore.finalizePerformanceReview(id, addAuditLog, handleNotify);
+  const handleUpdatePerformanceReview = async (r: any) => await hrStore.updatePerformanceReview(r);
+
+  // Network handlers
+  const handleAddVendor = async (v: any) => await networkStore.addVendor(v);
+  const handleUpdateVendor = async (v: any) => await networkStore.updateVendor(v);
+  const handleAddFreelancer = async (f: any) => await networkStore.addFreelancer(f);
+  const handleUpdateFreelancer = async (f: any) => await networkStore.updateFreelancer(f);
+  const handleAddFreelancerAssignment = async (a: any) => await networkStore.addFreelancerAssignment(a);
+  const handleRemoveFreelancerAssignment = async (id: string) => await networkStore.removeFreelancerAssignment(id);
+
+  // Production handlers
+  const handleAddShotList = async (sl: any) => await productionStore.addShotList(sl);
+  const handleAddCallSheet = async (cs: any) => { await productionStore.addCallSheet(cs); handleNotify('production_update', 'Call Sheet Published', `Call sheet for ${cs.date} is now available.`); };
+  const handleAddLocation = async (loc: any) => await productionStore.addLocation(loc);
+  const handleAddEquipment = async (eq: any) => await productionStore.addEquipment(eq);
+  const handleUpdateEquipment = async (eq: any) => await productionStore.updateEquipment(eq);
+
+  // Social/Posting handlers
+  const handleAddSocialPost = async (p: any) => await postingStore.addPost(p);
+  const handleUpdateSocialPost = async (p: any) => { await postingStore.updatePost(p); handleNotify('system', 'Post Updated', `Social post "${p.title}" updated.`); };
+
+  // Notification handlers
+  const handleMarkNotificationRead = async (id: string) => await notifStore.markAsRead(id);
+  const handleMarkAllNotificationsRead = async () => { if (user) await notifStore.markAllAsRead(user.id); };
+  const handleDeleteNotification = async (id: string) => await notifStore.deleteNotification(id);
+  const handleUpdatePreferences = async (p: NotificationPreference) => { await notifStore.updatePreferences(p); };
+  const handleManualNotificationSend = async (payload: any) => {
+    const result = await notifStore.sendManualNotification(payload, activeUsers, projectStore.projectMembers, user?.id || 'system');
+    showToast({ title: 'Notification queued', message: `Sent to ${result.recipientCount} recipient(s).` });
   };
 
-  // -- Department Handlers --
-  const handleAddDepartment = async (dept: DepartmentDefinition) => {
-    await setDoc(doc(db, 'departments', dept.id), dept);
-    await addAuditLog('create_department', 'Department', dept.id, `Created department ${dept.name}`);
-    setToast({ title: 'Success', message: `Department "${dept.name}" created.` });
+  // Admin handlers
+  const handleUpdateRole = async (r: any) => { await adminStore.updateRole(r, user!.id); };
+  const handleAddRole = async (r: any) => { await adminStore.addRole(r, user!.id); };
+  const handleDeleteRole = async (id: string) => { await adminStore.deleteRole(id, user!.id); };
+  const handleSyncRoles = async () => { await adminStore.syncRoles(); showToast({ title: 'Success', message: 'System roles synchronized.' }); };
+  const handleUpdateWorkflow = async (wf: any) => { await adminStore.updateWorkflow(wf); showToast({ title: 'Success', message: 'Workflow updated.' }); };
+  const handleAddWorkflow = async (wf: any) => { await adminStore.addWorkflow(wf); showToast({ title: 'Success', message: 'Workflow created.' }); };
+  const handleDeleteWorkflow = async (id: string) => { await adminStore.deleteWorkflow(id); showToast({ title: 'Success', message: 'Workflow deleted.' }); };
+  const handleAddDepartment = async (d: any) => { await adminStore.addDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" created.` }); };
+  const handleUpdateDepartment = async (d: any) => { await adminStore.updateDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" updated.` }); };
+  const handleDeleteDepartment = async (id: string) => { await adminStore.deleteDepartment(id, user!.id); showToast({ title: 'Success', message: 'Department deleted.' }); };
+  const handleSaveBanner = async (b: any) => { await adminStore.saveBanner(b, user!.id); showToast({ title: 'Success', message: 'Banner saved.' }); };
+  const handleDeleteBanner = async () => { await adminStore.deleteBanner(user!.id); showToast({ title: 'Success', message: 'Banner deleted.' }); };
+
+  // Notes handlers
+  const handleAddNote = async (n: any) => { await notesStore.addNote(n); showToast({ title: 'Note Created', message: 'Note added successfully.' }); };
+  const handleUpdateNote = async (n: any) => { await notesStore.updateNote(n); showToast({ title: 'Note Updated', message: 'Note updated successfully.' }); };
+  const handleDeleteNote = async (id: string) => { await notesStore.deleteNote(id); showToast({ title: 'Note Deleted', message: 'Note deleted.' }); };
+
+  // Task approval handlers → delegates to store
+  const handleAddTaskComment = async (c: any) => await taskStore.addComment(c);
+  const handleAddTaskTimeLog = async (l: any) => await taskStore.addTimeLog(l);
+  const handleAddTaskDependency = async (d: any) => await taskStore.addDependency(d);
+  const handleUpdateApprovalStep = async (s: any) => await taskStore.updateApprovalStep(s);
+  const handleAddApprovalSteps = async (s: any) => await taskStore.addApprovalSteps(s);
+  const handleUpdateClientApproval = async (ca: any) => await taskStore.updateClientApproval(ca);
+  const handleAddClientApproval = async (ca: any) => await taskStore.addClientApproval(ca);
+
+  const handleEnablePushNotifications = async () => {
+    try {
+      await requestPermissionAndRegister();
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') setHidePushPrompt(true);
+    } catch { /* swallow */ }
   };
 
-  const handleUpdateDepartment = async (dept: DepartmentDefinition) => {
-    await updateDoc(doc(db, 'departments', dept.id), dept as any);
-    await addAuditLog('update_department', 'Department', dept.id, `Updated department ${dept.name}`);
-    setToast({ title: 'Success', message: `Department "${dept.name}" updated.` });
-  };
-
-  const handleDeleteDepartment = async (deptId: string) => {
-    await deleteDoc(doc(db, 'departments', deptId));
-    await addAuditLog('delete_department', 'Department', deptId, `Deleted department ${deptId}`);
-    setToast({ title: 'Success', message: 'Department deleted.' });
-  };
-
-  // -- Dashboard Banner Handlers --
-  const handleSaveBanner = async (banner: DashboardBanner) => {
-    await setDoc(doc(db, 'dashboard_banners', banner.id), banner);
-    await addAuditLog('save_banner', 'DashboardBanner', banner.id, `Saved dashboard banner`);
-    setToast({ title: 'Success', message: 'Dashboard banner saved.' });
-  };
-
-  const handleDeleteBanner = async () => {
-    if (dashboardBanner) {
-      await deleteDoc(doc(db, 'dashboard_banners', dashboardBanner.id));
-      await addAuditLog('delete_banner', 'DashboardBanner', dashboardBanner.id, `Deleted dashboard banner`);
-      setToast({ title: 'Success', message: 'Dashboard banner deleted.' });
-    }
-  };
-
+  // ─── Permission-filtered data ─────────────
   const getVisibleTasks = () => {
     if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
     return activeTasks.filter(t => {
-      if (!t) return false;
       const assignees = t.assigneeIds;
       const isAssigned = Array.isArray(assignees) && assignees.includes(user?.id || '');
-      const isCreator = t.createdBy === user?.id;
-      return isAssigned || isCreator;
+      return isAssigned || t.createdBy === user?.id;
     });
   };
 
   const getVisibleProjects = () => {
     if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return projects;
-
-    // Get projects where user is a member, manager, or has assigned tasks
     return projects.filter(p =>
-      projectMembers.some(m => m.projectId === p.id && m.userId === user?.id) ||
-      p.accountManagerId === user?.id ||
-      p.projectManagerId === user?.id ||
+      projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === user?.id) ||
+      p.accountManagerId === user?.id || p.projectManagerId === user?.id ||
       activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(user?.id || ''))
     );
   };
 
-  const getVisibleFiles = () => {
-    return files;
+  // ─── Global Task Detail helpers ───────────
+  const globalSelectedTask = activeTasks.find(t => t.id === targetTaskId) || null;
+
+  const globalGetStatusColor = (s: TaskStatus): string => {
+    const colors: Record<string, string> = {
+      'new': 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]',
+      'assigned': 'bg-blue-500/10 text-blue-100 border-blue-500/25',
+      'in_progress': 'bg-indigo-500/10 text-indigo-100 border-indigo-500/25',
+      'awaiting_review': 'bg-amber-500/10 text-amber-100 border-amber-500/20',
+      'revisions_required': 'bg-rose-500/10 text-rose-100 border-rose-500/25',
+      'approved': 'bg-emerald-500/10 text-emerald-100 border-emerald-500/25',
+      'client_review': 'bg-purple-500/10 text-purple-100 border-purple-500/25',
+      'client_approved': 'bg-teal-500/10 text-teal-100 border-teal-500/25',
+      'completed': 'bg-emerald-600/15 text-emerald-100 border-emerald-400/40',
+      'archived': 'bg-slate-800/60 text-slate-300 border-[color:var(--dash-glass-border)]',
+    };
+    return colors[s] || colors['new'];
   };
 
-  const handleSyncRoles = async () => {
-    try {
-      const batch = writeBatch(db);
-      for (const defaultRole of DEFAULT_ROLES) {
-        const roleRef = doc(db, 'roles', defaultRole.id);
-        batch.set(roleRef, defaultRole, { merge: true });
+  const globalResolveApprover = (step: any, task: Task): string | null => {
+    if (step.specificUserId) return step.specificUserId;
+    if (step.projectRoleKey) {
+      const member = projectStore.projectMembers.find((pm: ProjectMember) => pm.projectId === task.projectId && pm.roleInProject === step.projectRoleKey);
+      return member ? member.userId : null;
+    }
+    if (step.roleId) {
+      const roleDef = systemRoles.find((r: RoleDefinition) => r.id === step.roleId);
+      if (roleDef) {
+        const projectUserIds = projectStore.projectMembers.filter((pm: ProjectMember) => pm.projectId === task.projectId).map((pm: ProjectMember) => pm.userId);
+        const projectApprover = activeUsers.find(u => u.role === roleDef.name && projectUserIds.includes(u.id));
+        if (projectApprover) return projectApprover.id;
+        const deptApprover = activeUsers.find(u => u.role === roleDef.name && u.department === task.department);
+        if (deptApprover) return deptApprover.id;
+        return activeUsers.find(u => u.role === roleDef.name)?.id || null;
       }
-      await batch.commit();
-      setToast({ title: 'Success', message: 'System roles synchronized successfully.' });
-      setTimeout(() => setToast(null), 3000);
-    } catch (error) {
-      console.error("Error syncing roles:", error);
-      setToast({ title: 'Error', message: 'Failed to sync roles.' });
     }
+    return null;
   };
 
-  // Auto-sync roles if critical permissions are missing (e.g. after an update)
-  // useEffect(() => {
-  //   if (systemRoles.length > 0) {
-  //     const gmRole = systemRoles.find(r => r.name === 'General Manager');
-  //     // Check if GM role is missing the new notes permission
-  //     if (gmRole && !gmRole.permissions.includes('notes.create')) {
-  //       console.log('Detected outdated roles (missing notes permissions). Auto-syncing...');
-  //       handleSyncRoles();
-  //     }
-  //   }
-  // }, [systemRoles]);
-
-  const handleOpenProject = (projectId: string) => {
-    setTargetProjectId(projectId);
-    setActiveView('projects');
-  };
-
-  const handleArchiveProject = async (projectId: string) => {
-    if (!user) return;
-    if (!checkPermission(PERMISSIONS.PROJECTS.ARCHIVE)) {
-      setToast({ title: 'Access Denied', message: 'You do not have permission to archive projects.' });
-      return;
-    }
-
-    const project = projects.find(p => p.id === projectId);
-    if (!project || project.isArchived) return;
-
-    if (!confirm(`Are you sure you want to archive project "${project.name}"?`)) return;
-
-    try {
-      // 1. Mark project as archived
-      const updatedProject = {
-        ...project,
-        isArchived: true,
-        archivedAt: new Date().toISOString(),
-        archivedBy: user.id,
-        status: 'Completed' as const
-      };
-      await updateDoc(doc(db, 'projects', projectId), updatedProject as any);
-
-      // 2. Ensure Archive Root Folder for Client
-      let archiveRoot = folders.find(f => f.clientId === project.clientId && f.isArchiveRoot);
-      if (!archiveRoot) {
-        const newRootId = `f_archive_${project.clientId}`;
-        archiveRoot = {
-          id: newRootId,
-          clientId: project.clientId,
-          projectId: null,
-          parentId: null,
-          name: 'Archive',
-          isArchiveRoot: true,
-          isTaskArchiveFolder: false,
-          isProjectArchiveFolder: false
-        };
-        await setDoc(doc(db, 'folders', newRootId), archiveRoot);
-      }
-
-      // 3. Create Project Archive Folder
-      const projectArchiveFolderId = `f_proj_arch_${projectId}`;
-      const projectArchiveFolder: FileFolder = {
-        id: projectArchiveFolderId,
-        clientId: project.clientId,
-        projectId: projectId,
-        parentId: archiveRoot.id,
-        name: `[Archived] ${project.name}`,
-        isArchiveRoot: false,
-        isTaskArchiveFolder: false,
-        isProjectArchiveFolder: true
-      };
-      await setDoc(doc(db, 'folders', projectArchiveFolderId), projectArchiveFolder);
-
-      // 4. Move Project Files
-      const projectFiles = files.filter(f => f.projectId === projectId);
-      const batch = writeBatch(db);
-
-      projectFiles.forEach(file => {
-        const fileRef = doc(db, 'files', file.id);
-        batch.update(fileRef, {
-          folderId: projectArchiveFolderId,
-          isArchived: true,
-          archivedAt: new Date().toISOString(),
-          archivedBy: user.id
-        });
-      });
-
-      await batch.commit();
-
-      setToast({ title: 'Project Archived', message: `${project.name} has been archived successfully.` });
-
-    } catch (error) {
-      console.error("Error archiving project:", error);
-      setToast({ title: 'Error', message: 'Failed to archive project.' });
-    }
-  };
-
-  const handleUnarchiveProject = async (projectId: string) => {
-    if (!user) return;
-    if (!checkPermission(PERMISSIONS.PROJECTS.ARCHIVE)) {
-      setToast({ title: 'Access Denied', message: 'You do not have permission to unarchive projects.' });
-      return;
-    }
-
-    const project = projects.find(p => p.id === projectId);
-    if (!project || !project.isArchived) return;
-
-    if (!confirm(`Are you sure you want to unarchive project "${project.name}"?`)) return;
-
-    try {
-      // 1. Mark project as unarchived
-      const updatedProject = {
-        ...project,
-        isArchived: false,
-        archivedAt: null,
-        archivedBy: null,
-        status: 'active' as const // Reset to active
-      };
-      await updateDoc(doc(db, 'projects', projectId), updatedProject as any);
-
-      // 2. Find Project Archive Folder and Rename (remove [Archived])
-      const projectArchiveFolder = folders.find(f => f.projectId === projectId && f.isProjectArchiveFolder);
-      if (projectArchiveFolder) {
-        const newName = projectArchiveFolder.name.replace('[Archived] ', '');
-        await updateDoc(doc(db, 'folders', projectArchiveFolder.id), { name: newName });
-      }
-
-      // 3. Mark Files as Unarchived
-      const projectFiles = files.filter(f => f.projectId === projectId && f.isArchived);
-      const batch = writeBatch(db);
-
-      projectFiles.forEach(file => {
-        const fileRef = doc(db, 'files', file.id);
-        batch.update(fileRef, {
-          isArchived: false,
-          archivedAt: null,
-          archivedBy: null
-        });
-      });
-
-      await batch.commit();
-
-      setToast({ title: 'Project Unarchived', message: `${project.name} has been restored to active projects.` });
-
-    } catch (error) {
-      console.error("Error unarchiving project:", error);
-      setToast({ title: 'Error', message: 'Failed to unarchive project.' });
-    }
-  };
-
-  const handleAddNote = async (note: Note) => {
-    await setDoc(doc(db, 'notes', note.id), note);
-    setToast({ title: 'Note Created', message: 'Note added successfully.' });
-  };
-
-  const handleUpdateNote = async (note: Note) => {
-    await updateDoc(doc(db, 'notes', note.id), note as any);
-    setToast({ title: 'Note Updated', message: 'Note updated successfully.' });
-  };
-
-  const handleDeleteNote = async (noteId: string) => {
-    await deleteDoc(doc(db, 'notes', noteId));
-    setToast({ title: 'Note Deleted', message: 'Note deleted successfully.' });
-  };
-
-  const renderContent = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return (
-          <Dashboard
-            tasks={getVisibleTasks()}
-            projects={getVisibleProjects()}
-            users={activeUsers}
-            clients={clients}
-            socialPosts={socialPosts}
-            timeLogs={taskTimeLogs}
-            currentUser={user}
-            meetings={clientMeetings}
-            notes={notes}
-            milestones={projectMilestones}
-            dynamicMilestones={milestones}
-            approvalSteps={approvalSteps}
-            onAddNote={handleAddNote}
-            onUpdateNote={handleUpdateNote}
-            onDeleteNote={handleDeleteNote}
-            onNavigateToTask={handleNavigateToTask}
-            onNavigateToMeeting={() => setActiveView('clients')}
-            onNavigateToPost={() => setActiveView('posting')}
-            onViewAllTasks={() => setActiveView('tasks')}
-            onViewAllApprovals={() => setActiveView('tasks')}
-            onNavigateToUserTasks={() => setActiveView('tasks')}
-            onNavigateToClient={() => setActiveView('clients')}
-            onScheduleMeeting={() => setActiveView('clients')}
-            onNavigateToCalendar={() => setActiveView('calendar')}
-          />
-        );
-      case 'clients':
-        return (
-          <ClientsHub
-            clients={clients}
-            projects={getVisibleProjects()}
-            tasks={activeTasks}
-            milestones={projectMilestones}
-            invoices={invoices}
-            socialLinks={clientSocialLinks}
-            notes={clientNotes}
-            meetings={clientMeetings}
-            brandAssets={clientBrandAssets}
-            monthlyReports={clientMonthlyReports}
-            files={getVisibleFiles()}
-            folders={folders}
-            users={activeUsers}
-            accountManagers={activeUsers.filter(u => u.department === 'Accounts' || u.department === 'Management')}
-            onAddClient={handleAddClient}
-            onUpdateClient={handleUpdateClient}
-            onDeleteClient={handleDeleteClient}
-            onArchiveProject={handleArchiveProject}
-            onUnarchiveProject={handleUnarchiveProject}
-            onOpenProject={handleOpenProject}
-            onAddSocialLink={handleAddSocialLink}
-            onUpdateSocialLink={handleUpdateSocialLink}
-            onDeleteSocialLink={handleDeleteSocialLink}
-            onAddNote={handleAddClientNote}
-            onUpdateNote={handleUpdateClientNote}
-            onDeleteNote={handleDeleteClientNote}
-            onAddMeeting={handleAddClientMeeting}
-            onUpdateMeeting={handleUpdateClientMeeting}
-            onDeleteMeeting={handleDeleteClientMeeting}
-            onAddBrandAsset={handleAddBrandAsset}
-            onUpdateBrandAsset={handleUpdateBrandAsset}
-            onDeleteBrandAsset={handleDeleteBrandAsset}
-            onAddMonthlyReport={handleAddMonthlyReport}
-            onUpdateMonthlyReport={handleUpdateMonthlyReport}
-            onDeleteMonthlyReport={handleDeleteMonthlyReport}
-            onUploadFile={handleUploadFile}
-            checkPermission={checkPermission}
-            currentUser={user}
-          />
-        );
-      case 'projects':
-        return (
-          <ProjectsHub
-            projects={getVisibleProjects()}
-            clients={clients}
-            users={activeUsers}
-            members={projectMembers}
-            milestones={projectMilestones}
-            activityLogs={projectLogs}
-            marketingAssets={projectMarketingAssets}
-            files={getVisibleFiles()}
-            folders={folders}
-            freelancers={freelancers}
-            assignments={assignments}
-            tasks={activeTasks}
-            approvalSteps={approvalSteps}
-            onAddProject={handleAddProject}
-            onUpdateProject={handleUpdateProject}
-            onDeleteProject={handleDeleteProject}
-            onAddMember={handleAddProjectMember}
-            onAddFreelancerAssignment={handleAddFreelancerAssignment}
-            onRemoveMember={handleRemoveProjectMember}
-            onRemoveFreelancerAssignment={handleRemoveFreelancerAssignment}
-            onAddMilestone={handleAddProjectMilestone}
-            onUpdateMilestone={handleUpdateProjectMilestone}
-            onAddMarketingAsset={handleAddProjectMarketingAsset}
-            onUpdateMarketingAsset={handleUpdateProjectMarketingAsset}
-            onDeleteMarketingAsset={handleDeleteProjectMarketingAsset}
-            onUploadFile={handleUploadFile}
-            onDeleteFile={handleDeleteFile}
-            onCreateFolder={handleCreateFolder}
-            initialSelectedProjectId={targetProjectId}
-            checkPermission={checkPermission}
-            onNavigateToTask={handleNavigateToTask}
-            // Smart Project Creation Props
-            workflowTemplates={workflowTemplates}
-            calendarMonths={calendarMonths}
-            calendarItems={calendarItems}
-            dynamicMilestones={milestones}
-            onAddDynamicMilestone={handleAddMilestone}
-            onUpdateDynamicMilestone={handleUpdateMilestone}
-            onAddTask={handleAddTask}
-            onAddApprovalSteps={handleAddApprovalSteps}
-          />
-        );
-      case 'tasks':
-        return (
-          <TasksHub
-            tasks={getVisibleTasks()}
-            projects={getVisibleProjects()}
-            users={activeUsers}
-            comments={taskComments}
-            timeLogs={taskTimeLogs}
-            dependencies={taskDependencies}
-            activityLogs={taskLogs}
-            approvalSteps={approvalSteps}
-            clientApprovals={clientApprovals}
-            files={getVisibleFiles()}
-            milestones={projectMilestones}
-            currentUser={user}
-            // Dynamic Workflows Props
-            workflowTemplates={workflowTemplates}
-            projectMembers={projectMembers}
-            roles={systemRoles}
-            onAddTask={handleAddTask}
-            onUpdateTask={handleUpdateTask}
-            onAddComment={handleAddTaskComment}
-            onAddTimeLog={handleAddTaskTimeLog}
-            onAddDependency={handleAddTaskDependency}
-            onUpdateApprovalStep={handleUpdateApprovalStep}
-            onAddApprovalSteps={handleAddApprovalSteps}
-            onUpdateClientApproval={handleUpdateClientApproval}
-            onAddClientApproval={handleAddClientApproval}
-            onUploadFile={handleUploadFile}
-            onNotify={handleNotify}
-            checkPermission={checkPermission}
-            onDeleteTask={handleDeleteTask}
-            initialSelectedTaskId={targetTaskId}
-            onAddSocialPost={handleAddSocialPost}
-            leaveRequests={leaveRequests}
-          />
-        );
-      case 'posting':
-        if (!checkPermission(PERMISSIONS.POSTING.VIEW_DEPT) && !checkPermission(PERMISSIONS.POSTING.VIEW_ALL)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <PostingHub
-            socialPosts={socialPosts}
-            tasks={activeTasks}
-            projects={projects}
-            clients={clients}
-            users={activeUsers}
-            currentUser={user}
-            checkPermission={checkPermission}
-            onUpdatePost={handleUpdateSocialPost}
-            onArchiveTask={handleArchiveTask}
-            onNotify={handleNotify}
-            files={files}
-            comments={taskComments}
-          />
-        );
-      case 'calendar':
-        if (!checkPermission(PERMISSIONS.CALENDAR.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <CalendarHub
-            clients={clients}
-            calendarMonths={calendarMonths}
-            calendarItems={calendarItems}
-            calendarItemRevisions={calendarItemRevisions}
-            creativeProjects={creativeProjects}
-            creativeCalendars={creativeCalendars}
-            creativeCalendarItems={creativeCalendarItems}
-            users={activeUsers}
-            currentUser={user}
-            checkPermission={checkPermission}
-            onNotify={handleNotify}
-          />
-        );
-      case 'creative':
-        if (!checkPermission(PERMISSIONS.CREATIVE.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <CreativeDirectionHub
-            creativeProjects={creativeProjects}
-            creativeCalendars={creativeCalendars}
-            creativeCalendarItems={creativeCalendarItems}
-            clients={clients}
-            users={activeUsers}
-            calendarMonths={calendarMonths}
-            calendarItems={calendarItems}
-            calendarItemRevisions={calendarItemRevisions}
-            files={files}
-            currentUser={user}
-            checkPermission={checkPermission}
-            onNotify={handleNotify}
-            onUploadFile={handleUploadFile}
-          />
-        );
-      case 'quality-control':
-        if (!checkPermission(PERMISSIONS.QC.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <QualityControlHub
-            tasks={activeTasks}
-            qcReviews={qcReviews}
-            users={activeUsers}
-            projects={projects}
-            clients={clients}
-            projectMembers={projectMembers}
-            workflowTemplates={workflowTemplates}
-            approvalSteps={approvalSteps}
-            taskComments={taskComments}
-            files={files}
-            currentUser={user}
-            checkPermission={checkPermission}
-            onUpdateTask={handleUpdateTask}
-            onNotify={handleNotify}
-            onUploadFile={handleUploadFile}
-          />
-        );
-      case 'assets':
-        return (
-          <FilesHub
-            files={getVisibleFiles()}
-            folders={folders}
-            projects={getVisibleProjects()}
-            clients={clients}
-            users={activeUsers}
-            onUpload={handleUploadFile}
-            onDelete={handleDeleteFile}
-            onMove={() => { }}
-            onCreateFolder={handleCreateFolder}
-            onDeleteFolder={handleDeleteFolder}
-          />
-        );
-      case 'production':
-        if (!checkPermission(PERMISSIONS.PRODUCTION.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <ProductionHub
-            assets={productionAssets}
-            shotLists={shotLists}
-            callSheets={callSheets}
-            locations={locations}
-            equipment={equipment}
-            projects={getVisibleProjects()}
-            users={activeUsers}
-            clients={clients}
-            leaveRequests={leaveRequests}
-            currentUserId={user.uid}
-            onAddShotList={handleAddShotList}
-            onAddCallSheet={handleAddCallSheet}
-            onAddLocation={handleAddLocation}
-            onAddEquipment={handleAddEquipment}
-            onUpdateEquipment={handleUpdateEquipment}
-            projectMembers={projectMembers}
-            tasks={getVisibleTasks()}
-            calendarItems={calendarItems}
-            comments={taskComments}
-            timeLogs={taskTimeLogs}
-            dependencies={taskDependencies}
-            activityLogs={taskLogs}
-            approvalSteps={approvalSteps}
-            clientApprovals={clientApprovals}
-            files={getVisibleFiles()}
-            milestones={projectMilestones}
-            workflowTemplates={workflowTemplates}
-            roles={systemRoles}
-            currentUser={user}
-            onUpdateTask={handleUpdateTask}
-            onAddTask={handleAddTask}
-            onAddComment={handleAddTaskComment}
-            onAddTimeLog={handleAddTaskTimeLog}
-            onAddDependency={handleAddTaskDependency}
-            onUpdateApprovalStep={handleUpdateApprovalStep}
-            onAddApprovalSteps={handleAddApprovalSteps}
-            onUpdateClientApproval={handleUpdateClientApproval}
-            onAddClientApproval={handleAddClientApproval}
-            onUploadFile={handleUploadFile}
-            checkPermission={checkPermission}
-            onNotify={handleNotify}
-            onArchiveTask={handleArchiveTask}
-            onDeleteTask={handleDeleteTask}
-            onAddSocialPost={handleAddSocialPost}
-          />
-        );
-      case 'network':
-        return (
-          <VendorsHub
-            vendors={vendors}
-            freelancers={freelancers}
-            assignments={assignments}
-            serviceOrders={serviceOrders}
-            onAddVendor={handleAddVendor}
-            onUpdateVendor={handleUpdateVendor}
-            onAddFreelancer={handleAddFreelancer}
-            onUpdateFreelancer={handleUpdateFreelancer}
-          />
-        );
-      case 'finance':
-        if (!checkPermission(PERMISSIONS.FINANCE.VIEW_OWN) && !checkPermission(PERMISSIONS.FINANCE.VIEW_PROJECT) && !checkPermission(PERMISSIONS.FINANCE.VIEW_ALL)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <FinanceHub
-            invoices={invoices}
-            quotations={quotations}
-            payments={payments}
-            expenses={expenses}
-            projects={projects}
-            clients={clients}
-            onAddInvoice={handleAddInvoice}
-            onUpdateInvoice={handleUpdateInvoice}
-            onAddQuotation={handleAddQuotation}
-            onUpdateQuotation={handleUpdateQuotation}
-            onAddPayment={handleAddPayment}
-            onAddExpense={handleAddExpense}
-          />
-        );
-      case 'hr':
-        return (
-          <TeamHub
-            users={activeUsers}
-            tasks={tasks}
-            leaveRequests={leaveRequests}
-            attendanceRecords={attendanceRecords}
-            roles={systemRoles}
-            departments={departments}
-            projects={projects}
-            checkPermission={checkPermission}
-            currentUser={user}
-            onAddUser={handleAddUser}
-            onUpdateUser={handleUpdateUser}
-            onAddLeaveRequest={handleAddLeaveRequest}
-            onUpdateLeaveRequest={handleUpdateLeaveRequest}
-            onDeleteLeaveRequest={handleDeleteLeaveRequest}
-            onApproveLeaveRequest={handleApproveLeaveRequest}
-            onRejectLeaveRequest={handleRejectLeaveRequest}
-            onCancelLeaveRequest={handleCancelLeaveRequest}
-            onClockIn={handleCheckIn}
-            onClockOut={handleCheckOut}
-            onAddDepartment={handleAddDepartment}
-            onUpdateDepartment={handleUpdateDepartment}
-            onDeleteDepartment={handleDeleteDepartment}
-            employeeProfiles={employeeProfiles}
-            teams={teams}
-            leavePolicies={leavePolicies}
-            leaveBalances={leaveBalances}
-            attendanceCorrections={attendanceCorrections}
-            onboardingChecklists={onboardingChecklists}
-            offboardingChecklists={offboardingChecklists}
-            employeeAssets={employeeAssets}
-            performanceReviews={performanceReviews}
-            equipment={equipment}
-            onCreateEmployeeProfile={handleCreateEmployeeProfile}
-            onUpdateEmployeeProfile={handleUpdateEmployeeProfile}
-            onSubmitAttendanceCorrection={handleSubmitAttendanceCorrection}
-            onApproveAttendanceCorrection={handleApproveAttendanceCorrection}
-            onStartOnboarding={handleStartOnboarding}
-            onCompleteOnboardingStep={handleCompleteOnboardingStep}
-            onStartOffboarding={handleStartOffboarding}
-            onAssignEmployeeAsset={handleAssignEmployeeAsset}
-            onReturnEmployeeAsset={handleReturnEmployeeAsset}
-            onCreatePerformanceReview={handleCreatePerformanceReview}
-            onSubmitPerformanceReview={handleSubmitPerformanceReview}
-            onFinalizePerformanceReview={handleFinalizePerformanceReview}
-            onUpdatePerformanceReview={handleUpdatePerformanceReview}
-          />
-        );
-      case 'schedule':
-        return (
-          <UnifiedCalendar
-            tasks={activeTasks}
-            callSheets={callSheets}
-            socialPosts={socialPosts}
-            milestones={projectMilestones}
-            leaveRequests={leaveRequests}
-            users={safeUsers}
-            checkPermission={checkPermission}
-          />
-        );
-      case 'analytics':
-        return (
-          <AnalyticsHub
-            tasks={activeTasks}
-            projects={projects}
-            invoices={invoices}
-            users={activeUsers}
-            payments={payments}
-            expenses={expenses}
-            clients={clients}
-          />
-        );
-      case 'notifications':
-        return (
-          <div className="space-y-6">
-            {canSendNotifications && user && (
-              <NotificationConsole
-                currentUserId={user.id}
-                users={activeUsers}
-                projects={projects}
-                roles={Array.isArray(systemRoles) ? systemRoles : []}
-                onSend={handleManualNotificationSend}
-                onEnablePush={requestPermissionAndRegister}
-                permissionState={permissionState}
-                currentToken={messagingToken}
-              />
-            )}
-            <NotificationsHub
-              notifications={notifications}
-              preferences={notificationPreferences}
-              onMarkAsRead={handleMarkNotificationRead}
-              onMarkAllAsRead={handleMarkAllNotificationsRead}
-              onDelete={handleDeleteNotification}
-              onUpdatePreferences={handleUpdatePreferences}
-              permissionState={permissionState}
-              onRequestPermission={requestPermissionAndRegister}
-            />
-          </div>
-        );
-      case 'admin':
-        // Only GM can access
-        if (!checkPermission(PERMISSIONS.ROLES.VIEW) && !checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW)) return <div className="p-8 text-center text-slate-400">Access Denied.</div>;
-        return (
-          <AdminHub
-            settings={appSettings}
-            users={users}
-            roles={systemRoles}
-            auditLogs={auditLogs}
-            workflowTemplates={workflowTemplates}
-            departments={departments}
-            dashboardBanner={dashboardBanner}
-            currentUserId={user?.id || ''}
-            onUpdateUser={handleUpdateUser}
-            onAddUser={handleAddUser}
-            onUpdateRole={handleUpdateRole}
-            onAddRole={handleAddRole}
-            onDeleteRole={handleDeleteRole}
-            onUpdateWorkflow={handleUpdateWorkflow}
-            onAddWorkflow={handleAddWorkflow}
-            onDeleteWorkflow={handleDeleteWorkflow}
-            onSyncRoles={handleSyncRoles}
-            onAddDepartment={handleAddDepartment}
-            onUpdateDepartment={handleUpdateDepartment}
-            onDeleteDepartment={handleDeleteDepartment}
-            onSaveBanner={handleSaveBanner}
-            onDeleteBanner={handleDeleteBanner}
-          />
-        );
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
-            <div className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-full flex items-center justify-center mb-4">
-              <span className="text-2xl font-bold">?</span>
-            </div>
-            <h2 className="text-xl font-semibold text-slate-600">Module Under Construction</h2>
-            <p className="mt-2">The {activeView} module is coming soon to IRIS OS.</p>
-          </div>
-        );
-    }
-  };
-
+  // ─── RENDER ───────────────────────────────
   return (
     <div className="app-shell">
       {/* Mobile overlay */}
-        {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 lg:hidden"
-            onClick={() => setIsSidebarOpen(false)}
-          />
-        )}
+      {isSidebarOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 lg:hidden" onClick={closeSidebar} />
+      )}
 
       <Sidebar
         activeView={activeView}
-        setActiveView={(view) => {
-          setActiveView(view);
-          setIsSidebarOpen(false);
-        }}
-        currentUserRole={user.role}
+        setActiveView={handleNavigate}
+        currentUserRole={user.role as any}
         isSidebarOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
+        onClose={closeSidebar}
         onLogout={handleLogout}
       />
 
@@ -2625,61 +543,35 @@ const App: React.FC = () => {
         toggleAI={() => setIsAIOpen(true)}
         onLogout={handleLogout}
         onMarkAsRead={handleMarkNotificationRead}
-        onViewAllNotifications={() => setActiveView('notifications')}
-        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+        onViewAllNotifications={() => navigate('/notifications')}
+        onToggleSidebar={toggleSidebar}
       />
 
       <main className="main">
-        {/* Dashboard Banner - inside main, positioned at top */}
+        {/* Dashboard Banner */}
         {dashboardBanner && dashboardBanner.isActive && activeView === 'dashboard' && (
           <div className="dashboard-banner-wrapper">
             {dashboardBanner.linkUrl ? (
-              <a 
-                href={dashboardBanner.linkUrl} 
-                target={dashboardBanner.linkTarget || '_blank'}
-                rel="noopener noreferrer"
-                className="block w-full overflow-hidden hover:opacity-95 transition-opacity duration-300"
-              >
+              <a href={dashboardBanner.linkUrl} target={dashboardBanner.linkTarget || '_blank'} rel="noopener noreferrer" className="block w-full overflow-hidden hover:opacity-95 transition-opacity duration-300">
                 {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
-                  <video
-                    src={dashboardBanner.imageUrl}
-                    className="w-full h-auto"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                  />
+                  <video src={dashboardBanner.imageUrl} className="w-full h-auto" autoPlay muted loop playsInline />
                 ) : (
-                  <img
-                    src={dashboardBanner.imageUrl}
-                    alt="Dashboard Banner"
-                    className="w-full h-auto"
-                  />
+                  <img src={dashboardBanner.imageUrl} alt="Dashboard Banner" className="w-full h-auto" />
                 )}
               </a>
             ) : (
               <div className="w-full overflow-hidden">
                 {dashboardBanner.fileName?.match(/\.(mp4|webm|mov|avi)$/i) ? (
-                  <video
-                    src={dashboardBanner.imageUrl}
-                    className="w-full h-auto"
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                  />
+                  <video src={dashboardBanner.imageUrl} className="w-full h-auto" autoPlay muted loop playsInline />
                 ) : (
-                  <img
-                    src={dashboardBanner.imageUrl}
-                    alt="Dashboard Banner"
-                    className="w-full h-auto"
-                  />
+                  <img src={dashboardBanner.imageUrl} alt="Dashboard Banner" className="w-full h-auto" />
                 )}
               </div>
             )}
           </div>
         )}
-        
+
+        {/* Push notification prompt */}
         {shouldShowPushPrompt && (
           <div className="mb-4 flex items-center justify-between rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3">
             <div className="flex flex-col text-sm text-slate-800">
@@ -2687,37 +579,264 @@ const App: React.FC = () => {
               <span className="text-slate-600">Stay in the loop for assignments and announcements.</span>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={handleEnablePushNotifications}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                Allow
-              </button>
-              <button
-                onClick={handleDismissPushPrompt}
-                className="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
-              >
-                Later
-              </button>
+              <button onClick={handleEnablePushNotifications} className="px-3 py-1.5 rounded-md text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Allow</button>
+              <button onClick={() => setHidePushPrompt(true)} className="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50">Later</button>
             </div>
           </div>
         )}
 
-        {renderContent()}
+        {/* ─── Routes ─── */}
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={
+              <Dashboard tasks={getVisibleTasks()} projects={getVisibleProjects()} users={activeUsers} clients={clients}
+                socialPosts={postingStore.socialPosts} timeLogs={taskStore.timeLogs} currentUser={user}
+                meetings={clientStore.meetings} notes={notesStore.notes} milestones={projectStore.projectMilestones}
+                dynamicMilestones={projectStore.dynamicMilestones} approvalSteps={taskStore.approvalSteps}
+                onAddNote={handleAddNote} onUpdateNote={handleUpdateNote} onDeleteNote={handleDeleteNote}
+                onNavigateToTask={handleNavigateToTask} onNavigateToMeeting={() => navigate('/clients')}
+                onNavigateToPost={() => navigate('/posting')} onViewAllTasks={() => navigate('/tasks')}
+                onViewAllApprovals={() => navigate('/tasks')} onNavigateToUserTasks={() => navigate('/tasks')}
+                onNavigateToClient={() => navigate('/clients')} onScheduleMeeting={() => navigate('/clients')}
+                onNavigateToCalendar={() => navigate('/calendar')}
+              />
+            } />
+            <Route path="/clients" element={
+              <ClientsHub clients={clients} projects={getVisibleProjects()} tasks={activeTasks}
+                milestones={projectStore.projectMilestones} invoices={invoices} socialLinks={clientStore.socialLinks}
+                notes={clientStore.notes} meetings={clientStore.meetings} brandAssets={clientStore.brandAssets}
+                monthlyReports={clientStore.monthlyReports} files={files} folders={folders} users={activeUsers}
+                accountManagers={activeUsers.filter(u => u.department === 'Accounts' || u.department === 'Management')}
+                onAddClient={handleAddClient} onUpdateClient={handleUpdateClient} onDeleteClient={handleDeleteClient}
+                onArchiveProject={handleArchiveProject} onUnarchiveProject={handleUnarchiveProject}
+                onOpenProject={handleOpenProject}
+                onAddSocialLink={handleAddSocialLink} onUpdateSocialLink={handleUpdateSocialLink} onDeleteSocialLink={handleDeleteSocialLink}
+                onAddNote={handleAddClientNote} onUpdateNote={handleUpdateClientNote} onDeleteNote={handleDeleteClientNote}
+                onAddMeeting={handleAddClientMeeting} onUpdateMeeting={handleUpdateClientMeeting} onDeleteMeeting={handleDeleteClientMeeting}
+                onAddBrandAsset={handleAddBrandAsset} onUpdateBrandAsset={handleUpdateBrandAsset} onDeleteBrandAsset={handleDeleteBrandAsset}
+                onAddMonthlyReport={handleAddMonthlyReport} onUpdateMonthlyReport={handleUpdateMonthlyReport} onDeleteMonthlyReport={handleDeleteMonthlyReport}
+                onUploadFile={handleUploadFile as any} checkPermission={checkPermission} currentUser={user}
+              />
+            } />
+            <Route path="/projects" element={
+              <ProjectsHub projects={getVisibleProjects()} clients={clients} users={activeUsers}
+                members={projectStore.projectMembers} milestones={projectStore.projectMilestones}
+                activityLogs={projectStore.activityLogs} marketingAssets={projectStore.marketingAssets}
+                files={files} folders={folders} freelancers={networkStore.freelancers} assignments={networkStore.assignments}
+                tasks={activeTasks} approvalSteps={taskStore.approvalSteps}
+                onAddProject={handleAddProject} onUpdateProject={handleUpdateProject} onDeleteProject={handleDeleteProject}
+                onAddMember={handleAddProjectMember} onAddFreelancerAssignment={handleAddFreelancerAssignment}
+                onRemoveMember={handleRemoveProjectMember} onRemoveFreelancerAssignment={handleRemoveFreelancerAssignment}
+                onAddMilestone={handleAddProjectMilestone} onUpdateMilestone={handleUpdateProjectMilestone}
+                onAddMarketingAsset={handleAddProjectMarketingAsset} onUpdateMarketingAsset={handleUpdateProjectMarketingAsset}
+                onDeleteMarketingAsset={handleDeleteProjectMarketingAsset}
+                onUploadFile={handleUploadFile as any} onDeleteFile={handleDeleteFile} onCreateFolder={handleCreateFolder}
+                initialSelectedProjectId={targetProjectId} checkPermission={checkPermission}
+                onNavigateToTask={handleNavigateToTask}
+                workflowTemplates={workflowTemplates} calendarMonths={calendarStore.calendarMonths}
+                calendarItems={calendarStore.calendarItems} dynamicMilestones={projectStore.dynamicMilestones}
+                onAddDynamicMilestone={handleAddMilestone} onUpdateDynamicMilestone={handleUpdateMilestone}
+                onAddTask={handleAddTask} onAddApprovalSteps={handleAddApprovalSteps}
+              />
+            } />
+            <Route path="/tasks" element={
+              <TasksHub tasks={getVisibleTasks()} projects={getVisibleProjects()} users={activeUsers}
+                comments={taskStore.comments} timeLogs={taskStore.timeLogs} dependencies={taskStore.dependencies}
+                activityLogs={taskStore.activityLogs} approvalSteps={taskStore.approvalSteps}
+                clientApprovals={taskStore.clientApprovals} files={files} milestones={projectStore.projectMilestones}
+                currentUser={user} workflowTemplates={workflowTemplates} projectMembers={projectStore.projectMembers}
+                roles={systemRoles}
+                onAddTask={handleAddTask} onUpdateTask={handleUpdateTask}
+                onAddComment={handleAddTaskComment} onAddTimeLog={handleAddTaskTimeLog}
+                onAddDependency={handleAddTaskDependency} onUpdateApprovalStep={handleUpdateApprovalStep}
+                onAddApprovalSteps={handleAddApprovalSteps} onUpdateClientApproval={handleUpdateClientApproval}
+                onAddClientApproval={handleAddClientApproval} onUploadFile={handleUploadFile}
+                onNotify={handleNotify} checkPermission={checkPermission} onDeleteTask={handleDeleteTask}
+                initialSelectedTaskId={targetTaskId} onAddSocialPost={handleAddSocialPost}
+                leaveRequests={hrStore.leaveRequests}
+              />
+            } />
+            <Route path="/posting" element={
+              !checkPermission(PERMISSIONS.POSTING.VIEW_DEPT) && !checkPermission(PERMISSIONS.POSTING.VIEW_ALL)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <PostingHub socialPosts={postingStore.socialPosts} tasks={activeTasks} projects={projects} clients={clients}
+                    users={activeUsers} currentUser={user} checkPermission={checkPermission}
+                    onUpdatePost={handleUpdateSocialPost} onArchiveTask={handleArchiveTask}
+                    onNotify={handleNotify} files={files} comments={taskStore.comments}
+                  />
+            } />
+            <Route path="/calendar" element={
+              !checkPermission(PERMISSIONS.CALENDAR.VIEW)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <CalendarHub clients={clients} calendarMonths={calendarStore.calendarMonths}
+                    calendarItems={calendarStore.calendarItems} calendarItemRevisions={calendarStore.calendarItemRevisions}
+                    creativeProjects={creativeStore.creativeProjects} creativeCalendars={creativeStore.creativeCalendars}
+                    creativeCalendarItems={creativeStore.creativeCalendarItems}
+                    users={activeUsers} currentUser={user} checkPermission={checkPermission} onNotify={handleNotify}
+                  />
+            } />
+            <Route path="/creative" element={
+              !checkPermission(PERMISSIONS.CREATIVE.VIEW)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <CreativeDirectionHub creativeProjects={creativeStore.creativeProjects}
+                    creativeCalendars={creativeStore.creativeCalendars} creativeCalendarItems={creativeStore.creativeCalendarItems}
+                    clients={clients} users={activeUsers} calendarMonths={calendarStore.calendarMonths}
+                    calendarItems={calendarStore.calendarItems} calendarItemRevisions={calendarStore.calendarItemRevisions}
+                    files={files} currentUser={user} checkPermission={checkPermission}
+                    onNotify={handleNotify} onUploadFile={handleUploadFile as any}
+                  />
+            } />
+            <Route path="/quality-control" element={
+              !checkPermission(PERMISSIONS.QC.VIEW)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <QualityControlHub tasks={activeTasks} qcReviews={qcStore.qcReviews} users={activeUsers}
+                    projects={projects} clients={clients} projectMembers={projectStore.projectMembers}
+                    workflowTemplates={workflowTemplates} approvalSteps={taskStore.approvalSteps}
+                    taskComments={taskStore.comments} files={files} currentUser={{ ...user, email: user.email || null, displayName: user.name } as any}
+                    checkPermission={checkPermission} onUpdateTask={handleUpdateTask}
+                    onNotify={handleNotify} onUploadFile={handleUploadFile as any}
+                  />
+            } />
+            <Route path="/assets" element={
+              <FilesHub files={files} folders={folders} projects={getVisibleProjects()} clients={clients} users={activeUsers}
+                onUpload={handleUploadFile} onDelete={handleDeleteFile} onMove={() => {}}
+                onCreateFolder={handleCreateFolder} onDeleteFolder={handleDeleteFolder}
+              />
+            } />
+            <Route path="/production" element={
+              !checkPermission(PERMISSIONS.PRODUCTION.VIEW)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <ProductionHub assets={productionStore.productionAssets} shotLists={productionStore.shotLists}
+                    callSheets={productionStore.callSheets} locations={productionStore.locations}
+                    equipment={productionStore.equipment} projects={getVisibleProjects()} users={activeUsers}
+                    clients={clients} leaveRequests={hrStore.leaveRequests} currentUserId={user.id}
+                    onAddShotList={handleAddShotList} onAddCallSheet={handleAddCallSheet}
+                    onAddLocation={handleAddLocation} onAddEquipment={handleAddEquipment}
+                    onUpdateEquipment={handleUpdateEquipment} projectMembers={projectStore.projectMembers}
+                    tasks={getVisibleTasks()} calendarItems={calendarStore.calendarItems}
+                    comments={taskStore.comments} timeLogs={taskStore.timeLogs} dependencies={taskStore.dependencies}
+                    activityLogs={taskStore.activityLogs} approvalSteps={taskStore.approvalSteps}
+                    clientApprovals={taskStore.clientApprovals} files={files} milestones={projectStore.projectMilestones}
+                    workflowTemplates={workflowTemplates} roles={systemRoles} currentUser={user}
+                    onUpdateTask={handleUpdateTask} onAddTask={handleAddTask}
+                    onAddComment={handleAddTaskComment} onAddTimeLog={handleAddTaskTimeLog}
+                    onAddDependency={handleAddTaskDependency} onUpdateApprovalStep={handleUpdateApprovalStep}
+                    onAddApprovalSteps={handleAddApprovalSteps} onUpdateClientApproval={handleUpdateClientApproval}
+                    onAddClientApproval={handleAddClientApproval} onUploadFile={handleUploadFile as any}
+                    checkPermission={checkPermission} onNotify={handleNotify}
+                    onArchiveTask={handleArchiveTask} onDeleteTask={handleDeleteTask}
+                    onAddSocialPost={handleAddSocialPost}
+                  />
+            } />
+            <Route path="/network" element={
+              <VendorsHub vendors={networkStore.vendors} freelancers={networkStore.freelancers}
+                assignments={networkStore.assignments} serviceOrders={networkStore.serviceOrders}
+                onAddVendor={handleAddVendor} onUpdateVendor={handleUpdateVendor}
+                onAddFreelancer={handleAddFreelancer} onUpdateFreelancer={handleUpdateFreelancer}
+              />
+            } />
+            <Route path="/finance" element={
+              !checkPermission(PERMISSIONS.FINANCE.VIEW_OWN) && !checkPermission(PERMISSIONS.FINANCE.VIEW_PROJECT) && !checkPermission(PERMISSIONS.FINANCE.VIEW_ALL)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <FinanceHub invoices={invoices} quotations={quotations} payments={payments} expenses={expenses}
+                    projects={projects} clients={clients}
+                    onAddInvoice={handleAddInvoice} onUpdateInvoice={handleUpdateInvoice}
+                    onAddQuotation={handleAddQuotation} onUpdateQuotation={handleUpdateQuotation}
+                    onAddPayment={handleAddPayment} onAddExpense={handleAddExpense}
+                  />
+            } />
+            <Route path="/hr" element={
+              <TeamHub users={activeUsers} tasks={tasks} leaveRequests={hrStore.leaveRequests}
+                attendanceRecords={hrStore.attendanceRecords} roles={systemRoles} departments={departments}
+                projects={projects} checkPermission={checkPermission} currentUser={user}
+                onAddUser={handleAddUser} onUpdateUser={handleUpdateUser}
+                onAddLeaveRequest={handleAddLeaveRequest} onUpdateLeaveRequest={handleUpdateLeaveRequest}
+                onDeleteLeaveRequest={handleDeleteLeaveRequest} onApproveLeaveRequest={handleApproveLeaveRequest}
+                onRejectLeaveRequest={handleRejectLeaveRequest} onCancelLeaveRequest={handleCancelLeaveRequest}
+                onClockIn={handleCheckIn} onClockOut={handleCheckOut}
+                onAddDepartment={handleAddDepartment} onUpdateDepartment={handleUpdateDepartment} onDeleteDepartment={handleDeleteDepartment}
+                employeeProfiles={hrStore.employeeProfiles} teams={hrStore.teams}
+                leavePolicies={hrStore.leavePolicies} leaveBalances={hrStore.leaveBalances}
+                attendanceCorrections={hrStore.attendanceCorrections}
+                onboardingChecklists={hrStore.onboardingChecklists} offboardingChecklists={hrStore.offboardingChecklists}
+                employeeAssets={hrStore.employeeAssets} performanceReviews={hrStore.performanceReviews}
+                equipment={productionStore.equipment}
+                onCreateEmployeeProfile={handleCreateEmployeeProfile} onUpdateEmployeeProfile={handleUpdateEmployeeProfile}
+                onSubmitAttendanceCorrection={handleSubmitAttendanceCorrection}
+                onApproveAttendanceCorrection={handleApproveAttendanceCorrection}
+                onStartOnboarding={handleStartOnboarding} onCompleteOnboardingStep={handleCompleteOnboardingStep}
+                onStartOffboarding={handleStartOffboarding} onAssignEmployeeAsset={handleAssignEmployeeAsset}
+                onReturnEmployeeAsset={handleReturnEmployeeAsset}
+                onCreatePerformanceReview={handleCreatePerformanceReview}
+                onSubmitPerformanceReview={handleSubmitPerformanceReview}
+                onFinalizePerformanceReview={handleFinalizePerformanceReview}
+                onUpdatePerformanceReview={handleUpdatePerformanceReview}
+              />
+            } />
+            <Route path="/schedule" element={
+              <UnifiedCalendar tasks={activeTasks} callSheets={productionStore.callSheets}
+                socialPosts={postingStore.socialPosts} milestones={projectStore.projectMilestones}
+                leaveRequests={hrStore.leaveRequests} users={safeUsers} checkPermission={checkPermission}
+              />
+            } />
+            <Route path="/analytics" element={
+              <AnalyticsHub tasks={activeTasks} projects={projects} invoices={invoices}
+                users={activeUsers} payments={payments} expenses={expenses} clients={clients}
+              />
+            } />
+            <Route path="/notifications" element={
+              <div className="space-y-6">
+                {canSendNotifications && user && (
+                  <Suspense fallback={<RouteFallback />}>
+                    <NotificationConsole currentUserId={user.id} users={activeUsers} projects={projects}
+                      roles={Array.isArray(systemRoles) ? systemRoles : []} onSend={handleManualNotificationSend}
+                      onEnablePush={requestPermissionAndRegister} permissionState={permissionState}
+                      currentToken={messagingToken}
+                    />
+                  </Suspense>
+                )}
+                <NotificationsHub notifications={notifications} preferences={notifStore.preferences}
+                  onMarkAsRead={handleMarkNotificationRead} onMarkAllAsRead={handleMarkAllNotificationsRead}
+                  onDelete={handleDeleteNotification} onUpdatePreferences={handleUpdatePreferences}
+                  permissionState={permissionState} onRequestPermission={requestPermissionAndRegister}
+                />
+              </div>
+            } />
+            <Route path="/admin" element={
+              !checkPermission(PERMISSIONS.ROLES.VIEW) && !checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW)
+                ? <div className="p-8 text-center text-slate-400">Access Denied.</div>
+                : <AdminHub settings={appSettings} users={hrStore.users} roles={systemRoles}
+                    auditLogs={auditLogs} workflowTemplates={workflowTemplates} departments={departments}
+                    dashboardBanner={dashboardBanner} currentUserId={user?.id || ''}
+                    onUpdateUser={handleUpdateUser} onAddUser={handleAddUser}
+                    onUpdateRole={handleUpdateRole} onAddRole={handleAddRole} onDeleteRole={handleDeleteRole}
+                    onUpdateWorkflow={handleUpdateWorkflow} onAddWorkflow={handleAddWorkflow}
+                    onDeleteWorkflow={handleDeleteWorkflow} onSyncRoles={handleSyncRoles}
+                    onAddDepartment={handleAddDepartment} onUpdateDepartment={handleUpdateDepartment}
+                    onDeleteDepartment={handleDeleteDepartment}
+                    onSaveBanner={handleSaveBanner} onDeleteBanner={handleDeleteBanner}
+                  />
+            } />
+            {/* Catch-all */}
+            <Route path="*" element={
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <div className="w-16 h-16 border-2 border-dashed border-slate-300 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-2xl font-bold">?</span>
+                </div>
+                <h2 className="text-xl font-semibold text-slate-600">Page Not Found</h2>
+                <p className="mt-2">The requested page does not exist.</p>
+              </div>
+            } />
+          </Routes>
+        </Suspense>
 
-        {/* Global Task Detail Overlay - opens from any page */}
+        {/* ─── Global Task Detail Overlay ─── */}
         {globalSelectedTask && user && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setTargetTaskId(null)}>
-            <div
-              className="w-full max-w-[900px] max-h-[85vh] bg-[color:var(--dash-surface-elevated)] rounded-2xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className="w-full max-w-[900px] max-h-[85vh] bg-[color:var(--dash-surface-elevated)] rounded-2xl border border-[color:var(--dash-glass-border)] shadow-2xl overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-[color:var(--dash-glass-border)] bg-[color:var(--dash-surface-elevated)]/95 backdrop-blur-sm sticky top-0 z-10">
                 <h3 className="text-lg font-semibold text-slate-100">Task Details</h3>
-                <button
-                  onClick={() => setTargetTaskId(null)}
-                  className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
-                >
+                <button onClick={() => setTargetTaskId(null)} className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-white transition-colors">
                   <ChevronRight className="w-5 h-5" />
                 </button>
               </div>
@@ -2726,63 +845,50 @@ const App: React.FC = () => {
                   task={globalSelectedTask}
                   project={projects.find(p => p.id === globalSelectedTask.projectId)}
                   users={activeUsers}
-                  comments={taskComments.filter(c => c.taskId === globalSelectedTask.id)}
-                  timeLogs={taskTimeLogs.filter(t => t.taskId === globalSelectedTask.id)}
-                  dependencies={taskDependencies.filter(d => d.taskId === globalSelectedTask.id)}
-                  activityLogs={taskLogs.filter(l => l.taskId === globalSelectedTask.id)}
-                  taskSteps={approvalSteps.filter(s => s.taskId === globalSelectedTask.id)}
-                  clientApproval={clientApprovals.find(ca => ca.taskId === globalSelectedTask.id)}
+                  comments={taskStore.comments.filter(c => c.taskId === globalSelectedTask.id)}
+                  timeLogs={taskStore.timeLogs.filter(t => t.taskId === globalSelectedTask.id)}
+                  dependencies={taskStore.dependencies.filter(d => d.taskId === globalSelectedTask.id)}
+                  activityLogs={taskStore.activityLogs.filter(l => l.taskId === globalSelectedTask.id)}
+                  taskSteps={taskStore.approvalSteps.filter(s => s.taskId === globalSelectedTask.id)}
+                  clientApproval={taskStore.clientApprovals.find(ca => ca.taskId === globalSelectedTask.id)}
                   taskFiles={files.filter(f => f.taskId === globalSelectedTask.id)}
                   allTasks={activeTasks}
                   currentUser={user}
                   workflowTemplates={workflowTemplates}
-                  milestones={projectMilestones}
-                  onUpdateTask={handleUpdateTask}
-                  onAddTask={handleAddTask}
-                  onAddComment={handleAddTaskComment}
-                  onAddTimeLog={handleAddTaskTimeLog}
-                  onAddDependency={handleAddTaskDependency}
-                  onUpdateApprovalStep={handleUpdateApprovalStep}
-                  onAddApprovalSteps={handleAddApprovalSteps}
-                  onUpdateClientApproval={handleUpdateClientApproval}
-                  onAddClientApproval={handleAddClientApproval}
-                  onUploadFile={handleUploadFile}
-                  onNotify={handleNotify}
-                  onArchiveTask={handleArchiveTask}
-                  onDeleteTask={handleDeleteTask}
-                  onEditTask={(task) => { /* edit from overlay: navigate to tasks */ setActiveView('tasks'); }}
-                  checkPermission={checkPermission}
-                  getStatusColor={globalGetStatusColor}
+                  milestones={projectStore.projectMilestones}
+                  onUpdateTask={handleUpdateTask} onAddTask={handleAddTask}
+                  onAddComment={handleAddTaskComment} onAddTimeLog={handleAddTaskTimeLog}
+                  onAddDependency={handleAddTaskDependency} onUpdateApprovalStep={handleUpdateApprovalStep}
+                  onAddApprovalSteps={handleAddApprovalSteps} onUpdateClientApproval={handleUpdateClientApproval}
+                  onAddClientApproval={handleAddClientApproval} onUploadFile={handleUploadFile}
+                  onNotify={handleNotify} onArchiveTask={handleArchiveTask} onDeleteTask={handleDeleteTask}
+                  onEditTask={() => navigate('/tasks')}
+                  checkPermission={checkPermission} getStatusColor={globalGetStatusColor}
                   resolveApprover={globalResolveApprover}
                   onAddSocialPost={handleAddSocialPost}
-                  leaveRequests={leaveRequests}
+                  leaveRequests={hrStore.leaveRequests}
                 />
               </div>
             </div>
           </div>
         )}
 
-        {/* Toast Notification */}
+        {/* Toast */}
         {toast && (
           <div className="fixed bottom-8 right-8 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
             <div className="bg-white border-l-4 border-indigo-600 shadow-xl rounded-lg p-4 flex items-start space-x-3 max-w-sm">
-              <div className="p-1 bg-indigo-50 rounded-full text-indigo-600 shrink-0">
-                <Bell className="w-4 h-4" />
-              </div>
+              <div className="p-1 bg-indigo-50 rounded-full text-indigo-600 shrink-0"><Bell className="w-4 h-4" /></div>
               <div className="flex-1">
                 <h4 className="text-sm font-bold text-slate-900">{toast.title}</h4>
                 <p className="text-xs text-slate-600 mt-1">{toast.message}</p>
               </div>
-              <button onClick={() => setToast(null)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
-              </button>
+              <button onClick={clearToast} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
             </div>
           </div>
         )}
       </main>
 
       <AIAssistant isOpen={isAIOpen} onClose={() => setIsAIOpen(false)} />
-      {/* <ReloadPrompt /> - Disabled to avoid conflict with Firebase messaging SW */}
       <PWAInstallPrompt />
     </div>
   );

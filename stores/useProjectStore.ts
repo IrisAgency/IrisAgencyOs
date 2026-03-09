@@ -22,6 +22,11 @@ interface ProjectState {
   marketingAssets: ProjectMarketingAsset[];
   dynamicMilestones: Milestone[];
 
+  /** Alias for `members` — used by App.tsx and child components */
+  readonly projectMembers: ProjectMember[];
+  /** Alias for `milestones` — used by App.tsx and child components */
+  readonly projectMilestones: ProjectMilestone[];
+
   _unsubscribers: Unsubscribe[];
   subscribe: () => void;
   unsubscribe: () => void;
@@ -61,6 +66,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   marketingAssets: [],
   dynamicMilestones: [],
   _unsubscribers: [],
+
+  // Computed aliases (kept in sync by the setters above — they're just getters)
+  get projectMembers() { return get().members; },
+  get projectMilestones() { return get().milestones; },
 
   subscribe: () => {
     const unsubs: Unsubscribe[] = [];
