@@ -125,6 +125,8 @@
 | Layer | Technology | Version | Why |
 |-------|-----------|---------|-----|
 | **UI Framework** | React | 19.2.0 | Latest concurrent features, component model |
+| **State Management** | Zustand | ^5.0.5 | 16 domain stores, lightweight, no boilerplate |
+| **Routing** | react-router-dom | ^7.6.2 | URL-based navigation, lazy route loading |
 | **Language** | TypeScript | ~5.8.2 | Strict type safety across the entire codebase |
 | **Build Tool** | Vite | ^6.2.0 | Sub-second HMR, native ESM, fast builds |
 | **Styling** | Tailwind CSS | ^3.4.17 | Utility-first, rapid UI iteration, dark theme |
@@ -147,27 +149,29 @@
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                        index.tsx                             │
-│   Public URL interceptor → AuthProvider → App                │
+│   BrowserRouter → AuthProvider → BrandingProvider → App      │
 │   (Catches /presentation/share/:token before auth)           │
 ├──────────────────────────────────────────────────────────────┤
-│                         App.tsx                              │
-│   2,509 lines • State hub • 52 Firestore subscriptions      │
-│   View router (activeView) • CRUD handlers • Shell layout    │
+│                         App.tsx (897 lines)                  │
+│   Layout shell • Store orchestrator • React Router <Routes>  │
+│   Subscribes 16 Zustand stores • Bridge props to children    │
 ├──────────────┬────────────────┬───────────────────────────────┤
-│  Contexts    │    Hooks       │   Services                    │
-│ AuthContext  │ useFirestore   │ geminiService                 │
-│ BrandingCtx │ usePermissions │ notificationService            │
-│              │ useDashboard   │                               │
+│  Stores      │    Hooks       │   Services                    │
+│ 16 Zustand   │ useFirestore   │ geminiService                 │
+│ domain stores│ usePermissions │ notificationService            │
+│ (stores/)    │ useDashboard   │                               │
 │              │ useMessaging   │                               │
+│              │ useAppNav      │                               │
 ├──────────────┴────────────────┴───────────────────────────────┤
 │                      Components                              │
 │   38 root-level + 10 subdirectories = ~92 component files    │
+│   17 lazy-loaded routes with Suspense fallback               │
 │   Organized by domain: admin/ analytics/ calendar/ common/   │
 │   creative/ dashboard/ layout/ production/ public/ tasks/    │
 │   workflows/                                                 │
 ├──────────────────────────────────────────────────────────────┤
 │                      Firebase                                │
-│   Auth • Firestore (55+ collections) • Storage • FCM         │
+│   Auth • Firestore (58+ collections) • Storage • FCM         │
 │   Cloud Functions (notification outbox + OG metadata proxy)  │
 │   Hosting (SPA rewrite, cache headers)                       │
 └──────────────────────────────────────────────────────────────┘
@@ -209,7 +213,7 @@
 
 ### Key Design Decisions
 
-- **State-based routing** — No react-router. `App.tsx` uses an `activeView` state variable and a `renderContent()` switch to render the active module. Navigation is handled by the `Sidebar` component setting this state.
+- **URL-based routing** — `react-router-dom` with `BrowserRouter`. 17 lazy-loaded routes via `React.lazy()` + `Suspense`. Navigation updates the URL path; Sidebar derives active state from `useLocation()`. Presentation share routes intercepted before auth in `index.tsx`.
 - **Single orchestration layer** — `App.tsx` owns 52 real-time Firestore subscriptions via `useFirestoreCollection`, all CRUD handler functions, and passes data down as props. This keeps modules stateless and predictable.
 - **Path alias** — `@/*` maps to the project root (configured in `vite.config.ts` and `tsconfig.json`).
 - **No `.env.local`** — Environment separation uses `.env.development` and `.env.production` only. Creating `.env.local` would leak credentials across modes. See [Environment Variables](#environment-variables).
@@ -295,22 +299,38 @@ Every user action follows this deterministic cycle:
 
 ### State Management Strategy
 
-**Why App.tsx orchestration instead of Redux/Zustand/Context-per-module?**
+**Architecture: Zustand Domain Stores + React Router** *(Phase 2 refactor complete)*
 
-IRIS Agency OS deliberately uses a **centralized orchestration pattern** where `App.tsx` (2,508 lines) owns all Firestore subscriptions and CRUD handlers. This was an intentional architectural decision:
+IRIS Agency OS uses **16 domain-specific Zustand stores** for state management, replacing the previous centralized App.tsx orchestration pattern. Each store owns its Firestore subscriptions and CRUD handlers.
 
-| Concern | How App.tsx Handles It |
-|---|---|
-| **Data fetching** | 53 `useFirestoreCollection` hooks create real-time subscriptions. Data is fetched once and shared. |
-| **Cross-module data** | Tasks need client names, projects need user avatars — a central state hub avoids duplicate subscriptions. |
-| **CRUD operations** | All write functions are co-located, making it easy to add notifications, audit logs, and cross-collection updates. |
-| **Predictability** | Data flows one way: App.tsx → props → Hub component. No hidden state mutations. |
-| **Refactoring** | Moving to a modular architecture (see [Future Architecture Evolution](#future-architecture-evolution)) is straightforward — extract state + handlers into per-module hooks. |
+| Store | Collections | Responsibility |
+|---|---|---|
+| `useClientStore` | clients, social_links, client_notes, client_meetings, client_brand_assets, client_monthly_reports | Client CRM + cascade delete |
+| `useProjectStore` | projects, project_members, project_milestones, project_activity_logs, project_marketing_assets, milestones | Project lifecycle + archive/unarchive |
+| `useTaskStore` | tasks, task_comments, task_time_logs, task_dependencies, task_activity_logs, task_approval_steps, task_client_approvals | Task workflow + QC triggers + notifications |
+| `useFileStore` | files, folders | File upload with smart pathing + recursive folder delete |
+| `useFinanceStore` | invoices, quotations, payments, expenses | Invoice auto-status on payment |
+| `useHRStore` | users, employee_profiles, leave_requests, leave_policies, leave_balances, attendance_records, attendance_corrections, onboarding/offboarding_checklists, employee_assets, performance_reviews, employee_status_changes, teams | Full HR lifecycle |
+| `useProductionStore` | production_assets, shot_lists, call_sheets, agency_locations, agency_equipment, production_plans | Production workflow |
+| `usePostingStore` | social_posts | Social media CRUD |
+| `useCreativeStore` | creative_projects, creative_calendars, creative_calendar_items | Creative direction |
+| `useCalendarStore` | calendar_months, calendar_items, calendar_item_revisions | Calendar management |
+| `useAdminStore` | roles, audit_logs, workflow_templates, departments, dashboard_banners | Admin + audit trail |
+| `useNetworkStore` | vendors, freelancers, freelancer_assignments, vendor_service_orders | Vendor/freelancer network |
+| `useNotificationStore` | notifications, notification_preferences | Notification delivery + preferences |
+| `useNotesStore` | notes | Quick notes CRUD |
+| `useQCStore` | task_qc_reviews | Quality control reviews |
+| `useUIStore` | (local state) | Navigation, modals, toast, sidebar, splash screen |
 
-**Trade-offs:**
-- ⚠️ **File size** — 2,508 lines is large but well-organized (subscriptions → handlers → render).
-- ⚠️ **Re-renders** — Any state change in App.tsx can trigger re-renders across modules. Mitigated by React 19's automatic batching.
-- ⚠️ **Prop drilling** — Hub components receive many props. Could be replaced with module-specific contexts.
+**Routing**: React Router with 17 lazy-loaded routes. URL-based navigation replaces string state switching.
+
+**Bridge Pattern**: `App.tsx` (~897 lines) subscribes all stores on mount and passes data as props to child components. Phase 3 will migrate children to read from stores directly.
+
+**Benefits achieved:**
+- ✅ **68% reduction** in App.tsx (2,791 → 897 lines)
+- ✅ **56% bundle reduction** via lazy-loaded routes (2,533 KB → 1,103 KB main chunk)
+- ✅ **Zero TypeScript errors** in App.tsx (previously had ~30 pre-existing errors)
+- ✅ **Predictable data flow** — stores subscribe/unsubscribe lifecycle, no prop drilling for state
 
 ---
 
@@ -1450,20 +1470,20 @@ modules/
 
 ### Migration Path
 
-| Phase | Action | Risk |
-|---|---|---|
-| **Phase 1** | Extract `useFirestoreCollection` calls from App.tsx into per-module `useXState` hooks. App.tsx imports and re-exports them. | Low — no behavior change. |
-| **Phase 2** | Extract CRUD handlers into per-module `useXHandlers` hooks. | Low — function extraction only. |
-| **Phase 3** | Create per-module React contexts to replace prop drilling. Hub components consume their own context. | Medium — requires updating all prop references. |
-| **Phase 4** | Add `React.lazy()` code-splitting per module. Only the active view loads its JS. | Low — Vite handles this natively. |
-| **Phase 5** | Introduce per-module Firestore subscription lifecycle — subscribe on mount, unsubscribe on unmount. | Medium — requires careful state management for cross-module data. |
+| Phase | Action | Risk | Status |
+|---|---|---|---|
+| **Phase 1** | Extract `useFirestoreCollection` calls from App.tsx into per-module `useXState` hooks. App.tsx imports and re-exports them. | Low — no behavior change. | ✅ **Done** — 16 Zustand domain stores created |
+| **Phase 2** | Extract CRUD handlers into per-module `useXHandlers` hooks. | Low — function extraction only. | ✅ **Done** — All handlers in stores, React Router replaces switch/case, App.tsx 2791→897 lines |
+| **Phase 3** | Create per-module React contexts to replace prop drilling. Hub components consume their own context. | Medium — requires updating all prop references. | 🔜 Next |
+| **Phase 4** | Add `React.lazy()` code-splitting per module. Only the active view loads its JS. | Low — Vite handles this natively. | ✅ **Done** — All 17 routes lazy-loaded (56% main bundle reduction) |
+| **Phase 5** | Introduce per-module Firestore subscription lifecycle — subscribe on mount, unsubscribe on unmount. | Medium — requires careful state management for cross-module data. | ⏳ Planned |
 
 ---
 
 ## Known Issues & Technical Debt
 
 ### Permission System
-- `App.tsx` still checks some old underscore-style permission keys — need migration to `PERMISSIONS.*` constants
+- ~~`App.tsx` still checks some old underscore-style permission keys~~ ✅ **Migrated (Phase 2)** — App.tsx rewritten with `PERMISSIONS.*` constants throughout
 - Hub components largely ungated — need per-hub permission gates and scope-based data filtering
 - ~~Firestore security rules not aligned with the RBAC model~~ ✅ **Fixed (Phase 1)** — Catch-all changed to deny-all, 30+ collections now enforce granular `hasPermission()` checks aligned with RBAC keys
 
