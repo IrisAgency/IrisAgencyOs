@@ -2,14 +2,13 @@
 
 > A comprehensive, real-time operating system for creative agencies — covering clients, projects, production, posting, finance, HR, quality control, creative direction, analytics, and AI-assisted workflows. Built as an installable PWA on Firebase with role-based access control.
 
-**Production** — https://iris-os-43718.web.app  
+**Production** — https://iris-os-43718.web.app
 **Development** — https://iris-agency-os-dev.web.app
 
 ---
 
 ## Table of Contents
 
-- [Documentation Audit](#documentation-audit)
 - [System Overview](#system-overview)
 - [Tech Stack](#tech-stack)
 - [Architecture](#architecture)
@@ -35,46 +34,10 @@
 - [Data Models](#data-models)
 - [System Limitations](#system-limitations)
 - [System Scaling Strategy](#system-scaling-strategy)
-- [Future Architecture Evolution](#future-architecture-evolution)
 - [Known Issues & Technical Debt](#known-issues--technical-debt)
 - [Contribution Guidelines](#contribution-guidelines)
 - [Documentation Roadmap](#documentation-roadmap)
 - [Vision](#vision)
-
----
-
-## Documentation Audit
-
-### Strengths
-
-| Area | Assessment |
-|---|---|
-| **Tech stack table** | ✅ Excellent — versioned, justified, complete. |
-| **Module catalog** | ✅ Comprehensive — every hub documented with files, features, data objects. |
-| **RBAC permissions** | ✅ Strong — full permission catalog, scope system, sync strategy. |
-| **Notification system** | ✅ Detailed — architecture diagram, all 50+ types, Cloud Function flow. |
-| **Folder structure** | ✅ Thorough — annotated tree with file counts and line counts. |
-| **Deployment procedures** | ✅ Good — dev, prod, hotfix, and Cloud Functions covered. |
-| **Environment variables** | ✅ Clear — loading order, file purpose, critical warnings. |
-
-### Gaps Identified
-
-| # | Gap | Severity | Status |
-|---|---|---|---|
-| 1 | **No system overview / elevator pitch** — README jumps straight to tech stack without explaining *what* the platform does for a new reader. | 🟠 High | ✅ Added below |
-| 2 | **No visual architecture diagram** — The ASCII box is informative but lacks a layered system diagram showing Browser → React → Orchestrator → Modules → Firebase. | 🟠 High | ✅ Added below |
-| 3 | **No request lifecycle documentation** — How does a user action flow through the system? No explanation of the write → listener → re-render cycle. | 🟠 High | ✅ Added below |
-| 4 | **No state management rationale** — Why App.tsx orchestration instead of Redux/Zustand? No architectural decision record. | 🟡 Medium | ✅ Added below |
-| 5 | **No module interaction map** — How do Clients → Projects → Tasks → Production → Posting → Finance interconnect? | 🟡 Medium | ✅ Added below |
-| 6 | **No security model section** — RBAC is documented but authentication flow, Firestore rules strategy, and presentation share security are scattered. | 🔴 Critical | ✅ Added below |
-| 7 | **No performance documentation** — Listener count, collection count, bundle size, and real-time subscription impact are undocumented. | 🟡 Medium | ✅ Added below |
-| 8 | **No developer onboarding guide** — A new developer has no structured path to understand the system. | 🟠 High | ✅ Added below |
-| 9 | **No operational documentation** — Monitoring, logging, error handling, and backup strategies are missing. | 🟡 Medium | ✅ Added below |
-| 10 | **No system limitations section** — Architectural constraints and scaling boundaries are undocumented. | 🟡 Medium | ✅ Added below |
-| 11 | **No documentation roadmap** — No plan for what additional docs should exist in `/docs`. | 🟡 Medium | ✅ Added below |
-| 12 | **Missing API / integration docs** — Gemini AI integration, Cloud Functions API, and FCM integration lack developer-facing docs. | 🟡 Medium | Partially addressed |
-| 13 | **Data model section is flat** — Entity relationships exist as ASCII art but lack field-level documentation or Firestore schema details. | 🟡 Medium | Addressed in roadmap |
-| 14 | **Built-in roles table is outdated** — Shows 9 roles; system actually has 12 (missing Videographer, Finance Manager, Freelancer). | 🟠 High | ✅ Fixed below |
 
 ---
 
@@ -93,7 +56,7 @@
 | Social media posting | Post lifecycle from draft → review → approval → schedule → publish |
 | Video production | Shot lists, call sheets, equipment, locations, production plans with auto-task generation |
 | Finance | Invoices, quotations, payments, expenses, budgets |
-| HR | Leave requests, attendance, role management |
+| HR & Team management | Employee profiles, org structure, leave management, attendance, onboarding/offboarding, assets, performance reviews, capacity planning |
 | Analytics | Executive dashboards, departmental KPIs, financial reporting |
 | AI assistance | Gemini-powered creative briefs, captions, logistics planning |
 
@@ -112,9 +75,9 @@
 
 ### Platform Characteristics
 
-- **Real-time**: Every data change propagates to all connected clients instantly via Firestore `onSnapshot` listeners.
+- **Real-time**: Every data change propagates to all connected clients instantly via Firestore `onSnapshot` listeners distributed across 16 domain stores.
 - **Installable PWA**: Works as a native-like app on desktop and mobile with offline caching.
-- **Role-aware**: Every UI element respects the logged-in user's RBAC permissions.
+- **Role-aware**: Every UI element respects the logged-in user's RBAC permissions (33 categories, 200+ keys).
 - **Multi-tenant ready**: Architecture supports multiple agency instances via Firebase project separation.
 - **Arabic-aware**: Bidirectional text support for Arabic/English mixed content.
 
@@ -135,13 +98,11 @@
 | **Backend** | Firebase | ^12.6.0 | Auth, Firestore, Storage, Hosting, Cloud Functions, FCM |
 | **AI** | @google/generative-ai | ^0.24.1 | Gemini 2.5 Flash for content generation |
 | **PWA** | vite-plugin-pwa | ^1.2.0 | Workbox service worker, offline caching, installability |
-| **Auth Hashing** | bcryptjs | ^3.0.3 | Invite-flow temporary password hashing |
 | **Date Handling** | date-fns | ^4.1.0 | Lightweight, tree-shakeable date utilities |
-| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | 78 unit tests (permissions, ID generation, Zod schemas), CI pipeline |
+| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | 82 unit tests (permissions, ID generation, Zod schemas, workflows), CI pipeline |
 | **Linting** | ESLint 9 + Prettier | ^9.39 / ^3.5 | Flat config, react-hooks/react-refresh plugins |
 | **Git Hooks** | Husky + lint-staged | ^9.1.7 / ^16.3.2 | Pre-commit: ESLint fix + Prettier on staged files |
 | **Validation** | Zod | ^4.3.6 | Runtime schema validation for Client, Project, Task, Finance entities |
-| **Image Processing** | Sharp | ^0.34.5 | Icon/asset generation at build time |
 | **CI/CD** | GitHub Actions | — | Lint → typecheck → test → build on every push |
 
 ---
@@ -156,7 +117,7 @@
 │   BrowserRouter → AuthProvider → BrandingProvider → App      │
 │   (Catches /presentation/share/:token before auth)           │
 ├──────────────────────────────────────────────────────────────┤
-│                         App.tsx (897 lines)                  │
+│                    App.tsx (~1,600 lines)                     │
 │   Layout shell • Store orchestrator • React Router <Routes>  │
 │   Subscribes 16 Zustand stores • Bridge props to children    │
 ├──────────────┬────────────────┬───────────────────────────────┤
@@ -168,14 +129,14 @@
 │              │ useAppNav      │                               │
 ├──────────────┴────────────────┴───────────────────────────────┤
 │                      Components                              │
-│   38 root-level + 10 subdirectories = ~92 component files    │
-│   17 lazy-loaded routes with Suspense fallback               │
+│   ~110 component files across 11 subdirectories              │
+│   18 lazy-loaded routes with Suspense fallback               │
 │   Organized by domain: admin/ analytics/ calendar/ common/   │
-│   creative/ dashboard/ layout/ production/ public/ tasks/    │
-│   workflows/                                                 │
+│   creative/ dashboard/ hr/ layout/ production/ public/       │
+│   tasks/ workflows/                                          │
 ├──────────────────────────────────────────────────────────────┤
 │                      Firebase                                │
-│   Auth • Firestore (58+ collections) • Storage • FCM         │
+│   Auth • Firestore (63 collections) • Storage • FCM          │
 │   Cloud Functions (notification outbox + OG metadata proxy)  │
 │   Hosting (SPA rewrite, cache headers)                       │
 └──────────────────────────────────────────────────────────────┘
@@ -201,40 +162,51 @@
 │           │ useMsg-   │           │ production│                    │
 │           │  Token    │           │  Utils    │                    │
 ├───────────┴───────────┴───────────┴───────────┴─────────────────────┤
-│                   APPLICATION ORCHESTRATOR (App.tsx)                │
-│  53 Firestore subscriptions  •  State hub  •  CRUD handlers        │
-│  View router (activeView)  •  Prop drilling to modules             │
+│              ZUSTAND DOMAIN STORES (16 stores)                     │
+│  63 Firestore subscriptions distributed across domain stores       │
+│  Each store owns its onSnapshot listeners + CRUD handlers          │
+├───────────┬───────────┬───────────┬───────────┬─────────────────────┤
+│              APPLICATION SHELL (App.tsx — bridge layer)             │
+│  Store orchestration • React Router <Routes> • Prop bridge         │
 ├──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬─────────────┤
-│Dash- │Cli-  │Proj- │Tasks │Post- │Prod- │Fin-  │Admin │  + 9 more   │
+│Dash- │Cli-  │Proj- │Tasks │Post- │Prod- │Fin-  │Admin │  + 10 more  │
 │board │ents  │ects  │ Hub  │ ing  │uction│ance  │ Hub  │   modules   │
 │ Hub  │ Hub  │ Hub  │      │ Hub  │ Hub  │ Hub  │      │             │
 ├──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┴─────────────┤
 │                      FIREBASE SERVICES                             │
-│  Auth  •  Firestore (55+ collections)  •  Storage  •  FCM          │
+│  Auth  •  Firestore (63 collections)  •  Storage  •  FCM           │
 │  Cloud Functions  •  Hosting (SPA)                                 │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Design Decisions
 
-- **URL-based routing** — `react-router-dom` with `BrowserRouter`. 17 lazy-loaded routes via `React.lazy()` + `Suspense`. Navigation updates the URL path; Sidebar derives active state from `useLocation()`. Presentation share routes intercepted before auth in `index.tsx`.
-- **Single orchestration layer** — `App.tsx` owns 52 real-time Firestore subscriptions via `useFirestoreCollection`, all CRUD handler functions, and passes data down as props. This keeps modules stateless and predictable.
+- **URL-based routing** — `react-router-dom` with `BrowserRouter`. 18 routes (17 navigable views + catch-all) via `React.lazy()` + `Suspense`. Navigation updates the URL path; Sidebar derives active state from `useLocation()`. Presentation share routes intercepted before auth in `index.tsx`.
+- **Zustand domain stores** — 16 stores own all Firestore subscriptions and CRUD handlers. `App.tsx` subscribes stores on user authentication and bridges data as props to child components.
 - **Path alias** — `@/*` maps to the project root (configured in `vite.config.ts` and `tsconfig.json`).
 - **No `.env.local`** — Environment separation uses `.env.development` and `.env.production` only. Creating `.env.local` would leak credentials across modes. See [Environment Variables](#environment-variables).
 
 ### Data Flow
 
 ```
-Firestore ──onSnapshot──→ useFirestoreCollection ──→ App.tsx state
-                                                         │
-                                               props to Hub components
-                                                         │
-                                              User actions call handlers
-                                                         │
-                                            Firestore writes (setDoc/updateDoc)
-                                                         │
-                                               onSnapshot fires again ──→ UI updates
+Firestore ──onSnapshot──→ Zustand store (subscribeCollection)
+                                   │
+                          store state updates
+                                   │
+                       App.tsx reads store → props to Hub components
+                                   │
+                          User actions call handlers
+                                   │
+                        Store CRUD methods → Firestore writes
+                                   │
+                          onSnapshot fires again ──→ UI updates
 ```
+
+**Key properties:**
+- **Optimistic by default** — Firestore writes are fast; the listener fires within milliseconds.
+- **Consistent** — All connected clients see the same update simultaneously.
+- **No cache invalidation** — The listener pattern eliminates stale data problems.
+- **Side effects** — Notification creation happens in the CRUD handler *after* the Firestore write succeeds.
 
 ### Contexts
 
@@ -249,8 +221,9 @@ Firestore ──onSnapshot──→ useFirestoreCollection ──→ App.tsx sta
 |------|------|---------|
 | `useFirestoreCollection` | `hooks/useFirestore.ts` | Generic real-time Firestore `onSnapshot` listener — returns `{ data, loading }` |
 | `usePermissions` / `useHasPermission` / `useCanPerform` | `hooks/usePermissions.ts` | React wrappers around the `can()` permission function |
-| `useDashboardData` | `hooks/useDashboardData.ts` | Aggregates tasks, meetings, social posts into dashboard stats (269 lines) |
+| `useDashboardData` | `hooks/useDashboardData.ts` | Aggregates tasks, meetings, social posts into dashboard stats |
 | `useMessagingToken` | `hooks/useMessagingToken.ts` | FCM token lifecycle — registers service worker, requests permission, saves token |
+| `useAppNavigation` | `hooks/useAppNavigation.ts` | Navigation helpers for routing |
 
 ### Request Lifecycle
 
@@ -268,9 +241,9 @@ Every user action follows this deterministic cycle:
   └──────┬───────┘
          ▼
   ┌──────────────┐
-  │  App.tsx     │  Handler function defined in App.tsx
-  │  CRUD        │  Performs validation, permission checks,
-  │  Handler     │  and notification triggers
+  │  App.tsx     │  Bridge handler delegates to Zustand store
+  │  Bridge      │  method, which performs validation,
+  │  Handler     │  permission checks, and notification triggers
   └──────┬───────┘
          ▼
   ┌──────────────┐
@@ -280,13 +253,12 @@ Every user action follows this deterministic cycle:
          ▼
   ┌──────────────┐
   │  onSnapshot  │  Real-time listener fires automatically
-  │  Listener    │  useFirestoreCollection hook receives update
+  │  Listener    │  subscribeCollection in store receives update
   └──────┬───────┘
          ▼
   ┌──────────────┐
-  │  App.tsx     │  State variable updates (e.g., tasks, clients)
-  │  State       │  React re-renders the component tree
-  │  Update      │
+  │  Store State │  Zustand store state updates
+  │  Update      │  React re-renders the component tree
   └──────┬───────┘
          ▼
   ┌──────────────┐
@@ -295,26 +267,20 @@ Every user action follows this deterministic cycle:
   └──────────────┘
 ```
 
-**Key properties of this cycle:**
-- **Optimistic by default** — Firestore writes are fast; the listener fires within milliseconds.
-- **Consistent** — All connected clients see the same update simultaneously.
-- **No cache invalidation** — The listener pattern eliminates stale data problems.
-- **Side effects** — Notification creation happens in the CRUD handler *after* the Firestore write succeeds.
-
 ### State Management Strategy
 
-**Architecture: Zustand Domain Stores + React Router** *(Phase 2 refactor complete)*
+**Architecture: Zustand Domain Stores + React Router**
 
-IRIS Agency OS uses **16 domain-specific Zustand stores** for state management, replacing the previous centralized App.tsx orchestration pattern. Each store owns its Firestore subscriptions and CRUD handlers.
+IRIS Agency OS uses **16 domain-specific Zustand stores** for state management. Each store owns its Firestore `onSnapshot` subscriptions and CRUD handlers via `subscribeCollection()` from `stores/firestoreSubscription.ts`.
 
 | Store | Collections | Responsibility |
 |---|---|---|
-| `useClientStore` | clients, social_links, client_notes, client_meetings, client_brand_assets, client_monthly_reports | Client CRM + cascade delete |
+| `useClientStore` | clients, client_social_links, client_notes, client_meetings, client_brand_assets, client_monthly_reports | Client CRM + cascade delete |
 | `useProjectStore` | projects, project_members, project_milestones, project_activity_logs, project_marketing_assets, milestones | Project lifecycle + archive/unarchive |
-| `useTaskStore` | tasks, task_comments, task_time_logs, task_dependencies, task_activity_logs, task_approval_steps, task_client_approvals | Task workflow + QC triggers + notifications |
+| `useTaskStore` | tasks, task_comments, task_time_logs, task_dependencies, task_activity_logs, approval_steps, client_approvals | Task workflow + QC triggers + notifications |
 | `useFileStore` | files, folders | File upload with smart pathing + recursive folder delete |
 | `useFinanceStore` | invoices, quotations, payments, expenses | Invoice auto-status on payment |
-| `useHRStore` | users, employee_profiles, leave_requests, leave_policies, leave_balances, attendance_records, attendance_corrections, onboarding/offboarding_checklists, employee_assets, performance_reviews, employee_status_changes, teams | Full HR lifecycle |
+| `useHRStore` | users, employee_profiles, leave_requests, leave_policies, leave_balances, attendance_records, attendance_corrections, onboarding_checklists, offboarding_checklists, employee_assets, performance_reviews, employee_status_changes, teams | Full HR lifecycle |
 | `useProductionStore` | production_assets, shot_lists, call_sheets, agency_locations, agency_equipment, production_plans | Production workflow |
 | `usePostingStore` | social_posts | Social media CRUD |
 | `useCreativeStore` | creative_projects, creative_calendars, creative_calendar_items | Creative direction |
@@ -326,21 +292,15 @@ IRIS Agency OS uses **16 domain-specific Zustand stores** for state management, 
 | `useQCStore` | task_qc_reviews | Quality control reviews |
 | `useUIStore` | (local state) | Navigation, modals, toast, sidebar, splash screen |
 
-**Routing**: React Router with 17 lazy-loaded routes. URL-based navigation replaces string state switching.
+**Routing**: React Router with 18 routes (17 navigable + catch-all), all lazy-loaded via `React.lazy()` + `Suspense`.
 
-**Bridge Pattern**: `App.tsx` (~897 lines) subscribes all stores on mount and passes data as props to child components. Phase 3 will migrate children to read from stores directly.
-
-**Benefits achieved:**
-- ✅ **68% reduction** in App.tsx (2,791 → 897 lines)
-- ✅ **56% bundle reduction** via lazy-loaded routes (2,533 KB → 1,103 KB main chunk)
-- ✅ **Zero TypeScript errors** in App.tsx (previously had ~30 pre-existing errors)
-- ✅ **Predictable data flow** — stores subscribe/unsubscribe lifecycle, no prop drilling for state
+**Bridge Pattern**: `App.tsx` (~1,600 lines) subscribes all stores on user authentication and passes data as props to child components. Future phases will migrate children to read from stores directly, eliminating the bridge.
 
 ---
 
 ## Core System Modules
 
-The app is organized into **17 navigable views** (plus a fallback "Under Construction" page). Each module is a self-contained hub component rendered by `App.tsx`.
+The app is organized into **17 navigable views** (plus a catch-all 404 page). Each module is a self-contained hub component rendered via React Router.
 
 ### Dashboard
 - **File**: `components/Dashboard.tsx` + `components/DynamicDashboard.tsx`
@@ -366,7 +326,6 @@ The app is organized into **17 navigable views** (plus a fallback "Under Constru
 - **Sub-components**: 5 files in `components/tasks/` — `CreateTaskModal`, `TaskBoardDark`, `TaskDetailDrawer`, `TaskListDark`, `TaskStatsRow`
 - **Features**: Kanban board, workflow-driven status progression, approvals, dependencies, time logs, comments, file attachments, task planning modal, archive/restore
 - **Data objects**: `Task`, `TaskComment`, `TaskTimeLog`, `TaskDependency`, `TaskActivityLog`, `ApprovalStep`
-- **Assignment helpers**: `utils/taskAssignmentHelpers.ts` maps roles → task types for auto-assignment
 
 ### Quality Control Hub
 - **File**: `components/QualityControlHub.tsx` + `components/QCReviewDrawer.tsx`
@@ -377,13 +336,13 @@ The app is organized into **17 navigable views** (plus a fallback "Under Constru
 - **File**: `components/CreativeDirectionHub.tsx`
 - **Sub-components**: 7 files in `components/creative/` — `CalendarActivation`, `CalendarPresentationView`, `CopywriterView`, `ManagerView`, `RejectionModal`, `ShareLinkManager`, `SwipeReviewCard`
 - **Features**: Role-based views (Manager vs Copywriter), creative project lifecycle (assign → draft → review → approve → activate), swipe card review UX, strategy upload, calendar activation to Calendar Department, **Calendar → Creative revision workflow** (Calendar dept requests revision → Copywriter revises → Manager approves → syncs back to calendar)
-- **Presentation View** (855 lines): Polished editorial layout for client presentation — 3-column grid, Google Drive thumbnail extraction, type/search filtering, print CSS, bidi Arabic/English text support, slide mode with keyboard navigation
-- **Share Link System**: `ShareLinkManager.tsx` generates cryptographically random tokens, stores in `presentation_shares` collection, tracks access count and last opened time. `PublicPresentationPage.tsx` (757 lines) renders the shared view externally without authentication
+- **Presentation View**: Polished editorial layout for client presentation — 3-column grid, Google Drive thumbnail extraction, type/search filtering, print CSS, bidi Arabic/English text support, slide mode with keyboard navigation
+- **Share Link System**: `ShareLinkManager.tsx` generates cryptographically random tokens, stores in `presentation_shares` collection, tracks access count and last opened time. `PublicPresentationPage.tsx` renders the shared view externally without authentication
 - **Data objects**: `CreativeProject`, `CreativeCalendar`, `CreativeCalendarItem`, `CalendarItemRevision`
 
 ### Calendar Hub
-- **File**: `components/CalendarHub.tsx` (~1,400+ lines)
-- **Sub-components**: `components/calendar/CalendarDeptPresentationView.tsx` (~655 lines)
+- **File**: `components/CalendarHub.tsx`
+- **Sub-components**: `components/calendar/CalendarDeptPresentationView.tsx`
 - **Features**: Calendar month management, calendar item CRUD per client, unified calendar view, presentation view for Calendar Department, **revision request workflow** (request revision on synced creative items, view revision history, sync approved revisions)
 - **Data objects**: `CalendarMonth`, `CalendarItem`, `CalendarItemRevision`
 
@@ -431,7 +390,7 @@ The app is organized into **17 navigable views** (plus a fallback "Under Constru
 - **Tabs**: Employees, Org Structure, Leave (Board/Request/Calendar/Balance), Attendance, On/Offboarding, Assets, Performance, Capacity
 - **Firestore Collections**: `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes`
 - **Data objects**: `EmployeeProfile`, `Team`, `LeavePolicy`, `LeaveBalance`, `AttendanceCorrection`, `OnboardingChecklist`, `OffboardingChecklist`, `EmployeeAsset`, `PerformanceReview`, `EmployeeStatusChange`, `ChecklistStep`, `PerformanceScore`
-- **RBAC**: 25 HR permission keys under `hr.*` (employees, leave, attendance, performance, assets, onboarding, offboarding, org, confidential) with own/dept/all scopes
+- **RBAC**: 26 HR permission keys under `hr.*` (employees, leave, attendance, performance, assets, onboarding, offboarding, org, confidential) with own/dept/all scopes
 - **Notifications**: 11 HR notification types (leave lifecycle, onboarding/offboarding, attendance corrections, performance reviews, asset management)
 
 ### Analytics Hub
@@ -522,23 +481,23 @@ Modules are not isolated — they form a **directed graph of dependencies** that
 
 ### Overview
 
-IRIS OS implements a comprehensive Role-Based Access Control system with **29 permission categories** containing **145+ individual permission keys**, supporting **scope-based access** (SELF → DEPARTMENT → PROJECT → ALL).
+IRIS OS implements a comprehensive Role-Based Access Control system with **33 permission categories** containing **200+ individual permission keys**, supporting **scope-based access** (SELF → DEPARTMENT → PROJECT → ALL).
 
 ### Architecture
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| Permission catalog | `lib/permissions.ts` (587 lines) | `PERMISSIONS` object, `can()` function, scope helpers |
+| Permission catalog | `lib/permissions.ts` (~744 lines) | `PERMISSIONS` object, `can()` function, scope helpers |
 | Permission hooks | `hooks/usePermissions.ts` | `usePermissions()`, `useHasPermission()`, `useCanPerform()` |
 | Permission gate | `components/PermissionGate.tsx` | Declarative component to conditionally render UI based on permissions |
-| Role definitions | `constants.ts` | 9 built-in roles with default permission sets |
+| Role definitions | `constants.ts` | 12 built-in roles with default permission sets |
 | Auth integration | `contexts/AuthContext.tsx` | Loads role permissions, provides `checkPermission()` |
 
 ### Built-in Roles (12)
 
 | ID | Role | Department | Admin | Access Level |
 |---|------|-----------|-------|---|
-| r1 | General Manager | Management | ✅ Yes | Full system access (~100+ permissions) |
+| r1 | General Manager | Management | ✅ Yes | Full system access |
 | r2 | Account Manager | Accounts | ❌ No | Clients, projects, tasks, posting, finance |
 | r3 | Creative Director | Creative | ❌ No | Creative oversight, QC, approvals, tasks (dept) |
 | r4 | Art Director | Creative | ❌ No | Department tasks, approvals, calendar |
@@ -553,52 +512,16 @@ IRIS OS implements a comprehensive Role-Based Access Control system with **29 pe
 
 > **Note:** Admins can create custom roles via the Admin Hub. See [`PERMISSIONS_GUIDE.md`](PERMISSIONS_GUIDE.md) for the complete RBAC reference.
 
-### Permission Categories
+### Permission Categories (33)
 
 ```
-AUTH             — LOGIN
-USERS            — VIEW_ALL, CREATE, EDIT, DISABLE, FORCE_PASSWORD_RESET
-ROLES            — VIEW, CREATE, EDIT, DELETE, ASSIGN
-PERMISSIONS_ADMIN — VIEW, MANAGE
-DEPARTMENTS      — VIEW, CREATE, EDIT, DELETE, ASSIGN_MEMBERS
-CLIENTS          — VIEW_OWN, VIEW_DEPT, VIEW_ALL, CREATE, EDIT, ARCHIVE, DELETE
-CLIENT_NOTES     — VIEW, CREATE, EDIT, DELETE
-CLIENT_MEETINGS  — VIEW, CREATE, EDIT, DELETE
-CLIENT_BRAND_ASSETS — VIEW, MANAGE
-CLIENT_MARKETING — VIEW, MANAGE
-PROJECTS         — VIEW_OWN, VIEW_DEPT, VIEW_ALL, CREATE, EDIT_OWN, EDIT_DEPT,
-                   EDIT_ALL, EDIT, ARCHIVE, DELETE
-MILESTONES       — VIEW, CREATE, EDIT, DELETE
-TASKS            — VIEW_ALL, VIEW_DEPT, VIEW_PROJECT, VIEW_OWN, CREATE,
-                   EDIT_ALL, EDIT_DEPT, EDIT_OWN, DELETE, ASSIGN_ALL, ASSIGN_DEPT,
-                   MANAGE_ASSIGNEES, MANAGE_PUBLISHING, REOPEN, EDIT_COMPLETED,
-                   ARCHIVE, ARCHIVE_VIEW, MANUAL_CLOSE_APPROVE, MANUAL_CLOSE_REJECT,
-                   REFERENCES_VIEW, REFERENCES_ADD, REFERENCES_DELETE
-TASK_FILES       — UPLOAD, DELETE, VIEW
-APPROVALS        — VIEW_OWN, VIEW_DEPT, VIEW_ALL, ACT, CONFIGURE
-POSTING          — VIEW_DEPT, VIEW_ALL, CREATE, EDIT, ASSIGN, SUBMIT_FOR_REVIEW,
-                   REQUEST_REVISION, APPROVE, SCHEDULE, MARK_PUBLISHED, ARCHIVE, DELETE
-ASSETS           — VIEW_DEPT, VIEW_ALL, UPLOAD, EDIT_METADATA, DELETE,
-                   LINK_TO_TASK, ARCHIVE
-PRODUCTION       — VIEW, CREATE, EDIT, ASSIGN_CREW, SCHEDULE, CLOSE_JOB, DELETE,
-                   PLANS_CREATE, PLANS_EDIT, PLANS_DELETE, PLANS_VIEW,
-                   OVERRIDE_CONFLICTS, RESTORE_ARCHIVED
-VENDORS          — VIEW, CREATE, EDIT, DELETE, ASSIGN_TO_PROJECT
-FINANCE          — VIEW_OWN, VIEW_PROJECT, VIEW_ALL, CREATE_INVOICE, EDIT_INVOICE,
-                   DELETE_INVOICE, RECORD_PAYMENT, APPROVE_PAYMENT, EXPORT,
-                   MANAGE_BUDGETS
-REPORTS          — VIEW_DEPT, VIEW_ALL, EXPORT
-ANALYTICS        — VIEW_DEPT, VIEW_ALL
-ADMIN_BRANDING   — VIEW, EDIT, UPLOAD_ASSETS
-ADMIN_SETTINGS   — VIEW, EDIT
-DASHBOARD        — VIEW_GM_URGENT
-NOTES            — CREATE, EDIT_OWN, DELETE_OWN, MANAGE_ALL
-CALENDAR         — VIEW, MANAGE
-CALENDAR_MONTHS  — CREATE, EDIT, DELETE
-CALENDAR_ITEMS   — CREATE, EDIT, DELETE
-CREATIVE         — VIEW, MANAGE, REVIEW, UPLOAD, APPROVE, REJECT
-QC               — VIEW, MANAGE, REVIEW_APPROVE, REVIEW_REJECT, REVIEW_COMMENT,
-                   ASSIGN_REVIEWERS
+AUTH, USERS, ROLES, PERMISSIONS_ADMIN, DEPARTMENTS,
+CLIENTS, CLIENT_NOTES, CLIENT_MEETINGS, CLIENT_BRAND_ASSETS, CLIENT_MARKETING,
+PROJECTS, MILESTONES, TASKS, TASK_FILES, APPROVALS,
+POSTING, ASSETS, PRODUCTION, VENDORS, FINANCE,
+REPORTS, ANALYTICS, ADMIN_BRANDING, ADMIN_SETTINGS, DASHBOARD,
+NOTES, CALENDAR, CALENDAR_MONTHS, CALENDAR_ITEMS, CREATIVE,
+QC, HR, WORKFLOWS
 ```
 
 ### Scope System
@@ -664,7 +587,7 @@ When the app loads, `AuthContext` performs smart permission sync:
 | Layer | Mechanism | Strength |
 |---|---|---|
 | **UI Layer** | `PermissionGate`, `usePermission()` hooks hide/show elements | Advisory only — can be bypassed with devtools |
-| **Application Logic** | `AuthContext.checkPermission()` guards CRUD handlers in App.tsx | Enforced in client code — protects against accidental misuse |
+| **Application Logic** | `AuthContext.checkPermission()` guards CRUD handlers | Enforced in client code — protects against accidental misuse |
 | **Firestore Rules** | `hasPermission()` function reads user role doc and checks permission array | Server-side — **enforced on 30+ business collections with granular permission checks** |
 
 ### Presentation Share Security
@@ -677,17 +600,14 @@ The Creative Direction module allows sharing presentation views with external cl
 4. `PublicPresentationPage.tsx` fetches the share doc, validates the token, loads the calendar data, and renders a read-only view.
 5. No authentication required — security is through token obscurity.
 
-### Current Security Gaps
+### Remaining Security Gaps
 
-| Gap | Risk | Status |
+| Gap | Risk | Mitigation |
 |---|---|---|
-| ~~Firestore catch-all rule~~ | ~~🔴 Critical~~ | ✅ **Fixed** — Catch-all is deny-all; 30+ collections have `hasPermission()` rules |
 | No server-side scope validation | 🟠 High — a user with `tasks.edit.own` could edit any task via direct Firestore writes | Add ownership/department checks in Firestore rules |
 | Presentation share tokens don't expire | 🟡 Medium — shared links are permanent | Add TTL and max-access-count enforcement |
-| ~~API key (Gemini) exposed in client bundle~~ | ~~🟡 Medium~~ | ✅ **Fixed** — Gemini API key moved server-side via `generateContent` Cloud Function proxy |
 | No rate limiting on login | 🟡 Medium — brute force possible | Firebase Auth has built-in rate limiting, but no custom lockout |
-| ~~No Firestore backups~~ | ~~🟠 High~~ | ✅ **Fixed** — Daily automated backups with 7-day retention |
-| ~~No error boundary~~ | ~~🟠 High~~ | ✅ **Fixed** — `ErrorBoundary` component wraps app root |
+| `firebase-messaging-sw.js` has hardcoded production config | 🟢 Low — acceptable tradeoff (cannot use env vars in service workers) | Document as known limitation |
 
 ---
 
@@ -874,44 +794,46 @@ Single source of truth: `config/branding.config.ts` → overrideable via Admin �
 
 | Metric | Value | Notes |
 |---|---|---|
-| **Component files** | ~90 `.tsx` files | Across 10 directories |
-| **Orchestrator size** | 2,508 lines (`App.tsx`) | Owns all state and subscriptions |
-| **Type definitions** | 1,458 lines (`types.ts`) | 65+ interfaces |
-| **Constants** | 1,407 lines (`constants.ts`) | Roles, departments, collections |
-| **Firestore subscriptions** | 53 real-time listeners | All active simultaneously when logged in |
-| **Firestore collections** | 55+ | See [Data Models](#data-models) |
-| **Permission keys** | 120+ | Across 23 modules |
+| **Component files** | ~110 `.tsx` files | Across 11 directories |
+| **App.tsx (bridge layer)** | ~1,600 lines | Store orchestration + prop bridge + route definitions |
+| **Type definitions** | ~1,821 lines (`types.ts`) | 130+ interfaces and types |
+| **Constants** | ~1,507 lines (`constants.ts`) | Roles, departments, collection names |
+| **Zustand stores** | 16 domain stores | Each owns its Firestore subscriptions + CRUD |
+| **Firestore subscriptions** | 63 real-time listeners | Distributed across stores, all active when authenticated |
+| **Firestore collections** | 63 | See [Data Models](#data-models) |
+| **Permission categories** | 33 | See [Permissions System](#permissions-system-rbac) |
+| **Permission keys** | 200+ | Across all categories |
 | **Notification types** | 50+ | See [Notification System](#notification-system) |
+| **Unit tests** | 82 | Permissions, ID generation, Zod schemas, workflows |
 
 ### Real-Time Subscription Impact
 
-All 53 Firestore `onSnapshot` listeners are established on app load and remain active for the session lifetime. This means:
+All 63 Firestore `onSnapshot` listeners are established when the user authenticates and remain active for the session lifetime:
 
 - **Reads**: Each listener fires on initial load (1 read per document in the collection) and on every change (1 read per changed document).
-- **Billing**: Firestore bills per document read. With N users × 53 collections × M documents, read costs scale linearly.
-- **Memory**: Each listener holds a local cache of its collection data in React state.
+- **Billing**: Firestore bills per document read. With N users × 63 collections × M documents, read costs scale linearly.
+- **Memory**: Each listener holds a local cache of its collection data in the Zustand store.
 - **Network**: Firestore multiplexes all listeners over a single WebSocket connection.
 
 ### Optimization Opportunities
 
 | Optimization | Impact | Difficulty |
 |---|---|---|
-| Lazy-load subscriptions per active view | Reduces idle reads by ~80% | Medium — requires refactoring App.tsx |
+| Lazy-load subscriptions per active view | Reduces idle reads by ~80% | Medium — Phase 5 of migration plan |
 | Paginate large collections (tasks, notifications) | Reduces initial load time | Low — add `limit()` + `startAfter()` |
-| Memoize derived data (dashboard stats, filtered lists) | Reduces re-render cost | Low — add `useMemo` wrappers |
-| Code-split hub components | Reduces initial bundle size | Low — `React.lazy()` per hub |
-| Move to per-module state hooks | Isolates re-renders | Medium — see [Future Architecture Evolution](#future-architecture-evolution) |
+| Migrate children to read stores directly | Eliminates bridge prop drilling | Medium — Phase 3 of migration plan |
 
 ### Bundle Size
 
-Vite's tree-shaking and code-splitting produce a production bundle. Key dependencies:
+Vite's tree-shaking, code-splitting, and manual chunk configuration produce an optimized production bundle:
 
 | Dependency | Impact |
 |---|---|
 | `firebase` (v12.6) | Largest dependency — Auth, Firestore, Storage, FCM modules |
 | `recharts` | Charts for analytics — tree-shakeable but significant |
 | `lucide-react` | Icon library — tree-shakeable, minimal per-icon cost |
-| `bcryptjs` | Password hashing — small but CPU-intensive on client |
+
+All 18 routes are lazy-loaded via `React.lazy()`. Vendor chunks are split via `manualChunks` configuration in `vite.config.ts`. Production builds strip console logs via esbuild pure config.
 
 ---
 
@@ -925,13 +847,13 @@ Read these sections in order:
 1. [System Overview](#system-overview) — What the platform does
 2. [System Architecture Diagram](#system-architecture-diagram) — How layers connect
 3. [Request Lifecycle](#request-lifecycle) — How data flows
-4. [State Management Strategy](#state-management-strategy) — Why App.tsx is the orchestrator
+4. [State Management Strategy](#state-management-strategy) — Zustand stores + React Router
 
 ### Step 2: Understand Firestore Collections (30 min)
 
 Open `constants.ts` and `types.ts` side by side:
 - `constants.ts` — Collection names, default roles, departments
-- `types.ts` — All TypeScript interfaces (65+)
+- `types.ts` — All TypeScript interfaces (130+)
 - Skim the [Data Models](#data-models) section for entity relationships
 
 ### Step 3: Understand the Permission System (20 min)
@@ -943,23 +865,19 @@ Read in order:
 4. `contexts/AuthContext.tsx` — How roles are loaded and synced
 5. [`PERMISSIONS_GUIDE.md`](PERMISSIONS_GUIDE.md) — Complete RBAC reference
 
-### Step 4: Understand Hub Structure (20 min)
+### Step 4: Understand a Store (20 min)
+
+Pick any Zustand store (e.g., `stores/useTaskStore.ts`) and trace:
+1. What **collections** it subscribes to via `subscribeCollection()`
+2. What **CRUD methods** it exposes
+3. How `App.tsx` imports the store and bridges its data as props to hub components
+
+### Step 5: Understand a Hub Component (20 min)
 
 Pick any hub component (e.g., `components/TasksHub.tsx`) and trace:
 1. What **props** it receives from `App.tsx`
 2. What **handler functions** it calls (e.g., `onUpdateTask`, `onDeleteTask`)
-3. How those handlers are defined in `App.tsx` (search for the function name)
-4. What **Firestore collection** the data comes from
-5. What **permissions** gate the UI elements
-
-### Step 5: Understand App.tsx Orchestration (30 min)
-
-Open `App.tsx` and identify these sections (in order):
-1. **Lines 1-100**: Imports and state declarations
-2. **Lines 100-250**: `useFirestoreCollection` subscriptions (53 listeners)
-3. **Lines 250-1500**: CRUD handler functions (create, update, delete per entity)
-4. **Lines 1500-2000**: Notification helper functions
-5. **Lines 2000-2508**: `renderContent()` switch and JSX shell
+3. What **permissions** gate the UI elements
 
 ### Step 6: Make Your First Change (15 min)
 
@@ -973,10 +891,10 @@ Open `App.tsx` and identify these sections (in order):
 
 | Need to… | Open… |
 |---|---|
-| Add a new Firestore collection | `constants.ts` (name) + `types.ts` (interface) + `App.tsx` (subscription + handlers) |
+| Add a new Firestore collection | `stores/useXStore.ts` (subscribeCollection) + `types.ts` (interface) + `App.tsx` (bridge if needed) |
 | Add a new permission | `lib/permissions.ts` + `constants.ts` (DEFAULT_ROLES) |
-| Add a new hub/view | `components/NewHub.tsx` + `App.tsx` (renderContent switch) + `Sidebar.tsx` (nav item) |
-| Add a new notification type | `services/notificationService.ts` (type enum) + handler in `App.tsx` |
+| Add a new route/view | `components/NewHub.tsx` + `App.tsx` (lazy import + Route) + `Sidebar.tsx` (nav item) |
+| Add a new notification type | `services/notificationService.ts` (type enum) + handler in store |
 | Modify Firestore rules | `firestore.rules` → deploy with `firebase deploy --only firestore:rules` |
 | Add a new Cloud Function | `functions/index.js` → deploy with `firebase deploy --only functions` |
 
@@ -1013,16 +931,34 @@ npm run dev
 | `npm run dev` | Start Vite dev server (port 3000) |
 | `npm run build` | Production build to `dist/` |
 | `npm run preview` | Preview production build locally |
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Run TypeScript type checking |
+| `npm run test` | Run Vitest unit tests |
 
 ### Testing
 
-Vitest and Testing Library are installed but no automated test suite is actively run. Test files go in `src/tests/`.
+82 unit tests across 4 test files:
+
+| Test File | Coverage |
+|-----------|----------|
+| `src/tests/permissions.test.ts` | Permission resolution, scope hierarchy, role defaults |
+| `src/tests/id.test.ts` | `crypto.randomUUID()` ID generation utilities |
+| `src/tests/schemas.test.ts` | Zod schema validation for Client, Project, Task, Finance entities |
+| `src/tests/WorkflowSystem.test.tsx` | Workflow template and approval step logic |
 
 ```bash
-# When test scripts are added:
-npx vitest        # Run tests
-npx vitest --ui   # Visual test runner
+npm run test           # Run all tests
+npx vitest --ui        # Visual test runner
 ```
+
+### CI/CD Pipeline
+
+GitHub Actions runs on every push to `development` and every PR to `main`:
+
+1. **Lint** — ESLint with flat config
+2. **Type-check** — TypeScript strict mode
+3. **Unit tests** — Vitest
+4. **Production build** — Vite build verification
 
 ---
 
@@ -1156,15 +1092,15 @@ firebase use dev
 
 | Layer | Strategy |
 |---|---|
-| **React components** | `try/catch` in event handlers; errors logged to console. No global error boundary yet. |
-| **Firestore operations** | `try/catch` around all `setDoc`/`updateDoc`/`deleteDoc` calls in App.tsx. Failures show toast notifications. |
+| **React components** | `ErrorBoundary` wraps app root with graceful recovery UI. `try/catch` in event handlers; errors logged to console. |
+| **Firestore operations** | `try/catch` around all `setDoc`/`updateDoc`/`deleteDoc` calls in store handlers. Failures show toast notifications. |
 | **Authentication** | `AuthContext` catches auth errors and surfaces them to the login form. |
 | **Cloud Functions** | `functions/index.js` catches FCM failures, auto-cleans invalid tokens, logs errors. |
 | **Permission sync** | Additive merge errors are caught and logged as non-fatal (`console.error`). |
 
 ### Logging
 
-Currently, the system uses **console logging** only:
+Currently, the system uses **console logging** only (stripped from production builds):
 
 | Log Level | Pattern | Example |
 |---|---|---|
@@ -1179,8 +1115,8 @@ Currently, the system uses **console logging** only:
 
 | Data | Backup Method | Frequency |
 |---|---|---|
-| **Firestore data** | Firebase automated daily backups (requires Blaze plan) | Daily |
-| **Firebase Storage files** | No automated backup — files are in Google Cloud Storage | Manual / GCS lifecycle rules |
+| **Firestore data** | Firebase automated daily backups with 7-day retention | Daily |
+| **Firebase Storage files** | Google Cloud Storage — lifecycle rules available | Manual / GCS lifecycle rules |
 | **Authentication data** | Firebase manages — export via Admin SDK if needed | On-demand |
 | **Source code** | Git (GitHub) with `development` and `main` branches | Every commit |
 | **Environment secrets** | `.env.*` files — not in git; stored locally per developer | Manual documentation |
@@ -1200,22 +1136,43 @@ Currently, the system uses **console logging** only:
 iris-agency-os/
 ├── index.html              # HTML entry point
 ├── index.tsx               # React entry point + public URL interceptor
-├── App.tsx                 # Main orchestration (~2,800 lines, 62 Firestore subs)
-├── types.ts                # All TypeScript interfaces (~1,800 lines, 80+ interfaces)
-├── constants.ts            # Roles, departments, collection names (~1,500 lines)
+├── App.tsx                 # Store orchestrator + bridge layer (~1,600 lines)
+├── types.ts                # All TypeScript interfaces (~1,821 lines, 130+ types)
+├── constants.ts            # Roles, departments, collection names (~1,507 lines)
 ├── index.css               # Global styles + Tailwind directives
-├── vite.config.ts          # Vite + PWA + Workbox configuration
+├── vite.config.ts          # Vite + PWA + Workbox + manual chunks
 ├── firebase.json           # Firebase hosting config
 ├── firestore.rules         # Firestore security rules
 ├── firestore.indexes.json  # Firestore composite indexes
 ├── storage.rules           # Firebase Storage security rules
 ├── tailwind.config.js      # Tailwind CSS configuration
 ├── tsconfig.json           # TypeScript configuration
+├── eslint.config.js        # ESLint 9 flat config
 ├── postcss.config.js       # PostCSS configuration
 ├── package.json            # Dependencies and scripts
 │
-├── components/             # ~108 component files
-│   ├── *.tsx               # 38 root-level hub & shared components
+├── stores/                 # 16 Zustand domain stores + subscription utility
+│   ├── firestoreSubscription.ts  # subscribeCollection() utility
+│   ├── index.ts            # Store exports
+│   ├── useAdminStore.ts    # roles, audit_logs, workflows, departments, banners
+│   ├── useCalendarStore.ts # calendar_months, calendar_items, revisions
+│   ├── useClientStore.ts   # clients, social_links, notes, meetings, brand_assets
+│   ├── useCreativeStore.ts # creative_projects, calendars, items
+│   ├── useFileStore.ts     # files, folders
+│   ├── useFinanceStore.ts  # invoices, quotations, payments, expenses
+│   ├── useHRStore.ts       # users, employee_profiles, leave, attendance, etc.
+│   ├── useNetworkStore.ts  # vendors, freelancers, assignments
+│   ├── useNotesStore.ts    # notes
+│   ├── useNotificationStore.ts  # notifications, preferences
+│   ├── usePostingStore.ts  # social_posts
+│   ├── useProductionStore.ts    # production_assets, shot_lists, etc.
+│   ├── useProjectStore.ts  # projects, members, milestones, activity_logs
+│   ├── useQCStore.ts       # task_qc_reviews
+│   ├── useTaskStore.ts     # tasks, comments, time_logs, dependencies, approvals
+│   └── useUIStore.ts       # UI state (local only)
+│
+├── components/             # ~110 component files
+│   ├── *.tsx               # Root-level hub & shared components
 │   ├── admin/              # Admin hub sub-components (6 files)
 │   ├── analytics/          # Analytics views & KPI cards (5 files)
 │   ├── calendar/           # Calendar department presentation (1 file)
@@ -1224,20 +1181,19 @@ iris-agency-os/
 │   ├── creative/           # Creative direction: manager/copywriter views,
 │   │                         presentation, share links, swipe review (7 files)
 │   ├── dashboard/          # Dashboard cards (8 files) + widgets/ (8 files)
-│   ├── hr/                 # HR module sub-components (16 files):
-│   │                         EmployeeDirectory, EmployeeProfileDrawer,
-│   │                         OrgStructureView, LeaveBoard, LeaveCalendar,
-│   │                         LeaveRequestForm, LeaveBalanceSummary,
-│   │                         AttendanceDashboard, AttendanceCorrectionForm,
-│   │                         OnboardingWorkflow, OffboardingWorkflow,
-│   │                         AssetAssignment, PerformanceReviewForm,
-│   │                         PerformanceReviewList, CapacityDashboard,
-│   │                         HRStatusBadge
+│   ├── hr/                 # HR module sub-components (16 files)
 │   ├── layout/             # Page layout primitives (4 files)
 │   ├── production/         # Production widgets & planning (2 files)
 │   ├── public/             # Public-facing pages — PublicPresentationPage (1 file)
 │   ├── tasks/              # Task board, list, detail, creation (5 files)
 │   └── workflows/          # Workflow hub (1 file)
+│
+├── schemas/                # Zod runtime validation schemas
+│   ├── client.ts           # Client entity schema
+│   ├── finance.ts          # Invoice, Payment, Quotation, Expense schemas
+│   ├── index.ts            # Schema exports
+│   ├── project.ts          # Project entity schema
+│   └── task.ts             # Task entity schema
 │
 ├── config/
 │   └── branding.config.ts  # CSS variables, fonts, identity defaults
@@ -1247,6 +1203,7 @@ iris-agency-os/
 │   └── BrandingContext.tsx  # CSS variable injection
 │
 ├── hooks/
+│   ├── useAppNavigation.ts # Navigation helpers
 │   ├── useDashboardData.ts # Dashboard stats aggregation
 │   ├── useFirestore.ts     # Generic Firestore realtime hook
 │   ├── useMessagingToken.ts # FCM token management
@@ -1254,12 +1211,12 @@ iris-agency-os/
 │
 ├── lib/
 │   ├── firebase.ts         # Firebase app init + exports (auth, db, storage, etc.)
-│   ├── permissions.ts      # PERMISSIONS catalog + can() function
+│   ├── permissions.ts      # PERMISSIONS catalog + can() function (~744 lines)
 │   └── specialty.ts        # Specialty/skill definitions
 │
 ├── services/
 │   ├── geminiService.ts    # Google Gemini AI integration
-│   └── notificationService.ts # Notification creation + delivery (432 lines)
+│   └── notificationService.ts # Notification creation + delivery
 │
 ├── utils/
 │   ├── approvalUtils.ts    # Task approval step checking
@@ -1267,12 +1224,15 @@ iris-agency-os/
 │   ├── driveUtils.ts       # Google Drive URL detection & preview utilities
 │   ├── fileUpload.ts       # Firebase Storage upload + branding asset validation
 │   ├── folderUtils.ts      # Auto-folder creation for clients/projects/tasks
+│   ├── id.ts               # crypto.randomUUID() ID generation
 │   ├── overflowDetector.ts # Dev-mode CSS overflow debugging
+│   ├── presentationHelpers.tsx # Presentation view helpers
 │   ├── productionUtils.ts  # Production plan task generation & lifecycle
 │   ├── qcUtils.ts          # QC status computation & review submission
 │   ├── seedData.ts         # Mock data seeder for Firestore
 │   ├── socialArchiveUtils.ts # Social post archiving
-│   └── textDirection.ts    # Arabic/RTL text detection & bidi support
+│   ├── textDirection.ts    # Arabic/RTL text detection & bidi support
+│   └── timestamps.ts       # Firestore timestamp normalization utilities
 │
 ├── theme/
 │   └── appTheme.ts         # Theme configuration
@@ -1297,13 +1257,18 @@ iris-agency-os/
 │
 └── src/
     └── tests/              # Test files (Vitest + Testing Library)
+        ├── permissions.test.ts
+        ├── id.test.ts
+        ├── schemas.test.ts
+        ├── WorkflowSystem.test.tsx
+        └── setup.ts
 ```
 
 ---
 
 ## Data Models
 
-All types are defined in `types.ts` (~1,800 lines). Key entities and their relationships:
+All types are defined in `types.ts` (~1,821 lines, 130+ exported interfaces/types). Key entities and their relationships:
 
 ### Core Entity Relationships
 
@@ -1348,25 +1313,26 @@ CreativeProject ── Client
   └─ PresentationShare ── CreativeCalendar
 ```
 
-### Firestore Collections (55+)
+### Firestore Collections (63)
 
 | Domain | Collections |
 |--------|------------|
 | **Users & Auth** | `users`, `roles`, `departments` |
-| **Clients** | `clients`, `client_notes`, `client_meetings`, `client_brand_assets`, `client_social_links`, `client_monthly_reports`, `client_strategies`, `client_approvals` |
-| **Projects** | `projects`, `project_members`, `project_milestones`, `project_activity_logs`, `project_marketing_assets` |
-| **Tasks** | `tasks`, `task_comments`, `task_time_logs`, `task_dependencies`, `task_activity_logs`, `approval_steps` |
+| **Clients** | `clients`, `client_notes`, `client_meetings`, `client_brand_assets`, `client_social_links`, `client_monthly_reports` |
+| **Projects** | `projects`, `project_members`, `project_milestones`, `project_activity_logs`, `project_marketing_assets`, `milestones` |
+| **Tasks** | `tasks`, `task_comments`, `task_time_logs`, `task_dependencies`, `task_activity_logs`, `approval_steps`, `client_approvals` |
 | **Social & Posting** | `social_posts` |
-| **Calendar** | `calendar_months`, `calendar_items` |
-| **Creative** | `creative_projects`, `creative_calendars`, `creative_calendar_items`, `presentation_shares` |
+| **Calendar** | `calendar_months`, `calendar_items`, `calendar_item_revisions` |
+| **Creative** | `creative_projects`, `creative_calendars`, `creative_calendar_items` |
 | **QC** | `task_qc_reviews` |
 | **Production** | `production_assets`, `shot_lists`, `call_sheets`, `agency_locations`, `agency_equipment`, `production_plans` |
 | **Finance** | `invoices`, `payments`, `quotations`, `expenses` |
-| **Vendors** | `vendors`, `freelancer_assignments`, `vendor_service_orders` |
+| **Vendors** | `vendors`, `freelancers`, `freelancer_assignments`, `vendor_service_orders` |
 | **HR** | `leave_requests`, `attendance_records`, `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` |
-| **Notifications** | `notifications`, `notification_preferences`, `notification_tokens`, `notifications_outbox` |
-| **Admin** | `settings`, `audit_logs`, `workflow_templates`, `dashboard_banners` |
+| **Notifications** | `notifications`, `notification_preferences` |
+| **Admin** | `audit_logs`, `workflow_templates`, `dashboard_banners` |
 | **Files** | `files`, `folders` |
+| **Notes** | `notes` |
 
 ---
 
@@ -1376,14 +1342,11 @@ CreativeProject ── Client
 
 | Limitation | Impact | Cause |
 |---|---|---|
-| **Monolithic orchestrator** | `App.tsx` (~2,800 lines) is a single point of complexity. All state, subscriptions, and handlers live here. | Centralized design choice — simple but doesn't scale to 100+ modules. |
-| **62 always-on Firestore listeners** | All subscriptions are active regardless of which view the user is on. Wastes reads and memory for idle collections. | No lazy-loading of subscriptions per view. |
-| **No server-side authorization** | Firestore rules have a catch-all `allow read, write: if true`. Any authenticated (or unauthenticated) user can access any collection directly. | Security rules not yet aligned with RBAC model. |
-| **Client-side only rendering** | No SSR/SSG — initial load requires downloading the full JS bundle before rendering. SEO is not applicable (internal tool), but first-paint is slower. | SPA architecture on Firebase Hosting. |
-| **No automated tests** | Vitest is installed but no test suite runs. Regressions are caught manually. | Tests not written yet. |
+| **Bridge layer prop drilling** | Hub components receive many props from App.tsx. Adding a new data dependency requires threading it through. | Phase 3 migration (children reading stores directly) not yet complete. |
+| **All subscriptions active simultaneously** | All 63 Firestore listeners are active regardless of which view the user is on. Wastes reads and memory for idle collections. | Phase 5 (lazy subscription lifecycle) not yet implemented. |
+| **Client-side only rendering** | No SSR/SSG — initial load requires downloading the JS bundle before rendering. SEO is not applicable (internal tool), but first-paint is slower. | SPA architecture on Firebase Hosting. |
 | **Single-region Firestore** | Firestore is provisioned in one region. Multi-region requires a new project. | Firebase project configuration. |
 | **No email notifications** | Notifications are push (FCM) and in-app only. No email delivery channel. | Not yet implemented. |
-| **Prop drilling** | Hub components receive 20+ props from App.tsx. Adding a new data dependency requires threading it through. | Central state without per-module contexts. |
 
 ### Firestore-Specific Limits
 
@@ -1391,7 +1354,7 @@ CreativeProject ── Client
 |---|---|---|
 | Max document size | 1 MB | Large task descriptions or comment threads could hit this. |
 | Max writes/sec per doc | 1 write/sec sustained | Rapidly edited documents (e.g., live collaboration) may fail. |
-| Max `onSnapshot` listeners | ~100 per client (practical) | Currently at 53 — approaching the comfortable zone. |
+| Max `onSnapshot` listeners | ~100 per client (practical) | Currently at 63 — within comfortable range. |
 | Composite index limits | 200 per database | Complex queries need composite indexes defined in `firestore.indexes.json`. |
 
 ---
@@ -1401,7 +1364,7 @@ CreativeProject ── Client
 ### Current Scale (Small Agency: 5-30 users)
 
 The current architecture is well-suited for a small-to-medium agency:
-- 53 Firestore listeners × 30 concurrent users = manageable read volume.
+- 63 Firestore listeners × 30 concurrent users = manageable read volume.
 - Single Firestore project with all collections co-located.
 - No caching layer needed — Firestore's built-in caching handles offline.
 
@@ -1412,14 +1375,13 @@ The current architecture is well-suited for a small-to-medium agency:
 | **Lazy-load subscriptions** | Only subscribe to collections relevant to the active view. |
 | **Paginate large collections** | Tasks and notifications can grow to thousands; add cursor-based pagination. |
 | **Add Cloud Functions for writes** | Move sensitive operations (finance, user management) server-side. |
-| **Enforce Firestore rules** | Replace catch-all with per-collection rules using `hasPermission()`. |
+| **Add scope validation in Firestore rules** | Validate ownership/department in security rules. |
 
 ### Large Scale (100-500 users)
 
 | Change | Purpose |
 |---|---|
-| **Modular architecture** | Break App.tsx into per-module state hooks (see [Future Architecture Evolution](#future-architecture-evolution)). |
-| **Code splitting** | `React.lazy()` per hub module — only load JS for the active view. |
+| **Complete store migration** | Children read from Zustand stores directly, eliminating the bridge layer. |
 | **Firestore data sharding** | Separate high-write collections (notifications, activity logs) into sub-collections. |
 | **CDN-cached static assets** | Move file previews and thumbnails to a CDN with aggressive caching. |
 | **Read replicas / caching** | Use Firestore bundles or a Redis cache for frequently-read data. |
@@ -1434,104 +1396,32 @@ At this scale, the architecture would need fundamental changes:
 
 ---
 
-## Future Architecture Evolution
-
-The current monolithic App.tsx can evolve into a **modular architecture** without a full rewrite:
-
-### Target Structure
-
-```
-modules/
-├── clients/
-│   ├── useClientsState.ts      # Firestore subscriptions + state
-│   ├── useClientsHandlers.ts   # CRUD operations
-│   ├── ClientsHub.tsx          # UI component
-│   └── clients.permissions.ts  # Permission constants
-│
-├── projects/
-│   ├── useProjectsState.ts
-│   ├── useProjectsHandlers.ts
-│   ├── ProjectsHub.tsx
-│   └── projects.permissions.ts
-│
-├── tasks/
-│   ├── useTasksState.ts
-│   ├── useTasksHandlers.ts
-│   ├── TasksHub.tsx
-│   └── tasks.permissions.ts
-│
-├── production/
-├── posting/
-├── finance/
-├── creative/
-├── calendar/
-├── analytics/
-├── admin/
-└── shared/
-    ├── useSharedState.ts       # Users, roles, departments
-    └── SharedContext.tsx        # Cross-module data provider
-```
-
-### Migration Path
-
-| Phase | Action | Risk | Status |
-|---|---|---|---|
-| **Phase 1** | Extract `useFirestoreCollection` calls from App.tsx into per-module `useXState` hooks. App.tsx imports and re-exports them. | Low — no behavior change. | ✅ **Done** — 16 Zustand domain stores created |
-| **Phase 2** | Extract CRUD handlers into per-module `useXHandlers` hooks. | Low — function extraction only. | ✅ **Done** — All handlers in stores, React Router replaces switch/case, App.tsx 2791→897 lines |
-| **Phase 3** | Create per-module React contexts to replace prop drilling. Hub components consume their own context. | Medium — requires updating all prop references. | 🔜 Next |
-| **Phase 4** | Add `React.lazy()` code-splitting per module. Only the active view loads its JS. | Low — Vite handles this natively. | ✅ **Done** — All 17 routes lazy-loaded (56% main bundle reduction) |
-| **Phase 5** | Introduce per-module Firestore subscription lifecycle — subscribe on mount, unsubscribe on unmount. | Medium — requires careful state management for cross-module data. | ⏳ Planned |
-
----
-
 ## Known Issues & Technical Debt
 
-### Permission System
-- ~~`App.tsx` still checks some old underscore-style permission keys~~ ✅ **Migrated (Phase 2)** — App.tsx rewritten with `PERMISSIONS.*` constants throughout
-- Hub components largely ungated — need per-hub permission gates and scope-based data filtering
-- ~~Firestore security rules not aligned with the RBAC model~~ ✅ **Fixed (Phase 1)** — Catch-all changed to deny-all, 30+ collections now enforce granular `hasPermission()` checks aligned with RBAC keys
+### Remaining Work
 
-### Testing
-- ~~Vitest and Testing Library are installed but no automated test suite is actively executed~~ ✅ **Fixed (Phase 3)** — 50 unit tests across permissions (45 tests) and ID generation (5 tests)
-- ~~No CI/CD pipeline for automated testing~~ ✅ **Fixed (Phase 3)** — GitHub Actions CI runs lint → typecheck → test → build on every push to `development` and PR to `main`
+| Area | Issue | Priority |
+|---|---|---|
+| **Bridge layer** | App.tsx still bridges store data as props to hub components. Phase 3 (children reading stores directly) is next. | 🟡 Medium |
+| **Scope validation** | No server-side scope validation in Firestore rules — users could edit resources beyond their scope via direct writes. | 🟠 High |
+| **Presentation share tokens** | Tokens don't expire — shared links are permanent. | 🟡 Medium |
+| **TypeScript errors** | ~175 pre-existing TypeScript errors remain across the codebase (enum mismatches, missing optional properties). None introduced by recent changes. | 🟡 Medium |
+| **Strict null checks** | `strictNullChecks` and full `strict` mode deferred — would introduce ~46+ new errors. | 🟡 Medium |
 
 ### Theming
-- Some UI elements (tables, cards, login page, body text) still use hardcoded `slate-*` Tailwind classes instead of CSS variables
-- Full theming requires extending branding variables to cover all surface types
+- Some UI elements still use hardcoded `slate-*` Tailwind classes instead of CSS variables.
+- Full theming requires extending branding variables to cover all surface types.
 
 ### PostingHub
-- Missing: drag/drop post moves, calendar view responsiveness, keyboard/swipe navigation
+- Missing: drag/drop post moves, calendar view responsiveness, keyboard/swipe navigation.
 
 ### File Management
-- Missing: drag-and-drop upload, move/copy between folders, bulk operations, storage quotas, version history, file approval workflow
+- Missing: drag-and-drop upload, move/copy between folders, bulk operations, storage quotas, version history, file approval workflow.
 
-### Security
-- ~~Firestore catch-all rule allows unrestricted read/write~~ ✅ **Fixed (Phase 1)** — Catch-all is now `deny-all`, every business collection has explicit permission-based rules
-- ~~Gemini API key exposed in client bundle~~ ✅ **Fixed (Phase 1)** — API key moved server-side via `generateContent` Cloud Function proxy
-- ~~bcrypt password hashing on client-side~~ ✅ **Fixed (Phase 1)** — Removed bcrypt from client; Firebase Auth handles password security
-- ~~No error boundary~~ ✅ **Fixed (Phase 1)** — `ErrorBoundary` component wraps app root with graceful recovery UI
-- ~~No Firestore backups~~ ✅ **Fixed (Phase 1)** — Daily automated backups with 7-day retention to GCS bucket
-- ~~Secondary Firebase app leak in inviteUser~~ ✅ **Fixed (Phase 1)** — `deleteApp()` now properly called in finally block
-- `firebase-messaging-sw.js` has hardcoded production config (acceptable tradeoff)
-
-### Performance (Phase 3)
-- ~~App.tsx re-rendered all children on every state change~~ ✅ **Fixed (Phase 3)** — All ~72 handlers wrapped in `useCallback`, derived data memoized with `useMemo`
-- ~~Single 1.1MB JavaScript bundle~~ ✅ **Fixed (Phase 3)** — Bundle split into 6 vendor chunks via `manualChunks` (main: 446KB, 60% reduction)
-- ~~Console logs shipped to production~~ ✅ **Fixed (Phase 4)** — Production builds strip `console.log/warn/info/debug` via esbuild pure config
-- ~~Date.now()-based IDs could collide on rapid operations~~ ✅ **Fixed (Phase 4)** — 63 occurrences replaced with `crypto.randomUUID()` via `utils/id.ts`
-
-### Code Quality (Phase 4 — Remaining Items)
-- ~~No runtime data validation~~ ✅ **Added** — Zod schemas for Client, Project, Task, Quotation, Invoice, Payment, Expense entities (`schemas/`) with 28 unit tests
-- ~~Inconsistent Firestore timestamps~~ ✅ **Added** — `utils/timestamps.ts` provides `withTimestamps()`, `withUpdatedAt()`, `normalizeTimestamps()` utilities; `normalizeTimestamps()` applied to all Firestore reads via `firestoreSubscription.ts`; `serverTimestamp()` adopted in `useAdminStore` audit logs as proof of concept (gradual migration documented in utility)
-- ~~No pre-commit quality gates~~ ✅ **Added** — Husky + lint-staged: pre-commit hook runs ESLint --fix + Prettier on all staged `.ts/.tsx/.json/.md/.css` files
-- ~~tsconfig.json not using strict flags~~ ✅ **Added** — Enabled `strictFunctionTypes`, `strictBindCallApply`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames`; `strictNullChecks` and full `strict` mode deferred (would introduce ~46+ new errors — planned for future sprint)
-- **~175 pre-existing TypeScript errors** remain across the codebase (enum string mismatches, missing optional properties, etc.) — none introduced by recent changes
-
-### HR Module (New)
-- **Firestore collections are empty** — `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` all need initial data or seed scripts
-- **Cross-module integration pending** — Leave balances not auto-deducted on leave approval; attendance not synced with task time logs; performance reviews not linked to project metrics
-- **Data migration needed** — Existing `users` collection data should be merged into `employee_profiles` for complete employee records
-- **Leave policies not seeded** — Default leave policies (annual, sick, emergency, etc.) need to be created in Firestore for leave balance calculations to work
+### HR Module
+- **Firestore collections need initial data** — `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, and other HR collections need seed scripts or initial data entry.
+- **Cross-module integration pending** — Leave balances not auto-deducted on leave approval; attendance not synced with task time logs; performance reviews not linked to project metrics.
+- **Data migration needed** — Existing `users` collection data should be merged into `employee_profiles` for complete employee records.
 
 ---
 
@@ -1554,47 +1444,40 @@ modules/
 6. **Never run a server and another command in the same terminal** — use separate terminals
 
 ### Code Standards
-- TypeScript strict mode
+- TypeScript strict mode (partial — `strictFunctionTypes`, `strictBindCallApply`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames` enabled)
 - Tailwind CSS for styling (no external CSS files unless necessary)
 - Lucide React for all icons
 - Firebase SDK for all backend operations
+- Zod schemas for runtime validation of core entities (`schemas/`)
+- `crypto.randomUUID()` for all ID generation (`utils/id.ts`)
+- `utils/timestamps.ts` for Firestore timestamp normalization
 - All new types go in `types.ts`
-- All new collection names go in `constants.ts`
+- All new collection names referenced in store `subscribeCollection()` calls
 - All new permissions go in `lib/permissions.ts`
+
+### Pre-commit Hooks
+Husky + lint-staged runs on every commit:
+- ESLint `--fix` on staged `.ts/.tsx/.json/.md/.css` files
+- Prettier formatting on staged files
 
 ---
 
 ## Documentation Roadmap
 
-The following documentation files should exist in the project to support enterprise-grade development:
-
 | File | Location | Status | Purpose |
 |---|---|---|---|
-| **SYSTEM_ARCHITECTURE.md** | `/SYSTEM_ARCHITECTURE.md` | ✅ Exists | Deep-dive into system layers, design decisions, and component relationships. |
-| **PERMISSIONS_GUIDE.md** | `/PERMISSIONS_GUIDE.md` | ✅ Exists | Complete RBAC reference — roles, scopes, `can()` function, hooks, gates, sync strategy. |
-| **DATA_MODEL.md** | `/docs/DATA_MODEL.md` | ❌ Needed | Field-level Firestore schema for all 55+ collections. Includes indexes, relationships, and validation rules. |
-| **FIRESTORE_SCHEMA.md** | `/docs/FIRESTORE_SCHEMA.md` | ❌ Needed | Firestore security rules documentation. Maps each collection to its required permissions and scope checks. |
-| **SECURITY_MODEL.md** | `/docs/SECURITY_MODEL.md` | ❌ Needed | Comprehensive security documentation — auth flow, RBAC enforcement, Firestore rules, share links, API key management. |
-| **AI_ASSISTANT_GUIDE.md** | `/docs/AI_ASSISTANT_GUIDE.md` | ❌ Needed | Gemini AI integration guide — prompt engineering, context injection, model configuration, usage patterns. |
-| **NOTIFICATION_SYSTEM.md** | `/docs/NOTIFICATION_SYSTEM.md` | ❌ Needed | Notification architecture deep-dive — types, delivery channels, Cloud Functions, FCM setup, preference system. |
-| **TESTING_STRATEGY.md** | `/docs/TESTING_STRATEGY.md` | ❌ Needed | Test plan — unit tests, component tests, integration tests, E2E tests. Vitest + Testing Library patterns. |
-| **DEPLOYMENT_GUIDE.md** | `/docs/DEPLOYMENT_GUIDE.md` | ✅ Exists | Step-by-step deployment for dev and production environments. |
-| **DEVELOPMENT_SETUP.md** | `/docs/DEVELOPMENT_SETUP.md` | ✅ Exists | Development environment setup instructions. |
-| **GIT_WORKFLOW.md** | `/docs/GIT_WORKFLOW.md` | ✅ Exists | Git branching strategy and commit conventions. |
-| **MERGE_PROCEDURE.md** | `/docs/MERGE_PROCEDURE.md` | ✅ Exists | How to merge development branch to production. |
-| **CHANGELOG.md** | `/CHANGELOG.md` | ❌ Needed | Running log of notable changes, features, and fixes per release/date. |
-| **API_REFERENCE.md** | `/docs/API_REFERENCE.md` | ❌ Needed | Cloud Functions API documentation — endpoints, payloads, responses. |
-
-### Priority Order
-
-1. 🔴 **SECURITY_MODEL.md** — Critical gap; Firestore rules are not enforced.
-2. 🔴 **FIRESTORE_SCHEMA.md** — Needed to write proper security rules.
-3. 🟠 **DATA_MODEL.md** — Field-level schema documentation for 55+ collections.
-4. 🟠 **TESTING_STRATEGY.md** — No tests exist; need a plan before writing them.
-5. 🟡 **NOTIFICATION_SYSTEM.md** — Complex system with many moving parts.
-6. 🟡 **AI_ASSISTANT_GUIDE.md** — AI integration is a key differentiator.
-7. 🟡 **CHANGELOG.md** — Track what changes between deployments.
-8. ⚪ **API_REFERENCE.md** — Only 2 Cloud Functions currently; document as they grow.
+| **SYSTEM_ARCHITECTURE.md** | `/SYSTEM_ARCHITECTURE.md` | ✅ Exists | Deep-dive into system layers, design decisions, and component relationships |
+| **PERMISSIONS_GUIDE.md** | `/PERMISSIONS_GUIDE.md` | ✅ Exists | Complete RBAC reference — roles, scopes, `can()` function, hooks, gates, sync strategy |
+| **DEPLOYMENT_GUIDE.md** | `/docs/DEPLOYMENT_GUIDE.md` | ✅ Exists | Step-by-step deployment for dev and production environments |
+| **DEVELOPMENT_SETUP.md** | `/docs/DEVELOPMENT_SETUP.md` | ✅ Exists | Development environment setup instructions |
+| **GIT_WORKFLOW.md** | `/docs/GIT_WORKFLOW.md` | ✅ Exists | Git branching strategy and commit conventions |
+| **MERGE_PROCEDURE.md** | `/docs/MERGE_PROCEDURE.md` | ✅ Exists | How to merge development branch to production |
+| **DATA_MODEL.md** | `/docs/DATA_MODEL.md` | ❌ Needed | Field-level Firestore schema for all 63 collections |
+| **SECURITY_MODEL.md** | `/docs/SECURITY_MODEL.md` | ❌ Needed | Auth flow, RBAC enforcement, Firestore rules, share links, API key management |
+| **NOTIFICATION_SYSTEM.md** | `/docs/NOTIFICATION_SYSTEM.md` | ❌ Needed | Notification architecture deep-dive — types, delivery, Cloud Functions, FCM, preferences |
+| **AI_ASSISTANT_GUIDE.md** | `/docs/AI_ASSISTANT_GUIDE.md` | ❌ Needed | Gemini AI integration guide — prompts, context injection, model configuration |
+| **CHANGELOG.md** | `/CHANGELOG.md` | ❌ Needed | Running log of notable changes, features, and fixes per release |
+| **API_REFERENCE.md** | `/docs/API_REFERENCE.md` | ❌ Needed | Cloud Functions API documentation — endpoints, payloads, responses |
 
 ---
 
@@ -1603,8 +1486,8 @@ The following documentation files should exist in the project to support enterpr
 IRIS Agency OS aims to be the **single operating system** a creative agency needs — replacing fragmented tool stacks (Asana + Slack + Drive + spreadsheets) with one unified, real-time platform that understands agency workflows: from client onboarding through creative direction, production, quality control, posting, and financial tracking.
 
 **Roadmap priorities:**
-- Full Firestore security rules aligned with RBAC
-- Comprehensive test coverage
+- Complete store migration (children read stores directly, eliminate bridge layer)
+- Scope validation in Firestore security rules
 - Email notification delivery channel
 - Advanced file management (drag/drop, version history, approvals)
 - Complete theming system (all surfaces variable-driven)
