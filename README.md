@@ -137,8 +137,10 @@
 | **PWA** | vite-plugin-pwa | ^1.2.0 | Workbox service worker, offline caching, installability |
 | **Auth Hashing** | bcryptjs | ^3.0.3 | Invite-flow temporary password hashing |
 | **Date Handling** | date-fns | ^4.1.0 | Lightweight, tree-shakeable date utilities |
-| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | Unit and component testing (framework in place) |
+| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | 50 unit tests (permissions, ID generation), CI pipeline |
+| **Linting** | ESLint 9 + Prettier | ^9.39 / ^3.5 | Flat config, react-hooks/react-refresh plugins |
 | **Image Processing** | Sharp | ^0.34.5 | Icon/asset generation at build time |
+| **CI/CD** | GitHub Actions | — | Lint → typecheck → test → build on every push |
 
 ---
 
@@ -1488,8 +1490,8 @@ modules/
 - ~~Firestore security rules not aligned with the RBAC model~~ ✅ **Fixed (Phase 1)** — Catch-all changed to deny-all, 30+ collections now enforce granular `hasPermission()` checks aligned with RBAC keys
 
 ### Testing
-- Vitest and Testing Library are installed but no automated test suite is actively executed
-- No CI/CD pipeline for automated testing
+- ~~Vitest and Testing Library are installed but no automated test suite is actively executed~~ ✅ **Fixed (Phase 3)** — 50 unit tests across permissions (45 tests) and ID generation (5 tests)
+- ~~No CI/CD pipeline for automated testing~~ ✅ **Fixed (Phase 3)** — GitHub Actions CI runs lint → typecheck → test → build on every push to `development` and PR to `main`
 
 ### Theming
 - Some UI elements (tables, cards, login page, body text) still use hardcoded `slate-*` Tailwind classes instead of CSS variables
@@ -1509,6 +1511,12 @@ modules/
 - ~~No Firestore backups~~ ✅ **Fixed (Phase 1)** — Daily automated backups with 7-day retention to GCS bucket
 - ~~Secondary Firebase app leak in inviteUser~~ ✅ **Fixed (Phase 1)** — `deleteApp()` now properly called in finally block
 - `firebase-messaging-sw.js` has hardcoded production config (acceptable tradeoff)
+
+### Performance (Phase 3)
+- ~~App.tsx re-rendered all children on every state change~~ ✅ **Fixed (Phase 3)** — All ~72 handlers wrapped in `useCallback`, derived data memoized with `useMemo`
+- ~~Single 1.1MB JavaScript bundle~~ ✅ **Fixed (Phase 3)** — Bundle split into 6 vendor chunks via `manualChunks` (main: 446KB, 60% reduction)
+- ~~Console logs shipped to production~~ ✅ **Fixed (Phase 4)** — Production builds strip `console.log/warn/info/debug` via esbuild pure config
+- ~~Date.now()-based IDs could collide on rapid operations~~ ✅ **Fixed (Phase 4)** — 63 occurrences replaced with `crypto.randomUUID()` via `utils/id.ts`
 
 ### HR Module (New)
 - **Firestore collections are empty** — `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` all need initial data or seed scripts
