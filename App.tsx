@@ -135,8 +135,10 @@ const App: React.FC = () => {
   const notesStore = useNotesStore();
   const qcStore = useQCStore();
 
-  // Subscribe all stores on mount, unsubscribe on unmount
+  // Subscribe all stores when user is authenticated, unsubscribe on logout/unmount
   useEffect(() => {
+    if (!user) return; // Don't subscribe until authenticated — Firestore rules deny unauthenticated reads
+
     clientStore.subscribe();
     projectStore.subscribe();
     taskStore.subscribe();
@@ -171,7 +173,7 @@ const App: React.FC = () => {
       qcStore.unsubscribe();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
 
   // Load notification preferences
   useEffect(() => {
