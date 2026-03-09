@@ -631,8 +631,9 @@ When the app loads, `AuthContext` performs smart permission sync:
 
 1. Admin uses the invite form → a **secondary Firebase app instance** is created to avoid logging out the admin.
 2. `createUserWithEmailAndPassword` on the secondary app creates the account.
-3. A temporary password is generated, hashed with bcrypt, and stored in the user doc with `forcePasswordChange: true`.
-4. The temporary password is shown to the admin (for manual delivery — no email integration yet).
+3. A temporary password is generated and stored in the user doc with `forcePasswordChange: true`.
+4. The secondary Firebase app is properly cleaned up via `deleteApp()` in a finally block.
+5. The temporary password is shown to the admin (for manual delivery — no email integration yet).
 
 ### Three-Layer Enforcement
 
@@ -640,7 +641,7 @@ When the app loads, `AuthContext` performs smart permission sync:
 |---|---|---|
 | **UI Layer** | `PermissionGate`, `usePermission()` hooks hide/show elements | Advisory only — can be bypassed with devtools |
 | **Application Logic** | `AuthContext.checkPermission()` guards CRUD handlers in App.tsx | Enforced in client code — protects against accidental misuse |
-| **Firestore Rules** | `hasPermission()` function reads user role doc and checks permission array | Server-side — **currently underutilized** (catch-all rule still active) |
+| **Firestore Rules** | `hasPermission()` function reads user role doc and checks permission array | Server-side — **enforced on 30+ business collections with granular permission checks** |
 
 ### Presentation Share Security
 
@@ -654,13 +655,15 @@ The Creative Direction module allows sharing presentation views with external cl
 
 ### Current Security Gaps
 
-| Gap | Risk | Mitigation Plan |
+| Gap | Risk | Status |
 |---|---|---|
-| Firestore catch-all rule (`allow read, write: if true`) | 🔴 Critical — any user (or unauthenticated request) can read/write any collection | Apply `hasPermission()` to all collection rules |
+| ~~Firestore catch-all rule~~ | ~~🔴 Critical~~ | ✅ **Fixed** — Catch-all is deny-all; 30+ collections have `hasPermission()` rules |
 | No server-side scope validation | 🟠 High — a user with `tasks.edit.own` could edit any task via direct Firestore writes | Add ownership/department checks in Firestore rules |
 | Presentation share tokens don't expire | 🟡 Medium — shared links are permanent | Add TTL and max-access-count enforcement |
-| API key exposed in client bundle | 🟡 Medium — Firebase API keys are not secret but can be abused | Firebase App Check (planned) |
+| ~~API key (Gemini) exposed in client bundle~~ | ~~🟡 Medium~~ | ✅ **Fixed** — Gemini API key moved server-side via `generateContent` Cloud Function proxy |
 | No rate limiting on login | 🟡 Medium — brute force possible | Firebase Auth has built-in rate limiting, but no custom lockout |
+| ~~No Firestore backups~~ | ~~🟠 High~~ | ✅ **Fixed** — Daily automated backups with 7-day retention |
+| ~~No error boundary~~ | ~~🟠 High~~ | ✅ **Fixed** — `ErrorBoundary` component wraps app root |
 
 ---
 
@@ -1462,7 +1465,7 @@ modules/
 ### Permission System
 - `App.tsx` still checks some old underscore-style permission keys — need migration to `PERMISSIONS.*` constants
 - Hub components largely ungated — need per-hub permission gates and scope-based data filtering
-- Firestore security rules not aligned with the RBAC model (catch-all `allow read, write: if true` still in place)
+- ~~Firestore security rules not aligned with the RBAC model~~ ✅ **Fixed (Phase 1)** — Catch-all changed to deny-all, 30+ collections now enforce granular `hasPermission()` checks aligned with RBAC keys
 
 ### Testing
 - Vitest and Testing Library are installed but no automated test suite is actively executed
@@ -1479,7 +1482,12 @@ modules/
 - Missing: drag-and-drop upload, move/copy between folders, bulk operations, storage quotas, version history, file approval workflow
 
 ### Security
-- Firestore catch-all rule allows unrestricted read/write — security is enforced only at the application level
+- ~~Firestore catch-all rule allows unrestricted read/write~~ ✅ **Fixed (Phase 1)** — Catch-all is now `deny-all`, every business collection has explicit permission-based rules
+- ~~Gemini API key exposed in client bundle~~ ✅ **Fixed (Phase 1)** — API key moved server-side via `generateContent` Cloud Function proxy
+- ~~bcrypt password hashing on client-side~~ ✅ **Fixed (Phase 1)** — Removed bcrypt from client; Firebase Auth handles password security
+- ~~No error boundary~~ ✅ **Fixed (Phase 1)** — `ErrorBoundary` component wraps app root with graceful recovery UI
+- ~~No Firestore backups~~ ✅ **Fixed (Phase 1)** — Daily automated backups with 7-day retention to GCS bucket
+- ~~Secondary Firebase app leak in inviteUser~~ ✅ **Fixed (Phase 1)** — `deleteApp()` now properly called in finally block
 - `firebase-messaging-sw.js` has hardcoded production config (acceptable tradeoff)
 
 ### HR Module (New)
@@ -1487,7 +1495,7 @@ modules/
 - **Cross-module integration pending** — Leave balances not auto-deducted on leave approval; attendance not synced with task time logs; performance reviews not linked to project metrics
 - **Data migration needed** — Existing `users` collection data should be merged into `employee_profiles` for complete employee records
 - **Leave policies not seeded** — Default leave policies (annual, sick, emergency, etc.) need to be created in Firestore for leave balance calculations to work
-- **43 pre-existing TypeScript errors** remain across non-HR files (voiceOver prop, TaskType references, etc.)
+- **~45 pre-existing TypeScript errors** remain across non-HR files (voiceOver prop, TaskType references, etc.) — none related to Phase 1 changes
 
 ---
 

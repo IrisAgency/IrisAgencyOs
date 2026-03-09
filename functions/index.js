@@ -230,15 +230,9 @@ exports.fetchLinkPreview = functions.https.onCall(async (data) => {
 /**
  * Proxies Gemini AI requests so the API key never reaches the client.
  * Callable: { prompt: string, context?: string } → { text: string }
- * Requires: GEMINI_API_KEY set via `firebase functions:config:set gemini.api_key="YOUR_KEY"`
- *           or as a Cloud Functions environment variable.
+ * Requires: GEMINI_API_KEY set in functions/.env file
  */
 exports.generateContent = functions.https.onCall(async (data) => {
-  // Validate the caller is authenticated
-  const authContext = data?.auth || data?.rawRequest?.auth;
-  // Note: Firebase callable functions automatically reject unauthenticated calls
-  // when using the client SDK's httpsCallable with auth
-
   const prompt = data?.prompt || data?.data?.prompt;
   const context = data?.context || data?.data?.context || '';
 
@@ -246,15 +240,15 @@ exports.generateContent = functions.https.onCall(async (data) => {
     throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid prompt parameter');
   }
 
-  // Get API key from environment config
-  const apiKey = functions.config().gemini?.api_key || process.env.GEMINI_API_KEY;
+  // Get API key from functions/.env (Firebase automatically loads it into process.env)
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    functions.logger.error('Gemini API key not configured. Set it with: firebase functions:config:set gemini.api_key="YOUR_KEY"');
+    functions.logger.error('GEMINI_API_KEY not set in functions/.env');
     throw new functions.https.HttpsError('internal', 'AI service not configured');
   }
 
   try {
-    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const { GoogleGenerativeAI } = require('@google/generative-ai');
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
