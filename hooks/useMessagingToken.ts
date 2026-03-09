@@ -95,8 +95,8 @@ export function useMessagingToken(user: User | null) {
       console.log('[useMessagingToken] ✓ Token saved successfully to Firestore');
       return currentToken;
     } catch (error) {
-      console.error('[useMessagingToken] Registration failed:', error);
-      throw error;
+      console.warn('[useMessagingToken] Registration failed (push notifications will be unavailable):', (error as Error).message || error);
+      return null;
     }
   }, [user, ensureServiceWorkerReady]);
 
@@ -110,7 +110,7 @@ export function useMessagingToken(user: User | null) {
 
     // If already granted, register quietly without prompting
     if (Notification.permission === 'granted') {
-      requestPermissionAndRegister();
+      requestPermissionAndRegister().catch(() => { /* already logged inside */ });
     }
   }, [user, requestPermissionAndRegister]);
 
