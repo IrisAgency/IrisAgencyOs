@@ -237,13 +237,13 @@ const App: React.FC = () => {
 
   const handleLogout = useCallback(async () => { await logout(); }, [logout]);
 
-  // Toast helper
-  const handleNotify = useCallback(async (type: NotificationType, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
+  // Toast helper — accepts string for component compatibility, casts to NotificationType for persistence
+  const handleNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
     showToast({ title, message });
     setTimeout(() => clearToast(), 4000);
     if (recipientIds.length > 0) {
       try {
-        await notifyUsers({ type, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: user?.id || 'system' });
+        await notifyUsers({ type: type as NotificationType, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: user?.id || 'system' });
       } catch (error) { console.error('Failed to create notification:', error); }
     }
   }, [showToast, clearToast, user?.id]);

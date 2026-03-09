@@ -24,6 +24,19 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+
+    /* Strict-mode migration — enabled incrementally.
+     * These flags add ZERO new errors as of March 2026.
+     * Enable more flags as errors are resolved. */
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true
+    /* TODO: Enable once 46 errors are resolved:
+     * "strictNullChecks": true
+     * Then: "noImplicitAny": true (adds ~20 more)
+     * Finally: "strict": true (umbrella flag)
+     */
   }
 }

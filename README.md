@@ -137,8 +137,10 @@
 | **PWA** | vite-plugin-pwa | ^1.2.0 | Workbox service worker, offline caching, installability |
 | **Auth Hashing** | bcryptjs | ^3.0.3 | Invite-flow temporary password hashing |
 | **Date Handling** | date-fns | ^4.1.0 | Lightweight, tree-shakeable date utilities |
-| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | 50 unit tests (permissions, ID generation), CI pipeline |
+| **Testing** | Vitest + Testing Library | ^4.0.15 / ^6.9.1 | 78 unit tests (permissions, ID generation, Zod schemas), CI pipeline |
 | **Linting** | ESLint 9 + Prettier | ^9.39 / ^3.5 | Flat config, react-hooks/react-refresh plugins |
+| **Git Hooks** | Husky + lint-staged | ^9.1.7 / ^16.3.2 | Pre-commit: ESLint fix + Prettier on staged files |
+| **Validation** | Zod | ^4.3.6 | Runtime schema validation for Client, Project, Task, Finance entities |
 | **Image Processing** | Sharp | ^0.34.5 | Icon/asset generation at build time |
 | **CI/CD** | GitHub Actions | — | Lint → typecheck → test → build on every push |
 
@@ -1518,12 +1520,18 @@ modules/
 - ~~Console logs shipped to production~~ ✅ **Fixed (Phase 4)** — Production builds strip `console.log/warn/info/debug` via esbuild pure config
 - ~~Date.now()-based IDs could collide on rapid operations~~ ✅ **Fixed (Phase 4)** — 63 occurrences replaced with `crypto.randomUUID()` via `utils/id.ts`
 
+### Code Quality (Phase 4 — Remaining Items)
+- ~~No runtime data validation~~ ✅ **Added** — Zod schemas for Client, Project, Task, Quotation, Invoice, Payment, Expense entities (`schemas/`) with 28 unit tests
+- ~~Inconsistent Firestore timestamps~~ ✅ **Added** — `utils/timestamps.ts` provides `withTimestamps()`, `withUpdatedAt()`, `normalizeTimestamps()` utilities; `normalizeTimestamps()` applied to all Firestore reads via `firestoreSubscription.ts`; `serverTimestamp()` adopted in `useAdminStore` audit logs as proof of concept (gradual migration documented in utility)
+- ~~No pre-commit quality gates~~ ✅ **Added** — Husky + lint-staged: pre-commit hook runs ESLint --fix + Prettier on all staged `.ts/.tsx/.json/.md/.css` files
+- ~~tsconfig.json not using strict flags~~ ✅ **Added** — Enabled `strictFunctionTypes`, `strictBindCallApply`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames`; `strictNullChecks` and full `strict` mode deferred (would introduce ~46+ new errors — planned for future sprint)
+- **~175 pre-existing TypeScript errors** remain across the codebase (enum string mismatches, missing optional properties, etc.) — none introduced by recent changes
+
 ### HR Module (New)
 - **Firestore collections are empty** — `employee_profiles`, `teams`, `leave_policies`, `leave_balances`, `attendance_corrections`, `onboarding_checklists`, `offboarding_checklists`, `employee_assets`, `performance_reviews`, `employee_status_changes` all need initial data or seed scripts
 - **Cross-module integration pending** — Leave balances not auto-deducted on leave approval; attendance not synced with task time logs; performance reviews not linked to project metrics
 - **Data migration needed** — Existing `users` collection data should be merged into `employee_profiles` for complete employee records
 - **Leave policies not seeded** — Default leave policies (annual, sick, emergency, etc.) need to be created in Firestore for leave balance calculations to work
-- **~45 pre-existing TypeScript errors** remain across non-HR files (voiceOver prop, TaskType references, etc.) — none related to Phase 1 changes
 
 ---
 

@@ -3,7 +3,7 @@
  * Collections: roles, audit_logs, workflow_templates, departments, dashboard_banners
  */
 import { create } from 'zustand';
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
@@ -77,11 +77,11 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   activeBanner: () => get().dashboardBanners.find(b => b.isActive) || null,
 
   addAuditLog: async (userId, action, entityType, entityId, description) => {
-    const newLog: AuditLog = {
-      id: prefixedId('audit'), userId, action, entityType, entityId, description,
-      createdAt: new Date().toISOString(),
-    };
-    await setDoc(doc(db, 'audit_logs', newLog.id), newLog);
+    const id = prefixedId('audit');
+    await setDoc(doc(db, 'audit_logs', id), {
+      id, userId, action, entityType, entityId, description,
+      createdAt: serverTimestamp(),
+    });
   },
 
   // --- Roles ---

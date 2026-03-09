@@ -5,11 +5,14 @@
  */
 import { collection, onSnapshot, query, Query, DocumentData } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { normalizeTimestamps } from '../utils/timestamps';
 
 export type Unsubscribe = () => void;
 
 /**
  * Subscribe to a Firestore collection and pipe results into a setter.
+ * Automatically converts Firestore Timestamp fields to ISO strings
+ * so the rest of the app can keep using plain string dates.
  * Returns an unsubscribe function.
  */
 export function subscribeCollection<T>(
@@ -23,7 +26,7 @@ export function subscribeCollection<T>(
   const unsubscribe = onSnapshot(q, (snapshot) => {
     const items: T[] = [];
     snapshot.forEach((doc) => {
-      items.push({ id: doc.id, ...doc.data() } as unknown as T);
+      items.push(normalizeTimestamps({ id: doc.id, ...doc.data() }) as unknown as T);
     });
     setter(items);
   }, (err) => {
