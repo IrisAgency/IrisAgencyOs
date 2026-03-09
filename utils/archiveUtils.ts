@@ -2,6 +2,7 @@ import {
   doc, setDoc, updateDoc, collection, query, where, getDocs, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from './id';
 import { Task, AgencyFile, FileFolder, ProjectActivityLog } from '../types';
 
 /**
@@ -40,7 +41,7 @@ export const archiveTask = async (task: Task, archivedByUserId: string) => {
     if (!archiveRootSnapshot.empty) {
       archiveRootId = archiveRootSnapshot.docs[0].id;
     } else {
-      archiveRootId = `f_archive_${task.projectId}_${Date.now()}`;
+      archiveRootId = prefixedId(`f_archive_${task.projectId}`);
       const newArchiveRoot: FileFolder = {
         id: archiveRootId,
         projectId: task.projectId,
@@ -82,7 +83,7 @@ export const archiveTask = async (task: Task, archivedByUserId: string) => {
     });
 
     // 5. Log Activity
-    const logId = `log_archive_${Date.now()}`;
+    const logId = prefixedId('log_archive');
     const log: ProjectActivityLog = {
       id: logId,
       projectId: task.projectId,

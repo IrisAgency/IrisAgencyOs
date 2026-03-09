@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import { doc, setDoc, deleteDoc, writeBatch, query, where, getDocs, collection, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import {
   categorizeFileType,
@@ -115,7 +116,7 @@ export const useFileStore = create<FileState>((set, get) => ({
 
     if (file.projectId && deps.userId) {
       const log: ProjectActivityLog = {
-        id: `log${Date.now()}`, projectId: file.projectId, userId: deps.userId,
+        id: prefixedId('log'), projectId: file.projectId, userId: deps.userId,
         type: 'file_upload', message: `Deleted file: ${file.name}`, createdAt: new Date().toISOString(),
       };
       await setDoc(doc(db, 'project_activity_logs', log.id), log);

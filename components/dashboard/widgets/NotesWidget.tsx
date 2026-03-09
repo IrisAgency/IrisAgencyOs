@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Note, User } from '../../../types';
 import { FileText, Plus, Trash2, Edit2, Save, X } from 'lucide-react';
+import { prefixedId } from '../../../utils/id';
 
 interface NotesWidgetProps {
   notes: Note[];
@@ -49,7 +50,7 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({
 
     if (isCreating) {
       const newNote: Note = {
-        id: `n${Date.now()}`,
+        id: prefixedId('n'),
         title,
         content,
         createdBy: currentUser.id,

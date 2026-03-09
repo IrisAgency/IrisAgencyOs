@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DepartmentDefinition, Department } from '../../types';
 import { Building, Plus, Users, Shield, Edit2, Trash2, Database } from 'lucide-react';
 import Modal from '../common/Modal';
+import { prefixedId } from '../../utils/id';
 
 interface DepartmentsManagerProps {
     departments: DepartmentDefinition[];
@@ -27,7 +28,7 @@ const DepartmentsManager: React.FC<DepartmentsManagerProps> = ({
     const handleCreate = () => {
         const now = new Date().toISOString();
         setEditingDept({
-            id: `dept_${Date.now()}`,
+            id: prefixedId('dept'),
             name: '',
             code: '',
             description: '',

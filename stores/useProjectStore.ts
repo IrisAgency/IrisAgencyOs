@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import { notifyUsers } from '../services/notificationService';
 import { createProjectFolder } from '../utils/folderUtils';
@@ -97,20 +98,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     if (user) {
       const log: ProjectActivityLog = {
-        id: `log${Date.now()}`, projectId: project.id, userId: user.id,
+        id: prefixedId('log'), projectId: project.id, userId: user.id,
         type: 'status_change', message: 'Project created', createdAt: new Date().toISOString(),
       };
       await setDoc(doc(db, 'project_activity_logs', log.id), log);
 
       const member: ProjectMember = {
-        id: `pm${Date.now()}`, projectId: project.id, userId: user.id,
+        id: prefixedId('pm'), projectId: project.id, userId: user.id,
         roleInProject: 'Project Lead', isExternal: false,
       };
       await setDoc(doc(db, 'project_members', member.id), member);
 
       if (project.accountManagerId && project.accountManagerId !== user.id) {
         const mgr: ProjectMember = {
-          id: `pm${Date.now()}_mgr`, projectId: project.id, userId: project.accountManagerId,
+          id: prefixedId('pm'), projectId: project.id, userId: project.accountManagerId,
           roleInProject: 'Account Manager', isExternal: false,
         };
         await setDoc(doc(db, 'project_members', mgr.id), mgr);
@@ -140,7 +141,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     await updateDoc(doc(db, 'projects', project.id), project as any);
     if (userId) {
       const log: ProjectActivityLog = {
-        id: `log${Date.now()}`, projectId: project.id, userId,
+        id: prefixedId('log'), projectId: project.id, userId,
         type: 'status_change', message: `Status updated to ${project.status}`,
         createdAt: new Date().toISOString(),
       };
@@ -216,7 +217,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     await updateDoc(doc(db, 'project_milestones', milestone.id), milestone as any);
     if (userId && milestone.status === 'completed') {
       const log: ProjectActivityLog = {
-        id: `log${Date.now()}`, projectId: milestone.projectId, userId,
+        id: prefixedId('log'), projectId: milestone.projectId, userId,
         type: 'milestone_completed', message: `Milestone completed: ${milestone.name}`,
         createdAt: new Date().toISOString(),
       };

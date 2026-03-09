@@ -3,6 +3,7 @@ import { User, UserRole, Department } from '../../types';
 import { UserPlus, Search, Edit2, Trash2, CheckCircle } from 'lucide-react';
 import Modal from '../common/Modal';
 import DataTable from '../common/DataTable';
+import { prefixedId } from '../../utils/id';
 
 interface UsersManagerProps {
     users: User[];
@@ -23,7 +24,7 @@ const UsersManager: React.FC<UsersManagerProps> = ({ users, onUpdateUser, onAddU
             onUpdateUser(editingUser as User);
         } else {
             const newUser: User = {
-                id: `u${Date.now()}`,
+                id: prefixedId('u'),
                 name: editingUser.name || 'New User',
                 email: editingUser.email || '',
                 role: (editingUser.role as UserRole) || UserRole.DESIGNER,

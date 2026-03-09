@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { ClientMeeting, User, AgencyFile, FileFolder } from '../types';
 import { Calendar, Clock, MapPin, Video, Users, FileText, Plus, Edit2, Trash2, CheckCircle, XCircle, Upload, ChevronRight, ChevronDown } from 'lucide-react';
 import { PERMISSIONS } from '../lib/permissions';
+import { prefixedId } from '../utils/id';
 
 interface ClientMeetingsProps {
   clientId: string;
@@ -111,7 +112,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
     if (!formData.title || !formData.date || !currentUser) return;
 
     const meetingData: ClientMeeting = {
-      id: editingMeeting ? editingMeeting.id : `cm${Date.now()}`,
+      id: editingMeeting ? editingMeeting.id : prefixedId('cm'),
       clientId,
       title: formData.title,
       description: formData.description || null,
@@ -180,7 +181,7 @@ const ClientMeetings: React.FC<ClientMeetingsProps> = ({
     if (e.target.files && e.target.files[0] && meeting.meetingFolderId) {
       const file = e.target.files[0];
       const newFile: AgencyFile = {
-        id: `f${Date.now()}`,
+        id: prefixedId('f'),
         projectId: 'na', // Not tied to project directly, but folder is tied to client
         taskId: null,
         folderId: meeting.meetingFolderId,

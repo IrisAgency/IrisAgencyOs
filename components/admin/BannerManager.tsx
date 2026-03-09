@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { DashboardBanner } from '../../types';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
+import { prefixedId } from '../../utils/id';
 import { 
   Upload, 
   Trash2, 
@@ -82,7 +83,7 @@ const BannerManager: React.FC<BannerManagerProps> = ({
     setUploadProgress(0);
 
     try {
-      const bannerId = banner?.id || `banner_${Date.now()}`;
+      const bannerId = banner?.id || prefixedId('banner');
       const storagePath = `banners/${bannerId}/${pendingFile.name}`;
       const storageRef = ref(storage, storagePath);
 

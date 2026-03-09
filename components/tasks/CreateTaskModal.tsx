@@ -10,6 +10,7 @@ import { AlertCircle, Link as LinkIcon, Image as ImageIcon, X, Plus, Loader2, Ch
 import Modal from '../common/Modal';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
+import { prefixedId, uid } from '../../utils/id';
 
 interface CreateTaskModalProps {
     isOpen: boolean;
@@ -167,7 +168,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         }
 
         const newLink: ReferenceLink = {
-            id: `rl${Date.now()}`,
+            id: prefixedId('rl'),
             title: newLinkTitle,
             url: newLinkUrl,
             note: newLinkNote,
@@ -196,7 +197,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             : newDeliveryType;
 
         const newLink: DeliveryLink = {
-            id: `dl${Date.now()}`,
+            id: prefixedId('dl'),
             url: newDeliveryUrl.trim(),
             label: newDeliveryLabel.trim() || 'Delivery File',
             type: autoType === 'unknown' ? 'other' : (autoType as DeliveryLink['type']),
@@ -247,7 +248,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         try {
             // 1. Prepare Task Data
             let taskToSave: Task;
-            const taskId = editingTask ? editingTask.id : `t${Date.now()}`;
+            const taskId = editingTask ? editingTask.id : prefixedId('t');
             
             // Upload Images if any
             const uploadedImages: ReferenceImage[] = [];
@@ -256,7 +257,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             if (selectedImages.length > 0) {
                 for (let i = 0; i < selectedImages.length; i++) {
                     const file = selectedImages[i];
-                    const imageId = `ri${Date.now()}_${i}`;
+                    const imageId = `ri_${uid()}_${i}`;
                     const storagePath = `tasks/${taskId}/references/${imageId}/${file.name}`;
                     const storageRef = ref(storage, storagePath);
                     

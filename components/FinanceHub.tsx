@@ -10,6 +10,7 @@ import Modal from './common/Modal';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import { prefixedId, uid } from '../utils/id';
 
 interface FinanceHubProps {
     invoices: Invoice[];
@@ -431,7 +432,7 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
     const [amount, setAmount] = useState('');
 
     // Line Item State (Quote/Invoice)
-    const [items, setItems] = useState<any[]>([{ id: Date.now(), description: '', quantity: 1, unitPrice: 0 }]);
+    const [items, setItems] = useState<any[]>([{ id: uid(), description: '', quantity: 1, unitPrice: 0 }]);
 
     // Payment specific
     const [invoiceId, setInvoiceId] = useState('');
@@ -444,7 +445,7 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
     const [description, setDescription] = useState('');
 
     const addItem = () => {
-        setItems([...items, { id: Date.now(), description: '', quantity: 1, unitPrice: 0 }]);
+        setItems([...items, { id: uid(), description: '', quantity: 1, unitPrice: 0 }]);
     };
 
     const updateItem = (id: number, field: string, value: any) => {
@@ -457,8 +458,8 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
         if (type === 'Quotation') {
             const total = items.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0);
             const newQuote: Quotation = {
-                id: `q${Date.now()}`,
-                quotationNumber: `QUO-${Date.now().toString().substr(-4)}`,
+                id: prefixedId('q'),
+                quotationNumber: `QUO-${uid().slice(0, 4)}`,
                 clientId,
                 projectId,
                 date,
@@ -477,8 +478,8 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
         } else if (type === 'Invoice') {
             const total = items.reduce((acc, i) => acc + (i.quantity * i.unitPrice), 0);
             const newInvoice: Invoice = {
-                id: `inv${Date.now()}`,
-                invoiceNumber: `INV-${Date.now().toString().substr(-4)}`,
+                id: prefixedId('inv'),
+                invoiceNumber: `INV-${uid().slice(0, 4)}`,
                 clientId,
                 projectId,
                 date,
@@ -501,8 +502,8 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
         } else if (type === 'Payment') {
             const inv = invoices.find(i => i.id === invoiceId);
             const newPayment: Payment = {
-                id: `pay${Date.now()}`,
-                paymentNumber: `PAY-${Date.now().toString().substr(-4)}`,
+                id: prefixedId('pay'),
+                paymentNumber: `PAY-${uid().slice(0, 4)}`,
                 clientId: inv?.clientId || '',
                 projectId: inv?.projectId || '',
                 invoiceId,
@@ -517,7 +518,7 @@ const FinanceModal: React.FC<FinanceModalProps> = ({
 
         } else if (type === 'Expense') {
             const newExpense: Expense = {
-                id: `exp${Date.now()}`,
+                id: prefixedId('exp'),
                 projectId: projectId || null,
                 vendor,
                 amount: parseFloat(amount),

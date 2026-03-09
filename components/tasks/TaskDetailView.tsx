@@ -7,6 +7,7 @@ import {
     DeliveryLink
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
+import { prefixedId, uid } from '../../utils/id';
 import {
     Plus, Search, Filter, Calendar, Clock, CheckCircle,
     MessageSquare, FileText, Link, Paperclip, MoreVertical,
@@ -153,7 +154,7 @@ const TaskDetailView = ({
         note?: string
     ) => {
         const timeLog: TaskTimeLog = {
-            id: `tl${Date.now()}_${currentUser.id}`,
+            id: `tl_${uid()}_${currentUser.id}`,
             taskId: task.id,
             userId: currentUser.id,
             hours: 0, // Automatic events don't count as work hours
@@ -237,7 +238,7 @@ const TaskDetailView = ({
                         const newSteps: ApprovalStep[] = template.steps.map((step, index) => {
                             const approverId = resolveApprover(step, task);
                             return {
-                                id: `as${Date.now()}_${index}`,
+                                id: `as_${uid()}_${index}`,
                                 taskId: task.id,
                                 milestoneId: task.milestoneId || null, // Link to milestone
                                 approverId: approverId || 'unassigned', // Fallback needs handling
@@ -300,7 +301,7 @@ const TaskDetailView = ({
     const handlePostComment = () => {
         if (!newComment.trim()) return;
         onAddComment({
-            id: `tc${Date.now()}`,
+            id: prefixedId('tc'),
             taskId: task.id,
             userId: currentUser.id,
             message: newComment,
@@ -349,7 +350,7 @@ const TaskDetailView = ({
             console.log('Current user:', currentUser.name, currentUser.id, currentUser.role);
 
             const newFile: AgencyFile = {
-                id: `file${Date.now()}`,
+                id: prefixedId('file'),
                 projectId: project.id,
                 taskId: task.id,
                 uploaderId: currentUser.id,
@@ -387,7 +388,7 @@ const TaskDetailView = ({
     // Helper to create social post
     const createSocialPostFromTask = (originalTask: Task) => {
         const newPost: SocialPost = {
-            id: `sp${Date.now()}`,
+            id: prefixedId('sp'),
             sourceTaskId: originalTask.id,
             projectId: originalTask.projectId,
             clientId: project?.clientId || '',
@@ -472,7 +473,7 @@ const TaskDetailView = ({
                     // Create Client Approval record if missing
                     if (!clientApproval && project?.clientId) {
                         onAddClientApproval({
-                            id: `ca${Date.now()}`,
+                            id: prefixedId('ca'),
                             taskId: task.id,
                             clientId: project.clientId,
                             status: 'pending'
@@ -722,7 +723,7 @@ const TaskDetailView = ({
         const autoType = isDriveLink(newDeliveryUrl) ? guessDriveFileType(newDeliveryUrl, newDeliveryLabel) as DeliveryLink['type'] || 'other' : newDeliveryType;
 
         const newLink: DeliveryLink = {
-            id: `dl${Date.now()}`,
+            id: prefixedId('dl'),
             url: newDeliveryUrl.trim(),
             label: newDeliveryLabel.trim() || 'Delivery File',
             type: autoType === 'unknown' ? 'other' : (autoType as DeliveryLink['type']),

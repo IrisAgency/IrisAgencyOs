@@ -7,6 +7,7 @@ import {
   FolderOpen, Building2, Briefcase, Film, Camera, FileCode, Presentation
 } from 'lucide-react';
 import PageContainer from './layout/PageContainer';
+import { prefixedId } from '../utils/id';
 
 interface FilesHubProps {
   files: AgencyFile[];
@@ -247,7 +248,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
        }
 
        const newFile: AgencyFile & { file?: File } = {
-          id: `file${Date.now()}`,
+          id: prefixedId('file'),
           projectId: projectId,
           clientId: clientId,
           folderId: currentFolderId,
@@ -276,7 +277,7 @@ const FilesHub: React.FC<FilesHubProps> = ({
       if (name) {
           const folder = folders.find(f => f.id === currentFolderId);
           onCreateFolder({
-              id: `f${Date.now()}`,
+              id: prefixedId('f'),
               projectId: folder?.projectId || null,
               clientId: selectedClientId,
               parentId: currentFolderId,

@@ -2,6 +2,7 @@ import {
   doc, setDoc, updateDoc, collection, query, where, getDocs, getDoc, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from './id';
 import { SocialPost, FileFolder, AgencyFile } from '../types';
 
 /**
@@ -74,7 +75,7 @@ export const archiveSocialPost = async (post: SocialPost, archivedByUserId: stri
     if (!postedPostsSnapshot.empty) {
       postedPostsFolderId = postedPostsSnapshot.docs[0].id;
     } else {
-      postedPostsFolderId = `f_posted_${post.clientId}_${Date.now()}`;
+      postedPostsFolderId = prefixedId(`f_posted_${post.clientId}`);
       const newPostedFolder: FileFolder = {
         id: postedPostsFolderId,
         clientId: post.clientId,

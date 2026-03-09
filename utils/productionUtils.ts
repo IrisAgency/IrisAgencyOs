@@ -22,6 +22,7 @@ import {
   TaskType
 } from '../types';
 import { assignTasksBySpecialty } from '../lib/specialty';
+import { uid } from './id';
 
 /**
  * Generate production tasks from a production plan
@@ -58,7 +59,7 @@ export const generateProductionTasks = async (
 
       // Map calendar reference links to task format
       const taskReferenceLinks = (calendarItem.referenceLinks || []).map((link, idx) => ({
-        id: `rl_${calendarItem.id}_${idx}_${Date.now()}`,
+        id: `rl_${calendarItem.id}_${idx}_${uid()}`,
         title: link.title,
         url: link.url,
         note: '',
@@ -68,7 +69,7 @@ export const generateProductionTasks = async (
 
       // Map calendar reference files to task format
       const taskReferenceImages = (calendarItem.referenceFiles || []).map((file, idx) => ({
-        id: `ri_${calendarItem.id}_${idx}_${Date.now()}`,
+        id: `ri_${calendarItem.id}_${idx}_${uid()}`,
         title: file.fileName,
         fileName: file.fileName,
         fileType: file.fileName.split('.').pop() || 'unknown',

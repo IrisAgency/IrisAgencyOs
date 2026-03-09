@@ -10,6 +10,7 @@ import ClientMeetings from './ClientMeetings';
 import ClientBrandAssets from './ClientBrandAssets';
 import DropdownMenu from './common/DropdownMenu';
 import { PERMISSIONS } from '../lib/permissions';
+import { prefixedId } from '../utils/id';
 
 interface ClientsHubProps {
   clients: Client[];
@@ -208,7 +209,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     }
 
     const newClient: Client = {
-      id: `c${Date.now()}`,
+      id: prefixedId('c'),
       name: clientForm.name!,
       industry: clientForm.industry || '',
       email: clientForm.email!,
@@ -280,7 +281,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
     if (!selectedClient || !newNoteText.trim() || !onAddNote || !currentUser) return;
 
     const newNote: ClientNote = {
-      id: `cn${Date.now()}`,
+      id: prefixedId('cn'),
       clientId: selectedClient.id,
       text: newNoteText.trim(),
       createdBy: currentUser.id,
@@ -299,7 +300,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
     try {
       // Create a proper AgencyFile object for upload
-      const fileId = `file_${Date.now()}`;
+      const fileId = prefixedId('file');
       const agencyFile: AgencyFile & { file?: File } = {
         id: fileId,
         name: reportFile.name,
@@ -325,7 +326,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       }
       
       const newReport: ClientMonthlyReport = {
-        id: `cmr${Date.now()}`,
+        id: prefixedId('cmr'),
         clientId: selectedClient.id,
         month: reportForm.month,
         title: reportForm.title,

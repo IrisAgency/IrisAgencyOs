@@ -11,6 +11,7 @@ import {
     UserMinus, Package, BarChart3, Copy, AlertCircle, CheckCircle as CheckCircleIcon
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { prefixedId } from '../utils/id';
 import Modal from './common/Modal';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
@@ -190,7 +191,7 @@ const TeamHub: React.FC<TeamHubProps> = ({
         while (d <= endD) { if (d.getDay() !== 0 && d.getDay() !== 6) days++; d.setDate(d.getDate() + 1); }
 
         const leaveReq: LeaveRequest = {
-            id: `lr_${Date.now()}`,
+            id: prefixedId('lr'),
             userId: currentUser.id,
             type: req.type,
             startDate: req.startDate,

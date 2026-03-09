@@ -109,6 +109,34 @@ export default defineConfig(({ mode }) => {
     // Gemini API key is now server-side only (Cloud Function proxy)
     // No need to expose it in the client bundle
     define: {},
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split Firebase SDK into its own chunk (~300KB)
+            'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/messaging', 'firebase/functions'],
+            // Split React core into its own chunk
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            // Zustand + state management
+            'vendor-state': ['zustand'],
+            // Icons library (lucide-react is ~200KB+)
+            'vendor-icons': ['lucide-react'],
+            // Recharts is large — only loaded on analytics route
+            'vendor-charts': ['recharts'],
+            // Animation libraries
+            'vendor-animation': ['@react-spring/web', '@use-gesture/react'],
+          },
+        },
+      },
+      // Strip console.log/warn in production builds (keep console.error for debugging)
+      minify: 'esbuild',
+      ...(mode === 'production' ? {
+        esbuild: {
+          drop: ['debugger'],
+          pure: ['console.log', 'console.warn', 'console.info', 'console.debug'],
+        },
+      } : {}),
+    },
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

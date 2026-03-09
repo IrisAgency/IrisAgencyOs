@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ClientMarketingStrategy, AgencyFile, FileFolder, User } from '../types';
 import { db } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, setDoc } from 'firebase/firestore';
 import { Plus, Search, FileText, Link as LinkIcon, ExternalLink, Eye, Trash2, Edit2, MoreHorizontal, Calendar, Upload, X } from 'lucide-react';
 import { PERMISSIONS } from '../lib/permissions';
@@ -117,7 +118,7 @@ const ClientMarketingStrategies: React.FC<ClientMarketingStrategiesProps> = ({
 
       // Handle File Upload
       if (formState.type === 'file' && selectedFile && onUploadFile) {
-        const newFileId = `f${Date.now()}`;
+        const newFileId = prefixedId('f');
         const newFile: AgencyFile = {
           id: newFileId,
           projectId: clientId, // Use clientId as projectId for strategies

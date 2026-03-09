@@ -9,6 +9,7 @@ import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageControls from './layout/PageControls';
 import PageContent from './layout/PageContent';
+import { prefixedId } from '../utils/id';
 
 interface VendorsHubProps {
   vendors: Vendor[];
@@ -57,7 +58,7 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
   const handleAddVendorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAddVendor({
-      id: `ven-${Date.now()}`,
+      id: prefixedId('ven'),
       name: vendorName,
       type: vendorType,
       contactName: vendorContactName,
@@ -81,7 +82,7 @@ const VendorsHub: React.FC<VendorsHubProps> = ({
   const handleAddFreelancerSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAddFreelancer({
-      id: `fl-${Date.now()}`,
+      id: prefixedId('fl'),
       name: freelancerName,
       email: freelancerEmail,
       phone: freelancerPhone,

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { prefixedId } from '../utils/id';
 import {
   Task,
   Project,
@@ -1220,7 +1221,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     const target = e.target as HTMLInputElement;
                                     if (target.value.trim()) {
                                         onAddNote({
-                                            id: `note_${Date.now()}`,
+                                            id: prefixedId('note'),
                                             title: 'Quick Note',
                                             content: target.value,
                                             createdBy: currentUser.id,

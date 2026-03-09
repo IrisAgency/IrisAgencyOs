@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import { notifyUsers } from '../services/notificationService';
 import { createTaskFolder } from '../utils/folderUtils';
@@ -97,7 +98,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     } catch { /* folder creation optional */ }
 
     const log: TaskActivityLog = {
-      id: `tal${Date.now()}`, taskId: task.id, userId, type: 'status_change',
+      id: prefixedId('tal'), taskId: task.id, userId, type: 'status_change',
       message: 'Task created', createdAt: new Date().toISOString(),
     };
     await setDoc(doc(db, 'task_activity_logs', log.id), log);
@@ -129,7 +130,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     await updateDoc(doc(db, 'tasks', updatedTask.id), taskToSave as any);
 
     const log: TaskActivityLog = {
-      id: `tal${Date.now()}`, taskId: updatedTask.id, userId, type: 'status_change',
+      id: prefixedId('tal'), taskId: updatedTask.id, userId, type: 'status_change',
       message: `Status updated to ${updatedTask.status}`, createdAt: new Date().toISOString(),
     };
     await setDoc(doc(db, 'task_activity_logs', log.id), log);

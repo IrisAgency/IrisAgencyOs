@@ -5,7 +5,7 @@
  * Still passes props to child components (children will be individually migrated in Phase 3).
  * Uses React Router for navigation instead of switch/case on activeView string.
  */
-import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 // Layout components
@@ -181,17 +181,17 @@ const App: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // ─── Derived Data ─────────────────────────
+  // ─── Derived Data (memoized) ───────────────
   const tasks = taskStore.tasks;
-  const activeTasks = tasks.filter(t => !t.isDeleted);
+  const activeTasks = useMemo(() => tasks.filter(t => !t.isDeleted), [tasks]);
   const projects = projectStore.projects;
   const clients = clientStore.clients;
-  const safeUsers = Array.isArray(hrStore.users) ? hrStore.users : [];
-  const activeUsers = safeUsers.filter(u => u && u.status !== 'inactive');
+  const safeUsers = useMemo(() => Array.isArray(hrStore.users) ? hrStore.users : [], [hrStore.users]);
+  const activeUsers = useMemo(() => safeUsers.filter(u => u && u.status !== 'inactive'), [safeUsers]);
   const { files, folders } = fileStore;
   const { invoices, quotations, payments, expenses } = financeStore;
   const { systemRoles, auditLogs, workflowTemplates, departments, dashboardBanners } = adminStore;
-  const dashboardBanner = dashboardBanners.find(b => b.isActive) || null;
+  const dashboardBanner = useMemo(() => dashboardBanners.find(b => b.isActive) || null, [dashboardBanners]);
   const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const canSendNotifications = checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW);
 
@@ -221,24 +221,24 @@ const App: React.FC = () => {
   if (!user) return <Login />;
   if (user.forcePasswordChange) return <ForcePasswordChange />;
 
-  // ─── Handlers (bridge — delegates to stores) ─────
+  // ─── Handlers (memoized — delegates to stores) ─────
 
-  const handleNavigate = (viewKey: string) => {
+  const handleNavigate = useCallback((viewKey: string) => {
     navigate(viewKeyToPath[viewKey] || '/');
     closeSidebar();
-  };
+  }, [navigate, closeSidebar]);
 
-  const handleNavigateToTask = (taskId: string) => setTargetTaskId(taskId);
+  const handleNavigateToTask = useCallback((taskId: string) => setTargetTaskId(taskId), [setTargetTaskId]);
 
-  const handleOpenProject = (projectId: string) => {
+  const handleOpenProject = useCallback((projectId: string) => {
     setTargetProjectId(projectId);
     navigate('/projects');
-  };
+  }, [setTargetProjectId, navigate]);
 
-  const handleLogout = async () => { await logout(); };
+  const handleLogout = useCallback(async () => { await logout(); }, [logout]);
 
   // Toast helper
-  const handleNotify = async (type: NotificationType, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
+  const handleNotify = useCallback(async (type: NotificationType, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
     showToast({ title, message });
     setTimeout(() => clearToast(), 4000);
     if (recipientIds.length > 0) {
@@ -246,40 +246,40 @@ const App: React.FC = () => {
         await notifyUsers({ type, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: user?.id || 'system' });
       } catch (error) { console.error('Failed to create notification:', error); }
     }
-  };
+  }, [showToast, clearToast, user?.id]);
 
   // Audit log helper
-  const addAuditLog = async (action: string, entityType: string, entityId: string | null, description: string) => {
+  const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
     if (!user) return;
     await adminStore.addAuditLog(user.id, action, entityType, entityId, description);
-  };
+  }, [user, adminStore]);
 
   // Task handlers → delegates to store
-  const handleAddTask = async (task: Task) => {
+  const handleAddTask = useCallback(async (task: Task) => {
     await taskStore.addTask(task, projects, hrStore.users, user!.id);
-  };
+  }, [taskStore, projects, hrStore.users, user]);
 
-  const handleUpdateTask = async (updatedTask: Task) => {
+  const handleUpdateTask = useCallback(async (updatedTask: Task) => {
     await taskStore.updateTask(updatedTask, {
       tasks, userId: user!.id, workflowTemplates,
       qcReviews: qcStore.qcReviews,
       projectMembers: projectStore.projectMembers,
       activeUsers, systemRoles,
     });
-  };
+  }, [taskStore, tasks, user, workflowTemplates, qcStore.qcReviews, projectStore.projectMembers, activeUsers, systemRoles]);
 
-  const handleDeleteTask = async (task: Task) => {
+  const handleDeleteTask = useCallback(async (task: Task) => {
     await taskStore.deleteTask(task, user!.id, checkPermission, showToast, addAuditLog);
-  };
+  }, [taskStore, user, checkPermission, showToast, addAuditLog]);
 
-  const handleArchiveTask = async (task: Task) => {
+  const handleArchiveTask = useCallback(async (task: Task) => {
     if (!user) return;
     await archiveTask(task, user.id);
     handleNotify('system', 'Task Archived', `Task "${task.title}" has been archived.`);
-  };
+  }, [user, handleNotify]);
 
   // File handlers → delegates to store
-  const handleUploadFile = async (file: AgencyFile) => {
+  const handleUploadFile = useCallback(async (file: AgencyFile) => {
     showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
     try {
       const savedFile = await fileStore.uploadFile(file, { projects, clients, activeTasks, folders });
@@ -289,20 +289,20 @@ const App: React.FC = () => {
       showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
       throw error;
     }
-  };
+  }, [showToast, fileStore, projects, clients, activeTasks, folders]);
 
-  const handleDeleteFile = async (fileId: string) => {
+  const handleDeleteFile = useCallback(async (fileId: string) => {
     try {
       await fileStore.deleteFile(fileId, { userId: user!.id });
       handleNotify('system', 'File Deleted', 'File has been deleted.');
     } catch (error) {
       showToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
     }
-  };
+  }, [fileStore, user, handleNotify, showToast]);
 
-  const handleCreateFolder = async (folder: any) => await fileStore.createFolder(folder);
+  const handleCreateFolder = useCallback(async (folder: any) => await fileStore.createFolder(folder), [fileStore]);
 
-  const handleDeleteFolder = async (folderId: string) => {
+  const handleDeleteFolder = useCallback(async (folderId: string) => {
     const folder = folders.find(f => f.id === folderId);
     if (!folder) { showToast({ title: 'Error', message: 'Folder not found.' }); return; }
     const hasSubfolders = folders.some(f => f.parentId === folderId);
@@ -323,170 +323,170 @@ const App: React.FC = () => {
     } catch {
       showToast({ title: 'Error', message: 'Failed to delete folder.' });
     }
-  };
+  }, [folders, files, fileStore, showToast, addAuditLog]);
 
   // Project handlers → delegates to store
-  const handleAddProject = async (p: any) => await projectStore.addProject(p, user!, clients);
-  const handleUpdateProject = async (p: any) => await projectStore.updateProject(p, user!.id);
-  const handleDeleteProject = async (id: string) => {
+  const handleAddProject = useCallback(async (p: any) => await projectStore.addProject(p, user!, clients), [projectStore, user, clients]);
+  const handleUpdateProject = useCallback(async (p: any) => await projectStore.updateProject(p, user!.id), [projectStore, user]);
+  const handleDeleteProject = useCallback(async (id: string) => {
     await projectStore.deleteProject(id, showToast, addAuditLog);
-  };
-  const handleAddProjectMember = async (m: any) => await projectStore.addMember(m, user!);
-  const handleRemoveProjectMember = async (id: string) => await deleteDoc(doc(db, 'project_members', id));
-  const handleAddProjectMilestone = async (m: any) => await projectStore.addMilestone(m, user!.id);
-  const handleUpdateProjectMilestone = async (m: any) => await projectStore.updateMilestone(m, user!.id);
-  const handleAddMilestone = async (m: any) => await projectStore.addDynamicMilestone(m);
-  const handleUpdateMilestone = async (m: any) => await projectStore.updateDynamicMilestone(m);
-  const handleAddProjectMarketingAsset = async (a: any) => { await projectStore.addMarketingAsset(a); handleNotify('system', 'Marketing Asset Added', `Added ${a.name} to project strategy.`); };
-  const handleUpdateProjectMarketingAsset = async (a: any) => await projectStore.updateMarketingAsset(a);
-  const handleDeleteProjectMarketingAsset = async (id: string) => await projectStore.deleteMarketingAsset(id);
-  const handleArchiveProject = async (id: string) => {
+  }, [projectStore, showToast, addAuditLog]);
+  const handleAddProjectMember = useCallback(async (m: any) => await projectStore.addMember(m, user!), [projectStore, user]);
+  const handleRemoveProjectMember = useCallback(async (id: string) => await deleteDoc(doc(db, 'project_members', id)), []);
+  const handleAddProjectMilestone = useCallback(async (m: any) => await projectStore.addMilestone(m, user!.id), [projectStore, user]);
+  const handleUpdateProjectMilestone = useCallback(async (m: any) => await projectStore.updateMilestone(m, user!.id), [projectStore, user]);
+  const handleAddMilestone = useCallback(async (m: any) => await projectStore.addDynamicMilestone(m), [projectStore]);
+  const handleUpdateMilestone = useCallback(async (m: any) => await projectStore.updateDynamicMilestone(m), [projectStore]);
+  const handleAddProjectMarketingAsset = useCallback(async (a: any) => { await projectStore.addMarketingAsset(a); handleNotify('system', 'Marketing Asset Added', `Added ${a.name} to project strategy.`); }, [projectStore, handleNotify]);
+  const handleUpdateProjectMarketingAsset = useCallback(async (a: any) => await projectStore.updateMarketingAsset(a), [projectStore]);
+  const handleDeleteProjectMarketingAsset = useCallback(async (id: string) => await projectStore.deleteMarketingAsset(id), [projectStore]);
+  const handleArchiveProject = useCallback(async (id: string) => {
     await projectStore.archiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
-  };
-  const handleUnarchiveProject = async (id: string) => {
+  }, [projectStore, user, projects, folders, files, checkPermission, showToast]);
+  const handleUnarchiveProject = useCallback(async (id: string) => {
     await projectStore.unarchiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
-  };
+  }, [projectStore, user, projects, folders, files, checkPermission, showToast]);
 
   // Client handlers → delegates to store
-  const handleAddClient = async (c: any) => { await clientStore.addClient(c, (type, title, msg) => handleNotify(type as any, title, msg)); };
-  const handleUpdateClient = async (c: any) => await clientStore.updateClient(c);
-  const handleDeleteClient = async (id: string) => await clientStore.deleteClient(id, folders, user!.id, addAuditLog, showToast);
-  const handleAddSocialLink = async (l: any) => await clientStore.addSocialLink(l);
-  const handleUpdateSocialLink = async (l: any) => await clientStore.updateSocialLink(l);
-  const handleDeleteSocialLink = async (id: string) => await clientStore.deleteSocialLink(id);
-  const handleAddClientNote = async (n: any) => await clientStore.addNote(n);
-  const handleUpdateClientNote = async (n: any) => await clientStore.updateNote(n);
-  const handleDeleteClientNote = async (id: string) => await clientStore.deleteNote(id);
-  const handleAddClientMeeting = async (m: any) => { await clientStore.addMeeting(m, folders); handleNotify('system' as any, 'Meeting Scheduled', `Meeting "${m.title}" has been scheduled.`); };
-  const handleUpdateClientMeeting = async (m: any) => await clientStore.updateMeeting(m);
-  const handleDeleteClientMeeting = async (id: string) => await clientStore.deleteMeeting(id);
-  const handleAddBrandAsset = async (a: any) => await clientStore.addBrandAsset(a);
-  const handleUpdateBrandAsset = async (a: any) => await clientStore.updateBrandAsset(a);
-  const handleDeleteBrandAsset = async (id: string) => await clientStore.deleteBrandAsset(id);
-  const handleAddMonthlyReport = async (r: any) => await clientStore.addMonthlyReport(r);
-  const handleUpdateMonthlyReport = async (r: any) => await clientStore.updateMonthlyReport(r);
-  const handleDeleteMonthlyReport = async (id: string) => await clientStore.deleteMonthlyReport(id);
+  const handleAddClient = useCallback(async (c: any) => { await clientStore.addClient(c, (type, title, msg) => handleNotify(type as any, title, msg)); }, [clientStore, handleNotify]);
+  const handleUpdateClient = useCallback(async (c: any) => await clientStore.updateClient(c), [clientStore]);
+  const handleDeleteClient = useCallback(async (id: string) => await clientStore.deleteClient(id, folders, user!.id, addAuditLog, showToast), [clientStore, folders, user, addAuditLog, showToast]);
+  const handleAddSocialLink = useCallback(async (l: any) => await clientStore.addSocialLink(l), [clientStore]);
+  const handleUpdateSocialLink = useCallback(async (l: any) => await clientStore.updateSocialLink(l), [clientStore]);
+  const handleDeleteSocialLink = useCallback(async (id: string) => await clientStore.deleteSocialLink(id), [clientStore]);
+  const handleAddClientNote = useCallback(async (n: any) => await clientStore.addNote(n), [clientStore]);
+  const handleUpdateClientNote = useCallback(async (n: any) => await clientStore.updateNote(n), [clientStore]);
+  const handleDeleteClientNote = useCallback(async (id: string) => await clientStore.deleteNote(id), [clientStore]);
+  const handleAddClientMeeting = useCallback(async (m: any) => { await clientStore.addMeeting(m, folders); handleNotify('system' as any, 'Meeting Scheduled', `Meeting "${m.title}" has been scheduled.`); }, [clientStore, folders, handleNotify]);
+  const handleUpdateClientMeeting = useCallback(async (m: any) => await clientStore.updateMeeting(m), [clientStore]);
+  const handleDeleteClientMeeting = useCallback(async (id: string) => await clientStore.deleteMeeting(id), [clientStore]);
+  const handleAddBrandAsset = useCallback(async (a: any) => await clientStore.addBrandAsset(a), [clientStore]);
+  const handleUpdateBrandAsset = useCallback(async (a: any) => await clientStore.updateBrandAsset(a), [clientStore]);
+  const handleDeleteBrandAsset = useCallback(async (id: string) => await clientStore.deleteBrandAsset(id), [clientStore]);
+  const handleAddMonthlyReport = useCallback(async (r: any) => await clientStore.addMonthlyReport(r), [clientStore]);
+  const handleUpdateMonthlyReport = useCallback(async (r: any) => await clientStore.updateMonthlyReport(r), [clientStore]);
+  const handleDeleteMonthlyReport = useCallback(async (id: string) => await clientStore.deleteMonthlyReport(id), [clientStore]);
 
   // Finance handlers
-  const handleAddInvoice = async (inv: any) => await financeStore.addInvoice(inv);
-  const handleUpdateInvoice = async (inv: any) => await financeStore.updateInvoice(inv);
-  const handleAddQuotation = async (q: any) => await financeStore.addQuotation(q);
-  const handleUpdateQuotation = async (q: any) => await financeStore.updateQuotation(q);
-  const handleAddPayment = async (p: any) => { await financeStore.addPayment(p); handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${p.amount} recorded.`); };
-  const handleAddExpense = async (e: any) => await financeStore.addExpense(e, handleUpdateProject, projects);
+  const handleAddInvoice = useCallback(async (inv: any) => await financeStore.addInvoice(inv), [financeStore]);
+  const handleUpdateInvoice = useCallback(async (inv: any) => await financeStore.updateInvoice(inv), [financeStore]);
+  const handleAddQuotation = useCallback(async (q: any) => await financeStore.addQuotation(q), [financeStore]);
+  const handleUpdateQuotation = useCallback(async (q: any) => await financeStore.updateQuotation(q), [financeStore]);
+  const handleAddPayment = useCallback(async (p: any) => { await financeStore.addPayment(p); handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${p.amount} recorded.`); }, [financeStore, handleNotify]);
+  const handleAddExpense = useCallback(async (e: any) => await financeStore.addExpense(e, handleUpdateProject, projects), [financeStore, handleUpdateProject, projects]);
 
   // HR handlers
-  const handleAddUser = async (u: User) => await hrStore.addUser(u, addAuditLog);
-  const handleUpdateUser = async (u: User) => await hrStore.updateUser(u, addAuditLog);
-  const handleCreateEmployeeProfile = async (p: any) => await hrStore.createEmployeeProfile(p, addAuditLog);
-  const handleUpdateEmployeeProfile = async (p: any) => await hrStore.updateEmployeeProfile(p, user!.id, addAuditLog);
-  const handleAddLeaveRequest = async (r: any) => await hrStore.addLeaveRequest(r, addAuditLog, handleNotify);
-  const handleApproveLeaveRequest = async (r: any) => await hrStore.approveLeaveRequest(r, user!.id, addAuditLog, handleNotify);
-  const handleRejectLeaveRequest = async (r: any, reason: string) => await hrStore.rejectLeaveRequest(r, reason, user!.id, addAuditLog, handleNotify);
-  const handleCancelLeaveRequest = async (r: any) => await hrStore.cancelLeaveRequest(r, user!.id, addAuditLog);
-  const handleUpdateLeaveRequest = async (r: any) => await hrStore.updateLeaveRequest(r);
-  const handleDeleteLeaveRequest = async (id: string) => await hrStore.deleteLeaveRequest(id, addAuditLog);
-  const handleCheckIn = async () => { const msg = await hrStore.checkIn(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`); };
-  const handleCheckOut = async () => { const msg = await hrStore.checkOut(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked Out', 'Clock-out recorded.'); };
-  const handleSubmitAttendanceCorrection = async (c: any) => await hrStore.submitAttendanceCorrection(c, addAuditLog);
-  const handleApproveAttendanceCorrection = async (id: string) => await hrStore.approveAttendanceCorrection(id, user!.id, user!.name, addAuditLog, handleNotify);
-  const handleStartOnboarding = async (c: any) => await hrStore.startOnboarding(c, addAuditLog, handleNotify);
-  const handleCompleteOnboardingStep = async (cId: string, sId: string) => await hrStore.completeOnboardingStep(cId, sId, user!.id, addAuditLog);
-  const handleStartOffboarding = async (c: any) => await hrStore.startOffboarding(c, user!.id, addAuditLog, handleNotify);
-  const handleAssignEmployeeAsset = async (a: any) => await hrStore.assignEmployeeAsset(a, addAuditLog, handleNotify);
-  const handleReturnEmployeeAsset = async (id: string) => await hrStore.returnEmployeeAsset(id, addAuditLog);
-  const handleCreatePerformanceReview = async (r: any) => await hrStore.createPerformanceReview(r, addAuditLog);
-  const handleSubmitPerformanceReview = async (id: string) => await hrStore.submitPerformanceReview(id, addAuditLog, handleNotify);
-  const handleFinalizePerformanceReview = async (id: string) => await hrStore.finalizePerformanceReview(id, addAuditLog, handleNotify);
-  const handleUpdatePerformanceReview = async (r: any) => await hrStore.updatePerformanceReview(r);
+  const handleAddUser = useCallback(async (u: User) => await hrStore.addUser(u, addAuditLog), [hrStore, addAuditLog]);
+  const handleUpdateUser = useCallback(async (u: User) => await hrStore.updateUser(u, addAuditLog), [hrStore, addAuditLog]);
+  const handleCreateEmployeeProfile = useCallback(async (p: any) => await hrStore.createEmployeeProfile(p, addAuditLog), [hrStore, addAuditLog]);
+  const handleUpdateEmployeeProfile = useCallback(async (p: any) => await hrStore.updateEmployeeProfile(p, user!.id, addAuditLog), [hrStore, user, addAuditLog]);
+  const handleAddLeaveRequest = useCallback(async (r: any) => await hrStore.addLeaveRequest(r, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+  const handleApproveLeaveRequest = useCallback(async (r: any) => await hrStore.approveLeaveRequest(r, user!.id, addAuditLog, handleNotify), [hrStore, user, addAuditLog, handleNotify]);
+  const handleRejectLeaveRequest = useCallback(async (r: any, reason: string) => await hrStore.rejectLeaveRequest(r, reason, user!.id, addAuditLog, handleNotify), [hrStore, user, addAuditLog, handleNotify]);
+  const handleCancelLeaveRequest = useCallback(async (r: any) => await hrStore.cancelLeaveRequest(r, user!.id, addAuditLog), [hrStore, user, addAuditLog]);
+  const handleUpdateLeaveRequest = useCallback(async (r: any) => await hrStore.updateLeaveRequest(r), [hrStore]);
+  const handleDeleteLeaveRequest = useCallback(async (id: string) => await hrStore.deleteLeaveRequest(id, addAuditLog), [hrStore, addAuditLog]);
+  const handleCheckIn = useCallback(async () => { const msg = await hrStore.checkIn(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`); }, [hrStore, user, addAuditLog, handleNotify]);
+  const handleCheckOut = useCallback(async () => { const msg = await hrStore.checkOut(user!.id, user!.name, addAuditLog); if (msg) handleNotify('system', 'Info', msg); else handleNotify('system', 'Checked Out', 'Clock-out recorded.'); }, [hrStore, user, addAuditLog, handleNotify]);
+  const handleSubmitAttendanceCorrection = useCallback(async (c: any) => await hrStore.submitAttendanceCorrection(c, addAuditLog), [hrStore, addAuditLog]);
+  const handleApproveAttendanceCorrection = useCallback(async (id: string) => await hrStore.approveAttendanceCorrection(id, user!.id, user!.name, addAuditLog, handleNotify), [hrStore, user, addAuditLog, handleNotify]);
+  const handleStartOnboarding = useCallback(async (c: any) => await hrStore.startOnboarding(c, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+  const handleCompleteOnboardingStep = useCallback(async (cId: string, sId: string) => await hrStore.completeOnboardingStep(cId, sId, user!.id, addAuditLog), [hrStore, user, addAuditLog]);
+  const handleStartOffboarding = useCallback(async (c: any) => await hrStore.startOffboarding(c, user!.id, addAuditLog, handleNotify), [hrStore, user, addAuditLog, handleNotify]);
+  const handleAssignEmployeeAsset = useCallback(async (a: any) => await hrStore.assignEmployeeAsset(a, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+  const handleReturnEmployeeAsset = useCallback(async (id: string) => await hrStore.returnEmployeeAsset(id, addAuditLog), [hrStore, addAuditLog]);
+  const handleCreatePerformanceReview = useCallback(async (r: any) => await hrStore.createPerformanceReview(r, addAuditLog), [hrStore, addAuditLog]);
+  const handleSubmitPerformanceReview = useCallback(async (id: string) => await hrStore.submitPerformanceReview(id, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+  const handleFinalizePerformanceReview = useCallback(async (id: string) => await hrStore.finalizePerformanceReview(id, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+  const handleUpdatePerformanceReview = useCallback(async (r: any) => await hrStore.updatePerformanceReview(r), [hrStore]);
 
   // Network handlers
-  const handleAddVendor = async (v: any) => await networkStore.addVendor(v);
-  const handleUpdateVendor = async (v: any) => await networkStore.updateVendor(v);
-  const handleAddFreelancer = async (f: any) => await networkStore.addFreelancer(f);
-  const handleUpdateFreelancer = async (f: any) => await networkStore.updateFreelancer(f);
-  const handleAddFreelancerAssignment = async (a: any) => await networkStore.addFreelancerAssignment(a);
-  const handleRemoveFreelancerAssignment = async (id: string) => await networkStore.removeFreelancerAssignment(id);
+  const handleAddVendor = useCallback(async (v: any) => await networkStore.addVendor(v), [networkStore]);
+  const handleUpdateVendor = useCallback(async (v: any) => await networkStore.updateVendor(v), [networkStore]);
+  const handleAddFreelancer = useCallback(async (f: any) => await networkStore.addFreelancer(f), [networkStore]);
+  const handleUpdateFreelancer = useCallback(async (f: any) => await networkStore.updateFreelancer(f), [networkStore]);
+  const handleAddFreelancerAssignment = useCallback(async (a: any) => await networkStore.addFreelancerAssignment(a), [networkStore]);
+  const handleRemoveFreelancerAssignment = useCallback(async (id: string) => await networkStore.removeFreelancerAssignment(id), [networkStore]);
 
   // Production handlers
-  const handleAddShotList = async (sl: any) => await productionStore.addShotList(sl);
-  const handleAddCallSheet = async (cs: any) => { await productionStore.addCallSheet(cs); handleNotify('production_update', 'Call Sheet Published', `Call sheet for ${cs.date} is now available.`); };
-  const handleAddLocation = async (loc: any) => await productionStore.addLocation(loc);
-  const handleAddEquipment = async (eq: any) => await productionStore.addEquipment(eq);
-  const handleUpdateEquipment = async (eq: any) => await productionStore.updateEquipment(eq);
+  const handleAddShotList = useCallback(async (sl: any) => await productionStore.addShotList(sl), [productionStore]);
+  const handleAddCallSheet = useCallback(async (cs: any) => { await productionStore.addCallSheet(cs); handleNotify('production_update', 'Call Sheet Published', `Call sheet for ${cs.date} is now available.`); }, [productionStore, handleNotify]);
+  const handleAddLocation = useCallback(async (loc: any) => await productionStore.addLocation(loc), [productionStore]);
+  const handleAddEquipment = useCallback(async (eq: any) => await productionStore.addEquipment(eq), [productionStore]);
+  const handleUpdateEquipment = useCallback(async (eq: any) => await productionStore.updateEquipment(eq), [productionStore]);
 
   // Social/Posting handlers
-  const handleAddSocialPost = async (p: any) => await postingStore.addPost(p);
-  const handleUpdateSocialPost = async (p: any) => { await postingStore.updatePost(p); handleNotify('system', 'Post Updated', `Social post "${p.title}" updated.`); };
+  const handleAddSocialPost = useCallback(async (p: any) => await postingStore.addPost(p), [postingStore]);
+  const handleUpdateSocialPost = useCallback(async (p: any) => { await postingStore.updatePost(p); handleNotify('system', 'Post Updated', `Social post "${p.title}" updated.`); }, [postingStore, handleNotify]);
 
   // Notification handlers
-  const handleMarkNotificationRead = async (id: string) => await notifStore.markAsRead(id);
-  const handleMarkAllNotificationsRead = async () => { if (user) await notifStore.markAllAsRead(user.id); };
-  const handleDeleteNotification = async (id: string) => await notifStore.deleteNotification(id);
-  const handleUpdatePreferences = async (p: NotificationPreference) => { await notifStore.updatePreferences(p); };
-  const handleManualNotificationSend = async (payload: any) => {
+  const handleMarkNotificationRead = useCallback(async (id: string) => await notifStore.markAsRead(id), [notifStore]);
+  const handleMarkAllNotificationsRead = useCallback(async () => { if (user) await notifStore.markAllAsRead(user.id); }, [notifStore, user]);
+  const handleDeleteNotification = useCallback(async (id: string) => await notifStore.deleteNotification(id), [notifStore]);
+  const handleUpdatePreferences = useCallback(async (p: NotificationPreference) => { await notifStore.updatePreferences(p); }, [notifStore]);
+  const handleManualNotificationSend = useCallback(async (payload: any) => {
     const result = await notifStore.sendManualNotification(payload, activeUsers, projectStore.projectMembers, user?.id || 'system');
     showToast({ title: 'Notification queued', message: `Sent to ${result.recipientCount} recipient(s).` });
-  };
+  }, [notifStore, activeUsers, projectStore.projectMembers, user?.id, showToast]);
 
   // Admin handlers
-  const handleUpdateRole = async (r: any) => { await adminStore.updateRole(r, user!.id); };
-  const handleAddRole = async (r: any) => { await adminStore.addRole(r, user!.id); };
-  const handleDeleteRole = async (id: string) => { await adminStore.deleteRole(id, user!.id); };
-  const handleSyncRoles = async () => { await adminStore.syncRoles(); showToast({ title: 'Success', message: 'System roles synchronized.' }); };
-  const handleUpdateWorkflow = async (wf: any) => { await adminStore.updateWorkflow(wf); showToast({ title: 'Success', message: 'Workflow updated.' }); };
-  const handleAddWorkflow = async (wf: any) => { await adminStore.addWorkflow(wf); showToast({ title: 'Success', message: 'Workflow created.' }); };
-  const handleDeleteWorkflow = async (id: string) => { await adminStore.deleteWorkflow(id); showToast({ title: 'Success', message: 'Workflow deleted.' }); };
-  const handleAddDepartment = async (d: any) => { await adminStore.addDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" created.` }); };
-  const handleUpdateDepartment = async (d: any) => { await adminStore.updateDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" updated.` }); };
-  const handleDeleteDepartment = async (id: string) => { await adminStore.deleteDepartment(id, user!.id); showToast({ title: 'Success', message: 'Department deleted.' }); };
-  const handleSaveBanner = async (b: any) => { await adminStore.saveBanner(b, user!.id); showToast({ title: 'Success', message: 'Banner saved.' }); };
-  const handleDeleteBanner = async () => { await adminStore.deleteBanner(user!.id); showToast({ title: 'Success', message: 'Banner deleted.' }); };
+  const handleUpdateRole = useCallback(async (r: any) => { await adminStore.updateRole(r, user!.id); }, [adminStore, user]);
+  const handleAddRole = useCallback(async (r: any) => { await adminStore.addRole(r, user!.id); }, [adminStore, user]);
+  const handleDeleteRole = useCallback(async (id: string) => { await adminStore.deleteRole(id, user!.id); }, [adminStore, user]);
+  const handleSyncRoles = useCallback(async () => { await adminStore.syncRoles(); showToast({ title: 'Success', message: 'System roles synchronized.' }); }, [adminStore, showToast]);
+  const handleUpdateWorkflow = useCallback(async (wf: any) => { await adminStore.updateWorkflow(wf); showToast({ title: 'Success', message: 'Workflow updated.' }); }, [adminStore, showToast]);
+  const handleAddWorkflow = useCallback(async (wf: any) => { await adminStore.addWorkflow(wf); showToast({ title: 'Success', message: 'Workflow created.' }); }, [adminStore, showToast]);
+  const handleDeleteWorkflow = useCallback(async (id: string) => { await adminStore.deleteWorkflow(id); showToast({ title: 'Success', message: 'Workflow deleted.' }); }, [adminStore, showToast]);
+  const handleAddDepartment = useCallback(async (d: any) => { await adminStore.addDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" created.` }); }, [adminStore, user, showToast]);
+  const handleUpdateDepartment = useCallback(async (d: any) => { await adminStore.updateDepartment(d, user!.id); showToast({ title: 'Success', message: `Department "${d.name}" updated.` }); }, [adminStore, user, showToast]);
+  const handleDeleteDepartment = useCallback(async (id: string) => { await adminStore.deleteDepartment(id, user!.id); showToast({ title: 'Success', message: 'Department deleted.' }); }, [adminStore, user, showToast]);
+  const handleSaveBanner = useCallback(async (b: any) => { await adminStore.saveBanner(b, user!.id); showToast({ title: 'Success', message: 'Banner saved.' }); }, [adminStore, user, showToast]);
+  const handleDeleteBanner = useCallback(async () => { await adminStore.deleteBanner(user!.id); showToast({ title: 'Success', message: 'Banner deleted.' }); }, [adminStore, user, showToast]);
 
   // Notes handlers
-  const handleAddNote = async (n: any) => { await notesStore.addNote(n); showToast({ title: 'Note Created', message: 'Note added successfully.' }); };
-  const handleUpdateNote = async (n: any) => { await notesStore.updateNote(n); showToast({ title: 'Note Updated', message: 'Note updated successfully.' }); };
-  const handleDeleteNote = async (id: string) => { await notesStore.deleteNote(id); showToast({ title: 'Note Deleted', message: 'Note deleted.' }); };
+  const handleAddNote = useCallback(async (n: any) => { await notesStore.addNote(n); showToast({ title: 'Note Created', message: 'Note added successfully.' }); }, [notesStore, showToast]);
+  const handleUpdateNote = useCallback(async (n: any) => { await notesStore.updateNote(n); showToast({ title: 'Note Updated', message: 'Note updated successfully.' }); }, [notesStore, showToast]);
+  const handleDeleteNote = useCallback(async (id: string) => { await notesStore.deleteNote(id); showToast({ title: 'Note Deleted', message: 'Note deleted.' }); }, [notesStore, showToast]);
 
   // Task approval handlers → delegates to store
-  const handleAddTaskComment = async (c: any) => await taskStore.addComment(c);
-  const handleAddTaskTimeLog = async (l: any) => await taskStore.addTimeLog(l);
-  const handleAddTaskDependency = async (d: any) => await taskStore.addDependency(d);
-  const handleUpdateApprovalStep = async (s: any) => await taskStore.updateApprovalStep(s);
-  const handleAddApprovalSteps = async (s: any) => await taskStore.addApprovalSteps(s);
-  const handleUpdateClientApproval = async (ca: any) => await taskStore.updateClientApproval(ca);
-  const handleAddClientApproval = async (ca: any) => await taskStore.addClientApproval(ca);
+  const handleAddTaskComment = useCallback(async (c: any) => await taskStore.addComment(c), [taskStore]);
+  const handleAddTaskTimeLog = useCallback(async (l: any) => await taskStore.addTimeLog(l), [taskStore]);
+  const handleAddTaskDependency = useCallback(async (d: any) => await taskStore.addDependency(d), [taskStore]);
+  const handleUpdateApprovalStep = useCallback(async (s: any) => await taskStore.updateApprovalStep(s), [taskStore]);
+  const handleAddApprovalSteps = useCallback(async (s: any) => await taskStore.addApprovalSteps(s), [taskStore]);
+  const handleUpdateClientApproval = useCallback(async (ca: any) => await taskStore.updateClientApproval(ca), [taskStore]);
+  const handleAddClientApproval = useCallback(async (ca: any) => await taskStore.addClientApproval(ca), [taskStore]);
 
-  const handleEnablePushNotifications = async () => {
+  const handleEnablePushNotifications = useCallback(async () => {
     try {
       await requestPermissionAndRegister();
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') setHidePushPrompt(true);
     } catch { /* swallow */ }
-  };
+  }, [requestPermissionAndRegister, setHidePushPrompt]);
 
-  // ─── Permission-filtered data ─────────────
-  const getVisibleTasks = () => {
+  // ─── Permission-filtered data (memoized) ───
+  const getVisibleTasks = useCallback(() => {
     if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
     return activeTasks.filter(t => {
       const assignees = t.assigneeIds;
       const isAssigned = Array.isArray(assignees) && assignees.includes(user?.id || '');
       return isAssigned || t.createdBy === user?.id;
     });
-  };
+  }, [checkPermission, activeTasks, user?.id]);
 
-  const getVisibleProjects = () => {
+  const getVisibleProjects = useCallback(() => {
     if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return projects;
     return projects.filter(p =>
       projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === user?.id) ||
       p.accountManagerId === user?.id || p.projectManagerId === user?.id ||
       activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(user?.id || ''))
     );
-  };
+  }, [checkPermission, projects, projectStore.projectMembers, user?.id, activeTasks]);
 
-  // ─── Global Task Detail helpers ───────────
-  const globalSelectedTask = activeTasks.find(t => t.id === targetTaskId) || null;
+  // ─── Global Task Detail helpers (memoized) ───
+  const globalSelectedTask = useMemo(() => activeTasks.find(t => t.id === targetTaskId) || null, [activeTasks, targetTaskId]);
 
-  const globalGetStatusColor = (s: TaskStatus): string => {
+  const globalGetStatusColor = useCallback((s: TaskStatus): string => {
     const colors: Record<string, string> = {
       'new': 'bg-white/5 text-slate-100 border-[color:var(--dash-glass-border)]',
       'assigned': 'bg-blue-500/10 text-blue-100 border-blue-500/25',
@@ -500,9 +500,9 @@ const App: React.FC = () => {
       'archived': 'bg-slate-800/60 text-slate-300 border-[color:var(--dash-glass-border)]',
     };
     return colors[s] || colors['new'];
-  };
+  }, []);
 
-  const globalResolveApprover = (step: any, task: Task): string | null => {
+  const globalResolveApprover = useCallback((step: any, task: Task): string | null => {
     if (step.specificUserId) return step.specificUserId;
     if (step.projectRoleKey) {
       const member = projectStore.projectMembers.find((pm: ProjectMember) => pm.projectId === task.projectId && pm.roleInProject === step.projectRoleKey);
@@ -520,7 +520,7 @@ const App: React.FC = () => {
       }
     }
     return null;
-  };
+  }, [projectStore.projectMembers, systemRoles, activeUsers]);
 
   // ─── RENDER ───────────────────────────────
   return (

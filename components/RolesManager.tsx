@@ -3,6 +3,7 @@ import { RoleDefinition } from '../types';
 import { PERMISSIONS_LIST } from '../constants';
 import { DANGEROUS_PERMISSIONS, validatePermissionSet } from '../lib/permissions';
 import { Plus, Trash2, Search, Copy, Shield, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
+import { prefixedId } from '../utils/id';
 
 interface RolesManagerProps {
   roles: RoleDefinition[];
@@ -71,7 +72,7 @@ const RolesManager: React.FC<RolesManagerProps> = ({ roles, onAddRole, onUpdateR
             if (sourceRole) basePerms = [...(sourceRole.permissions || [])];
         }
         const newRole: RoleDefinition = {
-            id: `role_${Date.now()}`,
+            id: prefixedId('role'),
             name: newRoleName,
             description: newRoleDesc,
             permissions: basePerms,

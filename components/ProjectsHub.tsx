@@ -13,6 +13,7 @@ import TaskPlanningModal from './TaskPlanningModal';
 import Modal from './common/Modal';
 import DropdownMenu from './common/DropdownMenu';
 import { useAuth } from '../contexts/AuthContext';
+import { prefixedId, uid } from '../utils/id';
 import { PERMISSIONS } from '../lib/permissions';
 
 interface ProjectsHubProps {
@@ -255,7 +256,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         }
 
         const approvalStep: ApprovalStep = {
-          id: `as_${taskId}_${index}_${Date.now()}`,
+          id: `as_${taskId}_${index}_${uid()}`,
           taskId: taskId,
           milestoneId: null, // Will be set later if needed
           approverId: approverId,
@@ -282,7 +283,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     const selectedMonth = calendarMonths.find(m => m.id === formCalendarMonthId);
 
     const newProject: Project = {
-      id: `p${Date.now()}`,
+      id: prefixedId('p'),
       clientId: formClientId,
       client: client.name, // denormalized for ease
       name: formName,
@@ -298,7 +299,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       brief: formBrief,
       objectives: '',
       notes: '',
-      thumbnail: `https://picsum.photos/seed/${Date.now()}/400/300`,
+      thumbnail: `https://picsum.photos/seed/${uid()}/400/300`,
       // Smart Project Creation Fields - only include if calendar is selected
       ...(selectedMonth?.monthKey && { monthKey: selectedMonth.monthKey }),
       ...(formCalendarMonthId && { calendarMonthId: formCalendarMonthId }),
@@ -339,7 +340,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             const userObj = users.find(u => u.id === userId);
             console.log(`Creating member ${index + 1}:`, { userId, userName: userObj?.name, role: userObj?.role });
             const projectMember: ProjectMember = {
-              id: `pm_${newProject.id}_${userId}_${Date.now() + index}`,
+              id: `pm_${newProject.id}_${userId}_${uid()}`,
               projectId: newProject.id,
               userId: userId,
               roleInProject: userObj?.role || 'Team Member',
@@ -374,7 +375,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         
         if (contentCounts.VIDEO > 0) {
           const milestone: Milestone = {
-            id: `m${Date.now()}_video`,
+            id: prefixedId('m_video'),
             projectId: newProject.id,
             title: 'Video Production',
             type: 'VIDEO',
@@ -389,7 +390,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
         if (contentCounts.PHOTO > 0) {
           const milestone: Milestone = {
-            id: `m${Date.now()}_photo`,
+            id: prefixedId('m_photo'),
             projectId: newProject.id,
             title: 'Design / Photography',
             type: 'PHOTO',
@@ -404,7 +405,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
 
         if (contentCounts.MOTION > 0) {
           const milestone: Milestone = {
-            id: `m${Date.now()}_motion`,
+            id: prefixedId('m_motion'),
             projectId: newProject.id,
             title: 'Motion Design',
             type: 'MOTION',
@@ -421,7 +422,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
         const hasPublishDates = selectedMonthItems.some(item => item.publishAt);
         if (hasPublishDates) {
           const milestone: Milestone = {
-            id: `m${Date.now()}_posting`,
+            id: prefixedId('m_posting'),
             projectId: newProject.id,
             title: 'Posting & Captions',
             type: 'POSTING',
@@ -475,7 +476,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           });
 
           const taskReferenceLinks = (item.referenceLinks || []).map((link, idx) => ({
-            id: `rl_${item.id}_${idx}_${Date.now()}`,
+            id: `rl_${item.id}_${idx}_${uid()}`,
             title: link.title,
             url: link.url,
             note: '',
@@ -484,7 +485,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           }));
 
           const taskReferenceImages = (item.referenceFiles || []).map((file, idx) => ({
-            id: `ri_${item.id}_${idx}_${Date.now()}`,
+            id: `ri_${item.id}_${idx}_${uid()}`,
             title: file.fileName,
             fileName: file.fileName,
             fileType: file.fileName.split('.').pop() || 'unknown',
@@ -499,7 +500,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
           console.log(`   ✅ Mapped to task: ${taskReferenceLinks.length} links, ${taskReferenceImages.length} files`);
 
           const task: Task = {
-            id: `t${Date.now()}_${item.id}`,
+            id: `t_${uid()}_${item.id}`,
             projectId: newProject.id,
             title: item.autoName,
             description: item.primaryBrief || null,
@@ -1547,7 +1548,7 @@ const OverviewTab = ({ project, milestones, dynamicMilestones, calendarMonths, c
 
     // Handle File Upload if needed
     if (assetType === 'file' && uploadMode === 'upload' && selectedFile) {
-      const newFileId = `f${Date.now()}`;
+      const newFileId = prefixedId('f');
       const newFile: AgencyFile = {
         id: newFileId,
         projectId: project.id,
@@ -1572,7 +1573,7 @@ const OverviewTab = ({ project, milestones, dynamicMilestones, calendarMonths, c
     }
 
     const asset: ProjectMarketingAsset = {
-      id: editingAsset ? editingAsset.id : `pma${Date.now()}`,
+      id: editingAsset ? editingAsset.id : prefixedId('pma'),
       projectId: project.id,
       name: assetName,
       category: assetCategory,
@@ -2160,7 +2161,7 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
       if (exists) return;
 
       onAddMember({
-        id: `pm_${project.id}_${userId}_${Date.now() + index}`,
+        id: `pm_${project.id}_${userId}_${uid()}`,
         projectId: project.id,
         userId: userId,
         roleInProject: role,
@@ -2180,7 +2181,7 @@ const TeamTab = ({ project, members, users, freelancers, assignments, onAddMembe
     if (!freelancer) return;
 
     onAddFreelancerAssignment({
-      id: `fa-${Date.now()}`,
+      id: prefixedId('fa'),
       projectId: project.id,
       freelancerId: selectedFreelancer,
       role: freelancerRole,
@@ -2471,7 +2472,7 @@ const MilestonesTab = ({ project, milestones, dynamicMilestones, users, tasks, a
     const targetCount = targetTaskCount ? parseInt(targetTaskCount) : null;
 
     const milestone: ProjectMilestone = {
-      id: editingId || `ms${Date.now()}`,
+      id: editingId || prefixedId('ms'),
       projectId: project.id,
       name,
       description,

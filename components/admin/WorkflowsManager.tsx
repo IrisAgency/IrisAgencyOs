@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { WorkflowTemplate, WorkflowStepTemplate, RoleDefinition, Department, User } from '../../types';
 import { Plus, GitBranch, CheckCircle, Lock, Edit2, Trash2, X, Activity, ArrowUp, ArrowDown, ShieldCheck } from 'lucide-react';
 import Modal from '../common/Modal';
+import { prefixedId } from '../../utils/id';
 
 interface WorkflowsManagerProps {
     workflowTemplates: WorkflowTemplate[];
@@ -30,7 +31,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
 
     const handleCreate = () => {
         setEditingWorkflow({
-            id: `wf${Date.now()}`,
+            id: prefixedId('wf'),
             name: 'New Workflow',
             description: '',
             departmentId: null,
@@ -66,7 +67,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
         if (!editingWorkflow) return;
         const defaultRoleId = roles.length > 0 ? roles[0].id : '';
         const newStep: WorkflowStepTemplate = {
-            id: `s${Date.now()}`,
+            id: prefixedId('s'),
             workflowTemplateId: editingWorkflow.id,
             order: editingWorkflow.steps.length,
             label: 'New Approval Step',

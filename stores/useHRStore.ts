@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import { doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import type {
   User, EmployeeProfile, LeaveRequest, LeavePolicy, LeaveBalance,
@@ -290,7 +291,7 @@ export const useHRStore = create<HRState>((set, get) => ({
     const profile = get().employeeProfiles.find(p => p.userId === checklist.employeeId);
     if (profile) {
       const statusChange: EmployeeStatusChange = {
-        id: `esc_${Date.now()}`, employeeId: checklist.employeeId,
+        id: prefixedId('esc'), employeeId: checklist.employeeId,
         fromStatus: profile.employmentStatus,
         toStatus: checklist.reason === 'termination' ? 'terminated' : 'resigned',
         reason: checklist.reason || 'offboarding',

@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import { doc, setDoc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import { DEFAULT_ROLES } from '../constants';
 import type {
@@ -77,7 +78,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
   addAuditLog: async (userId, action, entityType, entityId, description) => {
     const newLog: AuditLog = {
-      id: `audit${Date.now()}`, userId, action, entityType, entityId, description,
+      id: prefixedId('audit'), userId, action, entityType, entityId, description,
       createdAt: new Date().toISOString(),
     };
     await setDoc(doc(db, 'audit_logs', newLog.id), newLog);

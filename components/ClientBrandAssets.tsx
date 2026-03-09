@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ClientBrandAsset, User, AgencyFile } from '../types';
 import { Plus, Edit2, Trash2, ExternalLink, FileText, Image as ImageIcon, Type, Palette, Book, Layout, MoreHorizontal, X, Upload, Link as LinkIcon, Eye } from 'lucide-react';
 import { PERMISSIONS } from '../lib/permissions';
+import { prefixedId } from '../utils/id';
 
 interface ClientBrandAssetsProps {
   clientId: string;
@@ -295,7 +296,7 @@ const AssetModal: React.FC<{
 
     try {
       if (formData.type === 'file' && selectedFile && onUploadFile) {
-          const newFileId = `f${Date.now()}`;
+          const newFileId = prefixedId('f');
           const newFile: AgencyFile = {
               id: newFileId,
               projectId: clientId, // Use clientId as projectId for brand assets
@@ -319,7 +320,7 @@ const AssetModal: React.FC<{
       }
 
       const newAsset: ClientBrandAsset = {
-        id: asset?.id || `ba_${Date.now()}`,
+        id: asset?.id || prefixedId('ba'),
         clientId,
         name: formData.name || 'Untitled Asset',
         category: formData.category as any,

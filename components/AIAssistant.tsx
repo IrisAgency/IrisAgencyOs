@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { generateCreativeContent } from '../services/geminiService';
 import { X, Send, Sparkles, Loader, User, Bot } from 'lucide-react';
+import { uid } from '../utils/id';
 
 interface AIAssistantProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
     if (!input.trim() || loading) return;
 
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: uid(),
       sender: 'user',
       text: input,
       timestamp: new Date()
@@ -59,7 +60,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ isOpen, onClose }) => {
     const responseText = await generateCreativeContent(userMsg.text, context);
 
     const aiMsg: Message = {
-      id: (Date.now() + 1).toString(),
+      id: uid(),
       sender: 'ai',
       text: responseText,
       timestamp: new Date()

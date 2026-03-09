@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { USERS } from '../constants';
 import { TaskStatus, Task, Priority, Department } from '../types';
 import { Plus, Filter, MoreHorizontal, Calendar, X, ChevronRight, Check, Trash2 } from 'lucide-react';
+import { uid } from '../utils/id';
 
 interface TaskBoardProps {
   tasks: Task[];
@@ -41,7 +42,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     const newTask: Task = {
-      id: Date.now().toString(),
+      id: uid(),
       title,
       client,
       description,
