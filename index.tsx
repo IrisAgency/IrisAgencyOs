@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { BrandingProvider } from './contexts/BrandingContext';
@@ -18,16 +19,18 @@ const isPublicPresentation = window.location.pathname.startsWith('/presentation/
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    {isPublicPresentation ? (
-      <PublicPresentationPage />
-    ) : (
-      <ErrorBoundary>
-        <AuthProvider>
-          <BrandingProvider>
-            <App />
-          </BrandingProvider>
-        </AuthProvider>
-      </ErrorBoundary>
-    )}
+    <BrowserRouter>
+      {isPublicPresentation ? (
+        <PublicPresentationPage />
+      ) : (
+        <ErrorBoundary>
+          <AuthProvider>
+            <BrandingProvider>
+              <App />
+            </BrandingProvider>
+          </AuthProvider>
+        </ErrorBoundary>
+      )}
+    </BrowserRouter>
   </React.StrictMode>
 );
