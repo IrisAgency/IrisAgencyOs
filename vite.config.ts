@@ -106,10 +106,9 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-    },
+    // Gemini API key is now server-side only (Cloud Function proxy)
+    // No need to expose it in the client bundle
+    define: {},
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

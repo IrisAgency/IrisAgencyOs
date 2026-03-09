@@ -116,23 +116,29 @@ exports.processOutbox = functions.firestore
 
 async function fetchTokens(targets) {
   if (Array.isArray(targets) && targets.length) {
-    const slice = targets.slice(0, 10); // Firestore `in` max 10
-    const tokenDocs = await admin
-      .firestore()
-      .collection(TOKEN_COLLECTION)
-      .where('userId', 'in', slice)
-      .get();
-    if (!tokenDocs.empty) {
-      return tokenDocs.docs.map((d) => d.data()?.token).filter(Boolean);
+    // Batch targets into groups of 10 (Firestore `in` query limit)
+    const allTokens = [];
+    for (let i = 0; i < targets.length; i += 10) {
+      const slice = targets.slice(i, i + 10);
+      const tokenDocs = await admin
+        .firestore()
+        .collection(TOKEN_COLLECTION)
+        .where('userId', 'in', slice)
+        .get();
+      
+      if (!tokenDocs.empty) {
+        allTokens.push(...tokenDocs.docs.map((d) => d.data()?.token).filter(Boolean));
+      } else {
+        // fallback to uid field if present
+        const tokenDocsUid = await admin
+          .firestore()
+          .collection(TOKEN_COLLECTION)
+          .where('uid', 'in', slice)
+          .get();
+        allTokens.push(...tokenDocsUid.docs.map((d) => d.data()?.token).filter(Boolean));
+      }
     }
-
-    // fallback to uid field if present
-    const tokenDocsUid = await admin
-      .firestore()
-      .collection(TOKEN_COLLECTION)
-      .where('uid', 'in', slice)
-      .get();
-    return tokenDocsUid.docs.map((d) => d.data()?.token).filter(Boolean);
+    return allTokens;
   }
 
   const snapshot = await admin.firestore().collection(TOKEN_COLLECTION).get();
@@ -214,5 +220,62 @@ exports.fetchLinkPreview = functions.https.onCall(async (data) => {
   } catch (err) {
     functions.logger.error('fetchLinkPreview error:', err.message || err);
     throw new functions.https.HttpsError('internal', 'Failed to fetch link preview');
+  }
+});
+
+// ──────────────────────────────────────────────────────
+// Gemini AI Proxy — keeps API key server-side only
+// ──────────────────────────────────────────────────────
+
+/**
+ * Proxies Gemini AI requests so the API key never reaches the client.
+ * Callable: { prompt: string, context?: string } → { text: string }
+ * Requires: GEMINI_API_KEY set via `firebase functions:config:set gemini.api_key="YOUR_KEY"`
+ *           or as a Cloud Functions environment variable.
+ */
+exports.generateContent = functions.https.onCall(async (data) => {
+  // Validate the caller is authenticated
+  const authContext = data?.auth || data?.rawRequest?.auth;
+  // Note: Firebase callable functions automatically reject unauthenticated calls
+  // when using the client SDK's httpsCallable with auth
+
+  const prompt = data?.prompt || data?.data?.prompt;
+  const context = data?.context || data?.data?.context || '';
+
+  if (!prompt || typeof prompt !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing or invalid prompt parameter');
+  }
+
+  // Get API key from environment config
+  const apiKey = functions.config().gemini?.api_key || process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    functions.logger.error('Gemini API key not configured. Set it with: firebase functions:config:set gemini.api_key="YOUR_KEY"');
+    throw new functions.https.HttpsError('internal', 'AI service not configured');
+  }
+
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+    const fullPrompt = `
+      You are an expert Creative Assistant for IRIS, a high-end marketing and production agency.
+      Your tone should be professional, creative, and insightful.
+      
+      Context: ${context}
+      
+      Task: ${prompt}
+      
+      Provide a concise and actionable response.
+    `;
+
+    const result = await model.generateContent(fullPrompt);
+    const response = await result.response;
+    const text = response.text() || 'No response generated.';
+
+    return { text };
+  } catch (err) {
+    functions.logger.error('Gemini API error:', err.message || err);
+    throw new functions.https.HttpsError('internal', 'Failed to generate content');
   }
 });

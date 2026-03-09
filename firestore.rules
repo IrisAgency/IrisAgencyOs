@@ -113,8 +113,8 @@ service cloud.firestore {
     // Notification outbox — for Cloud Function processing
     match /notifications_outbox/{docId} {
       allow create: if isAuthenticated();
-      // Cloud Functions use Admin SDK (bypasses rules), but keep read for debugging
-      allow read: if isAuthenticated();
+      // Cloud Functions use Admin SDK (bypasses rules). Only admins can read for debugging.
+      allow read: if isAdmin();
       // Only admin/system should clean up outbox
       allow delete: if isAdmin();
     }
@@ -130,48 +130,68 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────────
-    //  BUSINESS DATA — authenticated access
-    //  Permission-level enforcement is handled in the
-    //  application layer via can() / PermissionGate.
-    //  Firestore rules enforce authentication + basic
-    //  ownership where applicable.
+    //  BUSINESS DATA — permission-enforced access
+    //  Firestore rules now mirror the application-layer
+    //  RBAC via hasPermission() for write operations.
+    //  Read is auth-gated; write requires specific permissions.
     // ──────────────────────────────────────────────────
 
     // Client data collections
     match /clients/{clientId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('clients.create');
+      allow update: if isAuthenticated() && hasPermission('clients.edit');
+      allow delete: if isAuthenticated() && hasPermission('clients.delete');
     }
     match /client_strategies/{strategyId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('clients.edit');
     }
     match /client_monthly_reports/{reportId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('clients.edit');
     }
     match /client_brand_assets/{assetId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('clients.edit');
     }
     match /client_meetings/{meetingId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('clients.edit');
+      allow update: if isAuthenticated() && hasPermission('clients.edit');
+      allow delete: if isAuthenticated() && hasPermission('clients.delete');
     }
     match /client_notes/{noteId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && hasPermission('clients.delete');
     }
     match /client_social_links/{linkId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('clients.edit');
     }
     match /client_approvals/{approvalId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // Project collections
     match /projects/{projectId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('projects.create');
+      allow update: if isAuthenticated() && hasPermission('projects.edit');
+      allow delete: if isAuthenticated() && hasPermission('projects.delete');
     }
     match /project_members/{memberId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('projects.edit');
     }
     match /project_milestones/{milestoneId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('projects.edit');
     }
     match /project_activity_logs/{logId} {
       allow read: if isAuthenticated();
@@ -179,15 +199,22 @@ service cloud.firestore {
       allow update, delete: if false; // Activity logs are immutable
     }
     match /project_marketing_assets/{assetId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('projects.edit');
     }
 
     // Task collections
     match /tasks/{taskId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('tasks.create');
+      allow update: if isAuthenticated() && hasPermission('tasks.edit');
+      allow delete: if isAuthenticated() && hasPermission('tasks.delete');
     }
     match /task_comments/{commentId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
     match /task_activity_logs/{logId} {
       allow read: if isAuthenticated();
@@ -195,21 +222,32 @@ service cloud.firestore {
       allow update, delete: if false; // Activity logs are immutable
     }
     match /task_dependencies/{depId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('tasks.edit');
     }
     match /task_time_logs/{logId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAuthenticated() && hasPermission('tasks.delete');
     }
     match /task_qc_reviews/{reviewId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // Calendar collections
     match /calendar_items/{itemId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('calendar.items.create');
+      allow update: if isAuthenticated() && hasPermission('calendar.items.edit');
+      allow delete: if isAuthenticated() && hasPermission('calendar.items.delete');
     }
     match /calendar_months/{monthId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('calendar.months.edit');
     }
     match /calendar_item_revisions/{revisionId} {
       allow read: if isAuthenticated();
@@ -219,30 +257,44 @@ service cloud.firestore {
 
     // Creative direction collections
     match /creative_projects/{projectId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('creative.manage');
+      allow update: if isAuthenticated() && hasPermission('creative.manage');
+      allow delete: if isAuthenticated() && hasPermission('creative.manage');
     }
     match /creative_calendars/{calendarId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('creative.manage');
     }
     match /creative_calendar_items/{itemId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('creative.manage');
     }
 
     // Production collections
     match /production_plans/{planId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('production.create');
+      allow update: if isAuthenticated() && hasPermission('production.edit');
+      allow delete: if isAuthenticated() && hasPermission('production.delete');
     }
     match /production_assignments/{assignmentId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('production.edit');
     }
     match /production_assets/{assetId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('production.create');
+      allow update: if isAuthenticated() && hasPermission('production.edit');
+      allow delete: if isAuthenticated() && hasPermission('production.delete');
     }
     match /call_sheets/{sheetId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('production.edit');
     }
     match /shot_lists/{listId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('production.edit');
     }
 
     // Workflow & approval collections
@@ -251,46 +303,72 @@ service cloud.firestore {
       allow write: if isAuthenticated() && hasPermission('workflows.manage');
     }
     match /approval_steps/{stepId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // Social & posting collections
     match /social_posts/{postId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('posting.create');
+      allow update: if isAuthenticated() && hasPermission('posting.edit');
+      allow delete: if isAuthenticated() && hasPermission('posting.delete');
     }
     match /milestones/{milestoneId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('projects.edit');
     }
 
     // File management
     match /files/{fileId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('assets.upload');
+      allow update: if isAuthenticated() && hasPermission('assets.edit_metadata');
+      allow delete: if isAuthenticated() && hasPermission('assets.delete');
     }
     match /folders/{folderId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('assets.upload');
+      allow update: if isAuthenticated() && hasPermission('assets.edit_metadata');
+      allow delete: if isAuthenticated() && hasPermission('assets.delete');
     }
 
     // Presentation sharing
     match /presentation_shares/{shareId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // Finance collections
     match /invoices/{invoiceId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('finance.create_invoice');
+      allow update: if isAuthenticated() && hasPermission('finance.edit_invoice');
+      allow delete: if isAuthenticated() && hasPermission('finance.delete_invoice');
     }
 
     // Vendor collections
     match /vendors/{vendorId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('vendors.create');
+      allow update: if isAuthenticated() && hasPermission('vendors.edit');
+      allow delete: if isAuthenticated() && hasPermission('vendors.delete');
     }
     match /vendor_service_orders/{orderId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasPermission('vendors.edit');
+      allow update: if isAuthenticated() && hasPermission('vendors.edit');
+      allow delete: if isAuthenticated() && hasPermission('vendors.delete');
     }
 
     // HR collections
     match /freelancer_assignments/{assignmentId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('production.edit');
     }
 
     // HR Module — Employee Profiles (sensitive — read restricted)
@@ -396,19 +474,36 @@ service cloud.firestore {
 
     // Equipment & locations
     match /agency_equipment/{equipmentId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('admin.settings.edit');
     }
     match /agency_locations/{locationId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && hasPermission('admin.settings.edit');
+    }
+
+    // Branding collection
+    match /branding/{brandingId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Notes collection
+    match /notes/{noteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated();
+      allow delete: if isAdmin();
     }
 
     // ──────────────────────────────────────────────────
-    //  DEFAULT CATCH-ALL — deny unauthenticated access
-    //  Any collection not explicitly matched above will
-    //  require authentication. No more world-writable.
+    //  DEFAULT CATCH-ALL — DENY ALL
+    //  Any collection not explicitly matched above is
+    //  completely inaccessible. This prevents accidental
+    //  data exposure from future collections.
     // ──────────────────────────────────────────────────
     match /{document=**} {
-      allow read, write: if isAuthenticated();
+      allow read, write: if false;
     }
   }
 }

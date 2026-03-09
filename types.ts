@@ -84,7 +84,8 @@ export interface User {
   roleId?: string; // Firestore role document ID — used by security rules for permission lookups
   department: Department;
   avatar: string;
-  passwordHash: string;
+  /** @deprecated passwordHash is no longer used — Firebase Auth handles password storage. Will be removed in a future migration. */
+  passwordHash?: string;
   forcePasswordChange: boolean;
 
   // HR Extended Fields

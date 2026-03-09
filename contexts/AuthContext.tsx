@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { 
   User as FirebaseUser, 
   onAuthStateChanged, 
@@ -12,7 +12,6 @@ import {
   getAuth
 } from 'firebase/auth';
 import { collection, doc, getDoc, getDocs, limit, query, setDoc, updateDoc, writeBatch, onSnapshot } from 'firebase/firestore';
-import bcrypt from 'bcryptjs';
 import { auth, db, firebaseConfig } from '../lib/firebase';
 import { User, UserRole, Department, RoleDefinition } from '../types';
 // Note: UserRole kept for backward compat in fallback profile creation
@@ -97,7 +96,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setRoles(DEFAULT_ROLES);
       } else {
         const loadedRoles = snapshot.docs.map(d => d.data() as RoleDefinition);
-        console.log('✅ Loaded roles from Firestore:', loadedRoles.map(r => r.name));
 
         // Smart sync: merge any NEW permissions from DEFAULT_ROLES into Firestore
         // This only ADDS missing permissions, never removes admin-customized ones
@@ -113,7 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const existingPerms = new Set(firestoreRole.permissions || []);
               const newPerms = (defaultRole.permissions || []).filter(p => !existingPerms.has(p));
               if (newPerms.length > 0) {
-                console.log(`🔄 Syncing ${newPerms.length} new permissions to role "${firestoreRole.name}":`, newPerms);
                 const mergedPermissions = [...(firestoreRole.permissions || []), ...newPerms];
                 updates.permissions = mergedPermissions;
                 firestoreRole.permissions = mergedPermissions;
@@ -139,7 +136,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           if (needsSync) {
             await syncBatch.commit();
-            console.log('✅ Permission sync complete');
           }
         } catch (syncErr) {
           console.error('⚠️ Permission sync error (non-fatal):', syncErr);
@@ -243,9 +239,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    const passwordHash = await bcrypt.hash(password, 10);
     
-    // Create user document
+    // Create user document (Firebase Auth handles password storage securely)
     const newUser: User = {
       id: user.uid,
       name: name,
@@ -256,7 +251,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       status: 'active',
       dateJoined: new Date().toISOString().split('T')[0],
       jobTitle: 'New User',
-      passwordHash,
       forcePasswordChange: false
     };
 
@@ -270,7 +264,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const tempPassword = generateTempPassword();
-    const hashedTempPassword = await bcrypt.hash(tempPassword, 10);
 
     // Initialize a secondary app to create user without logging out the admin
     const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
@@ -294,7 +287,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: 'active',
         dateJoined: new Date().toISOString().split('T')[0],
         jobTitle: jobTitle || role,
-        passwordHash: hashedTempPassword,
         forcePasswordChange: true
       };
 
@@ -308,10 +300,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error creating user:', error);
       throw new Error(error.message || 'Failed to create user.');
     } finally {
-      // Clean up the secondary app
-      // Note: deleteApp is async but we don't strictly need to await it here for the UI to proceed
-      // import { deleteApp } from 'firebase/app'; 
-      // deleteApp(secondaryApp); 
+      // Clean up the secondary app to prevent resource leaks
+      try {
+        await deleteApp(secondaryApp);
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   };
 
@@ -324,14 +318,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await reauthenticateWithCredential(auth.currentUser, credential);
     await updatePassword(auth.currentUser, newPassword);
 
-    const newHash = await bcrypt.hash(newPassword, 10);
+    // Firebase Auth handles password storage — just update the forcePasswordChange flag
     await updateDoc(doc(db, 'users', currentUser.id), {
-      passwordHash: newHash,
       forcePasswordChange: false,
       updatedAt: new Date().toISOString()
     });
 
-    setCurrentUser({ ...currentUser, passwordHash: newHash, forcePasswordChange: false });
+    setCurrentUser({ ...currentUser, forcePasswordChange: false });
   };
 
   const logout = async () => {
@@ -341,7 +334,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Load user permissions based on their role
   const loadUserPermissions = (userRole: string) => {
     if (!roles || !Array.isArray(roles)) {
-      console.warn('⚠️ Roles not loaded or not an array');
       setUserPermissions([]);
       setUserIsAdmin(false);
       return;
@@ -350,7 +342,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const userRoleDef = roles.find(r => r && r.name === userRole);
     
     if (!userRoleDef) {
-      console.warn('⚠️ No role definition found for:', userRole);
       // Fallback to default role if Firestore role doesn't exist (first-time setup)
       const defaultRoleDef = DEFAULT_ROLES.find(r => r.name === userRole);
       if (defaultRoleDef) {
@@ -367,10 +358,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Admin panel changes are now respected immediately
     const permissions = userRoleDef.permissions || [];
     const isAdmin = !!userRoleDef.isAdmin;
-    console.log(`🔐 Loading permissions for ${userRole}:`, permissions.length, 'permissions', isAdmin ? '(ADMIN)' : '');
-    console.log('📋 Task permissions:', permissions.filter(p => p.startsWith('tasks.')));
-    console.log('📋 Project permissions:', permissions.filter(p => p.startsWith('projects.')));
-    console.log('📋 Client permissions:', permissions.filter(p => p.startsWith('clients.')));
     setUserPermissions(permissions);
     setUserIsAdmin(isAdmin);
   };

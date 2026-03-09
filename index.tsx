@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './contexts/AuthContext';
 import { BrandingProvider } from './contexts/BrandingContext';
+import ErrorBoundary from './components/ErrorBoundary';
 import PublicPresentationPage from './components/public/PublicPresentationPage';
 import './index.css';
 
@@ -20,11 +21,13 @@ root.render(
     {isPublicPresentation ? (
       <PublicPresentationPage />
     ) : (
-      <AuthProvider>
-        <BrandingProvider>
-          <App />
-        </BrandingProvider>
-      </AuthProvider>
+      <ErrorBoundary>
+        <AuthProvider>
+          <BrandingProvider>
+            <App />
+          </BrandingProvider>
+        </AuthProvider>
+      </ErrorBoundary>
     )}
   </React.StrictMode>
 );
