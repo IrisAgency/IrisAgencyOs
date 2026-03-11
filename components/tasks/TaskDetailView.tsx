@@ -4,7 +4,7 @@ import {
     TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval,
     AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember,
     RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole,
-    DeliveryLink, ArchiveReason
+    DeliveryLink, ArchiveReason, CalendarItem, LeaveRequest
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import { prefixedId, uid } from '../../utils/id';
@@ -57,8 +57,8 @@ export interface DetailViewProps {
     getStatusColor: (s: TaskStatus) => string;
     resolveApprover: (step: WorkflowStepTemplate, task: Task) => string | null;
     onAddSocialPost: (post: SocialPost) => void;
-    leaveRequests?: any[];
-    calendarItems?: any[];
+    leaveRequests?: LeaveRequest[];
+    calendarItems?: CalendarItem[];
     isProductionView?: boolean;
 }
 
@@ -129,7 +129,13 @@ const TaskDetailView = ({
     
     // Add calendar item's reference links (if any)
     if (sourceCalendarItem?.referenceLinks) {
-        displayReferenceLinks.push(...sourceCalendarItem.referenceLinks);
+        displayReferenceLinks.push(...sourceCalendarItem.referenceLinks.map((link, i) => ({
+            id: `calendar_link_${sourceCalendarItem.id}_${i}`,
+            title: link.title,
+            url: link.url,
+            createdBy: '',
+            createdAt: '',
+        })));
     }
     
     // Convert calendar item reference files to reference images format
@@ -1991,7 +1997,7 @@ const TaskDetailView = ({
                             if (!task.dueDate || !leaveRequests) return true;
                             const targetDate = new Date(task.dueDate);
                             targetDate.setHours(0, 0, 0, 0);
-                            const conflict = leaveRequests.find((req: any) => {
+                            const conflict = leaveRequests.find((req) => {
                                 if (req.userId !== user.id || req.status !== 'approved') return false;
                                 const start = new Date(req.startDate);
                                 start.setHours(0, 0, 0, 0);

@@ -26,14 +26,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
 
-    /* Strict-mode migration — enabled incrementally.
-     * These flags add ZERO new errors as of March 2026.
-     * Enable more flags as errors are resolved. */
+    /* Strict-mode migration — fully enabled. */
+    "strict": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictNullChecks": true
+    "forceConsistentCasingInFileNames": true
   },
   "exclude": [
     "docs/legacy/**"
