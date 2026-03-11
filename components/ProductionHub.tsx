@@ -497,7 +497,7 @@ const ProductionHub: React.FC = () => {
                                 today.setHours(0, 0, 0, 0);
                                 const selectedDate = new Date(calendarDate);
                                 selectedDate.setHours(0, 0, 0, 0);
-                                const days = [];
+                                const days: React.ReactNode[] = [];
                                 
                                 // Get first and last day of the month
                                 const firstDay = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
@@ -706,7 +706,7 @@ const ProductionHub: React.FC = () => {
                                 return dayDate.getTime() === today.getTime();
                             };
 
-                            const calendarCells = [];
+                            const calendarCells: React.ReactNode[] = [];
 
                             // Empty cells before month starts
                             for (let i = 0; i < startingDayOfWeek; i++) {
@@ -981,7 +981,7 @@ const ProductionHub: React.FC = () => {
         today.setHours(0, 0, 0, 0);
 
         // Generate calendar days
-        const calendarDays = [];
+        const calendarDays: (number | null)[] = [];
         
         // Add empty cells for days before the first day of the month
         for (let i = 0; i < startingDayOfWeek; i++) {
@@ -1238,14 +1238,12 @@ const ProductionHub: React.FC = () => {
                                                 try {
                                                     // Delete all related tasks
                                                     for (const task of relatedTasks) {
-                                                        if (onDeleteTask) {
-                                                            // Use soft delete if available
-                                                            await updateDoc(doc(db, 'tasks', task.id), {
+                                                        // Use soft delete
+                                                        await updateDoc(doc(db, 'tasks', task.id), {
                                                                 isDeleted: true,
                                                                 deletedAt: new Date().toISOString(),
                                                                 deletedBy: currentUserId
                                                             });
-                                                        }
                                                     }
                                                     
                                                     // Delete the production plan
@@ -1373,7 +1371,7 @@ const ProductionHub: React.FC = () => {
                                                     await onUpdateTask({
                                                         ...task,
                                                         status: newStatus as any,
-                                                        completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+                                                        completedAt: newStatus === 'completed' ? new Date().toISOString() : undefined
                                                     });
                                                     console.log(`Task ${task.id} updated to ${newStatus}`);
                                                 } catch (error) {
@@ -1455,7 +1453,7 @@ const ProductionHub: React.FC = () => {
                                                             </span>
                                                             {task.sourceType && (
                                                                 <span className="px-2 py-0.5 rounded text-xs bg-purple-50 text-purple-700 border border-purple-200">
-                                                                    {task.sourceType === 'calendar' ? '📅 Calendar' : '📋 Manual'}
+                                                                    {task.sourceType === 'CALENDAR' ? '📅 Calendar' : '📋 Manual'}
                                                                 </span>
                                                             )}
                                                         </div>

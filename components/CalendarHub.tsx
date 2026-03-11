@@ -26,7 +26,8 @@ const CalendarHub: React.FC = () => {
   useStoreSubscription(useCalendarStore, useCreativeStore);
 
   // ── Store reads ──
-  const { currentUser, checkPermission } = useAuth();
+  const { currentUser: _authUser, checkPermission } = useAuth();
+  const currentUser = _authUser!;
   const calendarStore = useCalendarStore();
   const creativeStore = useCreativeStore();
   const clientStore = useClientStore();

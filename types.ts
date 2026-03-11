@@ -127,8 +127,11 @@ export interface LeavePolicy {
   leaveType: LeaveType;
   name: string;               // e.g. "Annual Leave"
   defaultDaysPerYear: number;
+  maxDaysPerYear?: number;    // alias for defaultDaysPerYear used in some components
   accrualRate?: number;       // days accrued per month (optional)
   carryOverLimit: number;     // max days that carry to next year
+  carryForward?: boolean;     // whether carry forward is allowed
+  maxCarryForwardDays?: number; // max days that can carry forward
   requiresAttachment: boolean;
   requiresApproval: boolean;
   isActive: boolean;
@@ -139,12 +142,16 @@ export interface LeavePolicy {
 export interface LeaveBalance {
   id: string;
   employeeId: string;   // userId
+  userId?: string;      // alias for employeeId used in UI components
   leaveType: LeaveType;
   year: number;
   entitled: number;
+  totalAllowed?: number; // alias for entitled used in some components
   used: number;
+  pending?: number;      // pending leave days count
   remaining: number;
-  carried: number;     // carried from previous year
+  carried: number;       // carried from previous year
+  carriedOver?: number;  // alias for carried used in some components
   updatedAt: string;
 }
 
@@ -157,7 +164,9 @@ export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
   checkInTime?: string;
+  checkIn?: string;       // alias for checkInTime used in UI components
   checkOutTime?: string;
+  checkOut?: string;      // alias for checkOutTime used in UI components
   totalHours?: number;
   overtimeHours?: number;
   workMode?: WorkMode;
@@ -172,12 +181,17 @@ export interface AttendanceRecord {
 export interface AttendanceCorrection {
   id: string;
   attendanceRecordId: string;
+  originalRecordId?: string;  // alias for attendanceRecordId used in UI forms
   employeeId: string;      // userId
+  userId?: string;         // alias for employeeId used in UI components
   field: string;           // which field is being corrected
   oldValue: string;
   newValue: string;
   correctedCheckIn?: string;   // ISO time string
+  requestedCheckIn?: string;   // alias for correctedCheckIn
   correctedCheckOut?: string;  // ISO time string
+  requestedCheckOut?: string;  // alias for correctedCheckOut
+  date?: string;               // date of the attendance record
   reason: string;
   status: CorrectionStatus;
   correctionStatus?: 'pending' | 'approved' | 'rejected';
@@ -252,13 +266,17 @@ export type EmployeeAssetStatus = 'assigned' | 'returned' | 'lost' | 'damaged';
 export interface EmployeeAsset {
   id: string;
   employeeId: string;     // userId
+  userId?: string;        // alias for employeeId used in UI components
   assetId?: string;       // links to agency_equipment/{id} if applicable
   assetType: string;      // 'laptop' | 'phone' | 'camera' | 'access_card' | 'other'
+  assetCategory?: string; // alias for assetType used in some components
   assetName: string;      // descriptive name
   serialNumber?: string;
   assignedAt: string;
+  assignedDate?: string;  // alias for assignedAt used in some components
   assignedBy: string;     // userId
   returnedAt?: string;
+  expectedReturnDate?: string; // optional expected return date
   conditionOnAssign?: string;
   conditionOnReturn?: string;
   notes?: string;
@@ -285,15 +303,17 @@ export interface PerformanceReview {
   userId?: string;        // alias for employeeId used in some components
   reviewerId: string;     // userId of the reviewer (usually manager)
   reviewCycle: string;    // e.g. 'Q1-2026', 'H1-2026', '2026'
+  period?: string;        // alias for reviewCycle used in some components
   reviewPeriodStart: string;
   reviewPeriodEnd: string;
   scores: PerformanceScore[];
   selfAssessment?: PerformanceScore[];    // employee self-assessment scores
   managerAssessment?: PerformanceScore[]; // manager assessment scores
-  goals?: string;         // goals for next period
+  goals?: string | string[]; // goals for next period (string or array)
   strengths: string;
   areasForImprovement: string;
   managerComments: string;
+  overallComments?: string; // alias for managerComments used in some components
   employeeComments?: string;
   overallRating: number;  // 1-5
   status: ReviewStatus;
@@ -447,6 +467,7 @@ export interface ClientMonthlyReport {
 export interface Client {
   id: string;
   name: string;
+  code?: string;         // short code for client identification (e.g. 'LBN')
   industry: string;
   email: string;
   phone: string;
@@ -455,6 +476,7 @@ export interface Client {
   logo?: string; // URL or Base64
   notes: string;
   status: 'active' | 'inactive' | 'lead';
+  isArchived?: boolean;   // soft archive flag
   createdAt: string;
   updatedAt: string;
   accountManagerId: string; // Links to User
@@ -474,6 +496,7 @@ export interface Project {
   status: ProjectStatus | 'Active' | 'Completed' | 'On Hold';
 
   brief: string;           // main description / objectives
+  description?: string;    // alias for brief used in some components
   objectives: string;      // bullet-style text
   notes: string;           // internal notes
 
@@ -503,8 +526,11 @@ export interface Project {
 
   // Archive Fields
   isArchived?: boolean;
+  archived?: boolean;      // alias for isArchived used in some components
   archivedAt?: string | null;
   archivedBy?: string | null;
+
+  isDeleted?: boolean;
 
   createdAt: string;
   updatedAt: string;
@@ -550,6 +576,7 @@ export interface ProjectMilestone {
   // Target-based Progress
   targetTaskCount?: number | null;   // e.g. 5; null = no target
   autoCompleteOnTarget?: boolean;    // if true, mark completed when target reached
+  isDeleted?: boolean;
 }
 
 export interface ProjectActivityLog {
@@ -663,6 +690,8 @@ export interface Task {
   // Delivery Links (Google Drive links for QC review)
   deliveryLinks?: DeliveryLink[];
 
+  type?: string; // Alias for taskType (used in QC views)
+  publishDate?: string; // Alias for publishAt
   client?: string; // Denormalized client name
 
   // Quality Control
@@ -816,7 +845,7 @@ export interface TaskQCBlock {
 
 export type ProductionPlanStatus = 'DRAFT' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'ARCHIVED';
 export type ProductionSourceType = 'CALENDAR' | 'MANUAL';
-export type ProductionArchiveReason = 'user_deleted' | 'plan_superseded' | null;
+export type ProductionArchiveReason = 'user_deleted' | 'plan_superseded' | 'completed' | null;
 
 export interface ProductionConflictOverride {
   userName: string;
@@ -855,6 +884,9 @@ export interface ProductionPlan {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+
+  // UI alias
+  productionType?: string;
 }
 
 export interface ProductionAssignment {
@@ -1048,7 +1080,7 @@ export interface AgencyEquipment {
 
 // --- VENDORS & FREELANCERS ENTITIES ---
 
-export type VendorType = 'rental' | 'location' | 'printing' | 'catering' | 'other';
+export type VendorType = 'rental' | 'location' | 'printing' | 'catering' | 'equipment' | 'other';
 
 export interface Vendor {
   id: string;
@@ -1060,6 +1092,8 @@ export interface Vendor {
   address: string;
   taxNumber?: string;
   paymentTerms?: string; // e.g. "Net 30"
+  rating?: number;      // 0-5 vendor rating
+  active?: boolean;     // whether vendor is active
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -1076,6 +1110,7 @@ export interface Freelancer {
   location: string;
   portfolioUrl?: string;
   socialLinks?: string[];
+  skills?: string[];    // skill tags
   rateType: RateType;
   defaultRate: number;
   notes: string;
@@ -1509,7 +1544,7 @@ export interface SocialPost {
   projectId: string;
   clientId: string;
   title: string;               // derived from task title
-  status: "PENDING" | "READY" | "SCHEDULED" | "PUBLISHED" | "REVISION_REQUESTED";
+  status: "PENDING" | "READY" | "SCHEDULED" | "PUBLISHED" | "REVISION_REQUESTED" | "pending";
   platforms: SocialPlatform[];         // ["instagram", "facebook", "tiktok", etc.]
   caption: string | null;
   publishAt: string | null;    // ISO Date string
@@ -1681,6 +1716,9 @@ export interface CalendarItem {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Alias for CalendarItem used in presentation views */
+export type PresentationItem = CalendarItem;
 
 // Calendar Item Revision — tracks each revision request & lifecycle
 export interface CalendarItemRevision {

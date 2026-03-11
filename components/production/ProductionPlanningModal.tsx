@@ -7,7 +7,8 @@ import {
   Task,
   User,
   CalendarContentType,
-  ProductionConflictOverride
+  ProductionConflictOverride,
+  TaskStatus
 } from '../../types';
 import {
   Video,
@@ -915,8 +916,8 @@ const ProductionPlanningModal: React.FC<ProductionPlanningModalProps> = ({
                                     Due: {new Date(task.dueDate).toLocaleDateString()}
                                   </div>
                                   <span className={`text-xs px-2 py-0.5 rounded ${
-                                    task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                                    task.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-300' :
+                                    task.status === TaskStatus.COMPLETED ? 'bg-green-500/20 text-green-300' :
+                                    task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500/20 text-blue-300' :
                                     'bg-slate-500/20 text-slate-300'
                                   }`}>
                                     {task.status}
@@ -1118,7 +1119,7 @@ const ProductionPlanningModal: React.FC<ProductionPlanningModalProps> = ({
               disabled={
                 isSaving || 
                 !canProceedStep3 || 
-                (existingPlan && updateMode === 'FORCE' && !forceUpdateReason)
+                !!(existingPlan && updateMode === 'FORCE' && !forceUpdateReason)
               }
               className="px-4 py-2.5 rounded-lg bg-[color:var(--dash-primary)] text-white font-medium hover:shadow-[0_12px_30px_-16px_rgba(230,60,60,0.8)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >

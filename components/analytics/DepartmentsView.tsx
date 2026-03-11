@@ -1,5 +1,5 @@
 import React from 'react';
-import { Task, Department } from '../../types';
+import { Task, Department, Priority } from '../../types';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend, Tooltip } from 'recharts';
 import { Briefcase } from 'lucide-react';
 import DataTable from '../common/DataTable';
@@ -92,7 +92,7 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
                             header: 'Avg. Priority',
                             cell: (dept) => {
                                 const deptTasks = tasks.filter(t => t.department === dept);
-                                const highPriority = deptTasks.filter(t => t.priority === 'High' || t.priority === 'Critical').length;
+                                const highPriority = deptTasks.filter(t => t.priority === Priority.HIGH || t.priority === Priority.CRITICAL).length;
                                 return <span className="text-iris-white/70">{highPriority} High/Crit</span>;
                             }
                         }

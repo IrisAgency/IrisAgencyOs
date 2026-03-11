@@ -15,7 +15,7 @@ import { extractDriveDeliverables, DriveDeliverable } from '../utils/driveUtils'
 import {
   Task, User, Project, Client, ProjectMember, WorkflowTemplate,
   ApprovalStep, TaskComment, AgencyFile, QCReview, QCReviewAttachment,
-  NotificationType, TaskStatus, ApprovalStatus
+  NotificationType, TaskStatus, ApprovalStatus, Priority
 } from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { approveFromQCHub, rejectFromQCHub } from '../utils/qcUtils';
@@ -586,17 +586,17 @@ const QualityControlHub: React.FC = () => {
             </div>
             <div className="flex flex-col gap-1.5 items-end shrink-0">
               <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
-                task.type === 'design' ? 'border-blue-500/30 text-blue-300 bg-blue-500/10' :
-                task.type === 'video' ? 'border-purple-500/30 text-purple-300 bg-purple-500/10' :
-                task.type === 'content' ? 'border-teal-500/30 text-teal-300 bg-teal-500/10' :
+                task.taskType === 'design' ? 'border-blue-500/30 text-blue-300 bg-blue-500/10' :
+                task.taskType === 'video' ? 'border-purple-500/30 text-purple-300 bg-purple-500/10' :
+                task.taskType === 'content' ? 'border-teal-500/30 text-teal-300 bg-teal-500/10' :
                 'border-slate-500/30 text-slate-300 bg-slate-500/10'
               }`}>
-                {task.type}
+                {task.taskType}
               </span>
               <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
-                task.priority === 'urgent' ? 'border-red-500/30 text-red-300 bg-red-500/10' :
-                task.priority === 'high' ? 'border-orange-500/30 text-orange-300 bg-orange-500/10' :
-                task.priority === 'medium' ? 'border-yellow-500/30 text-yellow-300 bg-yellow-500/10' :
+                task.priority === Priority.CRITICAL ? 'border-red-500/30 text-red-300 bg-red-500/10' :
+                task.priority === Priority.HIGH ? 'border-orange-500/30 text-orange-300 bg-orange-500/10' :
+                task.priority === Priority.MEDIUM ? 'border-yellow-500/30 text-yellow-300 bg-yellow-500/10' :
                 'border-slate-500/30 text-slate-300 bg-slate-500/10'
               }`}>
                 {task.priority}
@@ -676,10 +676,10 @@ const QualityControlHub: React.FC = () => {
                 Due: {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </span>
             )}
-            {task.publishDate && (
+            {task.publishAt && (
               <span className="flex items-center gap-1">
                 <ArrowRight className="w-3.5 h-3.5" />
-                Pub: {new Date(task.publishDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                Pub: {new Date(task.publishAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
               </span>
             )}
             <span className="flex items-center gap-1">
@@ -847,12 +847,12 @@ const QualityControlHub: React.FC = () => {
                 </span>
               )}
               <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                task.type === 'design' ? 'border-blue-500/30 text-blue-300' :
-                task.type === 'video' ? 'border-purple-500/30 text-purple-300' :
-                task.type === 'content' ? 'border-teal-500/30 text-teal-300' :
+                task.taskType === 'design' ? 'border-blue-500/30 text-blue-300' :
+                task.taskType === 'video' ? 'border-purple-500/30 text-purple-300' :
+                task.taskType === 'content' ? 'border-teal-500/30 text-teal-300' :
                 'border-slate-500/30 text-slate-300'
               }`}>
-                {task.type}
+                {task.taskType}
               </span>
             </div>
 

@@ -33,7 +33,8 @@ const PostingHub: React.FC = () => {
   useStoreSubscription(usePostingStore);
 
   // ── Store reads ──
-  const { currentUser, checkPermission } = useAuth();
+  const { currentUser: _authUser, checkPermission } = useAuth();
+  const currentUser = _authUser!;
   const postingStore = usePostingStore();
   const taskStore = useTaskStore();
   const projectStore = useProjectStore();

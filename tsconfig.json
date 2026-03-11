@@ -32,11 +32,10 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "strictFunctionTypes": true,
-    "strictBindCallApply": true
-    /* TODO: Enable once 46 errors are resolved:
-     * "strictNullChecks": true
-     * Then: "noImplicitAny": true (adds ~20 more)
-     * Finally: "strict": true (umbrella flag)
-     */
-  }
+    "strictBindCallApply": true,
+    "strictNullChecks": true
+  },
+  "exclude": [
+    "docs/legacy/**"
+  ]
 }

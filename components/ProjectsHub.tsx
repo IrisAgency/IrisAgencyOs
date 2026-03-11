@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType } from '../types';
+import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType, TaskType, Department, Priority, TaskStatus } from '../types';
 import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap, Lock, AlertTriangle } from 'lucide-react';
 import { calculateWorkloadBySpecialty, getSpecialtyLabel, getMissingSpecialties, assignTasksBySpecialty } from '../lib/specialty';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';

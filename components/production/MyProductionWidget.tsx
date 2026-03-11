@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ProductionAssignment, Task, CalendarContentType } from '../../types';
+import { ProductionAssignment, Task, CalendarContentType, TaskStatus } from '../../types';
 import { 
   Calendar, 
   Clock, 
@@ -253,8 +253,8 @@ const MyProductionWidget: React.FC<MyProductionWidgetProps> = ({
                               )}
                               <div className="flex items-center gap-2 mt-2">
                                 <span className={`text-xs px-2 py-0.5 rounded ${
-                                  task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                                  task.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-300' :
+                                  task.status === TaskStatus.COMPLETED ? 'bg-green-500/20 text-green-300' :
+                                  task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500/20 text-blue-300' :
                                   'bg-slate-500/20 text-slate-300'
                                 }`}>
                                   {task.status}
@@ -304,8 +304,8 @@ const MyProductionWidget: React.FC<MyProductionWidgetProps> = ({
                               )}
                               <div className="flex items-center gap-2 mt-2">
                                 <span className={`text-xs px-2 py-0.5 rounded ${
-                                  task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                                  task.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-300' :
+                                  task.status === TaskStatus.COMPLETED ? 'bg-green-500/20 text-green-300' :
+                                  task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500/20 text-blue-300' :
                                   'bg-slate-500/20 text-slate-300'
                                 }`}>
                                   {task.status}
@@ -355,8 +355,8 @@ const MyProductionWidget: React.FC<MyProductionWidgetProps> = ({
                               )}
                               <div className="flex items-center gap-2 mt-2">
                                 <span className={`text-xs px-2 py-0.5 rounded ${
-                                  task.status === 'COMPLETED' ? 'bg-green-500/20 text-green-300' :
-                                  task.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-300' :
+                                  task.status === TaskStatus.COMPLETED ? 'bg-green-500/20 text-green-300' :
+                                  task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-500/20 text-blue-300' :
                                   'bg-slate-500/20 text-slate-300'
                                 }`}>
                                   {task.status}

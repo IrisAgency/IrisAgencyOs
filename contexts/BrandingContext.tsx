@@ -5,6 +5,9 @@ import { DEFAULT_BRANDING_CONFIG, applyBrandingToDOM as applyBrandingToDOMUtil }
 interface BrandingContextType {
   branding: AppBranding;
   loading: boolean;
+  updateBranding?: (branding: AppBranding) => Promise<void>;
+  uploadLogo?: (file: File, key: string) => Promise<string>;
+  refreshBranding?: () => Promise<void>;
 }
 
 const BrandingContext = createContext<BrandingContextType | undefined>(undefined);

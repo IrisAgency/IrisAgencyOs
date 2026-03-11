@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { User, EmployeeProfile, LeaveRequest, AttendanceRecord, Task } from '../../types';
+import { User, EmployeeProfile, LeaveRequest, AttendanceRecord, Task, TaskStatus } from '../../types';
 import { Users, Clock, Calendar, TrendingUp, AlertTriangle } from 'lucide-react';
 
 interface CapacityDashboardProps {
@@ -73,7 +73,7 @@ const CapacityDashboard: React.FC<CapacityDashboardProps> = ({
   // Workload distribution (if tasks available)
   const workloadData = useMemo(() => {
     if (!tasks) return [];
-    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    const activeTasks = tasks.filter(t => t.status !== TaskStatus.COMPLETED && t.status !== TaskStatus.ARCHIVED);
     const userTaskCount = new Map<string, number>();
 
     activeTasks.forEach(t => {

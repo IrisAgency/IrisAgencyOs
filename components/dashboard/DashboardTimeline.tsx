@@ -56,7 +56,7 @@ const DashboardTimeline: React.FC<DashboardTimelineProps> = ({
       const daysInMonth = lastDay.getDate();
       const startingDay = firstDay.getDay(); // 0 = Sunday
 
-      const days = [];
+      const days: (Date | null)[] = [];
       // Padding for previous month
       for (let i = 0; i < startingDay; i++) {
         days.push(null);

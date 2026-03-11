@@ -136,6 +136,7 @@ interface PresentationItem {
   referenceLinks: CalendarReferenceLink[];
   referenceFiles: CalendarReferenceFile[];
   seqLabel: string;
+  presentationNotes?: string;
   isCarousel?: boolean;
 }
 

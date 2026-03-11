@@ -61,6 +61,7 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
       isClientApprovalRequired: false,
       isArchived: false,
       attachments: [],
+      voiceOver: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       taskType: 'other'

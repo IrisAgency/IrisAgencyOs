@@ -97,7 +97,7 @@ const ProjectCalendar: React.FC<ProjectCalendarProps> = ({ project, tasks, users
 
   // --- Calendar Grid Generation ---
   const renderCalendarDays = () => {
-    const days = [];
+    const days: React.ReactNode[] = [];
     const totalSlots = Math.ceil((daysInMonth + firstDay) / 7) * 7;
 
     for (let i = 0; i < totalSlots; i++) {

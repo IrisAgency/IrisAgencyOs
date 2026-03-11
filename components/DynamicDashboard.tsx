@@ -68,7 +68,7 @@ const DynamicDashboard: React.FC<DynamicDashboardProps> = ({
   const getWeekDates = (date: Date) => {
     const curr = new Date(date);
     const first = curr.getDate() - curr.getDay(); // First day is Sunday
-    const dates = [];
+    const dates: Date[] = [];
     for (let i = 0; i < 7; i++) {
       const day = new Date(curr.setDate(first + i));
       dates.push(day);
@@ -112,7 +112,7 @@ const DynamicDashboard: React.FC<DynamicDashboardProps> = ({
           type: 'meeting',
           title: meeting.title,
           startTime: new Date(meeting.date),
-          endTime: new Date(new Date(meeting.date).getTime() + meeting.durationMinutes * 60000),
+          endTime: new Date(new Date(meeting.date).getTime() + (meeting.durationMinutes ?? 60) * 60000),
           department: Department.MANAGEMENT,
           taskType: 'meeting',
           members: meeting.participantIds || [],
@@ -124,7 +124,7 @@ const DynamicDashboard: React.FC<DynamicDashboardProps> = ({
     // Add social posts
     socialPosts
       .filter(sp => sp.socialManagerId === currentUser.id)
-      .filter(sp => sp.status !== 'published')
+      .filter(sp => sp.status !== 'PUBLISHED')
       .forEach(post => {
         const startTime = post.publishAt ? new Date(post.publishAt) : new Date();
         items.push({
@@ -213,7 +213,7 @@ const DynamicDashboard: React.FC<DynamicDashboardProps> = ({
     });
 
     // Weekly activity (last 4 weeks)
-    const weeklyActivity = [];
+    const weeklyActivity: { week: string; count: number }[] = [];
     for (let i = 3; i >= 0; i--) {
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - i * 7 - weekStart.getDay());

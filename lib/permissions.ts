@@ -591,7 +591,7 @@ export function canViewFinance(
 // DANGEROUS PERMISSIONS - Flagged in admin UI with warnings
 // ============================================================================
 
-export const DANGEROUS_PERMISSIONS = new Set([
+export const DANGEROUS_PERMISSIONS: Set<string> = new Set([
   PERMISSIONS.ROLES.CREATE,
   PERMISSIONS.ROLES.EDIT,
   PERMISSIONS.ROLES.DELETE,

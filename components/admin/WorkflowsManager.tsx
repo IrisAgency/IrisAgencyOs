@@ -37,6 +37,7 @@ const WorkflowsManager: React.FC<WorkflowsManagerProps> = ({
             departmentId: null,
             taskType: null,
             status: 'available',
+            isDefault: false,
             requiresClientApproval: false,
             requiresQC: true,
             steps: [],

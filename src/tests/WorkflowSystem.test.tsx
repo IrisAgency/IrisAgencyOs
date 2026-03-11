@@ -40,6 +40,7 @@ const mockTask: Task = {
     assigneeIds: ['u1'],
     dueDate: '2025-10-10',
     description: 'Test description',
+    voiceOver: null,
     workflowTemplateId: 'wt1',
     taskType: 'design',
     currentApprovalLevel: 0,
@@ -61,8 +62,8 @@ const mockWorkflow: WorkflowTemplate = {
     taskType: 'design',
     status: 'active',
     steps: [
-        { id: 's1', workflowTemplateId: 'wt1', order: 0, label: 'Creative Director Review', roleId: 'r1', projectRoleKey: null, useDepartmentHead: false },
-        { id: 's2', workflowTemplateId: 'wt1', order: 1, label: 'Client Review', roleId: null, projectRoleKey: 'Client', useDepartmentHead: false }
+        { id: 's1', workflowTemplateId: 'wt1', order: 0, label: 'Creative Director Review', roleId: 'r1', projectRoleKey: null, specificUserId: null, useDepartmentHead: false },
+        { id: 's2', workflowTemplateId: 'wt1', order: 1, label: 'Client Review', roleId: null, projectRoleKey: 'Client', specificUserId: null, useDepartmentHead: false }
     ],
     isDefault: true,
     requiresClientApproval: false,

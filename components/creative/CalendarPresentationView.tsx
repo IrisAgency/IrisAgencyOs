@@ -93,7 +93,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   users,
   onBack,
 }) => {
-  const { user: currentUser } = useAuth();
+  const { currentUser } = useAuth();
   const [filterType, setFilterType] = useState<CalendarContentType | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);

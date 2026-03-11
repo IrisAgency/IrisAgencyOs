@@ -96,7 +96,7 @@ export const useDashboardData = ({
           title: meeting.title,
           startTime: new Date(meeting.date),
           endTime: new Date(
-            new Date(meeting.date).getTime() + meeting.durationMinutes * 60000
+            new Date(meeting.date).getTime() + (meeting.durationMinutes ?? 60) * 60000
           ),
           department: 'Management',
           status: 'scheduled',
@@ -109,7 +109,7 @@ export const useDashboardData = ({
     // Add social posts
     socialPosts
       .filter((sp) => sp.socialManagerId === currentUser.id)
-      .filter((sp) => sp.status !== 'published')
+      .filter((sp) => sp.status !== 'PUBLISHED')
       .forEach((post) => {
         const startTime = post.publishAt ? new Date(post.publishAt) : new Date();
         const socialManager = users.find((u) => u.id === post.socialManagerId);
@@ -186,7 +186,7 @@ export const useDashboardData = ({
       typeDistribution[type] = (typeDistribution[type] || 0) + 1;
     });
 
-    const weeklyActivity = [];
+    const weeklyActivity: { week: string; count: number }[] = [];
     for (let i = 3; i >= 0; i--) {
       const weekStart = new Date();
       weekStart.setDate(weekStart.getDate() - i * 7 - weekStart.getDay());
