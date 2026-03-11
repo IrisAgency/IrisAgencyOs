@@ -187,4 +187,4 @@ const ExecutiveView: React.FC<ExecutiveViewProps> = ({
     );
 };
 
-export default ExecutiveView;
+export default React.memo(ExecutiveView);

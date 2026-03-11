@@ -3,7 +3,7 @@
  * Collections: roles, audit_logs, workflow_templates, departments, dashboard_banners
  */
 import { create } from 'zustand';
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, orderBy, limit, query as fsQuery } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
@@ -20,7 +20,9 @@ interface AdminState {
   departments: DepartmentDefinition[];
   dashboardBanners: DashboardBanner[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -57,19 +59,30 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   workflowTemplates: [],
   departments: [],
   dashboardBanners: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<RoleDefinition>('roles', (items) => set({ systemRoles: items })));
-    unsubs.push(subscribeCollection<AuditLog>('audit_logs', (items) => set({ auditLogs: items })));
-    unsubs.push(subscribeCollection<WorkflowTemplate>('workflow_templates', (items) => set({ workflowTemplates: items })));
-    unsubs.push(subscribeCollection<DepartmentDefinition>('departments', (items) => set({ departments: items })));
-    unsubs.push(subscribeCollection<DashboardBanner>('dashboard_banners', (items) => set({ dashboardBanners: items })));
+    let pending = 5;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<RoleDefinition>('roles', (items) => { set({ systemRoles: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<AuditLog>('audit_logs', (items) => { set({ auditLogs: items }); markLoaded(); }, (ref) => fsQuery(ref, orderBy('createdAt', 'desc'), limit(500))));
+    unsubs.push(subscribeCollection<WorkflowTemplate>('workflow_templates', (items) => { set({ workflowTemplates: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<DepartmentDefinition>('departments', (items) => { set({ departments: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<DashboardBanner>('dashboard_banners', (items) => { set({ dashboardBanners: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

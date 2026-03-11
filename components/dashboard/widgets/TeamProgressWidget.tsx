@@ -76,4 +76,4 @@ const TeamProgressWidget: React.FC<TeamProgressWidgetProps> = ({ users = [], tas
   );
 };
 
-export default TeamProgressWidget;
+export default React.memo(TeamProgressWidget);

@@ -102,4 +102,4 @@ const ClientStatusWidget: React.FC<ClientStatusWidgetProps> = ({ clients = [], p
   );
 };
 
-export default ClientStatusWidget;
+export default React.memo(ClientStatusWidget);

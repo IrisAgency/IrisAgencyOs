@@ -20,7 +20,9 @@ interface ProductionState {
   equipment: AgencyEquipment[];
   productionPlans: ProductionPlan[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -38,20 +40,31 @@ export const useProductionStore = create<ProductionState>((set, get) => ({
   locations: [],
   equipment: [],
   productionPlans: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<ProductionAsset>('production_assets', (items) => set({ productionAssets: items })));
-    unsubs.push(subscribeCollection<ShotList>('shot_lists', (items) => set({ shotLists: items })));
-    unsubs.push(subscribeCollection<CallSheet>('call_sheets', (items) => set({ callSheets: items })));
-    unsubs.push(subscribeCollection<AgencyLocation>('agency_locations', (items) => set({ locations: items })));
-    unsubs.push(subscribeCollection<AgencyEquipment>('agency_equipment', (items) => set({ equipment: items })));
-    unsubs.push(subscribeCollection<ProductionPlan>('production_plans', (items) => set({ productionPlans: items })));
+    let pending = 6;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<ProductionAsset>('production_assets', (items) => { set({ productionAssets: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ShotList>('shot_lists', (items) => { set({ shotLists: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<CallSheet>('call_sheets', (items) => { set({ callSheets: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<AgencyLocation>('agency_locations', (items) => { set({ locations: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<AgencyEquipment>('agency_equipment', (items) => { set({ equipment: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ProductionPlan>('production_plans', (items) => { set({ productionPlans: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

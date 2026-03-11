@@ -165,4 +165,4 @@ const NotesWidget: React.FC<NotesWidgetProps> = ({
   );
 };
 
-export default NotesWidget;
+export default React.memo(NotesWidget);

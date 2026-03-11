@@ -154,4 +154,4 @@ const DashboardRightPanel: React.FC<DashboardRightPanelProps> = ({
   );
 };
 
-export default DashboardRightPanel;
+export default React.memo(DashboardRightPanel);

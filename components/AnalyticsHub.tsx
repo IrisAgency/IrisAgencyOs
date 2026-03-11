@@ -13,8 +13,13 @@ import { useProjectStore } from '../stores/useProjectStore';
 import { useFinanceStore } from '../stores/useFinanceStore';
 import { useHRStore } from '../stores/useHRStore';
 import { useClientStore } from '../stores/useClientStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 
 const AnalyticsHub: React.FC = () => {
+   // ── Lazy subscriptions for route-local stores ──
+   useStoreSubscription(useFinanceStore);
+
    const allTasks = useTaskStore(s => s.tasks);
    const tasks = useMemo(() => allTasks.filter(t => !t.isDeleted), [allTasks]);
    const projects = useProjectStore(s => s.projects);
@@ -95,6 +100,9 @@ const AnalyticsHub: React.FC = () => {
        '#8b5cf6',
        '#ec4899'
    ];
+
+   const financeLoading = useFinanceStore(s => s.loading);
+   if (financeLoading) return <GenericHubSkeleton />;
 
    return (
       <PageContainer>

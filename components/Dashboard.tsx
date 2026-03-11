@@ -27,10 +27,15 @@ import { useClientStore } from '../stores/useClientStore';
 import { usePostingStore } from '../stores/usePostingStore';
 import { useNotesStore } from '../stores/useNotesStore';
 import { useUIStore } from '../stores/useUIStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
+  // ─── Lazy subscriptions for route-local stores ───
+  useStoreSubscription(usePostingStore, useNotesStore);
+
   // ─── Store reads ───
   const { currentUser: _authUser, checkPermission } = useAuth();
   const currentUser = _authUser!; // Guaranteed non-null by auth guard in App.tsx
@@ -526,6 +531,10 @@ const Dashboard: React.FC = () => {
   const handleDragEnd = () => {
     setDraggedId(null);
   };
+
+  const taskLoading = useTaskStore(s => s.loading);
+  const projectLoading = useProjectStore(s => s.loading);
+  if (taskLoading || projectLoading) return <GenericHubSkeleton />;
 
   return (
     <>

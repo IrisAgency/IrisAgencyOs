@@ -11,8 +11,14 @@ import PageControls from './layout/PageControls';
 import PageContent from './layout/PageContent';
 import { prefixedId } from '../utils/id';
 import { useNetworkStore } from '../stores/useNetworkStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 
 const VendorsHub: React.FC = () => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(useNetworkStore);
+  const networkLoading = useNetworkStore(s => s.loading);
+
   // ── Store reads ──
   const vendors = useNetworkStore(s => s.vendors);
   const freelancers = useNetworkStore(s => s.freelancers);
@@ -205,6 +211,8 @@ const VendorsHub: React.FC = () => {
       )}
     </div>
   );
+
+  if (networkLoading) return <GenericHubSkeleton />;
 
   return (
     <PageContainer>

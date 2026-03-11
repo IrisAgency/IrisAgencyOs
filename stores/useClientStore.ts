@@ -18,8 +18,10 @@ interface ClientState {
   brandAssets: ClientBrandAsset[];
   monthlyReports: ClientMonthlyReport[];
 
-  // Subscription management
+  // Subscription management (ref-counted)
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -61,20 +63,31 @@ export const useClientStore = create<ClientState>((set, get) => ({
   meetings: [],
   brandAssets: [],
   monthlyReports: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return; // already subscribed
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Client>('clients', (items) => set({ clients: items })));
-    unsubs.push(subscribeCollection<ClientSocialLink>('client_social_links', (items) => set({ socialLinks: items })));
-    unsubs.push(subscribeCollection<ClientNote>('client_notes', (items) => set({ notes: items })));
-    unsubs.push(subscribeCollection<ClientMeeting>('client_meetings', (items) => set({ meetings: items })));
-    unsubs.push(subscribeCollection<ClientBrandAsset>('client_brand_assets', (items) => set({ brandAssets: items })));
-    unsubs.push(subscribeCollection<ClientMonthlyReport>('client_monthly_reports', (items) => set({ monthlyReports: items })));
+    let pending = 6;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<Client>('clients', (items) => { set({ clients: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientSocialLink>('client_social_links', (items) => { set({ socialLinks: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientNote>('client_notes', (items) => { set({ notes: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientMeeting>('client_meetings', (items) => { set({ meetings: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientBrandAsset>('client_brand_assets', (items) => { set({ brandAssets: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientMonthlyReport>('client_monthly_reports', (items) => { set({ monthlyReports: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return; // other components still need this store
     get()._unsubscribers.forEach((fn) => fn());
     set({ _unsubscribers: [] });
   },

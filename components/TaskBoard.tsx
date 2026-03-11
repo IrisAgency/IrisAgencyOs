@@ -361,4 +361,4 @@ const TaskBoard: React.FC<TaskBoardProps> = ({ tasks, onAddTask, onUpdateTaskSta
   );
 };
 
-export default TaskBoard;
+export default React.memo(TaskBoard);

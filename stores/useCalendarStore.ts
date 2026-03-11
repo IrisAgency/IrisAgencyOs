@@ -13,7 +13,9 @@ interface CalendarState {
   calendarItems: CalendarItem[];
   calendarItemRevisions: CalendarItemRevision[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -35,17 +37,28 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
   calendarMonths: [],
   calendarItems: [],
   calendarItemRevisions: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<CalendarMonth>('calendar_months', (items) => set({ calendarMonths: items })));
-    unsubs.push(subscribeCollection<CalendarItem>('calendar_items', (items) => set({ calendarItems: items })));
-    unsubs.push(subscribeCollection<CalendarItemRevision>('calendar_item_revisions', (items) => set({ calendarItemRevisions: items })));
+    let pending = 3;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<CalendarMonth>('calendar_months', (items) => { set({ calendarMonths: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<CalendarItem>('calendar_items', (items) => { set({ calendarItems: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<CalendarItemRevision>('calendar_item_revisions', (items) => { set({ calendarItemRevisions: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

@@ -4,7 +4,7 @@
  *              task_activity_logs, approval_steps, client_approvals
  */
 import { create } from 'zustand';
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
@@ -27,7 +27,9 @@ interface TaskState {
   approvalSteps: ApprovalStep[];
   clientApprovals: ClientApproval[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -68,21 +70,32 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   activityLogs: [],
   approvalSteps: [],
   clientApprovals: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Task>('tasks', (items) => set({ tasks: items })));
-    unsubs.push(subscribeCollection<TaskComment>('task_comments', (items) => set({ comments: items })));
-    unsubs.push(subscribeCollection<TaskTimeLog>('task_time_logs', (items) => set({ timeLogs: items })));
-    unsubs.push(subscribeCollection<TaskDependency>('task_dependencies', (items) => set({ dependencies: items })));
-    unsubs.push(subscribeCollection<TaskActivityLog>('task_activity_logs', (items) => set({ activityLogs: items })));
-    unsubs.push(subscribeCollection<ApprovalStep>('approval_steps', (items) => set({ approvalSteps: items })));
-    unsubs.push(subscribeCollection<ClientApproval>('client_approvals', (items) => set({ clientApprovals: items })));
+    let pending = 7;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<Task>('tasks', (items) => { set({ tasks: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<TaskComment>('task_comments', (items) => { set({ comments: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<TaskTimeLog>('task_time_logs', (items) => { set({ timeLogs: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<TaskDependency>('task_dependencies', (items) => { set({ dependencies: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<TaskActivityLog>('task_activity_logs', (items) => { set({ activityLogs: items }); markLoaded(); }, (ref) => query(ref, orderBy('createdAt', 'desc'), limit(500))));
+    unsubs.push(subscribeCollection<ApprovalStep>('approval_steps', (items) => { set({ approvalSteps: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ClientApproval>('client_approvals', (items) => { set({ clientApprovals: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach((fn) => fn());
     set({ _unsubscribers: [] });
   },

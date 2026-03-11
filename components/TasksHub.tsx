@@ -29,6 +29,8 @@ import { useQCStore } from '../stores/useQCStore';
 import { usePostingStore } from '../stores/usePostingStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useAuth } from '../contexts/AuthContext';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { TasksHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 
 interface TasksHubProps {
@@ -36,6 +38,9 @@ interface TasksHubProps {
 }
 
 const TasksHub: React.FC<TasksHubProps> = ({ initialSelectedTaskId }) => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(usePostingStore);
+
   // ─── Store reads ───
   const { currentUser: _authUser, checkPermission } = useAuth();
   const currentUser = _authUser!;
@@ -379,7 +384,10 @@ const TasksHub: React.FC<TasksHubProps> = ({ initialSelectedTaskId }) => {
   const completedCount = filteredTasks.filter(t => t.status === TaskStatus.COMPLETED || t.isArchived).length;
   const myApprovalsCount = countTasksNeedingMyApproval(filteredTasks, currentUser, approvalSteps);
 
+  const taskLoading = useTaskStore(s => s.loading);
+
   // Access Control: Show denied message if user doesn't have task view permissions
+  if (taskLoading) return <TasksHubSkeleton />;
   if (!canAccessTasks) {
     return (
       <PageContainer>

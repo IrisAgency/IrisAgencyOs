@@ -29,10 +29,15 @@ import { useQCStore } from '../stores/useQCStore';
 import { usePostingStore } from '../stores/usePostingStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useAuth } from '../contexts/AuthContext';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 import { archiveTask } from '../utils/archiveUtils';
 
 const ProductionHub: React.FC = () => {
+    // ── Lazy subscriptions for route-local stores ──
+    useStoreSubscription(useProductionStore, useCalendarStore, usePostingStore);
+
     // ── Store reads ──
     const { currentUser: _authUser, checkPermission } = useAuth();
     const currentUser = _authUser!;
@@ -1130,6 +1135,10 @@ const ProductionHub: React.FC = () => {
             </div>
         );
     };
+
+    const productionLoading = useProductionStore(s => s.loading);
+    const calendarLoading = useCalendarStore(s => s.loading);
+    if (productionLoading || calendarLoading) return <GenericHubSkeleton />;
 
     return (
         <PageContainer>

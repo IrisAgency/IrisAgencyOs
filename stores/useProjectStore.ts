@@ -4,7 +4,7 @@
  *              project_activity_logs, project_marketing_assets, milestones (smart creation)
  */
 import { create } from 'zustand';
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { prefixedId } from '../utils/id';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
@@ -28,7 +28,9 @@ interface ProjectState {
   /** Alias for `milestones` — used by App.tsx and child components */
   readonly projectMilestones: ProjectMilestone[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -66,24 +68,35 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activityLogs: [],
   marketingAssets: [],
   dynamicMilestones: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   // Computed aliases (kept in sync by the setters above — they're just getters)
   get projectMembers() { return get().members; },
   get projectMilestones() { return get().milestones; },
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Project>('projects', (items) => set({ projects: items })));
-    unsubs.push(subscribeCollection<ProjectMember>('project_members', (items) => set({ members: items })));
-    unsubs.push(subscribeCollection<ProjectMilestone>('project_milestones', (items) => set({ milestones: items })));
-    unsubs.push(subscribeCollection<ProjectActivityLog>('project_activity_logs', (items) => set({ activityLogs: items })));
-    unsubs.push(subscribeCollection<ProjectMarketingAsset>('project_marketing_assets', (items) => set({ marketingAssets: items })));
-    unsubs.push(subscribeCollection<Milestone>('milestones', (items) => set({ dynamicMilestones: items })));
+    let pending = 6;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<Project>('projects', (items) => { set({ projects: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ProjectMember>('project_members', (items) => { set({ members: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ProjectMilestone>('project_milestones', (items) => { set({ milestones: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<ProjectActivityLog>('project_activity_logs', (items) => { set({ activityLogs: items }); markLoaded(); }, (ref) => query(ref, orderBy('createdAt', 'desc'), limit(500))));
+    unsubs.push(subscribeCollection<ProjectMarketingAsset>('project_marketing_assets', (items) => { set({ marketingAssets: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Milestone>('milestones', (items) => { set({ dynamicMilestones: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach((fn) => fn());
     set({ _unsubscribers: [] });
   },

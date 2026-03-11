@@ -66,4 +66,4 @@ const ActivityCard: React.FC<ActivityCardProps> = ({ weeklyActivity }) => {
   );
 };
 
-export default ActivityCard;
+export default React.memo(ActivityCard);

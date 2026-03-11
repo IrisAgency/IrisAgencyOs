@@ -270,4 +270,4 @@ const NeedsMyApprovalCard: React.FC<NeedsMyApprovalCardProps> = ({
   );
 };
 
-export default NeedsMyApprovalCard;
+export default React.memo(NeedsMyApprovalCard);

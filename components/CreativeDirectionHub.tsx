@@ -14,6 +14,8 @@ import { useFileStore } from '../stores/useFileStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useProjectStore } from '../stores/useProjectStore';
 import { useTaskStore } from '../stores/useTaskStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 
 export interface CreativeDirectionHubProps {}
@@ -21,6 +23,9 @@ export interface CreativeDirectionHubProps {}
 type HubView = 'review' | 'presentation';
 
 const CreativeDirectionHub: React.FC<CreativeDirectionHubProps> = () => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(useCreativeStore, useCalendarStore);
+
   const { currentUser, checkPermission } = useAuth();
   const creativeStore = useCreativeStore();
   const calendarStore = useCalendarStore();
@@ -83,6 +88,12 @@ const CreativeDirectionHub: React.FC<CreativeDirectionHubProps> = () => {
   const [activeHubView, setActiveHubView] = useState<HubView>('review');
   
   const isManager = checkPermission(PERMISSIONS.CREATIVE.MANAGE);
+
+  const creativeLoading = useCreativeStore(s => s.loading);
+  const calendarLoading = useCalendarStore(s => s.loading);
+
+  // Loading gate
+  if (creativeLoading || calendarLoading) return <GenericHubSkeleton />;
 
   // Presentation View (full-screen takeover, has its own back button)
   if (activeHubView === 'presentation') {

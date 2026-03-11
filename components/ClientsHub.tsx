@@ -21,6 +21,8 @@ import { useFileStore } from '../stores/useFileStore';
 import { useHRStore } from '../stores/useHRStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useAdminStore } from '../stores/useAdminStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { ClientsHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 import type { NotificationType } from '../types';
 
@@ -32,6 +34,11 @@ interface ClientsHubProps {
 const ClientsHub: React.FC<ClientsHubProps> = ({
   onOpenProject,
 }) => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(useFinanceStore);
+  const clientLoading = useClientStore(s => s.loading);
+  const financeLoading = useFinanceStore(s => s.loading);
+
   // ── Auth ──
   const { currentUser, checkPermission } = useAuth();
 
@@ -597,6 +604,9 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
       </div>
     );
   };
+
+  // ── Loading skeleton ──
+  if (clientLoading || financeLoading) return <ClientsHubSkeleton />;
 
   // === LIST VIEW ===
   if (viewMode === 'list') {

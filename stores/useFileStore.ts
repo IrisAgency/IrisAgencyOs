@@ -21,7 +21,9 @@ interface FileState {
   files: AgencyFile[];
   folders: FileFolder[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -40,16 +42,27 @@ interface FileState {
 export const useFileStore = create<FileState>((set, get) => ({
   files: [],
   folders: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<AgencyFile>('files', (items) => set({ files: items })));
-    unsubs.push(subscribeCollection<FileFolder>('folders', (items) => set({ folders: items })));
+    let pending = 2;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<AgencyFile>('files', (items) => { set({ files: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<FileFolder>('folders', (items) => { set({ folders: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

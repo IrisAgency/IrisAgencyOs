@@ -34,15 +34,9 @@ import { useProjectStore } from './stores/useProjectStore';
 import { useTaskStore } from './stores/useTaskStore';
 import { useNotificationStore } from './stores/useNotificationStore';
 import { useFileStore } from './stores/useFileStore';
-import { useFinanceStore } from './stores/useFinanceStore';
 import { useHRStore } from './stores/useHRStore';
-import { useProductionStore } from './stores/useProductionStore';
 import { usePostingStore } from './stores/usePostingStore';
-import { useCreativeStore } from './stores/useCreativeStore';
-import { useCalendarStore } from './stores/useCalendarStore';
 import { useAdminStore } from './stores/useAdminStore';
-import { useNetworkStore } from './stores/useNetworkStore';
-import { useNotesStore } from './stores/useNotesStore';
 import { useQCStore } from './stores/useQCStore';
 
 // Constants & types
@@ -137,58 +131,40 @@ const App: React.FC = () => {
   // Derive activeView from URL for Sidebar
   const activeView = pathToViewKey[location.pathname] || 'dashboard';
 
-  // ─── Domain Store State (subscribe on mount) ─────
+  // ─── Domain Store State (core stores subscribed globally) ─────
   const clientStore = useClientStore();
   const projectStore = useProjectStore();
   const taskStore = useTaskStore();
   const notifStore = useNotificationStore();
   const fileStore = useFileStore();
-  const financeStore = useFinanceStore();
   const hrStore = useHRStore();
-  const productionStore = useProductionStore();
   const postingStore = usePostingStore();
-  const creativeStore = useCreativeStore();
-  const calendarStore = useCalendarStore();
   const adminStore = useAdminStore();
-  const networkStore = useNetworkStore();
-  const notesStore = useNotesStore();
   const qcStore = useQCStore();
 
-  // Subscribe all stores when user is authenticated, unsubscribe on logout/unmount
+  // Subscribe CORE stores when user is authenticated — these are needed
+  // globally (Header, Sidebar, global TaskDetailView overlay, Dashboard).
+  // Route-local stores subscribe lazily via useStoreSubscription() in each hub.
   useEffect(() => {
     if (!user) return; // Don't subscribe until authenticated — Firestore rules deny unauthenticated reads
 
-    clientStore.subscribe();
-    projectStore.subscribe();
-    taskStore.subscribe();
-    notifStore.subscribe();
-    fileStore.subscribe();
-    financeStore.subscribe();
-    hrStore.subscribe();
-    productionStore.subscribe();
-    postingStore.subscribe();
-    creativeStore.subscribe();
-    calendarStore.subscribe();
-    adminStore.subscribe();
-    networkStore.subscribe();
-    notesStore.subscribe();
-    qcStore.subscribe();
+    hrStore.subscribe();       // users list — Header, global overlay, many hubs
+    adminStore.subscribe();    // roles, workflows, banners — used app-wide
+    notifStore.subscribe();    // notifications badge in Header
+    taskStore.subscribe();     // global TaskDetailView overlay + Dashboard
+    projectStore.subscribe();  // global TaskDetailView overlay + Dashboard
+    clientStore.subscribe();   // global TaskDetailView overlay (client lookup)
+    fileStore.subscribe();     // global TaskDetailView overlay (file list + upload)
+    qcStore.subscribe();       // global TaskDetailView overlay (QC reviews)
 
     return () => {
-      clientStore.unsubscribe();
-      projectStore.unsubscribe();
-      taskStore.unsubscribe();
-      notifStore.unsubscribe();
-      fileStore.unsubscribe();
-      financeStore.unsubscribe();
       hrStore.unsubscribe();
-      productionStore.unsubscribe();
-      postingStore.unsubscribe();
-      creativeStore.unsubscribe();
-      calendarStore.unsubscribe();
       adminStore.unsubscribe();
-      networkStore.unsubscribe();
-      notesStore.unsubscribe();
+      notifStore.unsubscribe();
+      taskStore.unsubscribe();
+      projectStore.unsubscribe();
+      clientStore.unsubscribe();
+      fileStore.unsubscribe();
       qcStore.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

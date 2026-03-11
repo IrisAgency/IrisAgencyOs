@@ -374,4 +374,4 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
   );
 };
 
-export default PermissionMatrix;
+export default React.memo(PermissionMatrix);

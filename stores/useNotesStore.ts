@@ -11,7 +11,9 @@ import type { Note } from '../types';
 interface NotesState {
   notes: Note[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -22,15 +24,24 @@ interface NotesState {
 
 export const useNotesStore = create<NotesState>((set, get) => ({
   notes: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Note>('notes', (items) => set({ notes: items })));
+    unsubs.push(subscribeCollection<Note>('notes', (items) => { set({ notes: items, loading: false }); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

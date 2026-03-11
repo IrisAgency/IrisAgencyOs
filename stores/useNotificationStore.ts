@@ -3,7 +3,7 @@
  * Collections: notifications, notification_preferences
  */
 import { create } from 'zustand';
-import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs, getDoc, addDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, deleteDoc, writeBatch, collection, query, where, getDocs, getDoc, addDoc, orderBy, limit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { subscribeCollection, Unsubscribe } from './firestoreSubscription';
 import { notifyUsers } from '../services/notificationService';
@@ -20,7 +20,9 @@ interface NotificationState {
   allNotifications: Notification[];
   preferences: NotificationPreference;
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -51,15 +53,24 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     pushEnabled: true,
     delivery: { inApp: true, email: false, push: true },
   },
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Notification>('notifications', (items) => set({ allNotifications: items })));
+    unsubs.push(subscribeCollection<Notification>('notifications', (items) => { set({ allNotifications: items, loading: false }); }, (ref) => query(ref, orderBy('createdAt', 'desc'), limit(200))));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

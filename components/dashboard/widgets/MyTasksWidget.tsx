@@ -117,4 +117,4 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({ tasks = [], clients = [],
   );
 };
 
-export default MyTasksWidget;
+export default React.memo(MyTasksWidget);

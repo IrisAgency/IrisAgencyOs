@@ -130,4 +130,4 @@ const CalendarWidget: React.FC<CalendarWidgetProps> = ({ tasks = [], clients = [
   );
 };
 
-export default CalendarWidget;
+export default React.memo(CalendarWidget);

@@ -136,4 +136,4 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ projects, tasks, projectBur
     );
 };
 
-export default ProjectsView;
+export default React.memo(ProjectsView);

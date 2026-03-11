@@ -17,9 +17,15 @@ import { useClientStore } from '../stores/useClientStore';
 import { useUIStore } from '../stores/useUIStore';
 import { notifyUsers } from '../services/notificationService';
 import { useAuth } from '../contexts/AuthContext';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { FinanceHubSkeleton } from './common/Skeletons';
 import type { NotificationType } from '../types';
 
 const FinanceHub: React.FC = () => {
+    // ── Lazy subscriptions for route-local stores ──
+    useStoreSubscription(useFinanceStore);
+    const financeLoading = useFinanceStore(s => s.loading);
+
     const invoices = useFinanceStore(s => s.invoices);
     const quotations = useFinanceStore(s => s.quotations);
     const payments = useFinanceStore(s => s.payments);
@@ -374,6 +380,8 @@ const FinanceHub: React.FC = () => {
             </div>
         </div>
     );
+
+    if (financeLoading) return <FinanceHubSkeleton />;
 
     return (
         <PageContainer>

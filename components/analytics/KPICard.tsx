@@ -31,4 +31,4 @@ const KPICard: React.FC<KPICardProps> = ({ title, value, subtext, icon: Icon, tr
     </div>
 );
 
-export default KPICard;
+export default React.memo(KPICard);

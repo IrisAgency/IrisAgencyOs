@@ -224,4 +224,4 @@ const NotificationConsole: React.FC<NotificationConsoleProps> = ({ onEnablePush,
   );
 };
 
-export default NotificationConsole;
+export default React.memo(NotificationConsole);

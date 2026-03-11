@@ -67,4 +67,4 @@ const GmUrgentTasksWidget: React.FC<GmUrgentTasksWidgetProps> = ({ tasks = [], o
   );
 };
 
-export default GmUrgentTasksWidget;
+export default React.memo(GmUrgentTasksWidget);

@@ -141,4 +141,4 @@ const MilestonesWidget: React.FC<MilestonesWidgetProps> = ({ milestones = [], ta
   );
 };
 
-export default MilestonesWidget;
+export default React.memo(MilestonesWidget);

@@ -13,7 +13,9 @@ interface CreativeState {
   creativeCalendars: CreativeCalendar[];
   creativeCalendarItems: CreativeCalendarItem[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -37,17 +39,28 @@ export const useCreativeStore = create<CreativeState>((set, get) => ({
   creativeProjects: [],
   creativeCalendars: [],
   creativeCalendarItems: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<CreativeProject>('creative_projects', (items) => set({ creativeProjects: items })));
-    unsubs.push(subscribeCollection<CreativeCalendar>('creative_calendars', (items) => set({ creativeCalendars: items })));
-    unsubs.push(subscribeCollection<CreativeCalendarItem>('creative_calendar_items', (items) => set({ creativeCalendarItems: items })));
+    let pending = 3;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<CreativeProject>('creative_projects', (items) => { set({ creativeProjects: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<CreativeCalendar>('creative_calendars', (items) => { set({ creativeCalendars: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<CreativeCalendarItem>('creative_calendar_items', (items) => { set({ creativeCalendarItems: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

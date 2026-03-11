@@ -18,8 +18,13 @@ import { useCreativeStore } from '../stores/useCreativeStore';
 import { useClientStore } from '../stores/useClientStore';
 import { useHRStore } from '../stores/useHRStore';
 import { useUIStore } from '../stores/useUIStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 
 const CalendarHub: React.FC = () => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(useCalendarStore, useCreativeStore);
+
   // ── Store reads ──
   const { currentUser, checkPermission } = useAuth();
   const calendarStore = useCalendarStore();
@@ -756,6 +761,12 @@ const CalendarHub: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  const calendarLoading = useCalendarStore(s => s.loading);
+  const creativeLoading = useCreativeStore(s => s.loading);
+
+  // Loading gate
+  if (calendarLoading || creativeLoading) return <GenericHubSkeleton />;
 
   if (showPresentation) {
     return (

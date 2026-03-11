@@ -14,7 +14,9 @@ interface FinanceState {
   payments: Payment[];
   expenses: Expense[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -38,18 +40,29 @@ export const useFinanceStore = create<FinanceState>((set, get) => ({
   quotations: [],
   payments: [],
   expenses: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Invoice>('invoices', (items) => set({ invoices: items })));
-    unsubs.push(subscribeCollection<Quotation>('quotations', (items) => set({ quotations: items })));
-    unsubs.push(subscribeCollection<Payment>('payments', (items) => set({ payments: items })));
-    unsubs.push(subscribeCollection<Expense>('expenses', (items) => set({ expenses: items })));
+    let pending = 4;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<Invoice>('invoices', (items) => { set({ invoices: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Quotation>('quotations', (items) => { set({ quotations: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Payment>('payments', (items) => { set({ payments: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Expense>('expenses', (items) => { set({ expenses: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

@@ -111,4 +111,4 @@ const FinancialView: React.FC<FinancialViewProps> = ({
     );
 };
 
-export default FinancialView;
+export default React.memo(FinancialView);

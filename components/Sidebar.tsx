@@ -251,4 +251,4 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setActiveView, currentUse
   );
 };
 
-export default Sidebar;
+export default React.memo(Sidebar);

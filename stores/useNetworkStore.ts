@@ -14,7 +14,9 @@ interface NetworkState {
   assignments: FreelancerAssignment[];
   serviceOrders: VendorServiceOrder[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -33,18 +35,29 @@ export const useNetworkStore = create<NetworkState>((set, get) => ({
   freelancers: [],
   assignments: [],
   serviceOrders: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<Vendor>('vendors', (items) => set({ vendors: items })));
-    unsubs.push(subscribeCollection<Freelancer>('freelancers', (items) => set({ freelancers: items })));
-    unsubs.push(subscribeCollection<FreelancerAssignment>('freelancer_assignments', (items) => set({ assignments: items })));
-    unsubs.push(subscribeCollection<VendorServiceOrder>('vendor_service_orders', (items) => set({ serviceOrders: items })));
+    let pending = 4;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<Vendor>('vendors', (items) => { set({ vendors: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Freelancer>('freelancers', (items) => { set({ freelancers: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<FreelancerAssignment>('freelancer_assignments', (items) => { set({ assignments: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<VendorServiceOrder>('vendor_service_orders', (items) => { set({ serviceOrders: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

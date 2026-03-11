@@ -24,6 +24,8 @@ import { useNetworkStore } from '../stores/useNetworkStore';
 import { useCalendarStore } from '../stores/useCalendarStore';
 import { useAdminStore } from '../stores/useAdminStore';
 import { useUIStore } from '../stores/useUIStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { ProjectsHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 import type { NotificationType } from '../types';
 import { deleteDoc, doc } from 'firebase/firestore';
@@ -37,6 +39,9 @@ interface ProjectsHubProps {
 const ProjectsHub: React.FC<ProjectsHubProps> = ({
   initialSelectedProjectId,
 }) => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(useNetworkStore, useCalendarStore);
+
   // ── Auth ──
   const { currentUser, checkPermission, hasAnyPermission } = useAuth();
   const user = currentUser; // alias used internally
@@ -2615,6 +2620,10 @@ const MilestonesTab = ({ project, milestones, dynamicMilestones, users, tasks, a
     if (steps.length === 0) return null;
     return steps[0];
   };
+
+  const projectLoading = useProjectStore(s => s.loading);
+  const networkLoading = useNetworkStore(s => s.loading);
+  if (projectLoading || networkLoading) return <ProjectsHubSkeleton />;
 
   return (
     <div className="space-y-6">

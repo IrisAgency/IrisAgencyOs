@@ -13,6 +13,8 @@ import { useProductionStore } from '../stores/useProductionStore';
 import { usePostingStore } from '../stores/usePostingStore';
 import { useProjectStore } from '../stores/useProjectStore';
 import { useHRStore } from '../stores/useHRStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 
 type EventSource = 'tasks' | 'production' | 'social' | 'milestones' | 'leave';
 
@@ -28,6 +30,9 @@ interface CalendarEvent {
 }
 
 const UnifiedCalendar: React.FC = () => {
+    // ── Lazy subscriptions for route-local stores ──
+    useStoreSubscription(useProductionStore, usePostingStore);
+
     const { checkPermission } = useAuth();
     const allTasks = useTaskStore(s => s.tasks);
     const tasks = useMemo(() => allTasks.filter(t => !t.isDeleted), [allTasks]);
@@ -179,6 +184,10 @@ const UnifiedCalendar: React.FC = () => {
             e.date.getFullYear() === currentDate.getFullYear()
         );
     };
+
+    const productionLoading = useProductionStore(s => s.loading);
+    const postingLoading = usePostingStore(s => s.loading);
+    if (productionLoading || postingLoading) return <GenericHubSkeleton />;
 
     return (
         <div className="h-full flex flex-col space-y-4">

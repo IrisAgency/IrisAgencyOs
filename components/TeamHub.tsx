@@ -22,6 +22,8 @@ import { useProjectStore } from '../stores/useProjectStore';
 import { useTaskStore } from '../stores/useTaskStore';
 import { useProductionStore } from '../stores/useProductionStore';
 import { useUIStore } from '../stores/useUIStore';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { TeamHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 
 // HR Sub-components
@@ -55,6 +57,9 @@ const TAB_CONFIG: { key: HRTab; label: string; icon: React.ElementType; permissi
 ];
 
 const TeamHub: React.FC = () => {
+    // ── Lazy subscriptions for route-local stores ──
+    useStoreSubscription(useProductionStore);
+
     // ── Store reads ──
     const { currentUser, checkPermission } = useAuth();
     const hrStore = useHRStore();
@@ -232,6 +237,10 @@ const TeamHub: React.FC = () => {
         if (!tab.permissionKey) return true;
         return checkPermission?.(tab.permissionKey);
     });
+
+    const hrLoading = useHRStore(s => s.loading);
+    const productionLoading = useProductionStore(s => s.loading);
+    if (hrLoading || productionLoading) return <TeamHubSkeleton />;
 
     return (
         <PageContainer>

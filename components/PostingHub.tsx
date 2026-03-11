@@ -23,10 +23,15 @@ import { useHRStore } from '../stores/useHRStore';
 import { useFileStore } from '../stores/useFileStore';
 import { useUIStore } from '../stores/useUIStore';
 import { useAuth } from '../contexts/AuthContext';
+import { useStoreSubscription } from '../hooks/useStoreSubscription';
+import { GenericHubSkeleton } from './common/Skeletons';
 import { notifyUsers } from '../services/notificationService';
 import { archiveTask } from '../utils/archiveUtils';
 
 const PostingHub: React.FC = () => {
+  // ── Lazy subscriptions for route-local stores ──
+  useStoreSubscription(usePostingStore);
+
   // ── Store reads ──
   const { currentUser, checkPermission } = useAuth();
   const postingStore = usePostingStore();
@@ -273,6 +278,9 @@ const PostingHub: React.FC = () => {
     onUpdatePost(updatedPost);
     onNotify('success', 'Revisions Submitted', 'Post revisions have been submitted for review.');
   };
+
+  const postingLoading = usePostingStore(s => s.loading);
+  if (postingLoading) return <GenericHubSkeleton />;
 
   return (
     <PageContainer>

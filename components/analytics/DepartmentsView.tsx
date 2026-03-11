@@ -103,4 +103,4 @@ const DepartmentsView: React.FC<DepartmentsViewProps> = ({ tasks, deptData }) =>
     );
 };
 
-export default DepartmentsView;
+export default React.memo(DepartmentsView);

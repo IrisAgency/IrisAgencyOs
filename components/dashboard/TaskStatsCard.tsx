@@ -59,4 +59,4 @@ const TaskStatsCard: React.FC<TaskStatsCardProps> = ({
   );
 };
 
-export default TaskStatsCard;
+export default React.memo(TaskStatsCard);

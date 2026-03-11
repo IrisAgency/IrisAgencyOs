@@ -32,7 +32,9 @@ interface HRState {
   employeeStatusChanges: EmployeeStatusChange[];
   teams: Team[];
 
+  loading: boolean;
   _unsubscribers: Unsubscribe[];
+  _subscriberCount: number;
   subscribe: () => void;
   unsubscribe: () => void;
 
@@ -91,27 +93,38 @@ export const useHRStore = create<HRState>((set, get) => ({
   performanceReviews: [],
   employeeStatusChanges: [],
   teams: [],
+  loading: true,
   _unsubscribers: [],
+  _subscriberCount: 0,
 
   subscribe: () => {
+    const count = get()._subscriberCount + 1;
+    set({ _subscriberCount: count });
+    if (count > 1) return;
+    set({ loading: true });
     const unsubs: Unsubscribe[] = [];
-    unsubs.push(subscribeCollection<User>('users', (items) => set({ users: items })));
-    unsubs.push(subscribeCollection<EmployeeProfile>('employee_profiles', (items) => set({ employeeProfiles: items })));
-    unsubs.push(subscribeCollection<LeaveRequest>('leave_requests', (items) => set({ leaveRequests: items })));
-    unsubs.push(subscribeCollection<LeavePolicy>('leave_policies', (items) => set({ leavePolicies: items })));
-    unsubs.push(subscribeCollection<LeaveBalance>('leave_balances', (items) => set({ leaveBalances: items })));
-    unsubs.push(subscribeCollection<AttendanceRecord>('attendance_records', (items) => set({ attendanceRecords: items })));
-    unsubs.push(subscribeCollection<AttendanceCorrection>('attendance_corrections', (items) => set({ attendanceCorrections: items })));
-    unsubs.push(subscribeCollection<OnboardingChecklist>('onboarding_checklists', (items) => set({ onboardingChecklists: items })));
-    unsubs.push(subscribeCollection<OffboardingChecklist>('offboarding_checklists', (items) => set({ offboardingChecklists: items })));
-    unsubs.push(subscribeCollection<EmployeeAsset>('employee_assets', (items) => set({ employeeAssets: items })));
-    unsubs.push(subscribeCollection<PerformanceReview>('performance_reviews', (items) => set({ performanceReviews: items })));
-    unsubs.push(subscribeCollection<EmployeeStatusChange>('employee_status_changes', (items) => set({ employeeStatusChanges: items })));
-    unsubs.push(subscribeCollection<Team>('teams', (items) => set({ teams: items })));
+    let pending = 13;
+    const markLoaded = () => { pending--; if (pending <= 0) set({ loading: false }); };
+    unsubs.push(subscribeCollection<User>('users', (items) => { set({ users: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<EmployeeProfile>('employee_profiles', (items) => { set({ employeeProfiles: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<LeaveRequest>('leave_requests', (items) => { set({ leaveRequests: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<LeavePolicy>('leave_policies', (items) => { set({ leavePolicies: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<LeaveBalance>('leave_balances', (items) => { set({ leaveBalances: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<AttendanceRecord>('attendance_records', (items) => { set({ attendanceRecords: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<AttendanceCorrection>('attendance_corrections', (items) => { set({ attendanceCorrections: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<OnboardingChecklist>('onboarding_checklists', (items) => { set({ onboardingChecklists: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<OffboardingChecklist>('offboarding_checklists', (items) => { set({ offboardingChecklists: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<EmployeeAsset>('employee_assets', (items) => { set({ employeeAssets: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<PerformanceReview>('performance_reviews', (items) => { set({ performanceReviews: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<EmployeeStatusChange>('employee_status_changes', (items) => { set({ employeeStatusChanges: items }); markLoaded(); }));
+    unsubs.push(subscribeCollection<Team>('teams', (items) => { set({ teams: items }); markLoaded(); }));
     set({ _unsubscribers: unsubs });
   },
 
   unsubscribe: () => {
+    const count = Math.max(0, get()._subscriberCount - 1);
+    set({ _subscriberCount: count });
+    if (count > 0) return;
     get()._unsubscribers.forEach(fn => fn());
     set({ _unsubscribers: [] });
   },

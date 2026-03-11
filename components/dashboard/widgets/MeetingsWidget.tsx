@@ -88,4 +88,4 @@ const MeetingsWidget: React.FC<MeetingsWidgetProps> = ({ meetings = [], clients 
   );
 };
 
-export default MeetingsWidget;
+export default React.memo(MeetingsWidget);
