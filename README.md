@@ -1440,8 +1440,6 @@ At this scale, the architecture would need fundamental changes:
 | **Bridge layer** | App.tsx still bridges store data as props to hub components. Phase 3 (children reading stores directly) is next. | 🟡 Medium |
 | **Scope validation** | No server-side scope validation in Firestore rules — users could edit resources beyond their scope via direct writes. | 🟠 High |
 | **Presentation share tokens** | Tokens don't expire — shared links are permanent. | 🟡 Medium |
-| **TypeScript errors** | ~175 pre-existing TypeScript errors remain across the codebase (enum mismatches, missing optional properties). None introduced by recent changes. | 🟡 Medium |
-| **Strict null checks** | `strictNullChecks` and full `strict` mode deferred — would introduce ~46+ new errors. | 🟡 Medium |
 
 ### Theming
 - Some UI elements still use hardcoded `slate-*` Tailwind classes instead of CSS variables.
@@ -1479,7 +1477,7 @@ At this scale, the architecture would need fundamental changes:
 6. **Never run a server and another command in the same terminal** — use separate terminals
 
 ### Code Standards
-- TypeScript strict mode (partial — `strictFunctionTypes`, `strictBindCallApply`, `noFallthroughCasesInSwitch`, `forceConsistentCasingInFileNames` enabled)
+- TypeScript full `strict` mode enabled (`strict: true` — 0 errors)
 - Tailwind CSS for styling (no external CSS files unless necessary)
 - Lucide React for all icons
 - Firebase SDK for all backend operations
