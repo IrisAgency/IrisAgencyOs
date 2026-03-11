@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Project, Invoice, Quotation, Payment, Expense, Client, QuotationItem, InvoiceItem } from '../types';
 import {
     DollarSign, CreditCard, PieChart as PieIcon, FileText, Plus, Search,
@@ -11,26 +11,43 @@ import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
 import { prefixedId, uid } from '../utils/id';
+import { useFinanceStore } from '../stores/useFinanceStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useUIStore } from '../stores/useUIStore';
+import { notifyUsers } from '../services/notificationService';
+import { useAuth } from '../contexts/AuthContext';
+import type { NotificationType } from '../types';
 
-interface FinanceHubProps {
-    invoices: Invoice[];
-    quotations: Quotation[];
-    payments: Payment[];
-    expenses: Expense[];
-    projects: Project[];
-    clients: Client[];
-    onAddInvoice: (inv: Invoice) => void;
-    onUpdateInvoice: (inv: Invoice) => void;
-    onAddQuotation: (quo: Quotation) => void;
-    onUpdateQuotation: (quo: Quotation) => void;
-    onAddPayment: (pay: Payment) => void;
-    onAddExpense: (exp: Expense) => void;
-}
+const FinanceHub: React.FC = () => {
+    const invoices = useFinanceStore(s => s.invoices);
+    const quotations = useFinanceStore(s => s.quotations);
+    const payments = useFinanceStore(s => s.payments);
+    const expenses = useFinanceStore(s => s.expenses);
+    const projects = useProjectStore(s => s.projects);
+    const clients = useClientStore(s => s.clients);
 
-const FinanceHub: React.FC<FinanceHubProps> = ({
-    invoices, quotations, payments, expenses, projects, clients,
-    onAddInvoice, onUpdateInvoice, onAddQuotation, onUpdateQuotation, onAddPayment, onAddExpense
-}) => {
+    const financeAddInvoice = useFinanceStore(s => s.addInvoice);
+    const financeUpdateInvoice = useFinanceStore(s => s.updateInvoice);
+    const financeAddQuotation = useFinanceStore(s => s.addQuotation);
+    const financeUpdateQuotation = useFinanceStore(s => s.updateQuotation);
+    const financeAddPayment = useFinanceStore(s => s.addPayment);
+    const financeAddExpense = useFinanceStore(s => s.addExpense);
+    const projectUpdateProject = useProjectStore(s => s.updateProject);
+    const { showToast, clearToast } = useUIStore();
+    const { currentUser } = useAuth();
+
+    const handleNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = []) => {
+      showToast({ title, message }); setTimeout(() => clearToast(), 4000);
+      if (recipientIds.length > 0) { try { await notifyUsers({ type: type as NotificationType, title, message, recipientIds, sendPush: false, createdBy: currentUser?.id || 'system' }); } catch {} }
+    }, [showToast, clearToast, currentUser?.id]);
+
+    const onAddInvoice = useCallback(async (inv: Invoice) => { await financeAddInvoice(inv); }, [financeAddInvoice]);
+    const onUpdateInvoice = useCallback(async (inv: Invoice) => { await financeUpdateInvoice(inv); }, [financeUpdateInvoice]);
+    const onAddQuotation = useCallback(async (q: Quotation) => { await financeAddQuotation(q); }, [financeAddQuotation]);
+    const onUpdateQuotation = useCallback(async (q: Quotation) => { await financeUpdateQuotation(q); }, [financeUpdateQuotation]);
+    const onAddPayment = useCallback(async (p: Payment) => { await financeAddPayment(p); handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${p.amount} recorded.`); }, [financeAddPayment, handleNotify]);
+    const onAddExpense = useCallback(async (e: Expense) => { await financeAddExpense(e, (proj) => projectUpdateProject(proj, currentUser?.id), projects); }, [financeAddExpense, projectUpdateProject, currentUser, projects]);
     const [activeTab, setActiveTab] = useState<'Dashboard' | 'Quotations' | 'Invoices' | 'Payments' | 'Expenses'>('Dashboard');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<string>('');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AppSettings, User, RoleDefinition, AuditLog, DepartmentDefinition, WorkflowTemplate, DashboardBanner } from '../types';
 import { PERMISSIONS_LIST } from '../constants';
 import { GitBranch, Building, Grid3x3, Image } from 'lucide-react';
@@ -12,37 +12,77 @@ import BannerManager from './admin/BannerManager';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
 
-interface AdminHubProps {
-    settings: AppSettings;
-    users: User[];
-    roles: RoleDefinition[];
-    auditLogs: AuditLog[];
-    workflowTemplates: WorkflowTemplate[];
-    departments: DepartmentDefinition[];
-    dashboardBanner: DashboardBanner | null;
-    currentUserId: string;
-    onUpdateUser: (user: User) => void;
-    onAddUser: (user: User) => void;
-    onUpdateRole: (role: RoleDefinition) => void;
-    onAddRole: (role: RoleDefinition) => void;
-    onDeleteRole: (roleId: string) => void;
-    onUpdateWorkflow: (wf: WorkflowTemplate) => void;
-    onAddWorkflow: (wf: WorkflowTemplate) => void;
-    onDeleteWorkflow: (wfId: string) => void;
-    onSyncRoles: () => void;
-    onAddDepartment: (dept: DepartmentDefinition) => void;
-    onUpdateDepartment: (dept: DepartmentDefinition) => void;
-    onDeleteDepartment: (deptId: string) => void;
-    onSaveBanner: (banner: DashboardBanner) => void;
-    onDeleteBanner: () => void;
-}
+const DEFAULT_SETTINGS: AppSettings = { id: 'default', timezone: 'UTC', defaultCurrency: 'USD', taxRateDefault: 0, security: { requireStrongPassword: false, sessionTimeoutMinutes: 60, enable2FA: false } };
 
-const AdminHub: React.FC<AdminHubProps> = ({
-    settings, users, roles, auditLogs, workflowTemplates, departments, dashboardBanner, currentUserId,
-    onUpdateUser, onAddUser, onUpdateRole, onAddRole, onDeleteRole, onUpdateWorkflow, onAddWorkflow, onDeleteWorkflow, onSyncRoles,
-    onAddDepartment, onUpdateDepartment, onDeleteDepartment, onSaveBanner, onDeleteBanner
-}) => {
+const AdminHub: React.FC = () => {
+    // ── Store reads ──
+    const { currentUser } = useAuth();
+    const adminStore = useAdminStore();
+    const hrStore = useHRStore();
+    const { showToast } = useUIStore();
+
+    const settings = DEFAULT_SETTINGS;
+    const users = hrStore.users;
+    const roles = adminStore.systemRoles;
+    const auditLogs = adminStore.auditLogs;
+    const workflowTemplates = adminStore.workflowTemplates;
+    const departments = adminStore.departments;
+    const dashboardBanner = adminStore.dashboardBanners?.find(b => b.isActive) || null;
+    const currentUserId = currentUser?.id || '';
+
+    // ── Audit log helper ──
+    const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+        if (!currentUser) return;
+        await adminStore.addAuditLog(currentUser.id, action, entityType, entityId, description);
+    }, [currentUser, adminStore]);
+
+    // ── Wrapped actions ──
+    const onUpdateUser = useCallback(async (u: User) => await hrStore.updateUser(u, addAuditLog), [hrStore, addAuditLog]);
+    const onAddUser = useCallback(async (u: User) => await hrStore.addUser(u, addAuditLog), [hrStore, addAuditLog]);
+    const onUpdateRole = useCallback(async (r: RoleDefinition) => await adminStore.updateRole(r, currentUser!.id), [adminStore, currentUser]);
+    const onAddRole = useCallback(async (r: RoleDefinition) => await adminStore.addRole(r, currentUser!.id), [adminStore, currentUser]);
+    const onDeleteRole = useCallback(async (id: string) => await adminStore.deleteRole(id, currentUser!.id), [adminStore, currentUser]);
+    const onUpdateWorkflow = useCallback(async (wf: WorkflowTemplate) => {
+        await adminStore.updateWorkflow(wf);
+        showToast({ title: 'Success', message: 'Workflow updated.' });
+    }, [adminStore, showToast]);
+    const onAddWorkflow = useCallback(async (wf: WorkflowTemplate) => {
+        await adminStore.addWorkflow(wf);
+        showToast({ title: 'Success', message: 'Workflow created.' });
+    }, [adminStore, showToast]);
+    const onDeleteWorkflow = useCallback(async (id: string) => {
+        await adminStore.deleteWorkflow(id);
+        showToast({ title: 'Success', message: 'Workflow deleted.' });
+    }, [adminStore, showToast]);
+    const onSyncRoles = useCallback(async () => {
+        await adminStore.syncRoles();
+        showToast({ title: 'Success', message: 'System roles synchronized.' });
+    }, [adminStore, showToast]);
+    const onAddDepartment = useCallback(async (d: DepartmentDefinition) => {
+        await adminStore.addDepartment(d, currentUser!.id);
+        showToast({ title: 'Success', message: `Department "${d.name}" created.` });
+    }, [adminStore, currentUser, showToast]);
+    const onUpdateDepartment = useCallback(async (d: DepartmentDefinition) => {
+        await adminStore.updateDepartment(d, currentUser!.id);
+        showToast({ title: 'Success', message: `Department "${d.name}" updated.` });
+    }, [adminStore, currentUser, showToast]);
+    const onDeleteDepartment = useCallback(async (id: string) => {
+        await adminStore.deleteDepartment(id, currentUser!.id);
+        showToast({ title: 'Success', message: 'Department deleted.' });
+    }, [adminStore, currentUser, showToast]);
+    const onSaveBanner = useCallback(async (b: DashboardBanner) => {
+        await adminStore.saveBanner(b, currentUser!.id);
+        showToast({ title: 'Success', message: 'Banner saved.' });
+    }, [adminStore, currentUser, showToast]);
+    const onDeleteBanner = useCallback(async () => {
+        await adminStore.deleteBanner(currentUser!.id);
+        showToast({ title: 'Success', message: 'Banner deleted.' });
+    }, [adminStore, currentUser, showToast]);
     const [activeTab, setActiveTab] = useState<'Overview' | 'Users' | 'Roles' | 'Matrix' | 'Workflows' | 'Departments' | 'Banner' | 'Settings' | 'Audit'>('Overview');
 
     return (

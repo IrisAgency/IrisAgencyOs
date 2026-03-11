@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Task, Project, Invoice, User, Payment, Expense, Client, Department } from '../types';
 import { Activity, DollarSign, Briefcase, Users } from 'lucide-react';
 import ExecutiveView from './analytics/ExecutiveView';
@@ -8,20 +8,22 @@ import DepartmentsView from './analytics/DepartmentsView';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useFinanceStore } from '../stores/useFinanceStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useClientStore } from '../stores/useClientStore';
 
-interface AnalyticsHubProps {
-   tasks: Task[];
-   projects: Project[];
-   invoices: Invoice[];
-   users: User[];
-   payments: Payment[];
-   expenses: Expense[];
-   clients: Client[];
-}
-
-const AnalyticsHub: React.FC<AnalyticsHubProps> = ({
-   tasks, projects, invoices, users, payments, expenses, clients
-}) => {
+const AnalyticsHub: React.FC = () => {
+   const allTasks = useTaskStore(s => s.tasks);
+   const tasks = useMemo(() => allTasks.filter(t => !t.isDeleted), [allTasks]);
+   const projects = useProjectStore(s => s.projects);
+   const invoices = useFinanceStore(s => s.invoices);
+   const payments = useFinanceStore(s => s.payments);
+   const expenses = useFinanceStore(s => s.expenses);
+   const allUsers = useHRStore(s => s.users);
+   const users = useMemo(() => (Array.isArray(allUsers) ? allUsers.filter(u => u && u.status !== 'inactive') : []), [allUsers]);
+   const clients = useClientStore(s => s.clients);
    const [activeTab, setActiveTab] = useState<'Executive' | 'Financial' | 'Projects' | 'Departments'>('Executive');
 
    // --- Data Calculation Helpers ---

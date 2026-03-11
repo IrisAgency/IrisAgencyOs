@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Task, Project, User, TaskStatus, Priority, Department, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember, RoleDefinition, ProjectMilestone, SocialPost, UserRole } from '../types';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Task, Project, User, TaskStatus, Priority, Department, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember, RoleDefinition, ProjectMilestone, SocialPost, UserRole, NotificationType } from '../types';
 import {
   Plus,
   Search,
@@ -20,48 +20,128 @@ import TaskBoardDark, { DueTone, ToneFn } from './tasks/TaskBoardDark';
 import TaskListDark from './tasks/TaskListDark';
 import TaskStatsRow from './tasks/TaskStatsRow';
 import WorkflowHub from './workflows/WorkflowHub';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useQCStore } from '../stores/useQCStore';
+import { usePostingStore } from '../stores/usePostingStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { notifyUsers } from '../services/notificationService';
 
 interface TasksHubProps {
-  tasks: Task[];
-  projects: Project[];
-  users: User[];
-  comments: TaskComment[];
-  timeLogs: TaskTimeLog[];
-  dependencies: TaskDependency[];
-  activityLogs: TaskActivityLog[];
-  approvalSteps: ApprovalStep[];
-  clientApprovals: ClientApproval[];
-  files: AgencyFile[];
-  workflowTemplates: WorkflowTemplate[];
-  projectMembers: ProjectMember[]; // Needed to resolve dynamic roles
-  roles: RoleDefinition[]; // Needed to resolve role IDs
-  milestones: ProjectMilestone[];
-  currentUser: User;
-  onAddTask: (task: Task) => void;
-  onUpdateTask: (task: Task) => void;
-  onAddComment: (comment: TaskComment) => void;
-  onAddTimeLog: (log: TaskTimeLog) => void;
-  onAddDependency: (dep: TaskDependency) => void;
-  onUpdateApprovalStep: (step: ApprovalStep) => void;
-  onAddApprovalSteps: (steps: ApprovalStep[]) => void;
-  onUpdateClientApproval: (ca: ClientApproval) => void;
-  onAddClientApproval: (ca: ClientApproval) => void;
-  onUploadFile: (file: AgencyFile) => void;
-  onNotify: (type: string, title: string, message: string) => void;
-  checkPermission: (code: string) => boolean;
-  onDeleteTask: (task: Task) => void;
   initialSelectedTaskId?: string | null;
-  onAddSocialPost: (post: SocialPost) => void;
-  leaveRequests?: any[];
 }
 
-const TasksHub: React.FC<TasksHubProps> = ({
-  tasks = [], projects = [], users = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [],
-  approvalSteps = [], clientApprovals = [], files = [], workflowTemplates = [], projectMembers = [], roles = [], milestones = [], currentUser,
-  onAddTask, onUpdateTask, onAddComment, onAddTimeLog, onAddDependency,
-  onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval, onAddClientApproval, onUploadFile, onNotify, checkPermission, onDeleteTask,
-  initialSelectedTaskId, onAddSocialPost, leaveRequests = []
-}) => {
+const TasksHub: React.FC<TasksHubProps> = ({ initialSelectedTaskId }) => {
+  // ─── Store reads ───
+  const { currentUser: _authUser, checkPermission } = useAuth();
+  const currentUser = _authUser!;
+  const taskStore = useTaskStore();
+  const projectStore = useProjectStore();
+  const hrStore = useHRStore();
+  const fileStore = useFileStore();
+  const adminStore = useAdminStore();
+  const qcStore = useQCStore();
+  const postingStore = usePostingStore();
+  const { showToast, clearToast } = useUIStore();
+
+  const activeTasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+  const tasks = useMemo(() => {
+    if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
+    return activeTasks.filter(t => {
+      const assignees = t.assigneeIds;
+      const isAssigned = Array.isArray(assignees) && assignees.includes(currentUser?.id || '');
+      return isAssigned || t.createdBy === currentUser?.id;
+    });
+  }, [checkPermission, activeTasks, currentUser?.id]);
+  const projects = useMemo(() => {
+    const allProjects = projectStore.projects;
+    if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return allProjects;
+    return allProjects.filter(p =>
+      projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === currentUser?.id) ||
+      p.accountManagerId === currentUser?.id ||
+      p.projectManagerId === currentUser?.id ||
+      activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(currentUser?.id || ''))
+    );
+  }, [projectStore.projects, projectStore.projectMembers, currentUser?.id, checkPermission, activeTasks]);
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const comments = taskStore.comments;
+  const timeLogs = taskStore.timeLogs;
+  const dependencies = taskStore.dependencies;
+  const activityLogs = taskStore.activityLogs;
+  const approvalSteps = taskStore.approvalSteps;
+  const clientApprovals = taskStore.clientApprovals;
+  const files = fileStore.files;
+  const workflowTemplates = adminStore.workflowTemplates;
+  const projectMembers = projectStore.projectMembers;
+  const roles = adminStore.systemRoles;
+  const milestones = projectStore.projectMilestones;
+  const leaveRequests = hrStore.leaveRequests;
+
+  // ─── Audit log helper ───
+  const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+    if (!currentUser) return;
+    await adminStore.addAuditLog(currentUser.id, action, entityType, entityId, description);
+  }, [currentUser, adminStore]);
+
+  // ─── Wrapped actions ───
+  const onAddTask = useCallback(async (task: Task) => {
+    await taskStore.addTask(task, projectStore.projects, hrStore.users, currentUser.id);
+  }, [taskStore, projectStore.projects, hrStore.users, currentUser]);
+
+  const onUpdateTask = useCallback(async (updatedTask: Task) => {
+    await taskStore.updateTask(updatedTask, {
+      tasks: activeTasks,
+      userId: currentUser.id,
+      workflowTemplates,
+      qcReviews: qcStore.qcReviews,
+      projectMembers,
+      activeUsers: users,
+      systemRoles: roles,
+    });
+  }, [taskStore, activeTasks, currentUser, workflowTemplates, qcStore.qcReviews, projectMembers, users, roles]);
+
+  const onDeleteTask = useCallback(async (task: Task) => {
+    await taskStore.deleteTask(task, currentUser.id, checkPermission, showToast, addAuditLog);
+  }, [taskStore, currentUser, checkPermission, showToast, addAuditLog]);
+
+  const onAddComment = useCallback(async (c: TaskComment) => await taskStore.addComment(c), [taskStore]);
+  const onAddTimeLog = useCallback(async (l: TaskTimeLog) => await taskStore.addTimeLog(l), [taskStore]);
+  const onAddDependency = useCallback(async (d: TaskDependency) => await taskStore.addDependency(d), [taskStore]);
+  const onUpdateApprovalStep = useCallback(async (s: ApprovalStep) => await taskStore.updateApprovalStep(s), [taskStore]);
+  const onAddApprovalSteps = useCallback(async (s: ApprovalStep[]) => await taskStore.addApprovalSteps(s), [taskStore]);
+  const onUpdateClientApproval = useCallback(async (ca: ClientApproval) => await taskStore.updateClientApproval(ca), [taskStore]);
+  const onAddClientApproval = useCallback(async (ca: ClientApproval) => await taskStore.addClientApproval(ca), [taskStore]);
+
+  const onUploadFile = useCallback(async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+    try {
+      const savedFile = await fileStore.uploadFile(file, { projects: projectStore.projects, clients: [], activeTasks, folders: fileStore.folders });
+      showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+      return savedFile;
+    } catch (error: any) {
+      showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+      throw error;
+    }
+  }, [fileStore, projectStore.projects, activeTasks, showToast]);
+
+  const onNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({ type: type as NotificationType, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' });
+      } catch (error) { console.error('Failed to create notification:', error); }
+    }
+  }, [showToast, clearToast, currentUser?.id]);
+
+  const onAddSocialPost = useCallback(async (p: SocialPost) => await postingStore.addPost(p), [postingStore]);
   // Permission Check - Must have at least one task view permission
   const canAccessTasks = checkPermission(PERMISSIONS.TASKS.VIEW_ALL) || 
                          checkPermission(PERMISSIONS.TASKS.VIEW_DEPT) || 

@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
     User, UserRole, Department, Task, LeaveRequest, AttendanceRecord, RoleDefinition, Project,
     EmployeeProfile, Team, LeavePolicy, LeaveBalance, AttendanceCorrection, OnboardingChecklist,
     OffboardingChecklist, EmployeeAsset, PerformanceReview, DepartmentDefinition, LeaveType,
-    AgencyEquipment, OnboardingStep
+    AgencyEquipment, OnboardingStep, NotificationType
 } from '../types';
 import {
     Plus, User as UserIcon, Building2, Calendar, Clock, Star, UserPlus,
@@ -16,6 +16,13 @@ import Modal from './common/Modal';
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import { useHRStore } from '../stores/useHRStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProductionStore } from '../stores/useProductionStore';
+import { useUIStore } from '../stores/useUIStore';
+import { notifyUsers } from '../services/notificationService';
 
 // HR Sub-components
 import EmployeeDirectory from './hr/EmployeeDirectory';
@@ -36,55 +43,6 @@ import CapacityDashboard from './hr/CapacityDashboard';
 
 type HRTab = 'employees' | 'org' | 'leave' | 'attendance' | 'onboarding' | 'assets' | 'performance' | 'capacity';
 
-interface TeamHubProps {
-    users: User[];
-    tasks?: Task[];
-    leaveRequests: LeaveRequest[];
-    attendanceRecords: AttendanceRecord[];
-    roles?: RoleDefinition[];
-    departments?: DepartmentDefinition[];
-    projects?: Project[];
-    checkPermission?: (code: string) => boolean;
-    currentUser?: User;
-    onAddUser?: (user: User) => void;
-    onUpdateUser: (user: User) => void;
-    onAddLeaveRequest: (req: LeaveRequest) => void;
-    onUpdateLeaveRequest: (req: LeaveRequest) => void;
-    onDeleteLeaveRequest?: (id: string) => void;
-    onApproveLeaveRequest?: (id: string) => void;
-    onRejectLeaveRequest?: (id: string, reason: string) => void;
-    onCancelLeaveRequest?: (id: string) => void;
-    onClockIn?: () => void;
-    onClockOut?: () => void;
-    onAddDepartment?: (dept: DepartmentDefinition) => void;
-    onUpdateDepartment?: (dept: DepartmentDefinition) => void;
-    onDeleteDepartment?: (id: string) => void;
-    // HR-specific props
-    employeeProfiles?: EmployeeProfile[];
-    teams?: Team[];
-    leavePolicies?: LeavePolicy[];
-    leaveBalances?: LeaveBalance[];
-    attendanceCorrections?: AttendanceCorrection[];
-    onboardingChecklists?: OnboardingChecklist[];
-    offboardingChecklists?: OffboardingChecklist[];
-    employeeAssets?: EmployeeAsset[];
-    performanceReviews?: PerformanceReview[];
-    equipment?: AgencyEquipment[];
-    onCreateEmployeeProfile?: (profile: EmployeeProfile) => void;
-    onUpdateEmployeeProfile?: (profile: EmployeeProfile) => void;
-    onSubmitAttendanceCorrection?: (correction: AttendanceCorrection) => void;
-    onApproveAttendanceCorrection?: (correctionId: string) => void;
-    onStartOnboarding?: (userId: string, steps: OnboardingStep[]) => void;
-    onCompleteOnboardingStep?: (checklistId: string, stepId: string) => void;
-    onStartOffboarding?: (userId: string) => void;
-    onAssignEmployeeAsset?: (asset: Partial<EmployeeAsset>) => void;
-    onReturnEmployeeAsset?: (assetId: string) => void;
-    onCreatePerformanceReview?: (review: Partial<PerformanceReview>) => void;
-    onSubmitPerformanceReview?: (reviewId: string) => void;
-    onFinalizePerformanceReview?: (reviewId: string) => void;
-    onUpdatePerformanceReview?: (review: PerformanceReview) => void;
-}
-
 const TAB_CONFIG: { key: HRTab; label: string; icon: React.ElementType; permissionKey?: string }[] = [
     { key: 'employees', label: 'Employees', icon: UserIcon },
     { key: 'org', label: 'Org Structure', icon: Building2 },
@@ -96,45 +54,100 @@ const TAB_CONFIG: { key: HRTab; label: string; icon: React.ElementType; permissi
     { key: 'capacity', label: 'Capacity', icon: BarChart3 },
 ];
 
-const TeamHub: React.FC<TeamHubProps> = ({
-    users = [],
-    tasks = [],
-    leaveRequests = [],
-    attendanceRecords = [],
-    roles = [],
-    departments = [],
-    projects = [],
-    checkPermission,
-    currentUser,
-    onUpdateUser,
-    onAddLeaveRequest,
-    onApproveLeaveRequest,
-    onRejectLeaveRequest,
-    onCancelLeaveRequest,
-    onClockIn,
-    onClockOut,
-    employeeProfiles = [],
-    teams = [],
-    leavePolicies = [],
-    leaveBalances = [],
-    attendanceCorrections = [],
-    onboardingChecklists = [],
-    offboardingChecklists = [],
-    employeeAssets = [],
-    performanceReviews = [],
-    onCreateEmployeeProfile,
-    onUpdateEmployeeProfile,
-    onSubmitAttendanceCorrection,
-    onApproveAttendanceCorrection,
-    onStartOnboarding,
-    onCompleteOnboardingStep,
-    onStartOffboarding,
-    onAssignEmployeeAsset,
-    onReturnEmployeeAsset,
-    onCreatePerformanceReview,
-    onFinalizePerformanceReview,
-    onUpdatePerformanceReview,
-}) => {
+const TeamHub: React.FC = () => {
+    // ── Store reads ──
+    const { currentUser, checkPermission } = useAuth();
+    const hrStore = useHRStore();
+    const adminStore = useAdminStore();
+    const projectStore = useProjectStore();
+    const taskStore = useTaskStore();
+    const productionStore = useProductionStore();
+    const { showToast, clearToast } = useUIStore();
+
+    const users = useMemo(() => {
+        const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+        return safe.filter(u => u && u.status !== 'inactive');
+    }, [hrStore.users]);
+    const tasks = taskStore.tasks;
+    const leaveRequests = hrStore.leaveRequests;
+    const attendanceRecords = hrStore.attendanceRecords;
+    const roles = adminStore.systemRoles;
+    const departments = adminStore.departments;
+    const projects = projectStore.projects;
+    const employeeProfiles = hrStore.employeeProfiles;
+    const teams = hrStore.teams;
+    const leavePolicies = hrStore.leavePolicies;
+    const leaveBalances = hrStore.leaveBalances;
+    const attendanceCorrections = hrStore.attendanceCorrections;
+    const onboardingChecklists = hrStore.onboardingChecklists;
+    const offboardingChecklists = hrStore.offboardingChecklists;
+    const employeeAssets = hrStore.employeeAssets;
+    const performanceReviews = hrStore.performanceReviews;
+    const equipment = productionStore.equipment;
+
+    // ── Audit log helper ──
+    const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+        if (!currentUser) return;
+        await adminStore.addAuditLog(currentUser.id, action, entityType, entityId, description);
+    }, [currentUser, adminStore]);
+
+    // ── Notify helper ──
+    const handleNotify = useCallback(async (
+        type: string, title: string, message: string,
+        recipientIds: string[] = [], entityId?: string, actionUrl?: string
+    ) => {
+        showToast({ title, message });
+        setTimeout(() => clearToast(), 4000);
+        if (recipientIds.length > 0) {
+            try {
+                await notifyUsers({ type: type as NotificationType, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' });
+            } catch (error) { console.error('Failed to create notification:', error); }
+        }
+    }, [showToast, clearToast, currentUser?.id]);
+
+    // ── Wrapped HR actions ──
+    const onUpdateUser = useCallback(async (u: User) => await hrStore.updateUser(u, addAuditLog), [hrStore, addAuditLog]);
+    const onAddLeaveRequest = useCallback(async (r: LeaveRequest) => await hrStore.addLeaveRequest(r, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+    const onUpdateLeaveRequest = useCallback(async (r: LeaveRequest) => await hrStore.updateLeaveRequest(r), [hrStore]);
+    const onDeleteLeaveRequest = useCallback(async (id: string) => await hrStore.deleteLeaveRequest(id, addAuditLog), [hrStore, addAuditLog]);
+    const onApproveLeaveRequest = useCallback(async (id: string) => await hrStore.approveLeaveRequest(id as any, currentUser!.id, addAuditLog, handleNotify), [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onRejectLeaveRequest = useCallback(async (id: string, reason: string) => await hrStore.rejectLeaveRequest(id as any, reason, currentUser!.id, addAuditLog, handleNotify), [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onCancelLeaveRequest = useCallback(async (id: string) => await hrStore.cancelLeaveRequest(id as any, currentUser!.id, addAuditLog), [hrStore, currentUser, addAuditLog]);
+    const onClockIn = useCallback(async () => {
+        const msg = await hrStore.checkIn(currentUser!.id, currentUser!.name, addAuditLog);
+        if (msg) handleNotify('system', 'Info', msg);
+        else handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`);
+    }, [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onClockOut = useCallback(async () => {
+        const msg = await hrStore.checkOut(currentUser!.id, currentUser!.name, addAuditLog);
+        if (msg) handleNotify('system', 'Info', msg);
+        else handleNotify('system', 'Checked Out', 'Clock-out recorded.');
+    }, [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onAddDepartment = useCallback(async (d: DepartmentDefinition) => {
+        await adminStore.addDepartment(d, currentUser!.id);
+        showToast({ title: 'Success', message: `Department "${d.name}" created.` });
+    }, [adminStore, currentUser, showToast]);
+    const onUpdateDepartment = useCallback(async (d: DepartmentDefinition) => {
+        await adminStore.updateDepartment(d, currentUser!.id);
+        showToast({ title: 'Success', message: `Department "${d.name}" updated.` });
+    }, [adminStore, currentUser, showToast]);
+    const onDeleteDepartment = useCallback(async (id: string) => {
+        await adminStore.deleteDepartment(id, currentUser!.id);
+        showToast({ title: 'Success', message: 'Department deleted.' });
+    }, [adminStore, currentUser, showToast]);
+    const onCreateEmployeeProfile = useCallback(async (p: any) => await hrStore.createEmployeeProfile(p, addAuditLog), [hrStore, addAuditLog]);
+    const onUpdateEmployeeProfile = useCallback(async (p: any) => await hrStore.updateEmployeeProfile(p, currentUser!.id, addAuditLog), [hrStore, currentUser, addAuditLog]);
+    const onSubmitAttendanceCorrection = useCallback(async (c: any) => await hrStore.submitAttendanceCorrection(c, addAuditLog), [hrStore, addAuditLog]);
+    const onApproveAttendanceCorrection = useCallback(async (id: string) => await hrStore.approveAttendanceCorrection(id, currentUser!.id, currentUser!.name, addAuditLog, handleNotify), [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onStartOnboarding = useCallback(async (userId: string, steps: OnboardingStep[]) => await hrStore.startOnboarding({ userId, steps } as any, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+    const onCompleteOnboardingStep = useCallback(async (cId: string, sId: string) => await hrStore.completeOnboardingStep(cId, sId, currentUser!.id, addAuditLog), [hrStore, currentUser, addAuditLog]);
+    const onStartOffboarding = useCallback(async (userId: string) => await hrStore.startOffboarding(userId as any, currentUser!.id, addAuditLog, handleNotify), [hrStore, currentUser, addAuditLog, handleNotify]);
+    const onAssignEmployeeAsset = useCallback(async (a: Partial<EmployeeAsset>) => await hrStore.assignEmployeeAsset(a as EmployeeAsset, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+    const onReturnEmployeeAsset = useCallback(async (id: string) => await hrStore.returnEmployeeAsset(id, addAuditLog), [hrStore, addAuditLog]);
+    const onCreatePerformanceReview = useCallback(async (r: Partial<PerformanceReview>) => await hrStore.createPerformanceReview(r as PerformanceReview, addAuditLog), [hrStore, addAuditLog]);
+    const onSubmitPerformanceReview = useCallback(async (id: string) => await hrStore.submitPerformanceReview(id, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+    const onFinalizePerformanceReview = useCallback(async (id: string) => await hrStore.finalizePerformanceReview(id, addAuditLog, handleNotify), [hrStore, addAuditLog, handleNotify]);
+    const onUpdatePerformanceReview = useCallback(async (r: PerformanceReview) => await hrStore.updatePerformanceReview(r), [hrStore]);
     const [activeTab, setActiveTab] = useState<HRTab>('employees');
     const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);

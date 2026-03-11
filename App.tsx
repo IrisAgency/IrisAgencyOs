@@ -1,11 +1,11 @@
 /**
- * App.tsx — Layout shell and store orchestrator.
+ * App.tsx — Layout shell, store subscription orchestrator, and route definitions.
  *
- * Phase 2 rewrite: Reads from Zustand stores instead of 63 useFirestoreCollection hooks.
- * Still passes props to child components (children will be individually migrated in Phase 3).
- * Uses React Router for navigation instead of switch/case on activeView string.
+ * All hub/page components read directly from Zustand stores.
+ * App.tsx only handles: auth gates, store subscriptions, routing,
+ * global task detail overlay, and push notification prompt.
  */
-import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, { useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 
 // Layout components
@@ -46,35 +46,15 @@ import { useNotesStore } from './stores/useNotesStore';
 import { useQCStore } from './stores/useQCStore';
 
 // Constants & types
-import { DEFAULT_SETTINGS, DEFAULT_ROLES } from './constants';
 import type {
   Task,
   TaskStatus,
-  ApprovalStep,
   ProjectMember,
   RoleDefinition,
   NotificationType,
-  NotificationPreference,
-  AppSettings,
   AgencyFile,
-  User,
 } from './types';
 import { X, Bell, ChevronRight } from 'lucide-react';
-import {
-  doc,
-  setDoc,
-  updateDoc,
-  addDoc,
-  collection,
-  deleteDoc,
-  writeBatch,
-  query,
-  where,
-  getDocs,
-  getDoc,
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from './lib/firebase';
 
 // Lazy-loaded route components
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -228,10 +208,8 @@ const App: React.FC = () => {
   const safeUsers = useMemo(() => (Array.isArray(hrStore.users) ? hrStore.users : []), [hrStore.users]);
   const activeUsers = useMemo(() => safeUsers.filter((u) => u && u.status !== 'inactive'), [safeUsers]);
   const { files, folders } = fileStore;
-  const { invoices, quotations, payments, expenses } = financeStore;
-  const { systemRoles, auditLogs, workflowTemplates, departments, dashboardBanners } = adminStore;
+  const { systemRoles, workflowTemplates, dashboardBanners } = adminStore;
   const dashboardBanner = useMemo(() => dashboardBanners.find((b) => b.isActive) || null, [dashboardBanners]);
-  const [appSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const canSendNotifications = checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW);
 
   const notifications = useMemo(() => {
@@ -264,8 +242,6 @@ const App: React.FC = () => {
     },
     [navigate, closeSidebar],
   );
-
-  const handleNavigateToTask = useCallback((taskId: string) => setTargetTaskId(taskId), [setTargetTaskId]);
 
   const handleOpenProject = useCallback(
     (projectId: string) => {
@@ -384,438 +360,6 @@ const App: React.FC = () => {
     [showToast, fileStore, projects, clients, activeTasks, folders],
   );
 
-  const handleDeleteFile = useCallback(
-    async (fileId: string) => {
-      try {
-        await fileStore.deleteFile(fileId, { userId: user!.id });
-        handleNotify('system', 'File Deleted', 'File has been deleted.');
-      } catch (error) {
-        showToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
-      }
-    },
-    [fileStore, user, handleNotify, showToast],
-  );
-
-  const handleCreateFolder = useCallback(async (folder: any) => await fileStore.createFolder(folder), [fileStore]);
-
-  const handleDeleteFolder = useCallback(
-    async (folderId: string) => {
-      const folder = folders.find((f) => f.id === folderId);
-      if (!folder) {
-        showToast({ title: 'Error', message: 'Folder not found.' });
-        return;
-      }
-      const hasSubfolders = folders.some((f) => f.parentId === folderId);
-      const folderFiles = files.filter((f) => f.folderId === folderId);
-      let confirmMessage = `Are you sure you want to delete the folder "${folder.name}"?\n\n`;
-      if (hasSubfolders || folderFiles.length > 0) {
-        confirmMessage += '⚠️ Warning: This folder contains:\n';
-        if (hasSubfolders) confirmMessage += '• Subfolders\n';
-        if (folderFiles.length > 0) confirmMessage += `• ${folderFiles.length} file(s)\n`;
-        confirmMessage += '\nAll contents will be permanently deleted!\n\n';
-      }
-      confirmMessage += 'This action CANNOT be undone.';
-      if (!window.confirm(confirmMessage)) return;
-      try {
-        await fileStore.deleteFolder(folderId);
-        addAuditLog('delete', 'Folder', folderId, `Deleted folder "${folder.name}"`);
-        showToast({ title: 'Success', message: `Folder "${folder.name}" deleted successfully.` });
-      } catch {
-        showToast({ title: 'Error', message: 'Failed to delete folder.' });
-      }
-    },
-    [folders, files, fileStore, showToast, addAuditLog],
-  );
-
-  // Project handlers → delegates to store
-  const handleAddProject = useCallback(
-    async (p: any) => await projectStore.addProject(p, user!, clients),
-    [projectStore, user, clients],
-  );
-  const handleUpdateProject = useCallback(
-    async (p: any) => await projectStore.updateProject(p, user!.id),
-    [projectStore, user],
-  );
-  const handleDeleteProject = useCallback(
-    async (id: string) => {
-      await projectStore.deleteProject(id, showToast, addAuditLog);
-    },
-    [projectStore, showToast, addAuditLog],
-  );
-  const handleAddProjectMember = useCallback(
-    async (m: any) => await projectStore.addMember(m, user!),
-    [projectStore, user],
-  );
-  const handleRemoveProjectMember = useCallback(
-    async (id: string) => await deleteDoc(doc(db, 'project_members', id)),
-    [],
-  );
-  const handleAddProjectMilestone = useCallback(
-    async (m: any) => await projectStore.addMilestone(m, user!.id),
-    [projectStore, user],
-  );
-  const handleUpdateProjectMilestone = useCallback(
-    async (m: any) => await projectStore.updateMilestone(m, user!.id),
-    [projectStore, user],
-  );
-  const handleAddMilestone = useCallback(async (m: any) => await projectStore.addDynamicMilestone(m), [projectStore]);
-  const handleUpdateMilestone = useCallback(
-    async (m: any) => await projectStore.updateDynamicMilestone(m),
-    [projectStore],
-  );
-  const handleAddProjectMarketingAsset = useCallback(
-    async (a: any) => {
-      await projectStore.addMarketingAsset(a);
-      handleNotify('system', 'Marketing Asset Added', `Added ${a.name} to project strategy.`);
-    },
-    [projectStore, handleNotify],
-  );
-  const handleUpdateProjectMarketingAsset = useCallback(
-    async (a: any) => await projectStore.updateMarketingAsset(a),
-    [projectStore],
-  );
-  const handleDeleteProjectMarketingAsset = useCallback(
-    async (id: string) => await projectStore.deleteMarketingAsset(id),
-    [projectStore],
-  );
-  const handleArchiveProject = useCallback(
-    async (id: string) => {
-      await projectStore.archiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
-    },
-    [projectStore, user, projects, folders, files, checkPermission, showToast],
-  );
-  const handleUnarchiveProject = useCallback(
-    async (id: string) => {
-      await projectStore.unarchiveProject(id, user!.id, projects, folders, files, checkPermission, showToast);
-    },
-    [projectStore, user, projects, folders, files, checkPermission, showToast],
-  );
-
-  // Client handlers → delegates to store
-  const handleAddClient = useCallback(
-    async (c: any) => {
-      await clientStore.addClient(c, (type, title, msg) => handleNotify(type as any, title, msg));
-    },
-    [clientStore, handleNotify],
-  );
-  const handleUpdateClient = useCallback(async (c: any) => await clientStore.updateClient(c), [clientStore]);
-  const handleDeleteClient = useCallback(
-    async (id: string) => await clientStore.deleteClient(id, folders, user!.id, addAuditLog, showToast),
-    [clientStore, folders, user, addAuditLog, showToast],
-  );
-  const handleAddSocialLink = useCallback(async (l: any) => await clientStore.addSocialLink(l), [clientStore]);
-  const handleUpdateSocialLink = useCallback(async (l: any) => await clientStore.updateSocialLink(l), [clientStore]);
-  const handleDeleteSocialLink = useCallback(
-    async (id: string) => await clientStore.deleteSocialLink(id),
-    [clientStore],
-  );
-  const handleAddClientNote = useCallback(async (n: any) => await clientStore.addNote(n), [clientStore]);
-  const handleUpdateClientNote = useCallback(async (n: any) => await clientStore.updateNote(n), [clientStore]);
-  const handleDeleteClientNote = useCallback(async (id: string) => await clientStore.deleteNote(id), [clientStore]);
-  const handleAddClientMeeting = useCallback(
-    async (m: any) => {
-      await clientStore.addMeeting(m, folders);
-      handleNotify('system' as any, 'Meeting Scheduled', `Meeting "${m.title}" has been scheduled.`);
-    },
-    [clientStore, folders, handleNotify],
-  );
-  const handleUpdateClientMeeting = useCallback(async (m: any) => await clientStore.updateMeeting(m), [clientStore]);
-  const handleDeleteClientMeeting = useCallback(
-    async (id: string) => await clientStore.deleteMeeting(id),
-    [clientStore],
-  );
-  const handleAddBrandAsset = useCallback(async (a: any) => await clientStore.addBrandAsset(a), [clientStore]);
-  const handleUpdateBrandAsset = useCallback(async (a: any) => await clientStore.updateBrandAsset(a), [clientStore]);
-  const handleDeleteBrandAsset = useCallback(
-    async (id: string) => await clientStore.deleteBrandAsset(id),
-    [clientStore],
-  );
-  const handleAddMonthlyReport = useCallback(async (r: any) => await clientStore.addMonthlyReport(r), [clientStore]);
-  const handleUpdateMonthlyReport = useCallback(
-    async (r: any) => await clientStore.updateMonthlyReport(r),
-    [clientStore],
-  );
-  const handleDeleteMonthlyReport = useCallback(
-    async (id: string) => await clientStore.deleteMonthlyReport(id),
-    [clientStore],
-  );
-
-  // Finance handlers
-  const handleAddInvoice = useCallback(async (inv: any) => await financeStore.addInvoice(inv), [financeStore]);
-  const handleUpdateInvoice = useCallback(async (inv: any) => await financeStore.updateInvoice(inv), [financeStore]);
-  const handleAddQuotation = useCallback(async (q: any) => await financeStore.addQuotation(q), [financeStore]);
-  const handleUpdateQuotation = useCallback(async (q: any) => await financeStore.updateQuotation(q), [financeStore]);
-  const handleAddPayment = useCallback(
-    async (p: any) => {
-      await financeStore.addPayment(p);
-      handleNotify('PAYMENT_RECORDED', 'Payment Received', `Payment of $${p.amount} recorded.`);
-    },
-    [financeStore, handleNotify],
-  );
-  const handleAddExpense = useCallback(
-    async (e: any) => await financeStore.addExpense(e, handleUpdateProject, projects),
-    [financeStore, handleUpdateProject, projects],
-  );
-
-  // HR handlers
-  const handleAddUser = useCallback(async (u: User) => await hrStore.addUser(u, addAuditLog), [hrStore, addAuditLog]);
-  const handleUpdateUser = useCallback(
-    async (u: User) => await hrStore.updateUser(u, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleCreateEmployeeProfile = useCallback(
-    async (p: any) => await hrStore.createEmployeeProfile(p, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleUpdateEmployeeProfile = useCallback(
-    async (p: any) => await hrStore.updateEmployeeProfile(p, user!.id, addAuditLog),
-    [hrStore, user, addAuditLog],
-  );
-  const handleAddLeaveRequest = useCallback(
-    async (r: any) => await hrStore.addLeaveRequest(r, addAuditLog, handleNotify),
-    [hrStore, addAuditLog, handleNotify],
-  );
-  const handleApproveLeaveRequest = useCallback(
-    async (r: any) => await hrStore.approveLeaveRequest(r, user!.id, addAuditLog, handleNotify),
-    [hrStore, user, addAuditLog, handleNotify],
-  );
-  const handleRejectLeaveRequest = useCallback(
-    async (r: any, reason: string) => await hrStore.rejectLeaveRequest(r, reason, user!.id, addAuditLog, handleNotify),
-    [hrStore, user, addAuditLog, handleNotify],
-  );
-  const handleCancelLeaveRequest = useCallback(
-    async (r: any) => await hrStore.cancelLeaveRequest(r, user!.id, addAuditLog),
-    [hrStore, user, addAuditLog],
-  );
-  const handleUpdateLeaveRequest = useCallback(async (r: any) => await hrStore.updateLeaveRequest(r), [hrStore]);
-  const handleDeleteLeaveRequest = useCallback(
-    async (id: string) => await hrStore.deleteLeaveRequest(id, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleCheckIn = useCallback(async () => {
-    const msg = await hrStore.checkIn(user!.id, user!.name, addAuditLog);
-    if (msg) handleNotify('system', 'Info', msg);
-    else handleNotify('system', 'Checked In', `Clock-in recorded at ${new Date().toLocaleTimeString()}.`);
-  }, [hrStore, user, addAuditLog, handleNotify]);
-  const handleCheckOut = useCallback(async () => {
-    const msg = await hrStore.checkOut(user!.id, user!.name, addAuditLog);
-    if (msg) handleNotify('system', 'Info', msg);
-    else handleNotify('system', 'Checked Out', 'Clock-out recorded.');
-  }, [hrStore, user, addAuditLog, handleNotify]);
-  const handleSubmitAttendanceCorrection = useCallback(
-    async (c: any) => await hrStore.submitAttendanceCorrection(c, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleApproveAttendanceCorrection = useCallback(
-    async (id: string) =>
-      await hrStore.approveAttendanceCorrection(id, user!.id, user!.name, addAuditLog, handleNotify),
-    [hrStore, user, addAuditLog, handleNotify],
-  );
-  const handleStartOnboarding = useCallback(
-    async (c: any) => await hrStore.startOnboarding(c, addAuditLog, handleNotify),
-    [hrStore, addAuditLog, handleNotify],
-  );
-  const handleCompleteOnboardingStep = useCallback(
-    async (cId: string, sId: string) => await hrStore.completeOnboardingStep(cId, sId, user!.id, addAuditLog),
-    [hrStore, user, addAuditLog],
-  );
-  const handleStartOffboarding = useCallback(
-    async (c: any) => await hrStore.startOffboarding(c, user!.id, addAuditLog, handleNotify),
-    [hrStore, user, addAuditLog, handleNotify],
-  );
-  const handleAssignEmployeeAsset = useCallback(
-    async (a: any) => await hrStore.assignEmployeeAsset(a, addAuditLog, handleNotify),
-    [hrStore, addAuditLog, handleNotify],
-  );
-  const handleReturnEmployeeAsset = useCallback(
-    async (id: string) => await hrStore.returnEmployeeAsset(id, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleCreatePerformanceReview = useCallback(
-    async (r: any) => await hrStore.createPerformanceReview(r, addAuditLog),
-    [hrStore, addAuditLog],
-  );
-  const handleSubmitPerformanceReview = useCallback(
-    async (id: string) => await hrStore.submitPerformanceReview(id, addAuditLog, handleNotify),
-    [hrStore, addAuditLog, handleNotify],
-  );
-  const handleFinalizePerformanceReview = useCallback(
-    async (id: string) => await hrStore.finalizePerformanceReview(id, addAuditLog, handleNotify),
-    [hrStore, addAuditLog, handleNotify],
-  );
-  const handleUpdatePerformanceReview = useCallback(
-    async (r: any) => await hrStore.updatePerformanceReview(r),
-    [hrStore],
-  );
-
-  // Network handlers
-  const handleAddVendor = useCallback(async (v: any) => await networkStore.addVendor(v), [networkStore]);
-  const handleUpdateVendor = useCallback(async (v: any) => await networkStore.updateVendor(v), [networkStore]);
-  const handleAddFreelancer = useCallback(async (f: any) => await networkStore.addFreelancer(f), [networkStore]);
-  const handleUpdateFreelancer = useCallback(async (f: any) => await networkStore.updateFreelancer(f), [networkStore]);
-  const handleAddFreelancerAssignment = useCallback(
-    async (a: any) => await networkStore.addFreelancerAssignment(a),
-    [networkStore],
-  );
-  const handleRemoveFreelancerAssignment = useCallback(
-    async (id: string) => await networkStore.removeFreelancerAssignment(id),
-    [networkStore],
-  );
-
-  // Production handlers
-  const handleAddShotList = useCallback(async (sl: any) => await productionStore.addShotList(sl), [productionStore]);
-  const handleAddCallSheet = useCallback(
-    async (cs: any) => {
-      await productionStore.addCallSheet(cs);
-      handleNotify('production_update', 'Call Sheet Published', `Call sheet for ${cs.date} is now available.`);
-    },
-    [productionStore, handleNotify],
-  );
-  const handleAddLocation = useCallback(async (loc: any) => await productionStore.addLocation(loc), [productionStore]);
-  const handleAddEquipment = useCallback(async (eq: any) => await productionStore.addEquipment(eq), [productionStore]);
-  const handleUpdateEquipment = useCallback(
-    async (eq: any) => await productionStore.updateEquipment(eq),
-    [productionStore],
-  );
-
-  // Social/Posting handlers
-  const handleAddSocialPost = useCallback(async (p: any) => await postingStore.addPost(p), [postingStore]);
-  const handleUpdateSocialPost = useCallback(
-    async (p: any) => {
-      await postingStore.updatePost(p);
-      handleNotify('system', 'Post Updated', `Social post "${p.title}" updated.`);
-    },
-    [postingStore, handleNotify],
-  );
-
-  // Notification handlers
-  const handleMarkNotificationRead = useCallback(async (id: string) => await notifStore.markAsRead(id), [notifStore]);
-  const handleMarkAllNotificationsRead = useCallback(async () => {
-    if (user) await notifStore.markAllAsRead(user.id);
-  }, [notifStore, user]);
-  const handleDeleteNotification = useCallback(
-    async (id: string) => await notifStore.deleteNotification(id),
-    [notifStore],
-  );
-  const handleUpdatePreferences = useCallback(
-    async (p: NotificationPreference) => {
-      await notifStore.updatePreferences(p);
-    },
-    [notifStore],
-  );
-  const handleManualNotificationSend = useCallback(
-    async (payload: any) => {
-      const result = await notifStore.sendManualNotification(
-        payload,
-        activeUsers,
-        projectStore.projectMembers,
-        user?.id || 'system',
-      );
-      showToast({ title: 'Notification queued', message: `Sent to ${result.recipientCount} recipient(s).` });
-    },
-    [notifStore, activeUsers, projectStore.projectMembers, user?.id, showToast],
-  );
-
-  // Admin handlers
-  const handleUpdateRole = useCallback(
-    async (r: any) => {
-      await adminStore.updateRole(r, user!.id);
-    },
-    [adminStore, user],
-  );
-  const handleAddRole = useCallback(
-    async (r: any) => {
-      await adminStore.addRole(r, user!.id);
-    },
-    [adminStore, user],
-  );
-  const handleDeleteRole = useCallback(
-    async (id: string) => {
-      await adminStore.deleteRole(id, user!.id);
-    },
-    [adminStore, user],
-  );
-  const handleSyncRoles = useCallback(async () => {
-    await adminStore.syncRoles();
-    showToast({ title: 'Success', message: 'System roles synchronized.' });
-  }, [adminStore, showToast]);
-  const handleUpdateWorkflow = useCallback(
-    async (wf: any) => {
-      await adminStore.updateWorkflow(wf);
-      showToast({ title: 'Success', message: 'Workflow updated.' });
-    },
-    [adminStore, showToast],
-  );
-  const handleAddWorkflow = useCallback(
-    async (wf: any) => {
-      await adminStore.addWorkflow(wf);
-      showToast({ title: 'Success', message: 'Workflow created.' });
-    },
-    [adminStore, showToast],
-  );
-  const handleDeleteWorkflow = useCallback(
-    async (id: string) => {
-      await adminStore.deleteWorkflow(id);
-      showToast({ title: 'Success', message: 'Workflow deleted.' });
-    },
-    [adminStore, showToast],
-  );
-  const handleAddDepartment = useCallback(
-    async (d: any) => {
-      await adminStore.addDepartment(d, user!.id);
-      showToast({ title: 'Success', message: `Department "${d.name}" created.` });
-    },
-    [adminStore, user, showToast],
-  );
-  const handleUpdateDepartment = useCallback(
-    async (d: any) => {
-      await adminStore.updateDepartment(d, user!.id);
-      showToast({ title: 'Success', message: `Department "${d.name}" updated.` });
-    },
-    [adminStore, user, showToast],
-  );
-  const handleDeleteDepartment = useCallback(
-    async (id: string) => {
-      await adminStore.deleteDepartment(id, user!.id);
-      showToast({ title: 'Success', message: 'Department deleted.' });
-    },
-    [adminStore, user, showToast],
-  );
-  const handleSaveBanner = useCallback(
-    async (b: any) => {
-      await adminStore.saveBanner(b, user!.id);
-      showToast({ title: 'Success', message: 'Banner saved.' });
-    },
-    [adminStore, user, showToast],
-  );
-  const handleDeleteBanner = useCallback(async () => {
-    await adminStore.deleteBanner(user!.id);
-    showToast({ title: 'Success', message: 'Banner deleted.' });
-  }, [adminStore, user, showToast]);
-
-  // Notes handlers
-  const handleAddNote = useCallback(
-    async (n: any) => {
-      await notesStore.addNote(n);
-      showToast({ title: 'Note Created', message: 'Note added successfully.' });
-    },
-    [notesStore, showToast],
-  );
-  const handleUpdateNote = useCallback(
-    async (n: any) => {
-      await notesStore.updateNote(n);
-      showToast({ title: 'Note Updated', message: 'Note updated successfully.' });
-    },
-    [notesStore, showToast],
-  );
-  const handleDeleteNote = useCallback(
-    async (id: string) => {
-      await notesStore.deleteNote(id);
-      showToast({ title: 'Note Deleted', message: 'Note deleted.' });
-    },
-    [notesStore, showToast],
-  );
-
   // Task approval handlers → delegates to store
   const handleAddTaskComment = useCallback(async (c: any) => await taskStore.addComment(c), [taskStore]);
   const handleAddTaskTimeLog = useCallback(async (l: any) => await taskStore.addTimeLog(l), [taskStore]);
@@ -828,6 +372,12 @@ const App: React.FC = () => {
   );
   const handleAddClientApproval = useCallback(async (ca: any) => await taskStore.addClientApproval(ca), [taskStore]);
 
+  // Social post handler (used by global TaskDetailView overlay)
+  const handleAddSocialPost = useCallback(async (p: any) => await postingStore.addPost(p), [postingStore]);
+
+  // Notification handler (used by Header)
+  const handleMarkNotificationRead = useCallback(async (id: string) => await notifStore.markAsRead(id), [notifStore]);
+
   const handleEnablePushNotifications = useCallback(async () => {
     try {
       await requestPermissionAndRegister();
@@ -836,27 +386,6 @@ const App: React.FC = () => {
       /* swallow */
     }
   }, [requestPermissionAndRegister, setHidePushPrompt]);
-
-  // ─── Permission-filtered data (memoized) ───
-  const getVisibleTasks = useCallback(() => {
-    if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
-    return activeTasks.filter((t) => {
-      const assignees = t.assigneeIds;
-      const isAssigned = Array.isArray(assignees) && assignees.includes(user?.id || '');
-      return isAssigned || t.createdBy === user?.id;
-    });
-  }, [checkPermission, activeTasks, user?.id]);
-
-  const getVisibleProjects = useCallback(() => {
-    if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return projects;
-    return projects.filter(
-      (p) =>
-        projectStore.projectMembers.some((m) => m.projectId === p.id && m.userId === user?.id) ||
-        p.accountManagerId === user?.id ||
-        p.projectManagerId === user?.id ||
-        activeTasks.some((t) => t.projectId === p.id && t.assigneeIds?.includes(user?.id || '')),
-    );
-  }, [checkPermission, projects, projectStore.projectMembers, user?.id, activeTasks]);
 
   // ─── Global Task Detail helpers (memoized) ───
   const globalSelectedTask = useMemo(
@@ -999,78 +528,14 @@ const App: React.FC = () => {
             <Route
               path="/"
               element={
-                <Dashboard
-                  tasks={getVisibleTasks()}
-                  projects={getVisibleProjects()}
-                  users={activeUsers}
-                  clients={clients}
-                  socialPosts={postingStore.socialPosts}
-                  timeLogs={taskStore.timeLogs}
-                  currentUser={user}
-                  meetings={clientStore.meetings}
-                  notes={notesStore.notes}
-                  milestones={projectStore.projectMilestones}
-                  dynamicMilestones={projectStore.dynamicMilestones}
-                  approvalSteps={taskStore.approvalSteps}
-                  onAddNote={handleAddNote}
-                  onUpdateNote={handleUpdateNote}
-                  onDeleteNote={handleDeleteNote}
-                  onNavigateToTask={handleNavigateToTask}
-                  onNavigateToMeeting={() => navigate('/clients')}
-                  onNavigateToPost={() => navigate('/posting')}
-                  onViewAllTasks={() => navigate('/tasks')}
-                  onViewAllApprovals={() => navigate('/tasks')}
-                  onNavigateToUserTasks={() => navigate('/tasks')}
-                  onNavigateToClient={() => navigate('/clients')}
-                  onScheduleMeeting={() => navigate('/clients')}
-                  onNavigateToCalendar={() => navigate('/calendar')}
-                />
+                <Dashboard />
               }
             />
             <Route
               path="/clients"
               element={
                 <ClientsHub
-                  clients={clients}
-                  projects={getVisibleProjects()}
-                  tasks={activeTasks}
-                  milestones={projectStore.projectMilestones}
-                  invoices={invoices}
-                  socialLinks={clientStore.socialLinks}
-                  notes={clientStore.notes}
-                  meetings={clientStore.meetings}
-                  brandAssets={clientStore.brandAssets}
-                  monthlyReports={clientStore.monthlyReports}
-                  files={files}
-                  folders={folders}
-                  users={activeUsers}
-                  accountManagers={activeUsers.filter(
-                    (u) => u.department === 'Accounts' || u.department === 'Management',
-                  )}
-                  onAddClient={handleAddClient}
-                  onUpdateClient={handleUpdateClient}
-                  onDeleteClient={handleDeleteClient}
-                  onArchiveProject={handleArchiveProject}
-                  onUnarchiveProject={handleUnarchiveProject}
                   onOpenProject={handleOpenProject}
-                  onAddSocialLink={handleAddSocialLink}
-                  onUpdateSocialLink={handleUpdateSocialLink}
-                  onDeleteSocialLink={handleDeleteSocialLink}
-                  onAddNote={handleAddClientNote}
-                  onUpdateNote={handleUpdateClientNote}
-                  onDeleteNote={handleDeleteClientNote}
-                  onAddMeeting={handleAddClientMeeting}
-                  onUpdateMeeting={handleUpdateClientMeeting}
-                  onDeleteMeeting={handleDeleteClientMeeting}
-                  onAddBrandAsset={handleAddBrandAsset}
-                  onUpdateBrandAsset={handleUpdateBrandAsset}
-                  onDeleteBrandAsset={handleDeleteBrandAsset}
-                  onAddMonthlyReport={handleAddMonthlyReport}
-                  onUpdateMonthlyReport={handleUpdateMonthlyReport}
-                  onDeleteMonthlyReport={handleDeleteMonthlyReport}
-                  onUploadFile={handleUploadFile as any}
-                  checkPermission={checkPermission}
-                  currentUser={user}
                 />
               }
             />
@@ -1078,45 +543,7 @@ const App: React.FC = () => {
               path="/projects"
               element={
                 <ProjectsHub
-                  projects={getVisibleProjects()}
-                  clients={clients}
-                  users={activeUsers}
-                  members={projectStore.projectMembers}
-                  milestones={projectStore.projectMilestones}
-                  activityLogs={projectStore.activityLogs}
-                  marketingAssets={projectStore.marketingAssets}
-                  files={files}
-                  folders={folders}
-                  freelancers={networkStore.freelancers}
-                  assignments={networkStore.assignments}
-                  tasks={activeTasks}
-                  approvalSteps={taskStore.approvalSteps}
-                  onAddProject={handleAddProject}
-                  onUpdateProject={handleUpdateProject}
-                  onDeleteProject={handleDeleteProject}
-                  onAddMember={handleAddProjectMember}
-                  onAddFreelancerAssignment={handleAddFreelancerAssignment}
-                  onRemoveMember={handleRemoveProjectMember}
-                  onRemoveFreelancerAssignment={handleRemoveFreelancerAssignment}
-                  onAddMilestone={handleAddProjectMilestone}
-                  onUpdateMilestone={handleUpdateProjectMilestone}
-                  onAddMarketingAsset={handleAddProjectMarketingAsset}
-                  onUpdateMarketingAsset={handleUpdateProjectMarketingAsset}
-                  onDeleteMarketingAsset={handleDeleteProjectMarketingAsset}
-                  onUploadFile={handleUploadFile as any}
-                  onDeleteFile={handleDeleteFile}
-                  onCreateFolder={handleCreateFolder}
                   initialSelectedProjectId={targetProjectId}
-                  checkPermission={checkPermission}
-                  onNavigateToTask={handleNavigateToTask}
-                  workflowTemplates={workflowTemplates}
-                  calendarMonths={calendarStore.calendarMonths}
-                  calendarItems={calendarStore.calendarItems}
-                  dynamicMilestones={projectStore.dynamicMilestones}
-                  onAddDynamicMilestone={handleAddMilestone}
-                  onUpdateDynamicMilestone={handleUpdateMilestone}
-                  onAddTask={handleAddTask}
-                  onAddApprovalSteps={handleAddApprovalSteps}
                 />
               }
             />
@@ -1124,37 +551,7 @@ const App: React.FC = () => {
               path="/tasks"
               element={
                 <TasksHub
-                  tasks={getVisibleTasks()}
-                  projects={getVisibleProjects()}
-                  users={activeUsers}
-                  comments={taskStore.comments}
-                  timeLogs={taskStore.timeLogs}
-                  dependencies={taskStore.dependencies}
-                  activityLogs={taskStore.activityLogs}
-                  approvalSteps={taskStore.approvalSteps}
-                  clientApprovals={taskStore.clientApprovals}
-                  files={files}
-                  milestones={projectStore.projectMilestones}
-                  currentUser={user}
-                  workflowTemplates={workflowTemplates}
-                  projectMembers={projectStore.projectMembers}
-                  roles={systemRoles}
-                  onAddTask={handleAddTask}
-                  onUpdateTask={handleUpdateTask}
-                  onAddComment={handleAddTaskComment}
-                  onAddTimeLog={handleAddTaskTimeLog}
-                  onAddDependency={handleAddTaskDependency}
-                  onUpdateApprovalStep={handleUpdateApprovalStep}
-                  onAddApprovalSteps={handleAddApprovalSteps}
-                  onUpdateClientApproval={handleUpdateClientApproval}
-                  onAddClientApproval={handleAddClientApproval}
-                  onUploadFile={handleUploadFile}
-                  onNotify={handleNotify}
-                  checkPermission={checkPermission}
-                  onDeleteTask={handleDeleteTask}
                   initialSelectedTaskId={targetTaskId}
-                  onAddSocialPost={handleAddSocialPost}
-                  leaveRequests={hrStore.leaveRequests}
                 />
               }
             />
@@ -1164,20 +561,7 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.POSTING.VIEW_DEPT) && !checkPermission(PERMISSIONS.POSTING.VIEW_ALL) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <PostingHub
-                    socialPosts={postingStore.socialPosts}
-                    tasks={activeTasks}
-                    projects={projects}
-                    clients={clients}
-                    users={activeUsers}
-                    currentUser={user}
-                    checkPermission={checkPermission}
-                    onUpdatePost={handleUpdateSocialPost}
-                    onArchiveTask={handleArchiveTask}
-                    onNotify={handleNotify}
-                    files={files}
-                    comments={taskStore.comments}
-                  />
+                  <PostingHub />
                 )
               }
             />
@@ -1187,19 +571,7 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.CALENDAR.VIEW) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <CalendarHub
-                    clients={clients}
-                    calendarMonths={calendarStore.calendarMonths}
-                    calendarItems={calendarStore.calendarItems}
-                    calendarItemRevisions={calendarStore.calendarItemRevisions}
-                    creativeProjects={creativeStore.creativeProjects}
-                    creativeCalendars={creativeStore.creativeCalendars}
-                    creativeCalendarItems={creativeStore.creativeCalendarItems}
-                    users={activeUsers}
-                    currentUser={user}
-                    checkPermission={checkPermission}
-                    onNotify={handleNotify}
-                  />
+                  <CalendarHub />
                 )
               }
             />
@@ -1209,21 +581,7 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.CREATIVE.VIEW) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <CreativeDirectionHub
-                    creativeProjects={creativeStore.creativeProjects}
-                    creativeCalendars={creativeStore.creativeCalendars}
-                    creativeCalendarItems={creativeStore.creativeCalendarItems}
-                    clients={clients}
-                    users={activeUsers}
-                    calendarMonths={calendarStore.calendarMonths}
-                    calendarItems={calendarStore.calendarItems}
-                    calendarItemRevisions={calendarStore.calendarItemRevisions}
-                    files={files}
-                    currentUser={user}
-                    checkPermission={checkPermission}
-                    onNotify={handleNotify}
-                    onUploadFile={handleUploadFile as any}
-                  />
+                  <CreativeDirectionHub />
                 )
               }
             />
@@ -1233,41 +591,14 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.QC.VIEW) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <QualityControlHub
-                    tasks={activeTasks}
-                    qcReviews={qcStore.qcReviews}
-                    users={activeUsers}
-                    projects={projects}
-                    clients={clients}
-                    projectMembers={projectStore.projectMembers}
-                    workflowTemplates={workflowTemplates}
-                    approvalSteps={taskStore.approvalSteps}
-                    taskComments={taskStore.comments}
-                    files={files}
-                    currentUser={{ ...user, email: user.email || null, displayName: user.name } as any}
-                    checkPermission={checkPermission}
-                    onUpdateTask={handleUpdateTask}
-                    onNotify={handleNotify}
-                    onUploadFile={handleUploadFile as any}
-                  />
+                  <QualityControlHub />
                 )
               }
             />
             <Route
               path="/assets"
               element={
-                <FilesHub
-                  files={files}
-                  folders={folders}
-                  projects={getVisibleProjects()}
-                  clients={clients}
-                  users={activeUsers}
-                  onUpload={handleUploadFile}
-                  onDelete={handleDeleteFile}
-                  onMove={() => {}}
-                  onCreateFolder={handleCreateFolder}
-                  onDeleteFolder={handleDeleteFolder}
-                />
+                <FilesHub />
               }
             />
             <Route
@@ -1276,68 +607,14 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.PRODUCTION.VIEW) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <ProductionHub
-                    assets={productionStore.productionAssets}
-                    shotLists={productionStore.shotLists}
-                    callSheets={productionStore.callSheets}
-                    locations={productionStore.locations}
-                    equipment={productionStore.equipment}
-                    projects={getVisibleProjects()}
-                    users={activeUsers}
-                    clients={clients}
-                    leaveRequests={hrStore.leaveRequests}
-                    currentUserId={user.id}
-                    onAddShotList={handleAddShotList}
-                    onAddCallSheet={handleAddCallSheet}
-                    onAddLocation={handleAddLocation}
-                    onAddEquipment={handleAddEquipment}
-                    onUpdateEquipment={handleUpdateEquipment}
-                    projectMembers={projectStore.projectMembers}
-                    tasks={getVisibleTasks()}
-                    calendarItems={calendarStore.calendarItems}
-                    comments={taskStore.comments}
-                    timeLogs={taskStore.timeLogs}
-                    dependencies={taskStore.dependencies}
-                    activityLogs={taskStore.activityLogs}
-                    approvalSteps={taskStore.approvalSteps}
-                    clientApprovals={taskStore.clientApprovals}
-                    files={files}
-                    milestones={projectStore.projectMilestones}
-                    workflowTemplates={workflowTemplates}
-                    roles={systemRoles}
-                    currentUser={user}
-                    onUpdateTask={handleUpdateTask}
-                    onAddTask={handleAddTask}
-                    onAddComment={handleAddTaskComment}
-                    onAddTimeLog={handleAddTaskTimeLog}
-                    onAddDependency={handleAddTaskDependency}
-                    onUpdateApprovalStep={handleUpdateApprovalStep}
-                    onAddApprovalSteps={handleAddApprovalSteps}
-                    onUpdateClientApproval={handleUpdateClientApproval}
-                    onAddClientApproval={handleAddClientApproval}
-                    onUploadFile={handleUploadFile as any}
-                    checkPermission={checkPermission}
-                    onNotify={handleNotify}
-                    onArchiveTask={handleArchiveTask}
-                    onDeleteTask={handleDeleteTask}
-                    onAddSocialPost={handleAddSocialPost}
-                  />
+                  <ProductionHub />
                 )
               }
             />
             <Route
               path="/network"
               element={
-                <VendorsHub
-                  vendors={networkStore.vendors}
-                  freelancers={networkStore.freelancers}
-                  assignments={networkStore.assignments}
-                  serviceOrders={networkStore.serviceOrders}
-                  onAddVendor={handleAddVendor}
-                  onUpdateVendor={handleUpdateVendor}
-                  onAddFreelancer={handleAddFreelancer}
-                  onUpdateFreelancer={handleUpdateFreelancer}
-                />
+                <VendorsHub />
               }
             />
             <Route
@@ -1348,101 +625,26 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.FINANCE.VIEW_ALL) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <FinanceHub
-                    invoices={invoices}
-                    quotations={quotations}
-                    payments={payments}
-                    expenses={expenses}
-                    projects={projects}
-                    clients={clients}
-                    onAddInvoice={handleAddInvoice}
-                    onUpdateInvoice={handleUpdateInvoice}
-                    onAddQuotation={handleAddQuotation}
-                    onUpdateQuotation={handleUpdateQuotation}
-                    onAddPayment={handleAddPayment}
-                    onAddExpense={handleAddExpense}
-                  />
+                  <FinanceHub />
                 )
               }
             />
             <Route
               path="/hr"
               element={
-                <TeamHub
-                  users={activeUsers}
-                  tasks={tasks}
-                  leaveRequests={hrStore.leaveRequests}
-                  attendanceRecords={hrStore.attendanceRecords}
-                  roles={systemRoles}
-                  departments={departments}
-                  projects={projects}
-                  checkPermission={checkPermission}
-                  currentUser={user}
-                  onAddUser={handleAddUser}
-                  onUpdateUser={handleUpdateUser}
-                  onAddLeaveRequest={handleAddLeaveRequest}
-                  onUpdateLeaveRequest={handleUpdateLeaveRequest}
-                  onDeleteLeaveRequest={handleDeleteLeaveRequest}
-                  onApproveLeaveRequest={handleApproveLeaveRequest}
-                  onRejectLeaveRequest={handleRejectLeaveRequest}
-                  onCancelLeaveRequest={handleCancelLeaveRequest}
-                  onClockIn={handleCheckIn}
-                  onClockOut={handleCheckOut}
-                  onAddDepartment={handleAddDepartment}
-                  onUpdateDepartment={handleUpdateDepartment}
-                  onDeleteDepartment={handleDeleteDepartment}
-                  employeeProfiles={hrStore.employeeProfiles}
-                  teams={hrStore.teams}
-                  leavePolicies={hrStore.leavePolicies}
-                  leaveBalances={hrStore.leaveBalances}
-                  attendanceCorrections={hrStore.attendanceCorrections}
-                  onboardingChecklists={hrStore.onboardingChecklists}
-                  offboardingChecklists={hrStore.offboardingChecklists}
-                  employeeAssets={hrStore.employeeAssets}
-                  performanceReviews={hrStore.performanceReviews}
-                  equipment={productionStore.equipment}
-                  onCreateEmployeeProfile={handleCreateEmployeeProfile}
-                  onUpdateEmployeeProfile={handleUpdateEmployeeProfile}
-                  onSubmitAttendanceCorrection={handleSubmitAttendanceCorrection}
-                  onApproveAttendanceCorrection={handleApproveAttendanceCorrection}
-                  onStartOnboarding={handleStartOnboarding}
-                  onCompleteOnboardingStep={handleCompleteOnboardingStep}
-                  onStartOffboarding={handleStartOffboarding}
-                  onAssignEmployeeAsset={handleAssignEmployeeAsset}
-                  onReturnEmployeeAsset={handleReturnEmployeeAsset}
-                  onCreatePerformanceReview={handleCreatePerformanceReview}
-                  onSubmitPerformanceReview={handleSubmitPerformanceReview}
-                  onFinalizePerformanceReview={handleFinalizePerformanceReview}
-                  onUpdatePerformanceReview={handleUpdatePerformanceReview}
-                />
+                <TeamHub />
               }
             />
             <Route
               path="/schedule"
               element={
-                <UnifiedCalendar
-                  tasks={activeTasks}
-                  callSheets={productionStore.callSheets}
-                  socialPosts={postingStore.socialPosts}
-                  milestones={projectStore.projectMilestones}
-                  leaveRequests={hrStore.leaveRequests}
-                  users={safeUsers}
-                  checkPermission={checkPermission}
-                />
+                <UnifiedCalendar />
               }
             />
             <Route
               path="/analytics"
               element={
-                <AnalyticsHub
-                  tasks={activeTasks}
-                  projects={projects}
-                  invoices={invoices}
-                  users={activeUsers}
-                  payments={payments}
-                  expenses={expenses}
-                  clients={clients}
-                />
+                <AnalyticsHub />
               }
             />
             <Route
@@ -1452,11 +654,6 @@ const App: React.FC = () => {
                   {canSendNotifications && user && (
                     <Suspense fallback={<RouteFallback />}>
                       <NotificationConsole
-                        currentUserId={user.id}
-                        users={activeUsers}
-                        projects={projects}
-                        roles={Array.isArray(systemRoles) ? systemRoles : []}
-                        onSend={handleManualNotificationSend}
                         onEnablePush={requestPermissionAndRegister}
                         permissionState={permissionState}
                         currentToken={messagingToken}
@@ -1464,12 +661,6 @@ const App: React.FC = () => {
                     </Suspense>
                   )}
                   <NotificationsHub
-                    notifications={notifications}
-                    preferences={notifStore.preferences}
-                    onMarkAsRead={handleMarkNotificationRead}
-                    onMarkAllAsRead={handleMarkAllNotificationsRead}
-                    onDelete={handleDeleteNotification}
-                    onUpdatePreferences={handleUpdatePreferences}
                     permissionState={permissionState}
                     onRequestPermission={requestPermissionAndRegister}
                   />
@@ -1482,30 +673,7 @@ const App: React.FC = () => {
                 !checkPermission(PERMISSIONS.ROLES.VIEW) && !checkPermission(PERMISSIONS.ADMIN_SETTINGS.VIEW) ? (
                   <div className="p-8 text-center text-slate-400">Access Denied.</div>
                 ) : (
-                  <AdminHub
-                    settings={appSettings}
-                    users={hrStore.users}
-                    roles={systemRoles}
-                    auditLogs={auditLogs}
-                    workflowTemplates={workflowTemplates}
-                    departments={departments}
-                    dashboardBanner={dashboardBanner}
-                    currentUserId={user?.id || ''}
-                    onUpdateUser={handleUpdateUser}
-                    onAddUser={handleAddUser}
-                    onUpdateRole={handleUpdateRole}
-                    onAddRole={handleAddRole}
-                    onDeleteRole={handleDeleteRole}
-                    onUpdateWorkflow={handleUpdateWorkflow}
-                    onAddWorkflow={handleAddWorkflow}
-                    onDeleteWorkflow={handleDeleteWorkflow}
-                    onSyncRoles={handleSyncRoles}
-                    onAddDepartment={handleAddDepartment}
-                    onUpdateDepartment={handleUpdateDepartment}
-                    onDeleteDepartment={handleDeleteDepartment}
-                    onSaveBanner={handleSaveBanner}
-                    onDeleteBanner={handleDeleteBanner}
-                  />
+                  <AdminHub />
                 )
               }
             />

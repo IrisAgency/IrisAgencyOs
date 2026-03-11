@@ -1,5 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { User, Project, RoleDefinition } from '../types';
+import { useHRStore } from '../stores/useHRStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useNotificationStore } from '../stores/useNotificationStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
 
 export type NotificationTargetType = 'user' | 'role' | 'project' | 'all';
 
@@ -13,17 +19,37 @@ export interface ManualNotificationPayload {
 export type PermissionState = NotificationPermission | 'unsupported';
 
 interface NotificationConsoleProps {
-  currentUserId: string;
-  users: User[];
-  projects: Project[];
-  roles: RoleDefinition[];
-  onSend: (payload: ManualNotificationPayload) => Promise<void>;
   onEnablePush?: () => Promise<string | null>;
   permissionState?: PermissionState;
   currentToken?: string | null;
 }
 
-const NotificationConsole: React.FC<NotificationConsoleProps> = ({ currentUserId, users, projects, roles, onSend, onEnablePush, permissionState, currentToken }) => {
+const NotificationConsole: React.FC<NotificationConsoleProps> = ({ onEnablePush, permissionState, currentToken }) => {
+  // ── Store reads ──
+  const { currentUser } = useAuth();
+  const hrStore = useHRStore();
+  const projectStore = useProjectStore();
+  const adminStore = useAdminStore();
+  const notifStore = useNotificationStore();
+  const { showToast } = useUIStore();
+
+  const currentUserId = currentUser?.id || '';
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const projects = projectStore.projects;
+  const roles = useMemo(() => Array.isArray(adminStore.systemRoles) ? adminStore.systemRoles : [], [adminStore.systemRoles]);
+
+  const onSend = useCallback(async (payload: ManualNotificationPayload) => {
+    const result = await notifStore.sendManualNotification(
+      payload,
+      users,
+      projectStore.projectMembers,
+      currentUser?.id || 'system'
+    );
+    showToast({ title: 'Notification queued', message: `Sent to ${result.recipientCount} recipient(s).` });
+  }, [notifStore, users, projectStore.projectMembers, currentUser?.id, showToast]);
   const [targetType, setTargetType] = useState<NotificationTargetType>('user');
   const [targetIds, setTargetIds] = useState<string[]>([]);
   const [title, setTitle] = useState('');

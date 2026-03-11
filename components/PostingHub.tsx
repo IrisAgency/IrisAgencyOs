@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { SocialPost, Project, Client, User, SocialPlatform, Task, AgencyFile, TaskComment } from '../types';
+import React, { useState, useMemo, useCallback } from 'react';
+import { SocialPost, Project, Client, User, SocialPlatform, Task, AgencyFile, TaskComment, NotificationType } from '../types';
 import {
   Search, Filter, Calendar, Clock, CheckCircle,
   MessageSquare, MoreVertical, Plus, Share2,
@@ -15,27 +15,65 @@ import PageContent from './layout/PageContent';
 import Drawer from './common/Drawer';
 import Modal from './common/Modal';
 import { archiveSocialPost } from '../utils/socialArchiveUtils';
+import { usePostingStore } from '../stores/usePostingStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { notifyUsers } from '../services/notificationService';
+import { archiveTask } from '../utils/archiveUtils';
 
-interface PostingHubProps {
-  socialPosts: SocialPost[];
-  tasks: Task[];
-  projects: Project[];
-  clients: Client[];
-  users: User[];
-  currentUser: User;
-  onUpdatePost: (post: SocialPost) => void;
-  onArchiveTask: (task: Task) => void; // Callback to archive original task
-  checkPermission: (code: string) => boolean;
-  onNotify: (type: string, title: string, message: string) => void;
-  files?: AgencyFile[];
-  comments?: TaskComment[];
-}
+const PostingHub: React.FC = () => {
+  // ── Store reads ──
+  const { currentUser, checkPermission } = useAuth();
+  const postingStore = usePostingStore();
+  const taskStore = useTaskStore();
+  const projectStore = useProjectStore();
+  const clientStore = useClientStore();
+  const hrStore = useHRStore();
+  const fileStore = useFileStore();
+  const { showToast, clearToast } = useUIStore();
 
-const PostingHub: React.FC<PostingHubProps> = ({
-  socialPosts = [], tasks = [], projects = [], clients = [], users = [], currentUser,
-  onUpdatePost, onArchiveTask, checkPermission, onNotify,
-  files = [], comments = []
-}) => {
+  const socialPosts = postingStore.socialPosts;
+  const tasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+  const projects = projectStore.projects;
+  const clients = clientStore.clients;
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const files = fileStore.files;
+  const comments = taskStore.comments;
+
+  // ── Wrapped actions ──
+  const onUpdatePost = useCallback(async (p: SocialPost) => {
+    await postingStore.updatePost(p);
+    showToast({ title: 'Post Updated', message: `Social post "${p.title}" updated.` });
+    setTimeout(() => clearToast(), 4000);
+  }, [postingStore, showToast, clearToast]);
+
+  const onArchiveTask = useCallback(async (task: Task) => {
+    if (!currentUser) return;
+    await archiveTask(task, currentUser.id);
+    showToast({ title: 'Task Archived', message: `Task "${task.title}" has been archived.` });
+    setTimeout(() => clearToast(), 4000);
+  }, [currentUser, showToast, clearToast]);
+
+  const onNotify = useCallback(async (
+    type: string, title: string, message: string,
+    recipientIds: string[] = [], entityId?: string, actionUrl?: string
+  ) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({ type: type as NotificationType, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' });
+      } catch (error) { console.error('Failed to create notification:', error); }
+    }
+  }, [showToast, clearToast, currentUser?.id]);
   const [viewMode, setViewMode] = useState<'kanban' | 'calendar'>('kanban');
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');

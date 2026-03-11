@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Project, Client, User, ProjectMember, ProjectMilestone, ProjectActivityLog, ProjectStatus, ProjectType, AgencyFile, FileFolder, Freelancer, FreelancerAssignment, RateType, Task, ApprovalStep, ProjectMarketingAsset, WorkflowTemplate, CalendarMonth, CalendarItem, Milestone, CalendarContentType } from '../types';
 import { Plus, Search, Calendar, DollarSign, Users, Briefcase, ChevronRight, Clock, Flag, ArrowLeft, MoreHorizontal, Settings, FileText, Activity, User as UserIcon, Trash2, CheckCircle, XCircle, AlertCircle, BarChart3, Link as LinkIcon, ExternalLink, File, Edit2, Archive, Video, Image as ImageIcon, Zap, Lock, AlertTriangle } from 'lucide-react';
 import { calculateWorkloadBySpecialty, getSpecialtyLabel, getMissingSpecialties, assignTasksBySpecialty } from '../lib/specialty';
@@ -15,65 +15,129 @@ import DropdownMenu from './common/DropdownMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { prefixedId, uid } from '../utils/id';
 import { PERMISSIONS } from '../lib/permissions';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useNetworkStore } from '../stores/useNetworkStore';
+import { useCalendarStore } from '../stores/useCalendarStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useUIStore } from '../stores/useUIStore';
+import { notifyUsers } from '../services/notificationService';
+import type { NotificationType } from '../types';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface ProjectsHubProps {
-  projects: Project[];
-  clients: Client[];
-  users: User[];
-  members: ProjectMember[];
-  milestones: ProjectMilestone[];
-  activityLogs: ProjectActivityLog[];
-  marketingAssets: ProjectMarketingAsset[]; // New
-  files: AgencyFile[];
-  folders: FileFolder[];
-  freelancers: Freelancer[];
-  assignments: FreelancerAssignment[];
-  tasks: Task[];
-  approvalSteps: ApprovalStep[];
-  onAddProject: (project: Project) => void;
-  onUpdateProject: (project: Project) => void;
-  onDeleteProject: (projectId: string) => void;
-  onAddMember: (member: ProjectMember) => void;
-  onAddMilestone: (milestone: ProjectMilestone) => void;
-  onUpdateMilestone: (milestone: ProjectMilestone) => void;
-  onAddMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>; // New
-  onUpdateMarketingAsset: (asset: ProjectMarketingAsset) => Promise<void>; // New
-  onDeleteMarketingAsset: (assetId: string) => Promise<void>; // New
-  onUploadFile: (file: AgencyFile) => Promise<void>;
-  onDeleteFile: (fileId: string) => Promise<void>;
-  onCreateFolder: (folder: FileFolder) => void;
-  onAddFreelancerAssignment: (assignment: FreelancerAssignment) => void;
-  onRemoveMember: (memberId: string) => void;
-  onRemoveFreelancerAssignment: (assignmentId: string) => void;
+  /** Pre-select a project on mount (from App.tsx navigation) */
   initialSelectedProjectId?: string | null;
-  checkPermission?: (permission: string) => boolean;
-  onNavigateToTask?: (taskId: string) => void;
-  // Smart Project Creation Props
-  workflowTemplates?: WorkflowTemplate[];
-  calendarMonths?: CalendarMonth[];
-  calendarItems?: CalendarItem[];
-  dynamicMilestones?: Milestone[];
-  onAddDynamicMilestone?: (milestone: Milestone) => Promise<void>;
-  onUpdateDynamicMilestone?: (milestone: Milestone) => Promise<void>;
-  onAddTask?: (task: Task) => Promise<void>;
-  onAddApprovalSteps?: (steps: ApprovalStep[]) => Promise<void>;
 }
 
 const ProjectsHub: React.FC<ProjectsHubProps> = ({
-  projects, clients, users, members, milestones, activityLogs, marketingAssets, files, folders, freelancers, assignments, tasks, approvalSteps,
-  onAddProject, onUpdateProject, onDeleteProject, onAddMember, onAddMilestone: onAddProjectMilestone, onUpdateMilestone: onUpdateProjectMilestone, onAddMarketingAsset, onUpdateMarketingAsset, onDeleteMarketingAsset, onUploadFile, onDeleteFile, onCreateFolder, onAddFreelancerAssignment,
-  onRemoveMember, onRemoveFreelancerAssignment, initialSelectedProjectId, checkPermission = (_permission: string) => true, onNavigateToTask,
-  // Smart Project Creation Props
-  workflowTemplates = [],
-  calendarMonths = [],
-  calendarItems = [],
-  dynamicMilestones = [],
-  onAddDynamicMilestone,
-  onUpdateDynamicMilestone,
-  onAddTask,
-  onAddApprovalSteps
+  initialSelectedProjectId,
 }) => {
-  const { user: currentUser, hasAnyPermission } = useAuth();
+  // ── Auth ──
+  const { currentUser, checkPermission, hasAnyPermission } = useAuth();
+  const user = currentUser; // alias used internally
+
+  // ── Stores (data) ──
+  const projects = useProjectStore(s => s.projects);
+  const members = useProjectStore(s => s.members);
+  const milestones = useProjectStore(s => s.projectMilestones);
+  const activityLogs = useProjectStore(s => s.activityLogs);
+  const marketingAssets = useProjectStore(s => s.marketingAssets);
+  const dynamicMilestones = useProjectStore(s => s.dynamicMilestones);
+
+  const clients = useClientStore(s => s.clients);
+
+  const allTasks = useTaskStore(s => s.tasks);
+  const tasks = useMemo(() => allTasks.filter(t => !t.isDeleted), [allTasks]);
+  const approvalSteps = useTaskStore(s => s.approvalSteps);
+
+  const files = useFileStore(s => s.files);
+  const folders = useFileStore(s => s.folders);
+
+  const allUsers = useHRStore(s => s.users);
+  const users = useMemo(() => (Array.isArray(allUsers) ? allUsers.filter(u => u && u.status !== 'inactive') : []), [allUsers]);
+
+  const freelancers = useNetworkStore(s => s.freelancers);
+  const assignments = useNetworkStore(s => s.assignments);
+
+  const calendarMonths = useCalendarStore(s => s.calendarMonths);
+  const calendarItems = useCalendarStore(s => s.calendarItems);
+
+  const workflowTemplates = useAdminStore(s => s.workflowTemplates);
+  const { showToast, clearToast, setTargetTaskId } = useUIStore();
+
+  // ── Store actions ──
+  const projectAddProject = useProjectStore(s => s.addProject);
+  const projectUpdateProject = useProjectStore(s => s.updateProject);
+  const projectDeleteProject = useProjectStore(s => s.deleteProject);
+  const projectAddMember = useProjectStore(s => s.addMember);
+  const projectAddMilestone = useProjectStore(s => s.addMilestone);
+  const projectUpdateMilestone = useProjectStore(s => s.updateMilestone);
+  const projectAddDynamicMilestone = useProjectStore(s => s.addDynamicMilestone);
+  const projectUpdateDynamicMilestone = useProjectStore(s => s.updateDynamicMilestone);
+  const projectAddMarketingAsset = useProjectStore(s => s.addMarketingAsset);
+  const projectUpdateMarketingAsset = useProjectStore(s => s.updateMarketingAsset);
+  const projectDeleteMarketingAsset = useProjectStore(s => s.deleteMarketingAsset);
+
+  const taskAddTask = useTaskStore(s => s.addTask);
+  const taskAddApprovalSteps = useTaskStore(s => s.addApprovalSteps);
+
+  const networkAddFreelancerAssignment = useNetworkStore(s => s.addFreelancerAssignment);
+  const networkRemoveFreelancerAssignment = useNetworkStore(s => s.removeFreelancerAssignment);
+
+  const fileStoreUploadFile = useFileStore(s => s.uploadFile);
+  const fileStoreDeleteFile = useFileStore(s => s.deleteFile);
+  const fileStoreCreateFolder = useFileStore(s => s.createFolder);
+
+  const adminAddAuditLog = useAdminStore(s => s.addAuditLog);
+
+  // ── Helpers ──
+  const handleNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = []) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try { await notifyUsers({ type: type as NotificationType, title, message, recipientIds, sendPush: false, createdBy: currentUser?.id || 'system' }); } catch { /* swallow */ }
+    }
+  }, [showToast, clearToast, currentUser?.id]);
+
+  const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+    if (!currentUser) return;
+    await adminAddAuditLog(currentUser.id, action, entityType, entityId, description);
+  }, [currentUser, adminAddAuditLog]);
+
+  // Wrapped store actions (same variable names as old props so component body works unchanged)
+  const onAddProject = useCallback(async (p: Project) => { await projectAddProject(p, currentUser!, clients); }, [projectAddProject, currentUser, clients]);
+  const onUpdateProject = useCallback(async (p: Project) => { await projectUpdateProject(p, currentUser?.id); }, [projectUpdateProject, currentUser]);
+  const onDeleteProject = useCallback(async (id: string) => { await projectDeleteProject(id, showToast, addAuditLog); }, [projectDeleteProject, showToast, addAuditLog]);
+  const onAddMember = useCallback(async (m: ProjectMember) => { await projectAddMember(m, currentUser!); }, [projectAddMember, currentUser]);
+  const onRemoveMember = useCallback(async (id: string) => { await deleteDoc(doc(db, 'project_members', id)); }, []);
+  const onAddProjectMilestone = useCallback(async (m: ProjectMilestone) => { await projectAddMilestone(m, currentUser?.id); }, [projectAddMilestone, currentUser]);
+  const onUpdateProjectMilestone = useCallback(async (m: ProjectMilestone) => { await projectUpdateMilestone(m, currentUser?.id); }, [projectUpdateMilestone, currentUser]);
+  const onAddDynamicMilestone = useCallback(async (m: Milestone) => { await projectAddDynamicMilestone(m); }, [projectAddDynamicMilestone]);
+  const onUpdateDynamicMilestone = useCallback(async (m: Milestone) => { await projectUpdateDynamicMilestone(m); }, [projectUpdateDynamicMilestone]);
+  const onAddMarketingAsset = useCallback(async (a: ProjectMarketingAsset) => { await projectAddMarketingAsset(a); handleNotify('system', 'Marketing Asset Added', `Added ${a.name} to project strategy.`); }, [projectAddMarketingAsset, handleNotify]);
+  const onUpdateMarketingAsset = useCallback(async (a: ProjectMarketingAsset) => { await projectUpdateMarketingAsset(a); }, [projectUpdateMarketingAsset]);
+  const onDeleteMarketingAsset = useCallback(async (id: string) => { await projectDeleteMarketingAsset(id); }, [projectDeleteMarketingAsset]);
+
+  const onAddFreelancerAssignment = useCallback(async (a: FreelancerAssignment) => { await networkAddFreelancerAssignment(a); }, [networkAddFreelancerAssignment]);
+  const onRemoveFreelancerAssignment = useCallback(async (id: string) => { await networkRemoveFreelancerAssignment(id); }, [networkRemoveFreelancerAssignment]);
+
+  const onUploadFile = useCallback(async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+    try { const saved = await fileStoreUploadFile(file, { projects, clients, activeTasks: tasks, folders }); showToast({ title: 'Success', message: `${file.name} uploaded!` }); return saved; }
+    catch (err: any) { showToast({ title: 'Upload Failed', message: err.message || 'Failed.' }); throw err; }
+  }, [fileStoreUploadFile, projects, clients, tasks, folders, showToast]);
+  const onDeleteFile = useCallback(async (id: string) => { await fileStoreDeleteFile(id, { userId: currentUser!.id }); handleNotify('system', 'File Deleted', 'File has been deleted.'); }, [fileStoreDeleteFile, currentUser, handleNotify]);
+  const onCreateFolder = useCallback(async (f: FileFolder) => { await fileStoreCreateFolder(f); }, [fileStoreCreateFolder]);
+
+  const onAddTask = useCallback(async (task: Task) => { await taskAddTask(task, projects, allUsers, currentUser!.id); }, [taskAddTask, projects, allUsers, currentUser]);
+  const onAddApprovalSteps = useCallback(async (steps: ApprovalStep[]) => { await taskAddApprovalSteps(steps); }, [taskAddApprovalSteps]);
+
+  const onNavigateToTask = useCallback((taskId: string) => { setTargetTaskId(taskId); }, [setTargetTaskId]);
   
   // Check if user has any project view permissions
   const canAccessProjects = hasAnyPermission([

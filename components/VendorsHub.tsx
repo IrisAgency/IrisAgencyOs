@@ -10,22 +10,18 @@ import PageHeader from './layout/PageHeader';
 import PageControls from './layout/PageControls';
 import PageContent from './layout/PageContent';
 import { prefixedId } from '../utils/id';
+import { useNetworkStore } from '../stores/useNetworkStore';
 
-interface VendorsHubProps {
-  vendors: Vendor[];
-  freelancers: Freelancer[];
-  assignments: FreelancerAssignment[];
-  serviceOrders: VendorServiceOrder[];
-  onAddVendor: (v: Vendor) => void;
-  onUpdateVendor: (v: Vendor) => void;
-  onAddFreelancer: (f: Freelancer) => void;
-  onUpdateFreelancer: (f: Freelancer) => void;
-}
-
-const VendorsHub: React.FC<VendorsHubProps> = ({
-  vendors, freelancers, assignments, serviceOrders,
-  onAddVendor, onUpdateVendor, onAddFreelancer, onUpdateFreelancer
-}) => {
+const VendorsHub: React.FC = () => {
+  // ── Store reads ──
+  const vendors = useNetworkStore(s => s.vendors);
+  const freelancers = useNetworkStore(s => s.freelancers);
+  const assignments = useNetworkStore(s => s.assignments);
+  const serviceOrders = useNetworkStore(s => s.serviceOrders);
+  const onAddVendor = useNetworkStore(s => s.addVendor);
+  const onUpdateVendor = useNetworkStore(s => s.updateVendor);
+  const onAddFreelancer = useNetworkStore(s => s.addFreelancer);
+  const onUpdateFreelancer = useNetworkStore(s => s.updateFreelancer);
   const [activeTab, setActiveTab] = useState<'Freelancers' | 'Vendors'>('Freelancers');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);

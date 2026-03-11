@@ -8,23 +8,32 @@ import {
 import PageContainer from './layout/PageContainer';
 import PageHeader from './layout/PageHeader';
 import PageContent from './layout/PageContent';
+import { useAuth } from '../contexts/AuthContext';
+import { useNotificationStore } from '../stores/useNotificationStore';
 
 interface NotificationsHubProps {
-  notifications: Notification[];
-  preferences: NotificationPreference;
-  onMarkAsRead: (id: string) => void;
-  onMarkAllAsRead: () => void;
-  onDelete: (id: string) => void;
-  onUpdatePreferences: (prefs: NotificationPreference) => void;
-  onApprove?: (notificationId: string) => void;
-  onNavigate?: (url: string) => void;
   permissionState?: NotificationPermission | 'unsupported';
   onRequestPermission?: () => void;
 }
 
 const NotificationsHub: React.FC<NotificationsHubProps> = ({
-  notifications, preferences, onMarkAsRead, onMarkAllAsRead, onDelete, onUpdatePreferences, onApprove, onNavigate, permissionState = 'default', onRequestPermission
+  permissionState = 'default', onRequestPermission
 }) => {
+  const { currentUser } = useAuth();
+  const notifStore = useNotificationStore();
+  const notifications = useMemo(() => {
+    if (!currentUser) return [];
+    return [...notifStore.allNotifications.filter(n => n.userId === currentUser.id)].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [notifStore.allNotifications, currentUser]);
+  const preferences = notifStore.preferences;
+  const onMarkAsRead = notifStore.markAsRead;
+  const onMarkAllAsRead = React.useCallback(async () => { if (currentUser) await notifStore.markAllAsRead(currentUser.id); }, [notifStore, currentUser]);
+  const onDelete = notifStore.deleteNotification;
+  const onUpdatePreferences = notifStore.updatePreferences;
+  const onApprove = undefined;
+  const onNavigate = undefined;
   const [activeTab, setActiveTab] = useState<'All' | 'Tasks' | 'Approvals' | 'Posting' | 'Settings'>('All');
   const [filterUnread, setFilterUnread] = useState(false);
   const [filterUrgent, setFilterUrgent] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     Task, CallSheet, SocialPost, ProjectMilestone, LeaveRequest,
     TaskStatus, User
@@ -7,16 +7,12 @@ import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Filter,
     CheckSquare, Clapperboard, Share2, Flag, User as UserIcon, X
 } from 'lucide-react';
-
-interface UnifiedCalendarProps {
-    tasks: Task[];
-    callSheets: CallSheet[];
-    socialPosts: SocialPost[];
-    milestones: ProjectMilestone[];
-    leaveRequests: LeaveRequest[];
-    users: User[];
-    checkPermission: (permission: string) => boolean;
-}
+import { useAuth } from '../contexts/AuthContext';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProductionStore } from '../stores/useProductionStore';
+import { usePostingStore } from '../stores/usePostingStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useHRStore } from '../stores/useHRStore';
 
 type EventSource = 'tasks' | 'production' | 'social' | 'milestones' | 'leave';
 
@@ -31,15 +27,16 @@ interface CalendarEvent {
     metadata?: any;
 }
 
-const UnifiedCalendar: React.FC<UnifiedCalendarProps> = ({
-    tasks = [],
-    callSheets = [],
-    socialPosts = [],
-    milestones = [],
-    leaveRequests = [],
-    users = [],
-    checkPermission
-}) => {
+const UnifiedCalendar: React.FC = () => {
+    const { checkPermission } = useAuth();
+    const allTasks = useTaskStore(s => s.tasks);
+    const tasks = useMemo(() => allTasks.filter(t => !t.isDeleted), [allTasks]);
+    const callSheets = useProductionStore(s => s.callSheets);
+    const socialPosts = usePostingStore(s => s.socialPosts);
+    const milestones = useProjectStore(s => s.projectMilestones);
+    const leaveRequests = useHRStore(s => s.leaveRequests);
+    const allUsers = useHRStore(s => s.users);
+    const users = useMemo(() => (Array.isArray(allUsers) ? allUsers : []), [allUsers]);
     const [currentDate, setCurrentDate] = useState(new Date());
     const [filters, setFilters] = useState<Record<EventSource, boolean>>({
         tasks: true,

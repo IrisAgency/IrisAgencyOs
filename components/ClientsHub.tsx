@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Client, ClientContact, Project, Invoice, User, Task, ProjectMilestone, ClientSocialLink, SocialPlatform, ClientNote, ClientMeeting, FileFolder, ClientBrandAsset, ClientMonthlyReport, AgencyFile } from '../types';
 import { Plus, Search, MapPin, Globe, Phone, Mail, FileText, ArrowLeft, MoreHorizontal, Building2, User as UserIcon, Archive, Edit2, Folder, DollarSign, Trash2, RotateCcw, BarChart3, Instagram, Facebook, Linkedin, Youtube, Link as LinkIcon, Video, StickyNote, Palette, Upload, X, ExternalLink, Download, ChevronDown, Calendar } from 'lucide-react';
 import PageContainer from './layout/PageContainer';
@@ -11,88 +12,144 @@ import ClientBrandAssets from './ClientBrandAssets';
 import DropdownMenu from './common/DropdownMenu';
 import { PERMISSIONS } from '../lib/permissions';
 import { prefixedId } from '../utils/id';
+import { useAuth } from '../contexts/AuthContext';
+import { useClientStore } from '../stores/useClientStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useFinanceStore } from '../stores/useFinanceStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { notifyUsers } from '../services/notificationService';
+import type { NotificationType } from '../types';
 
 interface ClientsHubProps {
-  clients: Client[];
-  projects: Project[];
-  tasks: Task[];
-  milestones: ProjectMilestone[];
-  invoices: Invoice[];
-  socialLinks?: ClientSocialLink[];
-  notes?: ClientNote[];
-  meetings?: ClientMeeting[];
-  brandAssets?: ClientBrandAsset[];
-  monthlyReports?: ClientMonthlyReport[];
-  files?: AgencyFile[];
-  folders?: FileFolder[];
-  users?: User[];
-  accountManagers: User[];
-  onAddClient: (client: Client) => void;
-  onUpdateClient: (client: Client) => void;
-  onDeleteClient: (clientId: string) => void;
-  onArchiveProject?: (projectId: string) => void;
-  onUnarchiveProject?: (projectId: string) => void;
+  /** Called when user clicks "Open" on a project card */
   onOpenProject?: (projectId: string) => void;
-  onAddSocialLink?: (link: ClientSocialLink) => void;
-  onUpdateSocialLink?: (link: ClientSocialLink) => void;
-  onDeleteSocialLink?: (linkId: string) => void;
-  onAddNote?: (note: ClientNote) => void;
-  onUpdateNote?: (note: ClientNote) => void;
-  onDeleteNote?: (noteId: string) => void;
-  onAddMeeting?: (meeting: ClientMeeting) => void;
-  onUpdateMeeting?: (meeting: ClientMeeting) => void;
-  onDeleteMeeting?: (meetingId: string) => void;
-  onAddBrandAsset?: (asset: ClientBrandAsset) => void;
-  onUpdateBrandAsset?: (asset: ClientBrandAsset) => void;
-  onDeleteBrandAsset?: (assetId: string) => void;
-  onAddMonthlyReport?: (report: ClientMonthlyReport) => void;
-  onUpdateMonthlyReport?: (report: ClientMonthlyReport) => void;
-  onDeleteMonthlyReport?: (reportId: string) => void;
-  onUploadFile?: (file: any) => Promise<void>;
-  checkPermission?: (permission: string) => boolean;
-  currentUser?: User | null;
 }
 
 const ClientsHub: React.FC<ClientsHubProps> = ({
-  clients = [],
-  projects = [],
-  tasks = [],
-  milestones = [],
-  invoices = [],
-  socialLinks = [],
-  notes = [],
-  meetings = [],
-  brandAssets = [],
-  monthlyReports = [],
-  files = [],
-  folders = [],
-  users = [],
-  accountManagers = [],
-  onAddClient,
-  onUpdateClient,
-  onDeleteClient,
-  onArchiveProject,
-  onUnarchiveProject,
   onOpenProject,
-  onAddSocialLink,
-  onUpdateSocialLink,
-  onDeleteSocialLink,
-  onAddNote,
-  onUpdateNote,
-  onDeleteNote,
-  onAddMeeting,
-  onUpdateMeeting,
-  onDeleteMeeting,
-  onAddBrandAsset,
-  onUpdateBrandAsset,
-  onDeleteBrandAsset,
-  onAddMonthlyReport,
-  onUpdateMonthlyReport,
-  onDeleteMonthlyReport,
-  onUploadFile,
-  checkPermission = (p: string) => false,
-  currentUser
 }) => {
+  // ── Auth ──
+  const { currentUser, checkPermission } = useAuth();
+
+  // ── Stores (data) ──
+  const clients = useClientStore(s => s.clients);
+  const socialLinks = useClientStore(s => s.socialLinks);
+  const notes = useClientStore(s => s.notes);
+  const meetings = useClientStore(s => s.meetings);
+  const brandAssets = useClientStore(s => s.brandAssets);
+  const monthlyReports = useClientStore(s => s.monthlyReports);
+
+  const projects = useProjectStore(s => s.projects);
+  const milestones = useProjectStore(s => s.projectMilestones);
+
+  const tasks = useTaskStore(s => s.tasks);
+  const activeTasks = useMemo(() => tasks.filter(t => !t.isDeleted), [tasks]);
+
+  const invoices = useFinanceStore(s => s.invoices);
+
+  const files = useFileStore(s => s.files);
+  const folders = useFileStore(s => s.folders);
+
+  const allUsers = useHRStore(s => s.users);
+  const users = useMemo(() => (Array.isArray(allUsers) ? allUsers.filter(u => u && u.status !== 'inactive') : []), [allUsers]);
+  const accountManagers = useMemo(() => users.filter(u => u.department === 'Accounts' || u.department === 'Management'), [users]);
+
+  const { showToast, clearToast, setTargetProjectId } = useUIStore();
+
+  // ── Store actions ──
+  const clientAddClient = useClientStore(s => s.addClient);
+  const clientUpdateClient = useClientStore(s => s.updateClient);
+  const clientDeleteClient = useClientStore(s => s.deleteClient);
+  const clientAddSocialLink = useClientStore(s => s.addSocialLink);
+  const clientUpdateSocialLink = useClientStore(s => s.updateSocialLink);
+  const clientDeleteSocialLink = useClientStore(s => s.deleteSocialLink);
+  const clientAddNote = useClientStore(s => s.addNote);
+  const clientUpdateNote = useClientStore(s => s.updateNote);
+  const clientDeleteNote = useClientStore(s => s.deleteNote);
+  const clientAddMeeting = useClientStore(s => s.addMeeting);
+  const clientUpdateMeeting = useClientStore(s => s.updateMeeting);
+  const clientDeleteMeeting = useClientStore(s => s.deleteMeeting);
+  const clientAddBrandAsset = useClientStore(s => s.addBrandAsset);
+  const clientUpdateBrandAsset = useClientStore(s => s.updateBrandAsset);
+  const clientDeleteBrandAsset = useClientStore(s => s.deleteBrandAsset);
+  const clientAddMonthlyReport = useClientStore(s => s.addMonthlyReport);
+  const clientDeleteMonthlyReport = useClientStore(s => s.deleteMonthlyReport);
+
+  const fileStoreUploadFile = useFileStore(s => s.uploadFile);
+  const adminAddAuditLog = useAdminStore(s => s.addAuditLog);
+
+  const navigate = useNavigate();
+
+  // ── Helpers that replicate App.tsx bridge wrappers ──
+  const handleNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = []) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({ type: type as NotificationType, title, message, recipientIds, sendPush: false, createdBy: currentUser?.id || 'system' });
+      } catch { /* swallow */ }
+    }
+  }, [showToast, clearToast, currentUser?.id]);
+
+  const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+    if (!currentUser) return;
+    await adminAddAuditLog(currentUser.id, action, entityType, entityId, description);
+  }, [currentUser, adminAddAuditLog]);
+
+  // Wrapped store actions with dependency injection
+  const onAddClient = useCallback(async (client: Client) => {
+    await clientAddClient(client, (type, title, msg) => handleNotify(type, title, msg));
+  }, [clientAddClient, handleNotify]);
+
+  const onUpdateClient = useCallback(async (client: Client) => {
+    await clientUpdateClient(client);
+  }, [clientUpdateClient]);
+
+  const onDeleteClient = useCallback(async (clientId: string) => {
+    await clientDeleteClient(clientId, folders, currentUser?.id || '', addAuditLog, showToast);
+  }, [clientDeleteClient, folders, currentUser?.id, addAuditLog, showToast]);
+
+  const onAddSocialLink = useCallback(async (link: ClientSocialLink) => { await clientAddSocialLink(link); }, [clientAddSocialLink]);
+  const onUpdateSocialLink = useCallback(async (link: ClientSocialLink) => { await clientUpdateSocialLink(link); }, [clientUpdateSocialLink]);
+  const onDeleteSocialLink = useCallback(async (linkId: string) => { await clientDeleteSocialLink(linkId); }, [clientDeleteSocialLink]);
+
+  const onAddNote = useCallback(async (note: ClientNote) => { await clientAddNote(note); }, [clientAddNote]);
+  const onUpdateNote = useCallback(async (note: ClientNote) => { await clientUpdateNote(note); }, [clientUpdateNote]);
+  const onDeleteNote = useCallback(async (noteId: string) => { await clientDeleteNote(noteId); }, [clientDeleteNote]);
+
+  const onAddMeeting = useCallback(async (meeting: ClientMeeting) => { await clientAddMeeting(meeting, folders); handleNotify('system', 'Meeting Scheduled', `Meeting "${meeting.title}" has been scheduled.`); }, [clientAddMeeting, folders, handleNotify]);
+  const onUpdateMeeting = useCallback(async (meeting: ClientMeeting) => { await clientUpdateMeeting(meeting); }, [clientUpdateMeeting]);
+  const onDeleteMeeting = useCallback(async (meetingId: string) => { await clientDeleteMeeting(meetingId); }, [clientDeleteMeeting]);
+
+  const onAddBrandAsset = useCallback(async (asset: ClientBrandAsset) => { await clientAddBrandAsset(asset); }, [clientAddBrandAsset]);
+  const onUpdateBrandAsset = useCallback(async (asset: ClientBrandAsset) => { await clientUpdateBrandAsset(asset); }, [clientUpdateBrandAsset]);
+  const onDeleteBrandAsset = useCallback(async (assetId: string) => { await clientDeleteBrandAsset(assetId); }, [clientDeleteBrandAsset]);
+
+  const onAddMonthlyReport = useCallback(async (report: ClientMonthlyReport) => { await clientAddMonthlyReport(report); }, [clientAddMonthlyReport]);
+  const onDeleteMonthlyReport = useCallback(async (reportId: string) => { await clientDeleteMonthlyReport(reportId); }, [clientDeleteMonthlyReport]);
+
+  const onUploadFile = useCallback(async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+    try {
+      const saved = await fileStoreUploadFile(file, { projects, clients, activeTasks, folders });
+      showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+      return saved;
+    } catch (error: any) {
+      showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+      throw error;
+    }
+  }, [fileStoreUploadFile, projects, clients, activeTasks, folders, showToast]);
+
+  // Navigation helpers
+  const handleOpenProject = useCallback((projectId: string) => {
+    if (onOpenProject) { onOpenProject(projectId); return; }
+    setTargetProjectId(projectId);
+    navigate('/projects');
+  }, [onOpenProject, setTargetProjectId, navigate]);
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'meetings' | 'brand' | 'strategies' | 'reports' | 'notes'>('overview');
@@ -278,7 +335,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !newNoteText.trim() || !onAddNote || !currentUser) return;
+    if (!selectedClient || !newNoteText.trim() || !currentUser) return;
 
     const newNote: ClientNote = {
       id: prefixedId('cn'),
@@ -296,7 +353,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
   const handleAddReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !reportForm.month || !reportForm.title || !reportFile || !onAddMonthlyReport || !currentUser) return;
+    if (!selectedClient || !reportForm.month || !reportForm.title || !reportFile || !currentUser) return;
 
     try {
       // Create a proper AgencyFile object for upload
@@ -320,8 +377,8 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
 
       // Upload the file and get the result with URL
       let uploadedFileUrl = '';
-      if (onUploadFile) {
-        const result = await onUploadFile(agencyFile);
+      {
+        const result = await onUploadFile(agencyFile as any);
         uploadedFileUrl = (result as any)?.url || '';
       }
       
@@ -365,7 +422,6 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   };
 
   const handleDeleteReport = (reportId: string) => {
-    if (!onDeleteMonthlyReport) return;
     if (confirm('Are you sure you want to delete this report?')) {
       onDeleteMonthlyReport(reportId);
     }
@@ -1010,7 +1066,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
                           </div>
                         </div>
                         <button
-                          onClick={() => onOpenProject?.(project.id)}
+                          onClick={() => handleOpenProject(project.id)}
                           className="px-3 py-1.5 rounded text-sm flex-shrink-0 border border-[color:var(--dash-outline)] text-slate-100 hover:border-[color:var(--dash-primary)]"
                         >
                           Open
@@ -1030,10 +1086,10 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               users={users}
               files={files}
               folders={folders}
-              onAddMeeting={onAddMeeting || (() => {})}
-              onUpdateMeeting={onUpdateMeeting || (() => {})}
-              onDeleteMeeting={onDeleteMeeting || (() => {})}
-              onUploadFile={onUploadFile || (async () => {})}
+              onAddMeeting={onAddMeeting}
+              onUpdateMeeting={onUpdateMeeting}
+              onDeleteMeeting={onDeleteMeeting}
+              onUploadFile={onUploadFile as any}
               checkPermission={checkPermission}
               currentUser={currentUser || null}
             />

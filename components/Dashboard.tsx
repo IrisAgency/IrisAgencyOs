@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { prefixedId } from '../utils/id';
 import {
   Task,
@@ -20,60 +20,83 @@ import { PERMISSIONS } from '../lib/permissions';
 import { usePermission } from '../hooks/usePermissions';
 import NeedsMyApprovalCard from './dashboard/NeedsMyApprovalCard';
 import './dashboard/DashboardTheme.css';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useClientStore } from '../stores/useClientStore';
+import { usePostingStore } from '../stores/usePostingStore';
+import { useNotesStore } from '../stores/useNotesStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-interface DashboardProps {
-  tasks: Task[];
-  projects: Project[];
-  users: User[];
-  clients: Client[];
-  socialPosts: SocialPost[];
-  timeLogs: TaskTimeLog[];
-  currentUser: User;
-  meetings?: ClientMeeting[];
-  notes: Note[];
-  milestones?: ProjectMilestone[];
-  dynamicMilestones?: Milestone[];
-  approvalSteps: ApprovalStep[];
-  onAddNote: (note: Note) => void;
-  onUpdateNote: (note: Note) => void;
-  onDeleteNote: (id: string) => void;
-  onNavigateToTask?: (taskId: string) => void;
-  onNavigateToMeeting?: (meetingId: string) => void;
-  onNavigateToPost?: (postId: string) => void;
-  onViewAllTasks?: () => void;
-  onViewAllApprovals?: () => void;
-  onNavigateToUserTasks?: (userId: string) => void;
-  onNavigateToClient?: (clientId: string) => void;
-  onScheduleMeeting?: () => void;
-  onNavigateToCalendar?: () => void;
-}
+const Dashboard: React.FC = () => {
+  // ─── Store reads ───
+  const { currentUser: _authUser, checkPermission } = useAuth();
+  const currentUser = _authUser!; // Guaranteed non-null by auth guard in App.tsx
+  const taskStore = useTaskStore();
+  const projectStore = useProjectStore();
+  const hrStore = useHRStore();
+  const clientStore = useClientStore();
+  const postingStore = usePostingStore();
+  const notesStore = useNotesStore();
+  const { showToast, clearToast, setTargetTaskId } = useUIStore();
+  const navigate = useNavigate();
 
-const Dashboard: React.FC<DashboardProps> = ({
-  tasks = [],
-  projects = [],
-  users = [],
-  clients = [],
-  socialPosts = [],
-  timeLogs = [],
-  currentUser,
-  meetings = [],
-  notes = [],
-  milestones = [],
-  dynamicMilestones = [],
-  approvalSteps = [],
-  onAddNote,
-  onUpdateNote,
-  onDeleteNote,
-  onNavigateToTask,
-  onNavigateToMeeting,
-  onNavigateToPost,
-  onViewAllTasks,
-  onViewAllApprovals,
-  onNavigateToUserTasks,
-  onNavigateToClient,
-  onScheduleMeeting,
-  onNavigateToCalendar,
-}) => {
+  const activeTasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+  const tasks = useMemo(() => {
+    if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
+    return activeTasks.filter(t => {
+      const assignees = t.assigneeIds;
+      const isAssigned = Array.isArray(assignees) && assignees.includes(currentUser?.id || '');
+      return isAssigned || t.createdBy === currentUser?.id;
+    });
+  }, [checkPermission, activeTasks, currentUser?.id]);
+  const projects = useMemo(() => {
+    const allProjects = projectStore.projects;
+    if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return allProjects;
+    return allProjects.filter(p =>
+      projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === currentUser?.id) ||
+      p.accountManagerId === currentUser?.id ||
+      p.projectManagerId === currentUser?.id ||
+      activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(currentUser?.id || ''))
+    );
+  }, [projectStore.projects, projectStore.projectMembers, currentUser?.id, checkPermission, activeTasks]);
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const clients = clientStore.clients;
+  const socialPosts = postingStore.socialPosts;
+  const timeLogs = taskStore.timeLogs;
+  const meetings = clientStore.meetings;
+  const notes = notesStore.notes;
+  const milestones = projectStore.projectMilestones;
+  const dynamicMilestones = projectStore.dynamicMilestones;
+  const approvalSteps = taskStore.approvalSteps;
+
+  // ─── Wrapped actions ───
+  const onAddNote = useCallback(async (n: Note) => {
+    await notesStore.addNote(n);
+    showToast({ title: 'Note Created', message: 'Note added successfully.' });
+  }, [notesStore, showToast]);
+  const onUpdateNote = useCallback(async (n: Note) => {
+    await notesStore.updateNote(n);
+    showToast({ title: 'Note Updated', message: 'Note updated successfully.' });
+  }, [notesStore, showToast]);
+  const onDeleteNote = useCallback(async (id: string) => {
+    await notesStore.deleteNote(id);
+    showToast({ title: 'Note Deleted', message: 'Note deleted.' });
+  }, [notesStore, showToast]);
+  const onNavigateToTask = useCallback((taskId: string) => setTargetTaskId(taskId), [setTargetTaskId]);
+  const onNavigateToMeeting = useCallback((_id?: string) => navigate('/clients'), [navigate]);
+  const onNavigateToPost = useCallback(() => navigate('/posting'), [navigate]);
+  const onViewAllTasks = useCallback(() => navigate('/tasks'), [navigate]);
+  const onViewAllApprovals = useCallback(() => navigate('/tasks'), [navigate]);
+  const onNavigateToUserTasks = useCallback(() => navigate('/tasks'), [navigate]);
+  const onNavigateToClient = useCallback((_id?: string) => navigate('/clients'), [navigate]);
+  const onScheduleMeeting = useCallback(() => navigate('/clients'), [navigate]);
+  const onNavigateToCalendar = useCallback(() => navigate('/calendar'), [navigate]);
   
   const canViewGmUrgent = usePermission(PERMISSIONS.DASHBOARD.VIEW_GM_URGENT);
   

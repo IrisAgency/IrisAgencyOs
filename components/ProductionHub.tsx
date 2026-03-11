@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User, ProductionPlan, Client, CalendarItem, Task } from '../types';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ProductionAsset, ShotList, CallSheet, AgencyEquipment, AgencyLocation, Project, User, ProductionPlan, Client, CalendarItem, Task, NotificationType, TaskComment, TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval, AgencyFile, ProjectMilestone, WorkflowTemplate, RoleDefinition, SocialPost } from '../types';
 import {
     MapPin, Camera, ClipboardList, FileText, ChevronRight, ChevronLeft, X, Plus,
     Calendar, Clock, User as UserIcon, CheckCircle, AlertCircle, Video,
@@ -17,70 +17,144 @@ import { PERMISSIONS } from '../lib/permissions';
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { getProductionCountdown, generateProductionTasks, updateProductionTasks, archiveProductionPlan, restoreProductionPlan } from '../utils/productionUtils';
+import { useProductionStore } from '../stores/useProductionStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useCalendarStore } from '../stores/useCalendarStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useQCStore } from '../stores/useQCStore';
+import { usePostingStore } from '../stores/usePostingStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { notifyUsers } from '../services/notificationService';
+import { archiveTask } from '../utils/archiveUtils';
 
-interface ProductionHubProps {
-    // Legacy
-    assets: ProductionAsset[];
-    // New specific entities
-    shotLists: ShotList[];
-    callSheets: CallSheet[];
-    locations: AgencyLocation[];
-    equipment: AgencyEquipment[];
-    projects: Project[];
-    users: User[];
-    clients: Client[];
-    // Handlers
-    onAddShotList: (sl: ShotList) => void;
-    onAddCallSheet: (cs: CallSheet) => void;
-    onAddLocation: (loc: AgencyLocation) => void;
-    onAddEquipment: (eq: AgencyEquipment) => void;
-    onUpdateEquipment: (eq: AgencyEquipment) => void;
-    onTaskClick?: (task: Task) => void;
-    leaveRequests?: any[];
-    projectMembers?: any[];
-    currentUserId?: string;
-    // Task detail props from App.tsx
-    tasks?: Task[];
-    calendarItems?: any[];
-    comments?: any[];
-    timeLogs?: any[];
-    dependencies?: any[];
-    activityLogs?: any[];
-    approvalSteps?: any[];
-    clientApprovals?: any[];
-    files?: any[];
-    milestones?: any[];
-    workflowTemplates?: any[];
-    roles?: any[];
-    currentUser?: any;
-    onUpdateTask?: (task: Task) => void;
-    onAddTask?: (task: Task) => void;
-    onAddComment?: (comment: any) => void;
-    onAddTimeLog?: (log: any) => void;
-    onAddDependency?: (dep: any) => void;
-    onUpdateApprovalStep?: (step: any) => void;
-    onAddApprovalSteps?: (steps: any[]) => void;
-    onUpdateClientApproval?: (approval: any) => void;
-    onAddClientApproval?: (approval: any) => void;
-    onUploadFile?: (file: any) => void;
-    checkPermission?: (permission: string) => boolean;
-    onNotify?: (type: string, title: string, message: string) => void;
-    onArchiveTask?: (task: Task) => void;
-    onDeleteTask?: (task: Task) => void;
-    onAddSocialPost?: (post: any) => void;
-}
-const ProductionHub: React.FC<ProductionHubProps> = ({
-    assets, shotLists, callSheets, locations, equipment, projects, users, clients, leaveRequests = [],
-    onAddShotList, onAddCallSheet, onAddLocation, onAddEquipment, onUpdateEquipment, projectMembers = [],
-    currentUserId = 'current_user', onTaskClick,
-    tasks = [], calendarItems = [], comments = [], timeLogs = [], dependencies = [], activityLogs = [],
-    approvalSteps = [], clientApprovals = [], files = [], milestones = [],
-    workflowTemplates = [], roles = [], currentUser,
-    onUpdateTask, onAddTask, onAddComment, onAddTimeLog, onAddDependency,
-    onUpdateApprovalStep, onAddApprovalSteps, onUpdateClientApproval,
-    onAddClientApproval, onUploadFile, checkPermission, onNotify,
-    onArchiveTask, onDeleteTask, onAddSocialPost
-}) => {
+const ProductionHub: React.FC = () => {
+    // ── Store reads ──
+    const { currentUser: _authUser, checkPermission } = useAuth();
+    const currentUser = _authUser!;
+    const productionStore = useProductionStore();
+    const projectStore = useProjectStore();
+    const hrStore = useHRStore();
+    const clientStore = useClientStore();
+    const taskStore = useTaskStore();
+    const calendarStore = useCalendarStore();
+    const fileStore = useFileStore();
+    const adminStoreData = useAdminStore();
+    const qcStore = useQCStore();
+    const postingStoreData = usePostingStore();
+    const { showToast, clearToast } = useUIStore();
+
+    const assets = productionStore.productionAssets;
+    const shotLists = productionStore.shotLists;
+    const callSheets = productionStore.callSheets;
+    const locations = productionStore.locations;
+    const equipment = productionStore.equipment;
+    const clients = clientStore.clients;
+    const currentUserId = currentUser?.id || 'current_user';
+    const leaveRequests = hrStore.leaveRequests;
+    const projectMembers = projectStore.projectMembers;
+
+    const activeTasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+    const projects = useMemo(() => {
+        const allProjects = projectStore.projects;
+        if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return allProjects;
+        return allProjects.filter(p =>
+            projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === currentUser?.id) ||
+            p.accountManagerId === currentUser?.id ||
+            p.projectManagerId === currentUser?.id ||
+            activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(currentUser?.id || ''))
+        );
+    }, [projectStore.projects, projectStore.projectMembers, currentUser?.id, checkPermission, activeTasks]);
+    const users = useMemo(() => {
+        const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+        return safe.filter(u => u && u.status !== 'inactive');
+    }, [hrStore.users]);
+    const tasks = useMemo(() => {
+        if (checkPermission(PERMISSIONS.TASKS.VIEW_ALL)) return activeTasks;
+        return activeTasks.filter(t => {
+            const assignees = t.assigneeIds;
+            const isAssigned = Array.isArray(assignees) && assignees.includes(currentUser?.id || '');
+            return isAssigned || t.createdBy === currentUser?.id;
+        });
+    }, [checkPermission, activeTasks, currentUser?.id]);
+    const calendarItems = calendarStore.calendarItems;
+    const comments = taskStore.comments;
+    const timeLogs = taskStore.timeLogs;
+    const dependencies = taskStore.dependencies;
+    const activityLogs = taskStore.activityLogs;
+    const approvalSteps = taskStore.approvalSteps;
+    const clientApprovals = taskStore.clientApprovals;
+    const files = fileStore.files;
+    const milestones = projectStore.projectMilestones;
+    const workflowTemplates = adminStoreData.workflowTemplates;
+    const roles = adminStoreData.systemRoles;
+
+    // ── Audit log helper ──
+    const addAuditLog = useCallback(async (action: string, entityType: string, entityId: string | null, description: string) => {
+        if (!currentUser) return;
+        await adminStoreData.addAuditLog(currentUser.id, action, entityType, entityId, description);
+    }, [currentUser, adminStoreData]);
+
+    // ── Wrapped production actions ──
+    const onAddShotList = useCallback(async (sl: ShotList) => await productionStore.addShotList(sl), [productionStore]);
+    const onAddCallSheet = useCallback(async (cs: CallSheet) => {
+        await productionStore.addCallSheet(cs);
+        showToast({ title: 'Call Sheet Published', message: `Call sheet for ${(cs as any).date} is now available.` });
+    }, [productionStore, showToast]);
+    const onAddLocation = useCallback(async (loc: AgencyLocation) => await productionStore.addLocation(loc), [productionStore]);
+    const onAddEquipment = useCallback(async (eq: AgencyEquipment) => await productionStore.addEquipment(eq), [productionStore]);
+    const onUpdateEquipment = useCallback(async (eq: AgencyEquipment) => await productionStore.updateEquipment(eq), [productionStore]);
+
+    // ── Wrapped task actions ──
+    const onUpdateTask = useCallback(async (updatedTask: Task) => {
+        await taskStore.updateTask(updatedTask, {
+            tasks: activeTasks, userId: currentUser.id, workflowTemplates,
+            qcReviews: qcStore.qcReviews, projectMembers, activeUsers: users, systemRoles: roles,
+        });
+    }, [taskStore, activeTasks, currentUser, workflowTemplates, qcStore.qcReviews, projectMembers, users, roles]);
+    const onAddTask = useCallback(async (task: Task) => {
+        await taskStore.addTask(task, projectStore.projects, hrStore.users, currentUser.id);
+    }, [taskStore, projectStore.projects, hrStore.users, currentUser]);
+    const onDeleteTask = useCallback(async (task: Task) => {
+        await taskStore.deleteTask(task, currentUser.id, checkPermission, showToast, addAuditLog);
+    }, [taskStore, currentUser, checkPermission, showToast, addAuditLog]);
+    const onArchiveTask = useCallback(async (task: Task) => {
+        if (!currentUser) return;
+        await archiveTask(task, currentUser.id);
+        showToast({ title: 'Task Archived', message: `Task "${task.title}" has been archived.` });
+    }, [currentUser, showToast]);
+    const onAddComment = useCallback(async (c: any) => await taskStore.addComment(c), [taskStore]);
+    const onAddTimeLog = useCallback(async (l: any) => await taskStore.addTimeLog(l), [taskStore]);
+    const onAddDependency = useCallback(async (d: any) => await taskStore.addDependency(d), [taskStore]);
+    const onUpdateApprovalStep = useCallback(async (s: any) => await taskStore.updateApprovalStep(s), [taskStore]);
+    const onAddApprovalSteps = useCallback(async (s: any[]) => await taskStore.addApprovalSteps(s), [taskStore]);
+    const onUpdateClientApproval = useCallback(async (ca: any) => await taskStore.updateClientApproval(ca), [taskStore]);
+    const onAddClientApproval = useCallback(async (ca: any) => await taskStore.addClientApproval(ca), [taskStore]);
+    const onUploadFile = useCallback(async (file: any) => {
+        showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+        try {
+            const savedFile = await fileStore.uploadFile(file, { projects: projectStore.projects, clients, activeTasks, folders: fileStore.folders });
+            showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+            return savedFile;
+        } catch (error: any) {
+            showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+            throw error;
+        }
+    }, [fileStore, projectStore.projects, clients, activeTasks, showToast]);
+    const onNotify = useCallback(async (type: string, title: string, message: string, recipientIds: string[] = [], entityId?: string, actionUrl?: string) => {
+        showToast({ title, message });
+        setTimeout(() => clearToast(), 4000);
+        if (recipientIds.length > 0) {
+            try { await notifyUsers({ type: type as NotificationType, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' }); }
+            catch (error) { console.error('Failed to create notification:', error); }
+        }
+    }, [showToast, clearToast, currentUser?.id]);
+    const onAddSocialPost = useCallback(async (p: any) => await postingStoreData.addPost(p), [postingStoreData]);
+    const onTaskClick = undefined;
     // Calendar state
     const [calendarDate, setCalendarDate] = useState(new Date());
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);

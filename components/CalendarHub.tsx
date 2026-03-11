@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare, Pin, PinOff, Layers } from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
 import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, CreativeCalendarItem, NotificationType } from '../types';
@@ -12,36 +12,48 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, storage } from '../lib/firebase';
 import { notifyUsers } from '../services/notificationService';
 
-interface CalendarHubProps {
-  clients: Client[];
-  calendarMonths: CalendarMonth[];
-  calendarItems: CalendarItem[];
-  calendarItemRevisions: CalendarItemRevision[];
-  creativeProjects: CreativeProject[];
-  creativeCalendars: CreativeCalendar[];
-  creativeCalendarItems: CreativeCalendarItem[];
-  users: User[];
-  currentUser: User;
-  checkPermission: (permission: string) => boolean;
-  onNotify: (type: string, title: string, message: string) => void;
-  onRefresh?: () => void;
-}
+// ── Store imports ──
+import { useCalendarStore } from '../stores/useCalendarStore';
+import { useCreativeStore } from '../stores/useCreativeStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useUIStore } from '../stores/useUIStore';
 
-const CalendarHub: React.FC<CalendarHubProps> = ({
-  clients,
-  calendarMonths,
-  calendarItems,
-  calendarItemRevisions,
-  creativeProjects,
-  creativeCalendars,
-  creativeCalendarItems,
-  users,
-  currentUser,
-  checkPermission,
-  onNotify,
-  onRefresh
-}) => {
-  // checkPermission comes from props now
+const CalendarHub: React.FC = () => {
+  // ── Store reads ──
+  const { currentUser, checkPermission } = useAuth();
+  const calendarStore = useCalendarStore();
+  const creativeStore = useCreativeStore();
+  const clientStore = useClientStore();
+  const hrStore = useHRStore();
+  const { showToast, clearToast } = useUIStore();
+
+  const clients = clientStore.clients;
+  const calendarMonths = calendarStore.calendarMonths;
+  const calendarItems = calendarStore.calendarItems;
+  const calendarItemRevisions = calendarStore.calendarItemRevisions;
+  const creativeProjects = creativeStore.creativeProjects;
+  const creativeCalendars = creativeStore.creativeCalendars;
+  const creativeCalendarItems = creativeStore.creativeCalendarItems;
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+
+  const onNotify = useCallback(async (
+    type: string, title: string, message: string,
+    recipientIds: string[] = [], entityId?: string, actionUrl?: string
+  ) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({ type: type as any, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' });
+      } catch (error) { console.error('Failed to create notification:', error); }
+    }
+  }, [showToast, clearToast, currentUser?.id]);
+
+  const onRefresh = useCallback(() => {}, []);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedMonthId, setSelectedMonthId] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');

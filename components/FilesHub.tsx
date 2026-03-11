@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { AgencyFile, FileFolder, Project, User, Client } from '../types';
 import { 
   Folder, File as FileIcon, Upload, Grid, List, Search, 
@@ -8,25 +8,118 @@ import {
 } from 'lucide-react';
 import PageContainer from './layout/PageContainer';
 import { prefixedId } from '../utils/id';
+import { useFileStore } from '../stores/useFileStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useTaskStore } from '../stores/useTaskStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { PERMISSIONS } from '../lib/permissions';
+import { notifyUsers } from '../services/notificationService';
 
 interface FilesHubProps {
-  files: AgencyFile[];
-  folders: FileFolder[];
-  projects: Project[];
-  clients: Client[];
-  users: User[];
-  currentProjectId?: string; // Optional: restrict to one project
-  onUpload: (file: AgencyFile) => void;
-  onDelete: (fileId: string) => void;
-  onMove: (fileId: string, folderId: string) => void;
-  onCreateFolder: (folder: FileFolder) => void;
-  onDeleteFolder: (folderId: string) => void;
+  /** When provided, scopes the file view to a single project */
+  currentProjectId?: string;
+  files?: AgencyFile[];
+  folders?: FileFolder[];
+  projects?: Project[];
+  users?: User[];
+  onUpload?: (file: AgencyFile) => Promise<any>;
+  onDelete?: (fileId: string) => Promise<void>;
+  onMove?: (fileId: string, folderId: string | null) => void;
+  onCreateFolder?: (folder: FileFolder) => void | Promise<void>;
 }
 
-const FilesHub: React.FC<FilesHubProps> = ({ 
-  files, folders, projects, clients, users, currentProjectId,
-  onUpload, onDelete, onMove, onCreateFolder, onDeleteFolder 
-}) => {
+const FilesHub: React.FC<FilesHubProps> = (overrideProps) => {
+  // ── Store reads ──
+  const { currentUser, checkPermission } = useAuth();
+  const fileStore = useFileStore();
+  const projectStore = useProjectStore();
+  const clientStore = useClientStore();
+  const hrStore = useHRStore();
+  const taskStore = useTaskStore();
+  const { showToast, clearToast } = useUIStore();
+
+  const files = overrideProps.files ?? fileStore.files;
+  const folders = overrideProps.folders ?? fileStore.folders;
+  const clients = clientStore.clients;
+  const _storeUsers = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const users = overrideProps.users ?? _storeUsers;
+  const activeTasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+
+  // Permission-aware project list
+  const _storeProjects = useMemo(() => {
+    const allProjects = projectStore.projects;
+    if (checkPermission(PERMISSIONS.PROJECTS.VIEW_ALL)) return allProjects;
+    return allProjects.filter(p =>
+      projectStore.projectMembers.some(m => m.projectId === p.id && m.userId === currentUser?.id) ||
+      p.accountManagerId === currentUser?.id ||
+      p.projectManagerId === currentUser?.id ||
+      activeTasks.some(t => t.projectId === p.id && t.assigneeIds?.includes(currentUser?.id || ''))
+    );
+  }, [projectStore.projects, projectStore.projectMembers, currentUser?.id, checkPermission, activeTasks]);
+  const projects = overrideProps.projects ?? _storeProjects;
+
+  // ── Wrapped actions (override props take precedence) ──
+  const _storeUpload = useCallback(async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+    try {
+      const savedFile = await fileStore.uploadFile(file, { projects: projectStore.projects, clients, activeTasks, folders });
+      showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+      return savedFile;
+    } catch (error: any) {
+      showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+      throw error;
+    }
+  }, [fileStore, projectStore.projects, clients, activeTasks, folders, showToast]);
+  const onUpload = overrideProps.onUpload ?? _storeUpload;
+
+  const _storeDelete = useCallback(async (fileId: string) => {
+    try {
+      await fileStore.deleteFile(fileId, { userId: currentUser!.id });
+      showToast({ title: 'File Deleted', message: 'File has been deleted.' });
+      setTimeout(() => clearToast(), 4000);
+    } catch (error) {
+      showToast({ title: 'Delete Failed', message: 'Failed to delete file.' });
+    }
+  }, [fileStore, currentUser, showToast, clearToast]);
+  const onDelete = overrideProps.onDelete ?? _storeDelete;
+
+  const _storeMove = useCallback(() => {}, []);
+  const onMove = overrideProps.onMove ?? _storeMove;
+
+  const _storeCreateFolder = useCallback(async (folder: FileFolder) => {
+    await fileStore.createFolder(folder);
+  }, [fileStore]);
+  const onCreateFolder = overrideProps.onCreateFolder ?? _storeCreateFolder;
+
+  const onDeleteFolder = useCallback(async (folderId: string) => {
+    const folder = folders.find(f => f.id === folderId);
+    if (!folder) { showToast({ title: 'Error', message: 'Folder not found.' }); return; }
+    const hasSubfolders = folders.some(f => f.parentId === folderId);
+    const folderFiles = files.filter(f => f.folderId === folderId);
+    let confirmMessage = `Are you sure you want to delete the folder "${folder.name}"?\n\n`;
+    if (hasSubfolders || folderFiles.length > 0) {
+      confirmMessage += '⚠️ Warning: This folder contains:\n';
+      if (hasSubfolders) confirmMessage += '• Subfolders\n';
+      if (folderFiles.length > 0) confirmMessage += `• ${folderFiles.length} file(s)\n`;
+      confirmMessage += '\nAll contents will be permanently deleted!\n\n';
+    }
+    confirmMessage += 'This action CANNOT be undone.';
+    if (!window.confirm(confirmMessage)) return;
+    try {
+      await fileStore.deleteFolder(folderId);
+      showToast({ title: 'Folder Deleted', message: `"${folder.name}" deleted.` });
+    } catch (error) {
+      showToast({ title: 'Error', message: 'Failed to delete folder.' });
+    }
+  }, [fileStore, folders, files, showToast]);
+
+  const currentProjectId: string | undefined = overrideProps.currentProjectId;
   const surface = 'bg-iris-black/80 backdrop-blur-sm border border-iris-white/10 text-iris-white';
   const elevated = 'bg-iris-black/95 backdrop-blur-sm border border-iris-white/10 text-iris-white';
   const inputClass = 'w-full px-3 py-2 rounded-lg bg-iris-black/80 border border-iris-white/10 text-sm text-iris-white placeholder:text-iris-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';

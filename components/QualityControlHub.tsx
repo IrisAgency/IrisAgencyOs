@@ -20,24 +20,16 @@ import {
 import { PERMISSIONS } from '../lib/permissions';
 import { approveFromQCHub, rejectFromQCHub } from '../utils/qcUtils';
 
-// ─── Props ────────────────────────────────────────────────────────────
-interface QualityControlHubProps {
-  tasks: Task[];
-  qcReviews: QCReview[];
-  users: User[];
-  projects: Project[];
-  clients: Client[];
-  projectMembers: ProjectMember[];
-  workflowTemplates: WorkflowTemplate[];
-  approvalSteps: ApprovalStep[];
-  taskComments: TaskComment[];
-  files: AgencyFile[];
-  currentUser: { id: string; email: string | null; displayName: string | null; name?: string; role?: string };
-  checkPermission: (code: string) => boolean;
-  onUpdateTask: (task: Task) => void;
-  onNotify: (type: NotificationType, title: string, message: string, recipientIds?: string[], entityId?: string, actionUrl?: string) => void;
-  onUploadFile: (file: AgencyFile) => void;
-}
+import { useTaskStore } from '../stores/useTaskStore';
+import { useQCStore } from '../stores/useQCStore';
+import { useHRStore } from '../stores/useHRStore';
+import { useProjectStore } from '../stores/useProjectStore';
+import { useClientStore } from '../stores/useClientStore';
+import { useAdminStore } from '../stores/useAdminStore';
+import { useFileStore } from '../stores/useFileStore';
+import { useUIStore } from '../stores/useUIStore';
+import { useAuth } from '../contexts/AuthContext';
+import { notifyUsers } from '../services/notificationService';
 
 // ─── Helpers ──────────────────────────────────────────────────────────
 const stepStatusConfig: Record<string, { bg: string; text: string; border: string; dot: string; label: string }> = {
@@ -65,23 +57,75 @@ function getTaskApprovalState(task: Task, steps: ApprovalStep[], currentUserId: 
 const SWIPE_THRESHOLD = 120;
 
 // ─── Component ────────────────────────────────────────────────────────
-const QualityControlHub: React.FC<QualityControlHubProps> = ({
-  tasks,
-  qcReviews,
-  users,
-  projects,
-  clients,
-  projectMembers,
-  workflowTemplates,
-  approvalSteps,
-  taskComments,
-  files,
-  currentUser,
-  checkPermission,
-  onUpdateTask,
-  onNotify,
-  onUploadFile,
-}) => {
+const QualityControlHub: React.FC = () => {
+  // ─── Store reads ──────────────────────────────────────────────────
+  const { currentUser: authUser, checkPermission } = useAuth();
+  const taskStore = useTaskStore();
+  const qcStore = useQCStore();
+  const hrStore = useHRStore();
+  const projectStore = useProjectStore();
+  const clientStore = useClientStore();
+  const adminStoreData = useAdminStore();
+  const fileStoreData = useFileStore();
+  const { showToast, clearToast } = useUIStore();
+
+  const tasks = useMemo(() => taskStore.tasks.filter(t => !t.isDeleted), [taskStore.tasks]);
+  const qcReviews = qcStore.qcReviews;
+  const users = useMemo(() => {
+    const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
+    return safe.filter(u => u && u.status !== 'inactive');
+  }, [hrStore.users]);
+  const projects = projectStore.projects;
+  const clients = clientStore.clients;
+  const projectMembers = projectStore.projectMembers;
+  const workflowTemplates = adminStoreData.workflowTemplates;
+  const approvalSteps = taskStore.approvalSteps;
+  const taskComments = taskStore.comments;
+  const files = fileStoreData.files;
+  const currentUser = useMemo(() => authUser ? {
+    ...authUser,
+    email: authUser.email || null,
+    displayName: authUser.name,
+  } as { id: string; email: string | null; displayName: string | null; name?: string; role?: string } : { id: '', email: null, displayName: null }, [authUser]);
+
+  // ─── Wrapped actions ──────────────────────────────────────────────
+  const onUpdateTask = useCallback(async (updatedTask: Task) => {
+    const systemRoles = adminStoreData.systemRoles;
+    await taskStore.updateTask(updatedTask, {
+      tasks,
+      userId: authUser!.id,
+      workflowTemplates,
+      qcReviews,
+      projectMembers,
+      activeUsers: users,
+      systemRoles,
+    });
+  }, [taskStore, tasks, authUser, workflowTemplates, qcReviews, projectMembers, users, adminStoreData.systemRoles]);
+
+  const onNotify = useCallback(async (
+    type: NotificationType, title: string, message: string,
+    recipientIds: string[] = [], entityId?: string, actionUrl?: string
+  ) => {
+    showToast({ title, message });
+    setTimeout(() => clearToast(), 4000);
+    if (recipientIds.length > 0) {
+      try {
+        await notifyUsers({ type, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: authUser?.id || 'system' });
+      } catch (error) { console.error('Failed to create notification:', error); }
+    }
+  }, [showToast, clearToast, authUser?.id]);
+
+  const onUploadFile = useCallback(async (file: AgencyFile) => {
+    showToast({ title: 'Uploading...', message: `Uploading ${file.name}...` });
+    try {
+      const savedFile = await fileStoreData.uploadFile(file, { projects, clients, activeTasks: tasks, folders: fileStoreData.folders });
+      showToast({ title: 'Success', message: `${file.name} uploaded successfully!` });
+      return savedFile;
+    } catch (error: any) {
+      showToast({ title: 'Upload Failed', message: error.message || 'Failed to upload file.' });
+      throw error;
+    }
+  }, [fileStoreData, projects, clients, tasks, showToast]);
   // ─── Tabs ─────────────────────────────────────────────────────────
   type TabId = 'review' | 'all' | 'history';
   const [activeTab, setActiveTab] = useState<TabId>('review');
