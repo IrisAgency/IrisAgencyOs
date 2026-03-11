@@ -69,7 +69,7 @@ export const seedDatabase = async () => {
     { name: 'audit_logs', data: AUDIT_LOGS },
     { name: 'workflow_templates', data: WORKFLOW_TEMPLATES },
     // Singletons or special cases
-    { name: 'settings', data: [{ id: 'branding', ...DEFAULT_BRANDING }, { id: 'general', ...DEFAULT_SETTINGS }] },
+    { name: 'settings', data: [{ ...DEFAULT_BRANDING, id: 'branding' }, { ...DEFAULT_SETTINGS, id: 'general' }] },
   ];
 
   for (const { name, data } of collections) {

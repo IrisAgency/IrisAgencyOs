@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Notification, NotificationPreference, NotificationType, NotificationCategory } from '../types';
+import { Notification as AppNotification, NotificationPreference, NotificationType, NotificationCategory } from '../types';
 import {
   Bell, CheckCircle, Clock, Filter, Trash2, Settings,
   MessageSquare, FileText, Briefcase, DollarSign, Clapperboard, X, Check,
@@ -32,8 +32,8 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
   const onMarkAllAsRead = React.useCallback(async () => { if (currentUser) await notifStore.markAllAsRead(currentUser.id); }, [notifStore, currentUser]);
   const onDelete = notifStore.deleteNotification;
   const onUpdatePreferences = notifStore.updatePreferences;
-  const onApprove = undefined;
-  const onNavigate = undefined;
+  const onApprove = undefined as ((id: string) => void) | undefined;
+  const onNavigate = undefined as ((url: string) => void) | undefined;
   const [activeTab, setActiveTab] = useState<'All' | 'Tasks' | 'Approvals' | 'Posting' | 'Settings'>('All');
   const [filterUnread, setFilterUnread] = useState(false);
   const [filterUrgent, setFilterUrgent] = useState(false);
@@ -53,7 +53,7 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
 
   // Helpers
   const getIcon = (type: NotificationType) => {
-    const iconMap: Record<string, JSX.Element> = {
+    const iconMap: Record<string, React.ReactElement> = {
       // Tasks
       'TASK_ASSIGNED': <Briefcase className="w-5 h-5 text-blue-500" />,
       'TASK_UNASSIGNED': <Briefcase className="w-5 h-5 text-slate-400" />,
@@ -124,7 +124,7 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
 
   // Group by groupKey if exists, otherwise by date
   const groupedNotifications = useMemo(() => {
-    const groups: Record<string, Notification[]> = {};
+    const groups: Record<string, AppNotification[]> = {};
     
     filteredNotifications.forEach(notification => {
       // Use groupKey for related notifications
@@ -430,7 +430,7 @@ const NotificationsHub: React.FC<NotificationsHubProps> = ({
               <p className="text-slate-500 font-medium">No notifications to show.</p>
             </div>
           ) : (
-            Object.entries(groupedNotifications).map(([groupKey, items]: [string, Notification[]]) => {
+            Object.entries(groupedNotifications).map(([groupKey, items]: [string, AppNotification[]]) => {
               const isGroupedByEntity = items[0]?.groupKey === groupKey;
               const latestNotification = items[0];
               

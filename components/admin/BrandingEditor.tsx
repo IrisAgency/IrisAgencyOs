@@ -57,6 +57,7 @@ const BrandingEditor: React.FC<BrandingEditorProps> = ({ branding: propsBranding
             }
 
             // Upload and get URL
+            if (!uploadLogo) throw new Error('Upload not available');
             const url = await uploadLogo(file, type);
 
             // Create FileRef
@@ -96,11 +97,12 @@ const BrandingEditor: React.FC<BrandingEditorProps> = ({ branding: propsBranding
 
         try {
             console.log('BrandingEditor: Calling updateBranding...');
+            if (!updateBranding) throw new Error('Update not available');
             await updateBranding(localBranding);
             console.log('BrandingEditor: updateBranding completed successfully');
             
             // Refresh branding context to ensure all components get the update
-            await refreshBranding();
+            await refreshBranding?.();
             console.log('BrandingEditor: refreshBranding completed');
             
             // onUpdateBranding(localBranding); // Redundant: updateBranding from context already handles this

@@ -222,9 +222,9 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     
     // Map calendar items to task types for workload calculation
     const tasksForWorkload = selectedMonthItems.map(item => ({
-      type: item.type === 'VIDEO' ? 'video' as TaskType : 
-            item.type === 'PHOTO' ? 'photo' as TaskType : 
-            'motion' as TaskType,
+      type: item.type === 'VIDEO' ? 'video' as const :
+            item.type === 'PHOTO' ? 'photo' as const :
+            'motion' as const,
       id: item.id
     }));
     
@@ -436,7 +436,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
     console.log('  onAddDynamicMilestone exists:', !!onAddDynamicMilestone);
     console.log('  onAddTask exists:', !!onAddTask);
     
-    if (formCalendarMonthId && selectedMonthItems.length > 0 && onAddDynamicMilestone && onAddTask) {
+    if (formCalendarMonthId && selectedMonthItems.length > 0) {
       console.log('✅ Conditions met! Generating milestones and tasks...');
       try {
         // Generate dynamic milestones
@@ -574,10 +574,10 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
             title: item.autoName,
             description: item.primaryBrief || null,
             voiceOver: null,
-            department: item.type === 'VIDEO' ? 'Production' : item.type === 'PHOTO' ? 'Creative' : 'Creative',
-            priority: 'medium',
+            department: item.type === 'VIDEO' ? Department.PRODUCTION : Department.CREATIVE,
+            priority: Priority.MEDIUM,
             taskType: item.type === 'VIDEO' ? 'video' : item.type === 'PHOTO' ? 'photo' : 'motion',
-            status: 'new',
+            status: TaskStatus.NEW,
             startDate: newProject.startDate,
             dueDate: item.publishAt || newProject.endDate,
             assigneeIds: taskAssignments[item.id] || [],
@@ -1375,7 +1375,7 @@ const ProjectsHub: React.FC<ProjectsHubProps> = ({
       onAddMarketingAsset={onAddMarketingAsset}
       onUpdateMarketingAsset={onUpdateMarketingAsset}
       onDeleteMarketingAsset={onDeleteMarketingAsset}
-      onUploadFile={onUploadFile}
+      onUploadFile={async (f: AgencyFile) => { await onUploadFile(f); }}
       onDeleteFile={onDeleteFile}
       onCreateFolder={onCreateFolder}
       getStatusColor={getStatusColor}

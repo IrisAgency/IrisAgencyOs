@@ -60,8 +60,8 @@ const RolesManager: React.FC<RolesManagerProps> = ({ roles, onAddRole, onUpdateR
 
     // Validation warnings for selected role
     const validationWarnings = useMemo(() => {
-        if (!selectedRole) return [];
-        return validatePermissionSet(selectedRole.permissions || []);
+        if (!selectedRole) return [] as { permission: string; message: string }[];
+        return validatePermissionSet(selectedRole.permissions || []).warnings;
     }, [selectedRole?.permissions]);
 
     const handleCreateRole = () => {
@@ -147,7 +147,7 @@ const RolesManager: React.FC<RolesManagerProps> = ({ roles, onAddRole, onUpdateR
                         return (
                             <div key={role.id} onClick={() => setSelectedRole(role)} className={`p-4 cursor-pointer hover:bg-slate-50 flex justify-between items-center group ${selectedRole?.id === role.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}>
                                 <div className="flex items-center gap-2 min-w-0">
-                                    {role.isSystem && <Lock className="w-3 h-3 text-slate-400 flex-shrink-0" title="System role" />}
+                                    {role.isSystem && <span title="System role"><Lock className="w-3 h-3 text-slate-400 flex-shrink-0" /></span>}
                                     <span className="font-medium truncate">{role.name}</span>
                                     {role.isAdmin && <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex-shrink-0">ADMIN</span>}
                                     {count > 0 && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded flex-shrink-0">{count}</span>}
@@ -202,7 +202,7 @@ const RolesManager: React.FC<RolesManagerProps> = ({ roles, onAddRole, onUpdateR
                                 <AlertTriangle className="w-4 h-4" /> Permission Warnings
                             </div>
                             <ul className="text-xs text-amber-600 space-y-0.5 ml-6 list-disc">
-                                {validationWarnings.map((w, i) => <li key={i}>{w}</li>)}
+                                {validationWarnings.map((w, i) => <li key={i}>{w.permission}: {w.message}</li>)}
                             </ul>
                         </div>
                     )}
@@ -242,7 +242,7 @@ const RolesManager: React.FC<RolesManagerProps> = ({ roles, onAddRole, onUpdateR
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-1.5">
                                                             <p className="text-sm font-medium text-slate-900">{perm.name}</p>
-                                                            {isDangerous && <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" title="Dangerous permission" />}
+                                                            {isDangerous && <span title="Dangerous permission"><AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" /></span>}
                                                         </div>
                                                         <p className="text-xs text-slate-500 truncate">{perm.description}</p>
                                                     </div>

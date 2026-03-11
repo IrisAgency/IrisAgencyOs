@@ -35,7 +35,7 @@ const AssetAssignment: React.FC<AssetAssignmentProps> = ({
   const [notes, setNotes] = useState('');
 
   const filteredAssets = useMemo(() => {
-    let assets = [...employeeAssets].sort((a, b) => new Date(b.assignedDate).getTime() - new Date(a.assignedDate).getTime());
+    let assets = [...employeeAssets].sort((a, b) => new Date(b.assignedDate ?? 0).getTime() - new Date(a.assignedDate ?? 0).getTime());
 
     if (filterStatus === 'assigned') assets = assets.filter(a => a.status === 'assigned');
     if (filterStatus === 'returned') assets = assets.filter(a => a.status === 'returned');
@@ -178,7 +178,7 @@ const AssetAssignment: React.FC<AssetAssignmentProps> = ({
 
             return (
               <div key={asset.id} className={`bg-iris-black/60 border ${isOverdue ? 'border-red-500/30' : 'border-iris-white/10'} rounded-xl p-4 flex items-center gap-4`}>
-                <span className="text-2xl">{categoryIcon[asset.assetCategory] || '📦'}</span>
+                <span className="text-2xl">{categoryIcon[asset.assetCategory ?? 'other'] || '📦'}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-iris-white">{asset.assetName}</span>
@@ -194,7 +194,7 @@ const AssetAssignment: React.FC<AssetAssignmentProps> = ({
                   <div className="flex gap-3 text-xs text-iris-white/40">
                     <span>{user?.name || 'Unknown'}</span>
                     {asset.serialNumber && <span>S/N: {asset.serialNumber}</span>}
-                    <span>Assigned: {new Date(asset.assignedDate).toLocaleDateString()}</span>
+                    <span>Assigned: {new Date(asset.assignedDate ?? '').toLocaleDateString()}</span>
                   </div>
                 </div>
                 {canManage && asset.status === 'assigned' && (

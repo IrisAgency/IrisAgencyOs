@@ -588,7 +588,7 @@ const QualityControlHub: React.FC = () => {
               <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${
                 task.taskType === 'design' ? 'border-blue-500/30 text-blue-300 bg-blue-500/10' :
                 task.taskType === 'video' ? 'border-purple-500/30 text-purple-300 bg-purple-500/10' :
-                task.taskType === 'content' ? 'border-teal-500/30 text-teal-300 bg-teal-500/10' :
+                task.taskType === 'copywriting' ? 'border-teal-500/30 text-teal-300 bg-teal-500/10' :
                 'border-slate-500/30 text-slate-300 bg-slate-500/10'
               }`}>
                 {task.taskType}
@@ -849,7 +849,7 @@ const QualityControlHub: React.FC = () => {
               <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
                 task.taskType === 'design' ? 'border-blue-500/30 text-blue-300' :
                 task.taskType === 'video' ? 'border-purple-500/30 text-purple-300' :
-                task.taskType === 'content' ? 'border-teal-500/30 text-teal-300' :
+                task.taskType === 'copywriting' ? 'border-teal-500/30 text-teal-300' :
                 'border-slate-500/30 text-slate-300'
               }`}>
                 {task.taskType}

@@ -298,7 +298,7 @@ export const updateProductionTasks = async (
 export const archiveProductionPlan = async (
   planId: string,
   userId: string,
-  reason: 'user_deleted' | 'plan_superseded'
+  reason: 'user_deleted' | 'plan_superseded' | 'completed'
 ): Promise<void> => {
   const batch = writeBatch(db);
 

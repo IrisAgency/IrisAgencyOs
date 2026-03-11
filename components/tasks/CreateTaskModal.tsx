@@ -339,7 +339,7 @@ const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 // CREATE NEW
                 const project = projects.find(p => p.id === projectId);
 
-                let finalWorkflowId = workflowId;
+                let finalWorkflowId: string | null = workflowId;
                 if (!finalWorkflowId) {
                     const activeWf = getActiveWorkflow(department, taskType);
                     finalWorkflowId = activeWf?.id || null;

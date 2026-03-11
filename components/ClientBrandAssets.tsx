@@ -420,7 +420,7 @@ const AssetModal: React.FC<{
               <label className="block text-sm font-semibold text-iris-white/70 mb-1">URL</label>
               <input
                 type="url"
-                value={formData.url}
+                value={formData.url ?? ''}
                 onChange={e => setFormData({ ...formData, url: e.target.value })}
                 className={inputClass}
                 placeholder="https://"

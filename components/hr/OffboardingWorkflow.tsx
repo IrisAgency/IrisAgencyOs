@@ -138,7 +138,7 @@ const OffboardingWorkflow: React.FC<OffboardingWorkflowProps> = ({
                           {step.title}
                           {step.isRequired && <span className="text-red-400 ml-1">*</span>}
                         </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${CATEGORY_COLORS[step.category] || 'text-iris-white/30 bg-iris-white/5'}`}>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${CATEGORY_COLORS[step.category ?? ''] || 'text-iris-white/30 bg-iris-white/5'}`}>
                           {step.category}
                         </span>
                       </div>

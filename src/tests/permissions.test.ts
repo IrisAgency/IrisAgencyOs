@@ -21,6 +21,7 @@ import {
   DANGEROUS_PERMISSIONS,
 } from '../../lib/permissions';
 import type { ScopeContext } from '../../lib/permissions';
+import { Department } from '../../types';
 import type { User } from '../../types';
 
 // ─── Test Helpers ────────────────────────────
@@ -31,7 +32,7 @@ function makeUser(overrides: Partial<User> = {}): User {
     name: 'Test User',
     email: 'test@iris.agency',
     role: 'Designer',
-    department: 'Design',
+    department: Department.CREATIVE,
     status: 'active',
     createdAt: '2025-01-01',
     updatedAt: '2025-01-01',
@@ -151,20 +152,20 @@ describe('scope context — OWN', () => {
 
 describe('scope context — DEPT', () => {
   it('DEPT scope passes when departments match', () => {
-    const user = makeUser({ id: 'user-1', department: 'Design' });
-    const ctx: ScopeContext = { department: 'Design' };
+    const user = makeUser({ id: 'user-1', department: Department.CREATIVE });
+    const ctx: ScopeContext = { department: Department.CREATIVE };
     expect(can(user, PERMISSIONS.TASKS.VIEW_DEPT, ['tasks.view.dept'], ctx)).toBe(true);
   });
 
   it('DEPT scope passes when user is also owner (falls through to own check)', () => {
-    const user = makeUser({ id: 'user-1', department: 'Design' });
-    const ctx: ScopeContext = { ownerId: 'user-1', department: 'Marketing' };
+    const user = makeUser({ id: 'user-1', department: Department.CREATIVE });
+    const ctx: ScopeContext = { ownerId: 'user-1', department: Department.MARKETING };
     expect(can(user, PERMISSIONS.TASKS.VIEW_DEPT, ['tasks.view.dept'], ctx)).toBe(true);
   });
 
   it('DEPT scope fails when departments differ and user is not owner', () => {
-    const user = makeUser({ id: 'user-1', department: 'Design' });
-    const ctx: ScopeContext = { ownerId: 'user-2', department: 'Marketing' };
+    const user = makeUser({ id: 'user-1', department: Department.CREATIVE });
+    const ctx: ScopeContext = { ownerId: 'user-2', department: Department.MARKETING };
     expect(can(user, PERMISSIONS.TASKS.VIEW_DEPT, ['tasks.view.dept'], ctx)).toBe(false);
   });
 });
@@ -185,8 +186,8 @@ describe('scope context — PROJECT', () => {
 
 describe('scope context — ALL', () => {
   it('ALL scope always passes regardless of context', () => {
-    const user = makeUser({ id: 'user-1', department: 'Design' });
-    const ctx: ScopeContext = { ownerId: 'user-2', department: 'Marketing', projectMembers: ['user-3'] };
+    const user = makeUser({ id: 'user-1', department: Department.CREATIVE });
+    const ctx: ScopeContext = { ownerId: 'user-2', department: Department.MARKETING, projectMembers: ['user-3'] };
     expect(can(user, PERMISSIONS.TASKS.VIEW_ALL, ['tasks.view.all'], ctx)).toBe(true);
   });
 });
@@ -196,33 +197,33 @@ describe('scope context — ALL', () => {
 describe('canViewTask()', () => {
   it('returns true for admin', () => {
     const user = makeUser();
-    expect(canViewTask(user, ['tasks.view.all'], true, {} as any)).toBe(true);
+    expect(canViewTask(user, ['tasks.view.all'])).toBe(true);
   });
 
   it('returns true when user has VIEW_ALL', () => {
     const user = makeUser();
-    expect(canViewTask(user, ['tasks.view.all'], false, {} as any)).toBe(true);
+    expect(canViewTask(user, ['tasks.view.all'])).toBe(true);
   });
 });
 
 describe('canViewClient()', () => {
   it('returns true when user has clients.view.all', () => {
     const user = makeUser();
-    expect(canViewClient(user, ['clients.view.all'], false, {} as any)).toBe(true);
+    expect(canViewClient(user, ['clients.view.all'])).toBe(true);
   });
 });
 
 describe('canViewProject()', () => {
   it('returns true when user has projects.view.all', () => {
     const user = makeUser();
-    expect(canViewProject(user, ['projects.view.all'], false, {} as any)).toBe(true);
+    expect(canViewProject(user, ['projects.view.all'])).toBe(true);
   });
 });
 
 describe('canViewFinance()', () => {
   it('returns true when user has finance.view.all', () => {
     const user = makeUser();
-    expect(canViewFinance(user, ['finance.view.all'], false, {} as any)).toBe(true);
+    expect(canViewFinance(user, ['finance.view.all'])).toBe(true);
   });
 });
 

@@ -257,7 +257,7 @@ const PermissionMatrix: React.FC<PermissionMatrixProps> = ({ roles, permissions,
                           <div className="flex items-center gap-1.5">
                             <span className="text-sm font-medium text-slate-900">{perm.name}</span>
                             {DANGEROUS_PERMISSIONS.has(perm.code) && (
-                              <AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" title="Dangerous permission" />
+                              <span title="Dangerous permission"><AlertTriangle className="w-3 h-3 text-amber-500 flex-shrink-0" /></span>
                             )}
                           </div>
                           <span className="text-xs text-slate-500">{perm.description}</span>

@@ -50,7 +50,7 @@ const DashboardRightPanel: React.FC<DashboardRightPanelProps> = ({
           </h3>
           <ul className="space-y-2 text-sm text-iris-white">
             {focusTasks.map((task) => {
-              const startTime = new Date(task.startDate);
+              const startTime = new Date(task.startDate ?? task.dueDate);
               return (
                 <li
                   key={task.id}

@@ -33,13 +33,13 @@ const LeaveBalanceSummary: React.FC<LeaveBalanceSummaryProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {activePolicies.map(policy => {
           const bal = userBalances.find(b => b.leaveType === policy.leaveType);
-          const total = bal?.totalAllowed || policy.maxDaysPerYear;
+          const total = bal?.totalAllowed ?? policy.maxDaysPerYear ?? 0;
           const used = bal?.used || 0;
           const pending = bal?.pending || 0;
           const carriedOver = bal?.carriedOver || 0;
-          const available = total - used - pending;
-          const usedPct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
-          const pendingPct = total > 0 ? Math.min((pending / total) * 100, 100) : 0;
+          const available = (total ?? 0) - used - pending;
+          const usedPct = (total ?? 0) > 0 ? Math.min((used / (total ?? 1)) * 100, 100) : 0;
+          const pendingPct = (total ?? 0) > 0 ? Math.min((pending / (total ?? 1)) * 100, 100) : 0;
           const colors = typeColor[policy.leaveType] || typeColor.annual;
 
           return (

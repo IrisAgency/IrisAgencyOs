@@ -213,7 +213,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
   const getLifetimeValue = (client: Client) => {
     return invoices
       .filter(inv => inv.clientId === client.id && inv.status === 'paid')
-      .reduce((sum, inv) => sum + inv.amount, 0);
+      .reduce((sum, inv) => sum + (inv.amount ?? 0), 0);
   };
 
   const getAccountManager = (client: Client) => {
@@ -371,12 +371,14 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
         type: reportFile.type,
         size: reportFile.size,
         url: '',
-        uploadedBy: currentUser.id,
-        uploadedAt: new Date().toISOString(),
-        projectId: null,
+        uploaderId: currentUser.id,
+        createdAt: new Date().toISOString(),
+        projectId: '',
         taskId: null,
         folderId: `client_reports_${selectedClient.id}`,
         version: 1,
+        isDeliverable: false,
+        isArchived: false,
         tags: ['client-report', reportForm.month],
         category: 'document',
         file: reportFile // Attach the raw file for upload
@@ -1112,7 +1114,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               onAddAsset={onAddBrandAsset}
               onUpdateAsset={onUpdateBrandAsset}
               onDeleteAsset={onDeleteBrandAsset}
-              onUploadFile={onUploadFile}
+              onUploadFile={async (f: AgencyFile) => { await onUploadFile(f); }}
               files={files}
               currentUser={currentUser}
               checkPermission={checkPermission || (() => false)}
@@ -1124,7 +1126,7 @@ const ClientsHub: React.FC<ClientsHubProps> = ({
               clientId={selectedClient.id}
               files={files}
               folders={folders}
-              onUploadFile={onUploadFile}
+              onUploadFile={async (f: AgencyFile) => { await onUploadFile(f); }}
               checkPermission={checkPermission}
             />
           )}

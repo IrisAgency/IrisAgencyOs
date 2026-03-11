@@ -41,7 +41,7 @@ const PerformanceReviewForm: React.FC<PerformanceReviewFormProps> = ({
   onClose,
 }) => {
   const canManage = checkPermission?.('hr.performance.manage');
-  const isManager = review ? review.reviewerId === currentUserId : canManage;
+  const isManager = review ? review.reviewerId === currentUserId : (canManage ?? false);
   const isSelf = review ? review.userId === currentUserId : false;
 
   const [employeeId, setEmployeeId] = useState(review?.userId || '');
@@ -52,7 +52,7 @@ const PerformanceReviewForm: React.FC<PerformanceReviewFormProps> = ({
   const [managerScores, setManagerScores] = useState<PerformanceScore[]>(
     review?.managerAssessment || DEFAULT_CATEGORIES.map(c => ({ category: c, score: 0, comments: '' }))
   );
-  const [goals, setGoals] = useState(review?.goals?.join('\n') || '');
+  const [goals, setGoals] = useState(Array.isArray(review?.goals) ? review.goals.join('\n') : (review?.goals || ''));
   const [overallComments, setOverallComments] = useState(review?.overallComments || '');
 
   const updateScore = (

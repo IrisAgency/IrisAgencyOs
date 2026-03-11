@@ -269,7 +269,7 @@ export const useHRStore = create<HRState>((set, get) => ({
       correctionStatus: 'approved', reviewedBy: userId, reviewedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     });
     if (correction.attendanceRecordId) {
-      const updatePayload: Record<string, unknown> = { updatedAt: new Date().toISOString(), updatedBy: userId };
+      const updatePayload: Record<string, string> = { updatedAt: new Date().toISOString(), updatedBy: userId };
       if (correction.correctedCheckIn) updatePayload.checkIn = correction.correctedCheckIn;
       if (correction.correctedCheckOut) updatePayload.checkOut = correction.correctedCheckOut;
       await updateDoc(doc(db, 'attendance_records', correction.attendanceRecordId), updatePayload);

@@ -66,6 +66,7 @@ const mockWorkflow: WorkflowTemplate = {
         { id: 's2', workflowTemplateId: 'wt1', order: 1, label: 'Client Review', roleId: null, projectRoleKey: 'Client', specificUserId: null, useDepartmentHead: false }
     ],
     isDefault: true,
+    requiresQC: false,
     requiresClientApproval: false,
     createdAt: '',
     updatedAt: ''

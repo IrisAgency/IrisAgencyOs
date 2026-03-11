@@ -223,7 +223,7 @@ export async function resolveRecipients(
 
     if (targetType === 'role') {
       const usersSnapshot = await getDocs(collection(db, 'users'));
-      const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as User }));
+      const users = usersSnapshot.docs.map(doc => ({ ...(doc.data() as User), id: doc.id }));
       return users.filter(u => targetIds.includes(u.role)).map(u => u.id);
     }
 

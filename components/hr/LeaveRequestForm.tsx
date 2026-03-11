@@ -72,7 +72,7 @@ const LeaveRequestForm: React.FC<LeaveRequestFormProps> = ({
           const bal = userBalances.find(b => b.leaveType === policy.leaveType);
           const used = bal?.used || 0;
           const pending = bal?.pending || 0;
-          const total = bal?.totalAllowed || policy.maxDaysPerYear;
+          const total = bal?.totalAllowed ?? policy.maxDaysPerYear ?? 0;
           const avail = total - used - pending;
           const isSelected = leaveType === policy.leaveType;
 

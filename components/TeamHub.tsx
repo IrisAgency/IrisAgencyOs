@@ -287,9 +287,11 @@ const TeamHub: React.FC = () => {
                     <EmployeeDirectory
                         users={users}
                         employeeProfiles={employeeProfiles}
+                        roles={roles}
                         departments={departments}
                         checkPermission={checkPermission}
-                        onSelectEmployee={setSelectedEmployeeId}
+                        onViewProfile={setSelectedEmployeeId}
+                        onUpdateUser={onUpdateUser}
                     />
                 )}
 
@@ -476,7 +478,7 @@ const TeamHub: React.FC = () => {
                     onCreateEmployeeProfile={p => onCreateEmployeeProfile?.(p)}
                     onUpdateEmployeeProfile={p => onUpdateEmployeeProfile?.(p)}
                     onUpdateUser={onUpdateUser}
-                    currentUser={currentUser}
+                    currentUser={currentUser ?? undefined}
                 />
             )}
 

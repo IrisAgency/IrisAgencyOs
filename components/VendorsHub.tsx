@@ -69,7 +69,9 @@ const VendorsHub: React.FC = () => {
       address: vendorAddress,
       rating: 0,
       notes: '',
-      active: true
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
     setIsModalOpen(false);
     // Reset
@@ -96,6 +98,8 @@ const VendorsHub: React.FC = () => {
       skills: freelancerSkills.split(',').map(s => s.trim()).filter(Boolean),
       notes: freelancerNotes,
       active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
     setIsModalOpen(false);
     // Reset form

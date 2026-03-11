@@ -4,7 +4,7 @@ import {
     TaskTimeLog, TaskDependency, TaskActivityLog, ApprovalStep, ClientApproval,
     AgencyFile, TaskType, WorkflowTemplate, WorkflowStepTemplate, ProjectMember,
     RoleDefinition, ProjectMilestone, SocialPlatform, SocialPost, UserRole,
-    DeliveryLink
+    DeliveryLink, ArchiveReason
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import { prefixedId, uid } from '../../utils/id';
@@ -140,6 +140,9 @@ const TaskDetailView = ({
                 fileName: file.fileName,
                 downloadUrl: file.downloadURL, // Note: Calendar uses downloadURL (capital URL)
                 storagePath: file.storagePath,
+                fileType: file.fileName.split('.').pop() || 'unknown',
+                fileSize: 0,
+                storageProvider: 'firebase' as const,
                 uploadedAt: file.createdAt,
                 uploadedBy: file.uploadedBy
             });
@@ -223,13 +226,6 @@ const TaskDetailView = ({
         if (task.status === TaskStatus.ASSIGNED || task.status === TaskStatus.IN_PROGRESS) {
             // Check if workflow exists
             if (task.workflowTemplateId) {
-                // If resubmitting after revisions (Legacy fallback or new system)
-                if (task.status === TaskStatus.REVISIONS_REQUIRED) {
-                     // This block should be covered by handleSubmitRevision above if using new system
-                     // But keeping for safety if context is missing
-                     handleSubmitRevision();
-                     return;
-                }
 
                 // Moving to Review: Generate Steps Dynamically (first time submission)
                 if (taskSteps.length === 0) {
@@ -720,13 +716,14 @@ const TaskDetailView = ({
         try { new URL(newDeliveryUrl); } catch { alert('Please enter a valid URL (http/https)'); return; }
 
         const driveFileId = extractDriveFileId(newDeliveryUrl) || null;
-        const autoType = isDriveLink(newDeliveryUrl) ? guessDriveFileType(newDeliveryUrl, newDeliveryLabel) as DeliveryLink['type'] || 'other' : newDeliveryType;
+        const rawAutoType = isDriveLink(newDeliveryUrl) ? guessDriveFileType(newDeliveryUrl, newDeliveryLabel) || 'other' : newDeliveryType;
+        const autoType: DeliveryLink['type'] = (rawAutoType === 'unknown' ? 'other' : rawAutoType) as DeliveryLink['type'];
 
         const newLink: DeliveryLink = {
             id: prefixedId('dl'),
             url: newDeliveryUrl.trim(),
             label: newDeliveryLabel.trim() || 'Delivery File',
-            type: autoType === 'unknown' ? 'other' : (autoType as DeliveryLink['type']),
+            type: autoType,
             driveFileId,
             addedBy: currentUser.id,
             addedAt: new Date().toISOString(),
@@ -935,10 +932,10 @@ const TaskDetailView = ({
                                         status: TaskStatus.ARCHIVED,
                                         isArchived: true,
                                         archivedAt: new Date().toISOString(),
-                                        archivedReason: `Manually rejected: ${reason.trim()}`,
+                                        archiveReason: ArchiveReason.MANUAL_REJECTED,
                                         updatedAt: new Date().toISOString()
                                     });
-                                    onNotify('info', 'Task Manually Rejected', `Task "${task.title}" has been manually rejected and archived.`);
+                                    onNotify('info', 'Task Manually Rejected', `Task "${task.title}" has been manually rejected and archived. Reason: ${reason.trim()}`);
                                 }
                             }}
                             className="flex items-center space-x-2 bg-rose-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-rose-700 shadow-sm transition-colors"
