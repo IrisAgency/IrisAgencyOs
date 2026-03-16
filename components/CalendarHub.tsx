@@ -1,13 +1,67 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Calendar, Plus, Video, Image, Film, Clock, FileText, Link as LinkIcon, X, Download, Trash2, Edit2, Archive, MoreVertical, Eye, ExternalLink, Presentation, RotateCcw, AlertTriangle, Send, CheckCircle2, History, MessageSquare, Pin, PinOff, Layers } from 'lucide-react';
+import {
+  Calendar,
+  Plus,
+  Video,
+  Image,
+  Film,
+  Clock,
+  FileText,
+  Link as LinkIcon,
+  X,
+  Download,
+  Trash2,
+  Edit2,
+  Archive,
+  MoreVertical,
+  Eye,
+  ExternalLink,
+  Presentation,
+  RotateCcw,
+  AlertTriangle,
+  Send,
+  CheckCircle2,
+  History,
+  MessageSquare,
+  Pin,
+  PinOff,
+  Layers,
+  Upload,
+} from 'lucide-react';
 import CalendarDeptPresentationView from './calendar/CalendarDeptPresentationView';
-import { Client, CalendarMonth, CalendarItem, CalendarItemRevision, CalendarContentType, CalendarRevisionReference, CalendarRevisionStatus, User, CalendarReferenceLink, CreativeProject, CreativeCalendar, CreativeCalendarItem, NotificationType } from '../types';
+import CalendarImportModal from './calendar/CalendarImportModal';
+import {
+  Client,
+  CalendarMonth,
+  CalendarItem,
+  CalendarItemRevision,
+  CalendarContentType,
+  CalendarRevisionReference,
+  CalendarRevisionStatus,
+  User,
+  CalendarReferenceLink,
+  CreativeProject,
+  CreativeCalendar,
+  CreativeCalendarItem,
+  NotificationType,
+} from '../types';
 import { PERMISSIONS } from '../lib/permissions';
 import { PermissionGate } from './PermissionGate';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './common/Modal';
 import LinkPreviewThumbnail from './common/LinkPreviewThumbnail';
-import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, getDocs, runTransaction, writeBatch } from 'firebase/firestore';
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  where,
+  getDocs,
+  runTransaction,
+  writeBatch,
+} from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '../lib/firebase';
 import { notifyUsers } from '../services/notificationService';
@@ -43,21 +97,39 @@ const CalendarHub: React.FC = () => {
   const creativeCalendarItems = creativeStore.creativeCalendarItems;
   const users = useMemo(() => {
     const safe = Array.isArray(hrStore.users) ? hrStore.users : [];
-    return safe.filter(u => u && u.status !== 'inactive');
+    return safe.filter((u) => u && u.status !== 'inactive');
   }, [hrStore.users]);
 
-  const onNotify = useCallback(async (
-    type: string, title: string, message: string,
-    recipientIds: string[] = [], entityId?: string, actionUrl?: string
-  ) => {
-    showToast({ title, message });
-    setTimeout(() => clearToast(), 4000);
-    if (recipientIds.length > 0) {
-      try {
-        await notifyUsers({ type: type as any, title, message, recipientIds, entityId, actionUrl, sendPush: false, createdBy: currentUser?.id || 'system' });
-      } catch (error) { console.error('Failed to create notification:', error); }
-    }
-  }, [showToast, clearToast, currentUser?.id]);
+  const onNotify = useCallback(
+    async (
+      type: string,
+      title: string,
+      message: string,
+      recipientIds: string[] = [],
+      entityId?: string,
+      actionUrl?: string,
+    ) => {
+      showToast({ title, message });
+      setTimeout(() => clearToast(), 4000);
+      if (recipientIds.length > 0) {
+        try {
+          await notifyUsers({
+            type: type as any,
+            title,
+            message,
+            recipientIds,
+            entityId,
+            actionUrl,
+            sendPush: false,
+            createdBy: currentUser?.id || 'system',
+          });
+        } catch (error) {
+          console.error('Failed to create notification:', error);
+        }
+      }
+    },
+    [showToast, clearToast, currentUser?.id],
+  );
 
   const onRefresh = useCallback(() => {}, []);
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -71,10 +143,11 @@ const CalendarHub: React.FC = () => {
   const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPresentation, setShowPresentation] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const [monthForm, setMonthForm] = useState({
     monthKey: '',
-    title: ''
+    title: '',
   });
 
   const [itemForm, setItemForm] = useState<{
@@ -90,7 +163,7 @@ const CalendarHub: React.FC = () => {
     notes: '',
     referenceLinks: [],
     publishAt: '',
-    isCarousel: false
+    isCarousel: false,
   });
 
   const [uploadingFiles, setUploadingFiles] = useState<File[]>([]);
@@ -106,39 +179,40 @@ const CalendarHub: React.FC = () => {
   const canManage = checkPermission(PERMISSIONS.CALENDAR.MANAGE);
 
   const getClientCode = (clientId: string): string => {
-    const client = clients.find(c => c.id === clientId);
+    const client = clients.find((c) => c.id === clientId);
     return client?.code || client?.name?.substring(0, 3).toUpperCase() || 'UNK';
   };
 
   const filteredMonths = useMemo(() => {
     if (!selectedClientId) return [];
     return calendarMonths
-      .filter(m => m.clientId === selectedClientId && !m.isArchived)
+      .filter((m) => m.clientId === selectedClientId && !m.isArchived)
       .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [calendarMonths, selectedClientId]);
 
   const archivedMonths = useMemo(() => {
     if (!selectedClientId) return [];
     return calendarMonths
-      .filter(m => m.clientId === selectedClientId && m.isArchived)
+      .filter((m) => m.clientId === selectedClientId && m.isArchived)
       .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
   }, [calendarMonths, selectedClientId]);
 
   const filteredItems = useMemo(() => {
     if (!selectedMonthId) return [];
-    let items = calendarItems.filter(i => i.calendarMonthId === selectedMonthId);
-    
+    let items = calendarItems.filter((i) => i.calendarMonthId === selectedMonthId);
+
     if (typeFilter !== 'ALL') {
-      items = items.filter(i => i.type === typeFilter);
+      items = items.filter((i) => i.type === typeFilter);
     }
-    
+
     if (searchTerm) {
-      items = items.filter(i => 
-        i.autoName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        i.primaryBrief.toLowerCase().includes(searchTerm.toLowerCase())
+      items = items.filter(
+        (i) =>
+          i.autoName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          i.primaryBrief.toLowerCase().includes(searchTerm.toLowerCase()),
       );
     }
-    
+
     return items.sort((a, b) => {
       const dateA = new Date(a.publishAt).getTime();
       const dateB = new Date(b.publishAt).getTime();
@@ -147,12 +221,12 @@ const CalendarHub: React.FC = () => {
   }, [calendarItems, selectedMonthId, typeFilter, searchTerm]);
 
   const getCounts = () => {
-    const items = calendarItems.filter(i => i.calendarMonthId === selectedMonthId);
+    const items = calendarItems.filter((i) => i.calendarMonthId === selectedMonthId);
     return {
-      videos: items.filter(i => i.type === 'VIDEO').length,
-      photos: items.filter(i => i.type === 'PHOTO').length,
-      motion: items.filter(i => i.type === 'MOTION').length,
-      total: items.length
+      videos: items.filter((i) => i.type === 'VIDEO').length,
+      photos: items.filter((i) => i.type === 'PHOTO').length,
+      motion: items.filter((i) => i.type === 'MOTION').length,
+      total: items.length,
     };
   };
 
@@ -172,11 +246,11 @@ const CalendarHub: React.FC = () => {
         title: monthForm.title,
         createdBy: currentUser.id,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       await addDoc(collection(db, 'calendar_months'), monthData);
-      
+
       setShowMonthModal(false);
       setMonthForm({ monthKey: '', title: '' });
       onRefresh?.();
@@ -193,7 +267,7 @@ const CalendarHub: React.FC = () => {
       alert('Please fill in required fields');
       return;
     }
-    
+
     // Validate publishAt date
     const publishDate = new Date(itemForm.publishAt);
     const currentYear = new Date().getFullYear();
@@ -202,7 +276,7 @@ const CalendarHub: React.FC = () => {
       return;
     }
 
-    const selectedMonth = filteredMonths.find(m => m.id === selectedMonthId);
+    const selectedMonth = filteredMonths.find((m) => m.id === selectedMonthId);
     if (!selectedMonth) return;
 
     setIsLoading(true);
@@ -213,12 +287,12 @@ const CalendarHub: React.FC = () => {
           itemsRef,
           where('clientId', '==', selectedMonth.clientId),
           where('monthKey', '==', selectedMonth.monthKey),
-          where('type', '==', itemForm.type)
+          where('type', '==', itemForm.type),
         );
-        
+
         const snapshot = await getDocs(q);
         let maxSeq = 0;
-        snapshot.forEach(docSnap => {
+        snapshot.forEach((docSnap) => {
           const item = docSnap.data() as CalendarItem;
           if (item.seqNumber > maxSeq) {
             maxSeq = item.seqNumber;
@@ -234,18 +308,18 @@ const CalendarHub: React.FC = () => {
             const fileName = `${Date.now()}_${file.name}`;
             const storagePath = `clients/${selectedMonth.clientId}/calendar/${selectedMonth.monthKey}/${fileName}`;
             const storageRef = ref(storage, storagePath);
-            
+
             await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(storageRef);
-            
+
             return {
               fileName: file.name,
               storagePath,
               downloadURL,
               uploadedBy: currentUser.id,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
             };
-          })
+          }),
         );
 
         const itemData: Omit<CalendarItem, 'id'> = {
@@ -263,7 +337,7 @@ const CalendarHub: React.FC = () => {
           isCarousel: itemForm.isCarousel,
           createdBy: currentUser.id,
           createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         };
 
         const newDocRef = doc(collection(db, 'calendar_items'));
@@ -286,7 +360,7 @@ const CalendarHub: React.FC = () => {
       alert('Please fill in required fields');
       return;
     }
-    
+
     // Validate publishAt date
     const publishDate = new Date(itemForm.publishAt);
     const currentYear = new Date().getFullYear();
@@ -302,18 +376,18 @@ const CalendarHub: React.FC = () => {
           const fileName = `${Date.now()}_${file.name}`;
           const storagePath = `clients/${editingItem.clientId}/calendar/${editingItem.monthKey}/${fileName}`;
           const storageRef = ref(storage, storagePath);
-          
+
           await uploadBytes(storageRef, file);
           const downloadURL = await getDownloadURL(storageRef);
-          
+
           return {
             fileName: file.name,
             storagePath,
             downloadURL,
             uploadedBy: currentUser.id,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
           };
-        })
+        }),
       );
 
       const updatedData = {
@@ -323,11 +397,11 @@ const CalendarHub: React.FC = () => {
         referenceFiles: [...editingItem.referenceFiles, ...newFiles],
         publishAt: itemForm.publishAt,
         isCarousel: itemForm.isCarousel,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
       await updateDoc(doc(db, 'calendar_items', editingItem.id), updatedData);
-      
+
       setShowItemModal(false);
       setEditingItem(null);
       resetItemForm();
@@ -352,7 +426,7 @@ const CalendarHub: React.FC = () => {
       const updatedFiles = item.referenceFiles.filter((_, i) => i !== fileIndex);
       await updateDoc(doc(db, 'calendar_items', item.id), {
         referenceFiles: updatedFiles,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
 
       onRefresh?.();
@@ -381,15 +455,17 @@ const CalendarHub: React.FC = () => {
 
   // Pin / Unpin item in Instagram Grid (max 3 pinned per month)
   const handleTogglePin = async (item: CalendarItem) => {
-    const monthItems = calendarItems.filter(i => i.calendarMonthId === item.calendarMonthId);
-    const currentlyPinned = monthItems.filter(i => i.pinnedInGrid && i.pinnedInGrid > 0).sort((a, b) => (a.pinnedInGrid || 0) - (b.pinnedInGrid || 0));
+    const monthItems = calendarItems.filter((i) => i.calendarMonthId === item.calendarMonthId);
+    const currentlyPinned = monthItems
+      .filter((i) => i.pinnedInGrid && i.pinnedInGrid > 0)
+      .sort((a, b) => (a.pinnedInGrid || 0) - (b.pinnedInGrid || 0));
     const isCurrentlyPinned = item.pinnedInGrid && item.pinnedInGrid > 0;
 
     try {
       if (isCurrentlyPinned) {
         // Unpin: clear pinnedInGrid, re-sequence remaining pins
         await updateDoc(doc(db, 'calendar_items', item.id), { pinnedInGrid: null });
-        const remaining = currentlyPinned.filter(i => i.id !== item.id);
+        const remaining = currentlyPinned.filter((i) => i.id !== item.id);
         for (let idx = 0; idx < remaining.length; idx++) {
           if (remaining[idx].pinnedInGrid !== idx + 1) {
             await updateDoc(doc(db, 'calendar_items', remaining[idx].id), { pinnedInGrid: idx + 1 });
@@ -411,11 +487,12 @@ const CalendarHub: React.FC = () => {
   };
 
   const handleDeleteMonth = async (monthId: string) => {
-    const month = calendarMonths.find(m => m.id === monthId);
+    const month = calendarMonths.find((m) => m.id === monthId);
     if (!month) return;
 
-    const itemsCount = calendarItems.filter(i => i.calendarMonthId === monthId).length;
-    const confirmMessage = `Are you sure you want to delete "${month.title}"?\n\n` +
+    const itemsCount = calendarItems.filter((i) => i.calendarMonthId === monthId).length;
+    const confirmMessage =
+      `Are you sure you want to delete "${month.title}"?\n\n` +
       `⚠️ Warning: This will permanently delete:\n` +
       `• The calendar month\n` +
       `• All ${itemsCount} content items in this month\n` +
@@ -429,17 +506,17 @@ const CalendarHub: React.FC = () => {
       // Delete all items in this month
       const itemsQuery = query(collection(db, 'calendar_items'), where('calendarMonthId', '==', monthId));
       const itemsSnapshot = await getDocs(itemsQuery);
-      
+
       const batch = writeBatch(db);
-      itemsSnapshot.docs.forEach(doc => {
+      itemsSnapshot.docs.forEach((doc) => {
         batch.delete(doc.ref);
       });
-      
+
       // Delete the month itself
       batch.delete(doc(db, 'calendar_months', monthId));
-      
+
       await batch.commit();
-      
+
       setSelectedMonthId('');
       onRefresh?.();
       alert(`Month "${month.title}" and all ${itemsCount} items deleted successfully`);
@@ -452,12 +529,12 @@ const CalendarHub: React.FC = () => {
   };
 
   const handleArchiveMonth = async (monthId: string) => {
-    const month = calendarMonths.find(m => m.id === monthId);
+    const month = calendarMonths.find((m) => m.id === monthId);
     if (!month) return;
 
     const isArchived = month.isArchived || false;
     const action = isArchived ? 'unarchive' : 'archive';
-    
+
     if (!confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} "${month.title}"?`)) return;
 
     setIsLoading(true);
@@ -466,9 +543,9 @@ const CalendarHub: React.FC = () => {
         isArchived: !isArchived,
         archivedAt: isArchived ? null : new Date().toISOString(),
         archivedBy: isArchived ? null : currentUser.id,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
-      
+
       onRefresh?.();
       alert(`Month ${action}d successfully`);
     } catch (error) {
@@ -486,7 +563,7 @@ const CalendarHub: React.FC = () => {
       notes: '',
       referenceLinks: [],
       publishAt: '',
-      isCarousel: false
+      isCarousel: false,
     });
     setUploadingFiles([]);
   };
@@ -505,48 +582,52 @@ const CalendarHub: React.FC = () => {
       notes: item.notes,
       referenceLinks: item.referenceLinks,
       publishAt: item.publishAt,
-      isCarousel: item.isCarousel || false
+      isCarousel: item.isCarousel || false,
     });
     setUploadingFiles([]);
     setShowItemModal(true);
   };
 
   const addReferenceLink = () => {
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
-      referenceLinks: [...prev.referenceLinks, { title: '', url: '' }]
+      referenceLinks: [...prev.referenceLinks, { title: '', url: '' }],
     }));
   };
 
   const updateReferenceLink = (index: number, field: 'title' | 'url', value: string) => {
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
-      referenceLinks: prev.referenceLinks.map((link, i) => 
-        i === index ? { ...link, [field]: value } : link
-      )
+      referenceLinks: prev.referenceLinks.map((link, i) => (i === index ? { ...link, [field]: value } : link)),
     }));
   };
 
   const removeReferenceLink = (index: number) => {
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
-      referenceLinks: prev.referenceLinks.filter((_, i) => i !== index)
+      referenceLinks: prev.referenceLinks.filter((_, i) => i !== index),
     }));
   };
 
   const getTypeIcon = (type: CalendarContentType) => {
     switch (type) {
-      case 'VIDEO': return <Video className="w-4 h-4" />;
-      case 'PHOTO': return <Image className="w-4 h-4" />;
-      case 'MOTION': return <Film className="w-4 h-4" />;
+      case 'VIDEO':
+        return <Video className="w-4 h-4" />;
+      case 'PHOTO':
+        return <Image className="w-4 h-4" />;
+      case 'MOTION':
+        return <Film className="w-4 h-4" />;
     }
   };
 
   const getTypeColor = (type: CalendarContentType) => {
     switch (type) {
-      case 'VIDEO': return 'bg-blue-500/20 text-blue-200 border-blue-400/30';
-      case 'PHOTO': return 'bg-green-500/20 text-green-200 border-green-400/30';
-      case 'MOTION': return 'bg-purple-500/20 text-purple-200 border-purple-400/30';
+      case 'VIDEO':
+        return 'bg-blue-500/20 text-blue-200 border-blue-400/30';
+      case 'PHOTO':
+        return 'bg-green-500/20 text-green-200 border-green-400/30';
+      case 'MOTION':
+        return 'bg-purple-500/20 text-purple-200 border-purple-400/30';
     }
   };
 
@@ -556,29 +637,41 @@ const CalendarHub: React.FC = () => {
 
   const getRevisionStatusColor = (status?: CalendarRevisionStatus) => {
     switch (status) {
-      case 'REVISION_REQUESTED': return 'bg-amber-500/20 text-amber-300 border-amber-400/30';
-      case 'IN_CREATIVE_REVISION': return 'bg-blue-500/20 text-blue-300 border-blue-400/30';
-      case 'AWAITING_CREATIVE_APPROVAL': return 'bg-purple-500/20 text-purple-300 border-purple-400/30';
-      case 'APPROVED_BY_CREATIVE': return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30';
-      case 'SYNCED_TO_CALENDAR': return 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30';
-      default: return '';
+      case 'REVISION_REQUESTED':
+        return 'bg-amber-500/20 text-amber-300 border-amber-400/30';
+      case 'IN_CREATIVE_REVISION':
+        return 'bg-blue-500/20 text-blue-300 border-blue-400/30';
+      case 'AWAITING_CREATIVE_APPROVAL':
+        return 'bg-purple-500/20 text-purple-300 border-purple-400/30';
+      case 'APPROVED_BY_CREATIVE':
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30';
+      case 'SYNCED_TO_CALENDAR':
+        return 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30';
+      default:
+        return '';
     }
   };
 
   const getRevisionStatusLabel = (status?: CalendarRevisionStatus) => {
     switch (status) {
-      case 'REVISION_REQUESTED': return 'Revision Requested';
-      case 'IN_CREATIVE_REVISION': return 'In Creative Revision';
-      case 'AWAITING_CREATIVE_APPROVAL': return 'Awaiting Approval';
-      case 'APPROVED_BY_CREATIVE': return 'Approved (Ready to Sync)';
-      case 'SYNCED_TO_CALENDAR': return 'Synced';
-      default: return '';
+      case 'REVISION_REQUESTED':
+        return 'Revision Requested';
+      case 'IN_CREATIVE_REVISION':
+        return 'In Creative Revision';
+      case 'AWAITING_CREATIVE_APPROVAL':
+        return 'Awaiting Approval';
+      case 'APPROVED_BY_CREATIVE':
+        return 'Approved (Ready to Sync)';
+      case 'SYNCED_TO_CALENDAR':
+        return 'Synced';
+      default:
+        return '';
     }
   };
 
   const getRevisionsForItem = (itemId: string) => {
     return calendarItemRevisions
-      .filter(r => r.calendarItemId === itemId)
+      .filter((r) => r.calendarItemId === itemId)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   };
 
@@ -590,12 +683,12 @@ const CalendarHub: React.FC = () => {
     }
     // Try to find matching creative calendar by clientId + monthKey
     const matchingCalendar = creativeCalendars.find(
-      c => c.clientId === item.clientId && c.monthKey === item.monthKey
+      (c) => c.clientId === item.clientId && c.monthKey === item.monthKey,
     );
     if (!matchingCalendar) return null;
     // Try to find matching creative item by type + seqNumber
     const matchingItem = creativeCalendarItems.find(
-      ci => ci.creativeCalendarId === matchingCalendar.id && ci.type === item.type && item.seqNumber !== undefined
+      (ci) => ci.creativeCalendarId === matchingCalendar.id && ci.type === item.type && item.seqNumber !== undefined,
     );
     // Even if we can't match a specific item, having a matching calendar is enough
     return { calendarId: matchingCalendar.id, itemId: matchingItem?.id || '' };
@@ -631,7 +724,7 @@ const CalendarHub: React.FC = () => {
       const resolvedLink = resolveCreativeLink(revisionTargetItem);
       const resolvedCalendarId = resolvedLink?.calendarId || null;
       const resolvedItemId = resolvedLink?.itemId || null;
-      const resolvedCal = creativeCalendars.find(c => c.id === resolvedCalendarId);
+      const resolvedCal = creativeCalendars.find((c) => c.id === resolvedCalendarId);
       const resolvedProjectId = resolvedCal?.creativeProjectId || null;
 
       // Create revision document
@@ -645,8 +738,8 @@ const CalendarHub: React.FC = () => {
         creativeProjectId: resolvedProjectId,
         revisionNote: revisionNote.trim(),
         revisionReferences: revisionRefLinks
-          .filter(l => l.url.trim())
-          .map(l => ({ type: 'link' as const, value: l.url, fileName: l.title })),
+          .filter((l) => l.url.trim())
+          .map((l) => ({ type: 'link' as const, value: l.url, fileName: l.title })),
         requestedBy: currentUser.id,
         requestedAt: now,
         status: 'REVISION_REQUESTED',
@@ -676,9 +769,11 @@ const CalendarHub: React.FC = () => {
 
       // Notify the assigned copywriter
       const creativeCalendar = resolvedCal;
-      const creativeProject = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+      const creativeProject = creativeCalendar
+        ? creativeProjects.find((p) => p.id === creativeCalendar.creativeProjectId)
+        : null;
       if (creativeProject?.assignedCopywriterId) {
-        const client = clients.find(c => c.id === revisionTargetItem.clientId);
+        const client = clients.find((c) => c.id === revisionTargetItem.clientId);
         await notifyUsers({
           type: 'CALENDAR_REVISION_REQUESTED',
           title: 'Calendar Revision Requested',
@@ -693,10 +788,10 @@ const CalendarHub: React.FC = () => {
 
       // Also notify the creative manager
       const managerIds = users
-        .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser.id)
-        .map(u => u.id);
+        .filter((u) => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser.id)
+        .map((u) => u.id);
       if (managerIds.length > 0) {
-        const client = clients.find(c => c.id === revisionTargetItem.clientId);
+        const client = clients.find((c) => c.id === revisionTargetItem.clientId);
         await notifyUsers({
           type: 'CALENDAR_REVISION_REQUESTED',
           title: 'Calendar Revision Requested',
@@ -725,7 +820,7 @@ const CalendarHub: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const revision = calendarItemRevisions.find(r => r.id === item.activeRevisionId);
+      const revision = calendarItemRevisions.find((r) => r.id === item.activeRevisionId);
       if (!revision) throw new Error('Revision not found');
 
       const now = new Date().toISOString();
@@ -763,8 +858,8 @@ const CalendarHub: React.FC = () => {
     }
   };
 
-  const calendarLoading = useCalendarStore(s => s.loading);
-  const creativeLoading = useCreativeStore(s => s.loading);
+  const calendarLoading = useCalendarStore((s) => s.loading);
+  const creativeLoading = useCreativeStore((s) => s.loading);
 
   // Loading gate
   if (calendarLoading || creativeLoading) return <GenericHubSkeleton />;
@@ -793,7 +888,9 @@ const CalendarHub: React.FC = () => {
             <Calendar className="w-8 h-8 text-[#DF1E3C]" />
           </div>
           <div className="flex-1">
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight">Calendar Department</h1>
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight">
+              Calendar Department
+            </h1>
             <p className="text-slate-400 text-sm mt-1 font-medium">Monthly content planning for structured execution</p>
           </div>
           <button
@@ -809,7 +906,9 @@ const CalendarHub: React.FC = () => {
       {/* Controls Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8 p-5 bg-white/[0.02] border border-white/[0.05] rounded-2xl backdrop-blur-xl shadow-2xl">
         <div className="space-y-2">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Select Client</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">
+            Select Client
+          </label>
           <div className="relative group">
             <select
               value={selectedClientId}
@@ -820,18 +919,24 @@ const CalendarHub: React.FC = () => {
               className="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-[#DF1E3C]/50 focus:border-transparent transition-all group-hover:border-white/20"
             >
               <option value="">Choose a client...</option>
-              {clients.map(client => (
-                <option key={client.id} value={client.id}>{client.name}</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
               ))}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400 group-hover:text-white transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
             </div>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Select Month</label>
+          <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">
+            Select Month
+          </label>
           <div className="relative group">
             <select
               value={selectedMonthId}
@@ -842,7 +947,7 @@ const CalendarHub: React.FC = () => {
               <option value="">Choose a month...</option>
               {filteredMonths.length > 0 && (
                 <optgroup label="Active Months" className="bg-gray-900">
-                  {filteredMonths.map(month => (
+                  {filteredMonths.map((month) => (
                     <option key={month.id} value={month.id}>
                       {month.title} ({month.monthKey})
                     </option>
@@ -851,7 +956,7 @@ const CalendarHub: React.FC = () => {
               )}
               {archivedMonths.length > 0 && (
                 <optgroup label="Archived Months" className="bg-gray-900">
-                  {archivedMonths.map(month => (
+                  {archivedMonths.map((month) => (
                     <option key={month.id} value={month.id}>
                       📦 {month.title} ({month.monthKey})
                     </option>
@@ -860,7 +965,9 @@ const CalendarHub: React.FC = () => {
               )}
             </select>
             <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-slate-400 group-hover:text-white transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
             </div>
           </div>
         </div>
@@ -885,9 +992,11 @@ const CalendarHub: React.FC = () => {
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
             <div className="flex items-center justify-between mb-6 relative z-10">
               <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                {calendarMonths.find(m => m.id === selectedMonthId)?.title}
-                {calendarMonths.find(m => m.id === selectedMonthId)?.isArchived && (
-                  <span className="px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium border border-yellow-500/20">Archived</span>
+                {calendarMonths.find((m) => m.id === selectedMonthId)?.title}
+                {calendarMonths.find((m) => m.id === selectedMonthId)?.isArchived && (
+                  <span className="px-2.5 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs font-medium border border-yellow-500/20">
+                    Archived
+                  </span>
                 )}
               </h2>
               <div className="flex items-center gap-2 bg-black/20 p-1.5 rounded-xl border border-white/5">
@@ -895,7 +1004,11 @@ const CalendarHub: React.FC = () => {
                   <button
                     onClick={() => handleArchiveMonth(selectedMonthId)}
                     className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-all"
-                    title={calendarMonths.find(m => m.id === selectedMonthId)?.isArchived ? 'Unarchive Month' : 'Archive Month'}
+                    title={
+                      calendarMonths.find((m) => m.id === selectedMonthId)?.isArchived
+                        ? 'Unarchive Month'
+                        : 'Archive Month'
+                    }
                   >
                     <Archive className="w-4 h-4" />
                   </button>
@@ -909,7 +1022,7 @@ const CalendarHub: React.FC = () => {
                 </PermissionGate>
               </div>
             </div>
-            
+
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
               <div className="flex gap-4 overflow-x-auto pb-2 lg:pb-0 hide-scrollbar">
                 <div className="flex flex-col justify-center px-5 py-3 bg-white/5 border border-white/10 rounded-xl min-w-[100px]">
@@ -960,6 +1073,13 @@ const CalendarHub: React.FC = () => {
 
                 <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.CREATE}>
                   <button
+                    onClick={() => setShowImportModal(true)}
+                    className="px-5 py-2.5 bg-white/5 border border-white/10 text-white rounded-xl hover:bg-white/10 transition-all flex items-center gap-2 font-medium active:scale-[0.98]"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import Excel
+                  </button>
+                  <button
                     onClick={openCreateItem}
                     className="px-5 py-2.5 bg-white text-black rounded-xl hover:bg-gray-200 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-white/10 hover:shadow-white/20 active:scale-[0.98]"
                   >
@@ -972,148 +1092,185 @@ const CalendarHub: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredItems.map(item => {
-              const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
-              const thumbFile = item.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
-              const thumbUrl = thumbFile?.downloadURL || (item.referenceFiles.length > 0 ? item.referenceFiles[0].downloadURL : null);
+            {filteredItems.map((item) => {
+              const imgExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.avif'];
+              const thumbFile = item.referenceFiles.find((f) =>
+                imgExts.some((ext) => f.fileName.toLowerCase().endsWith(ext)),
+              );
+              const thumbUrl =
+                thumbFile?.downloadURL || (item.referenceFiles.length > 0 ? item.referenceFiles[0].downloadURL : null);
               const linkPreviewUrl = !thumbUrl && item.referenceLinks.length > 0 ? item.referenceLinks[0].url : null;
               return (
-              <div
-                key={item.id}
-                className="bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 group cursor-pointer hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] hover:-translate-y-1 flex flex-col h-full"
-                onClick={() => setDetailItem(item)}
-              >
-                {/* Pinned Badge */}
-                {item.pinnedInGrid && item.pinnedInGrid > 0 && (
-                  <div className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/20">
-                    <Pin className="w-3.5 h-3.5 text-[#DF1E3C] rotate-45" />
-                  </div>
-                )}
-
-                {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
-                {thumbUrl ? (
-                  <div className="relative w-full h-48 bg-black/50 overflow-hidden">
-                    <img
-                      src={thumbUrl}
-                      alt={item.autoName}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80" />
-                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
-                      {getTypeIcon(item.type)} {item.type}
-                    </div>
-                  </div>
-                ) : linkPreviewUrl ? (
-                  <div className="relative w-full h-48 bg-black/50 overflow-hidden">
-                    <LinkPreviewThumbnail url={linkPreviewUrl} alt={item.autoName} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80 pointer-events-none" />
-                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
-                      {getTypeIcon(item.type)} {item.type}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="relative w-full h-48 bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center overflow-hidden">
-                    <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
-                    <div className="opacity-20 scale-[4] transform group-hover:scale-[4.5] transition-transform duration-700">{getTypeIcon(item.type)}</div>
-                    <div className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}>
-                      {getTypeIcon(item.type)} {item.type}
-                    </div>
-                  </div>
-                )}
-
-                {/* Card Content */}
-                <div className="p-5 flex flex-col flex-grow relative">
-                  <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
-                  
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 mr-3 min-w-0">
-                      <h3 className="text-base font-bold text-white tracking-tight group-hover:text-[#DF1E3C] transition-colors line-clamp-2">{item.autoName}</h3>
-                      {item.isCarousel && (
-                        <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
-                          <Layers className="w-3 h-3" />
-                          Carousel
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0 bg-black/40 rounded-lg p-1 border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" onClick={(e) => e.stopPropagation()}>
-                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
-                        <button
-                          onClick={() => handleTogglePin(item)}
-                          className={`p-1.5 rounded-md transition-all ${
-                            item.pinnedInGrid && item.pinnedInGrid > 0
-                              ? 'text-[#DF1E3C] bg-[#DF1E3C]/10 hover:bg-[#DF1E3C]/20'
-                              : 'text-slate-400 hover:text-amber-400 hover:bg-amber-400/10'
-                          }`}
-                          title={item.pinnedInGrid && item.pinnedInGrid > 0 ? `Unpin from Grid (Position ${item.pinnedInGrid})` : 'Pin to Grid Top'}
-                        >
-                          {item.pinnedInGrid && item.pinnedInGrid > 0 ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                        </button>
-                      </PermissionGate>
-                      <button
-                        onClick={() => setDetailItem(item)}
-                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-md transition-all"
-                        title="View Details"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
-                        <button
-                          onClick={() => openEditItem(item)}
-                          className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-md transition-all"
-                          title="Edit"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                      </PermissionGate>
-                      <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
-                        <button
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-all"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </PermissionGate>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-4 bg-white/5 w-fit px-2.5 py-1 rounded-md border border-white/5">
-                    <Clock className="w-3.5 h-3.5 text-slate-500" />
-                    {new Date(item.publishAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </div>
-
-                  {/* Revision Status Badge */}
-                  {item.revisionStatus && item.revisionStatus !== 'NONE' && (
-                    <div className={`flex items-center gap-1.5 text-xs font-semibold mb-3 px-2.5 py-1 rounded-lg border w-fit ${getRevisionStatusColor(item.revisionStatus)}`}>
-                      <RotateCcw className="w-3 h-3" />
-                      {getRevisionStatusLabel(item.revisionStatus)}
-                      {item.revisionCount && item.revisionCount > 0 && (
-                        <span className="text-[10px] opacity-70">#{item.revisionCount}</span>
-                      )}
+                <div
+                  key={item.id}
+                  className="bg-white/[0.02] border border-white/[0.05] rounded-2xl overflow-hidden hover:border-white/20 transition-all duration-300 group cursor-pointer hover:shadow-[0_8px_30px_rgb(0,0,0,0.5)] hover:-translate-y-1 flex flex-col h-full"
+                  onClick={() => setDetailItem(item)}
+                >
+                  {/* Pinned Badge */}
+                  {item.pinnedInGrid && item.pinnedInGrid > 0 && (
+                    <div className="absolute top-3 right-3 z-10 w-7 h-7 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/20">
+                      <Pin className="w-3.5 h-3.5 text-[#DF1E3C] rotate-45" />
                     </div>
                   )}
 
-                  <p className="text-sm text-slate-300 mb-5 line-clamp-3 flex-grow leading-relaxed" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
-                    {item.primaryBrief}
-                  </p>
+                  {/* Thumbnail Header: 1) image from referenceFiles, 2) OG image from referenceLink, 3) gradient placeholder */}
+                  {thumbUrl ? (
+                    <div className="relative w-full h-48 bg-black/50 overflow-hidden">
+                      <img
+                        src={thumbUrl}
+                        alt={item.autoName}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80" />
+                      <div
+                        className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}
+                      >
+                        {getTypeIcon(item.type)} {item.type}
+                      </div>
+                    </div>
+                  ) : linkPreviewUrl ? (
+                    <div className="relative w-full h-48 bg-black/50 overflow-hidden">
+                      <LinkPreviewThumbnail url={linkPreviewUrl} alt={item.autoName} />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-black/20 to-transparent opacity-80 pointer-events-none" />
+                      <div
+                        className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}
+                      >
+                        {getTypeIcon(item.type)} {item.type}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative w-full h-48 bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center overflow-hidden">
+                      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                      <div className="opacity-20 scale-[4] transform group-hover:scale-[4.5] transition-transform duration-700">
+                        {getTypeIcon(item.type)}
+                      </div>
+                      <div
+                        className={`absolute top-3 left-3 px-2.5 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5 backdrop-blur-md shadow-lg ${getTypeColor(item.type)}`}
+                      >
+                        {getTypeIcon(item.type)} {item.type}
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="flex gap-4 text-xs font-medium text-slate-400 pt-4 border-t border-white/5 mt-auto">
-                    {item.referenceLinks.length > 0 && (
-                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
-                        <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
-                        {item.referenceLinks.length} link{item.referenceLinks.length !== 1 ? 's' : ''}
+                  {/* Card Content */}
+                  <div className="p-5 flex flex-col flex-grow relative">
+                    <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 mr-3 min-w-0">
+                        <h3 className="text-base font-bold text-white tracking-tight group-hover:text-[#DF1E3C] transition-colors line-clamp-2">
+                          {item.autoName}
+                        </h3>
+                        {item.isCarousel && (
+                          <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-400/30">
+                            <Layers className="w-3 h-3" />
+                            Carousel
+                          </span>
+                        )}
+                      </div>
+                      <div
+                        className="flex items-center gap-1 flex-shrink-0 bg-black/40 rounded-lg p-1 border border-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                          <button
+                            onClick={() => handleTogglePin(item)}
+                            className={`p-1.5 rounded-md transition-all ${
+                              item.pinnedInGrid && item.pinnedInGrid > 0
+                                ? 'text-[#DF1E3C] bg-[#DF1E3C]/10 hover:bg-[#DF1E3C]/20'
+                                : 'text-slate-400 hover:text-amber-400 hover:bg-amber-400/10'
+                            }`}
+                            title={
+                              item.pinnedInGrid && item.pinnedInGrid > 0
+                                ? `Unpin from Grid (Position ${item.pinnedInGrid})`
+                                : 'Pin to Grid Top'
+                            }
+                          >
+                            {item.pinnedInGrid && item.pinnedInGrid > 0 ? (
+                              <PinOff className="w-4 h-4" />
+                            ) : (
+                              <Pin className="w-4 h-4" />
+                            )}
+                          </button>
+                        </PermissionGate>
+                        <button
+                          onClick={() => setDetailItem(item)}
+                          className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-md transition-all"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
+                          <button
+                            onClick={() => openEditItem(item)}
+                            className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-md transition-all"
+                            title="Edit"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        </PermissionGate>
+                        <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.DELETE}>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-all"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </PermissionGate>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-4 bg-white/5 w-fit px-2.5 py-1 rounded-md border border-white/5">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" />
+                      {new Date(item.publishAt).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </div>
+
+                    {/* Revision Status Badge */}
+                    {item.revisionStatus && item.revisionStatus !== 'NONE' && (
+                      <div
+                        className={`flex items-center gap-1.5 text-xs font-semibold mb-3 px-2.5 py-1 rounded-lg border w-fit ${getRevisionStatusColor(item.revisionStatus)}`}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        {getRevisionStatusLabel(item.revisionStatus)}
+                        {item.revisionCount && item.revisionCount > 0 && (
+                          <span className="text-[10px] opacity-70">#{item.revisionCount}</span>
+                        )}
                       </div>
                     )}
-                    {item.referenceFiles.length > 0 && (
-                      <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
-                        <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                        {item.referenceFiles.length} file{item.referenceFiles.length !== 1 ? 's' : ''}
-                      </div>
-                    )}
+
+                    <p
+                      className="text-sm text-slate-300 mb-5 line-clamp-3 flex-grow leading-relaxed"
+                      dir="auto"
+                      style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+                    >
+                      {item.primaryBrief}
+                    </p>
+
+                    <div className="flex gap-4 text-xs font-medium text-slate-400 pt-4 border-t border-white/5 mt-auto">
+                      {item.referenceLinks.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                          <LinkIcon className="w-3.5 h-3.5 text-blue-400" />
+                          {item.referenceLinks.length} link{item.referenceLinks.length !== 1 ? 's' : ''}
+                        </div>
+                      )}
+                      {item.referenceFiles.length > 0 && (
+                        <div className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                          <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                          {item.referenceFiles.length} file{item.referenceFiles.length !== 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
               );
             })}
           </div>
@@ -1127,7 +1284,10 @@ const CalendarHub: React.FC = () => {
                 </div>
               </div>
               <h3 className="text-xl font-bold text-white mb-2">No content items yet</h3>
-              <p className="text-slate-400 max-w-md mx-auto mb-8">Get started by adding your first piece of content for this month. You can add videos, photos, or motion graphics.</p>
+              <p className="text-slate-400 max-w-md mx-auto mb-8">
+                Get started by adding your first piece of content for this month. You can add videos, photos, or motion
+                graphics.
+              </p>
               <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.CREATE}>
                 <button
                   onClick={openCreateItem}
@@ -1164,7 +1324,9 @@ const CalendarHub: React.FC = () => {
             </div>
           </div>
           <h3 className="text-xl font-bold text-white mb-2">Select a client</h3>
-          <p className="text-slate-400">Choose a client from the dropdown above to get started with content planning.</p>
+          <p className="text-slate-400">
+            Choose a client from the dropdown above to get started with content planning.
+          </p>
         </div>
       )}
 
@@ -1176,7 +1338,7 @@ const CalendarHub: React.FC = () => {
               <input
                 type="month"
                 value={monthForm.monthKey}
-                onChange={(e) => setMonthForm(prev => ({ ...prev, monthKey: e.target.value }))}
+                onChange={(e) => setMonthForm((prev) => ({ ...prev, monthKey: e.target.value }))}
                 className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -1185,7 +1347,7 @@ const CalendarHub: React.FC = () => {
               <input
                 type="text"
                 value={monthForm.title}
-                onChange={(e) => setMonthForm(prev => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => setMonthForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="e.g., January 2026 Content Calendar"
                 className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
@@ -1210,13 +1372,13 @@ const CalendarHub: React.FC = () => {
       )}
 
       {showItemModal && (
-        <Modal 
-          isOpen={showItemModal} 
+        <Modal
+          isOpen={showItemModal}
           onClose={() => {
             setShowItemModal(false);
             setEditingItem(null);
             resetItemForm();
-          }} 
+          }}
           title={editingItem ? 'Edit Content Item' : 'Create Content Item'}
         >
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
@@ -1224,7 +1386,7 @@ const CalendarHub: React.FC = () => {
               <label className="block text-sm font-medium text-white/70 mb-2">Content Type</label>
               <select
                 value={itemForm.type}
-                onChange={(e) => setItemForm(prev => ({ ...prev, type: e.target.value as CalendarContentType }))}
+                onChange={(e) => setItemForm((prev) => ({ ...prev, type: e.target.value as CalendarContentType }))}
                 disabled={!!editingItem}
                 className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
@@ -1239,12 +1401,14 @@ const CalendarHub: React.FC = () => {
               <input
                 type="checkbox"
                 checked={itemForm.isCarousel}
-                onChange={e => setItemForm(prev => ({ ...prev, isCarousel: e.target.checked }))}
+                onChange={(e) => setItemForm((prev) => ({ ...prev, isCarousel: e.target.checked }))}
                 className="w-4 h-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500"
               />
               <div className="flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-indigo-500" />
-                <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">Carousel Post</span>
+                <span className="text-sm font-medium text-white/70 group-hover:text-white transition-colors">
+                  Carousel Post
+                </span>
               </div>
             </label>
 
@@ -1252,7 +1416,7 @@ const CalendarHub: React.FC = () => {
               <label className="block text-sm font-medium text-white/70 mb-2">Primary Brief *</label>
               <textarea
                 value={itemForm.primaryBrief}
-                onChange={(e) => setItemForm(prev => ({ ...prev, primaryBrief: e.target.value }))}
+                onChange={(e) => setItemForm((prev) => ({ ...prev, primaryBrief: e.target.value }))}
                 rows={4}
                 dir="auto"
                 style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
@@ -1265,7 +1429,7 @@ const CalendarHub: React.FC = () => {
               <label className="block text-sm font-medium text-white/70 mb-2">Notes & Constraints</label>
               <textarea
                 value={itemForm.notes}
-                onChange={(e) => setItemForm(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(e) => setItemForm((prev) => ({ ...prev, notes: e.target.value }))}
                 rows={3}
                 dir="auto"
                 style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
@@ -1279,7 +1443,7 @@ const CalendarHub: React.FC = () => {
               <input
                 type="datetime-local"
                 value={itemForm.publishAt}
-                onChange={(e) => setItemForm(prev => ({ ...prev, publishAt: e.target.value }))}
+                onChange={(e) => setItemForm((prev) => ({ ...prev, publishAt: e.target.value }))}
                 className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
@@ -1311,10 +1475,7 @@ const CalendarHub: React.FC = () => {
                     placeholder="URL"
                     className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
-                  <button
-                    onClick={() => removeReferenceLink(index)}
-                    className="p-2 text-slate-400 hover:text-red-400"
-                  >
+                  <button onClick={() => removeReferenceLink(index)} className="p-2 text-slate-400 hover:text-red-400">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -1334,9 +1495,7 @@ const CalendarHub: React.FC = () => {
                 className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 text-sm"
               />
               {uploadingFiles.length > 0 && (
-                <div className="mt-2 text-xs text-slate-400">
-                  {uploadingFiles.length} file(s) selected
-                </div>
+                <div className="mt-2 text-xs text-slate-400">{uploadingFiles.length} file(s) selected</div>
               )}
             </div>
 
@@ -1345,7 +1504,10 @@ const CalendarHub: React.FC = () => {
                 <label className="block text-sm font-medium text-white/70 mb-2">Existing Files</label>
                 <div className="space-y-2">
                   {editingItem.referenceFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-[#0a0a0a] border border-gray-700 rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-2 bg-[#0a0a0a] border border-gray-700 rounded-lg"
+                    >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
                         <span className="text-sm text-slate-300 truncate">{file.fileName}</span>
@@ -1402,11 +1564,12 @@ const CalendarHub: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-300">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setDetailItem(null)} />
           <div className="relative w-full max-w-4xl max-h-[90vh] bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-            
             {/* Header */}
             <div className="flex items-center justify-between p-3 sm:p-5 border-b border-white/10 bg-white/[0.02] gap-2">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
-                <div className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 sm:gap-1.5 shadow-sm shrink-0 ${getTypeColor(detailItem.type)}`}>
+                <div
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1 sm:gap-1.5 shadow-sm shrink-0 ${getTypeColor(detailItem.type)}`}
+                >
                   {getTypeIcon(detailItem.type)} <span className="hidden sm:inline">{detailItem.type}</span>
                 </div>
                 {detailItem.isCarousel && (
@@ -1414,7 +1577,9 @@ const CalendarHub: React.FC = () => {
                     <Layers className="w-3 h-3" /> <span className="hidden sm:inline">Carousel</span>
                   </span>
                 )}
-                <h2 className="text-base sm:text-xl font-bold text-white tracking-tight truncate">{detailItem.autoName}</h2>
+                <h2 className="text-base sm:text-xl font-bold text-white tracking-tight truncate">
+                  {detailItem.autoName}
+                </h2>
               </div>
               <button
                 onClick={() => setDetailItem(null)}
@@ -1427,16 +1592,20 @@ const CalendarHub: React.FC = () => {
             {/* Body */}
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 custom-scrollbar">
               <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 w-full">
-                
                 {/* Left Column: Media & Meta */}
                 <div className="lg:col-span-1 space-y-4 sm:space-y-6 w-full">
                   {/* Thumbnail */}
                   <div className="rounded-xl overflow-hidden border border-white/10 bg-black/50 shadow-lg">
                     {(() => {
-                      const imgExts = ['.jpg','.jpeg','.png','.gif','.webp','.svg','.bmp','.avif'];
-                      const thumbFile = detailItem.referenceFiles.find(f => imgExts.some(ext => f.fileName.toLowerCase().endsWith(ext)));
-                      const thumbUrl = thumbFile?.downloadURL || (detailItem.referenceFiles.length > 0 ? detailItem.referenceFiles[0].downloadURL : null);
-                      const linkPreviewUrl = !thumbUrl && detailItem.referenceLinks.length > 0 ? detailItem.referenceLinks[0].url : null;
+                      const imgExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.avif'];
+                      const thumbFile = detailItem.referenceFiles.find((f) =>
+                        imgExts.some((ext) => f.fileName.toLowerCase().endsWith(ext)),
+                      );
+                      const thumbUrl =
+                        thumbFile?.downloadURL ||
+                        (detailItem.referenceFiles.length > 0 ? detailItem.referenceFiles[0].downloadURL : null);
+                      const linkPreviewUrl =
+                        !thumbUrl && detailItem.referenceLinks.length > 0 ? detailItem.referenceLinks[0].url : null;
 
                       if (thumbUrl) {
                         return <img src={thumbUrl} alt="Thumbnail" className="w-full h-auto object-cover" />;
@@ -1456,12 +1625,18 @@ const CalendarHub: React.FC = () => {
                   {/* Meta Info */}
                   <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-4">
                     <div>
-                      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Publish Date</div>
+                      <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                        Publish Date
+                      </div>
                       <div className="flex items-center gap-2 text-sm font-medium text-white bg-white/5 px-3 py-2 rounded-lg border border-white/5">
                         <Clock className="w-4 h-4 text-blue-400" />
-                        {new Date(detailItem.publishAt).toLocaleString(undefined, { 
-                          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                          hour: '2-digit', minute: '2-digit'
+                        {new Date(detailItem.publishAt).toLocaleString(undefined, {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </div>
                     </div>
@@ -1470,13 +1645,21 @@ const CalendarHub: React.FC = () => {
 
                 {/* Right Column: Content */}
                 <div className="lg:col-span-2 space-y-4 sm:space-y-6 lg:space-y-8 w-full min-w-0">
-                  
                   {/* Brief */}
                   <div className="w-full min-w-0">
                     <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
                       <FileText className="w-4 h-4 shrink-0" /> Primary Brief
                     </h3>
-                    <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                    <div
+                      className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-200 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full"
+                      dir="auto"
+                      style={{
+                        unicodeBidi: 'plaintext',
+                        textAlign: 'start',
+                        wordBreak: 'break-word',
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
                       {detailItem.primaryBrief}
                     </div>
                   </div>
@@ -1487,7 +1670,16 @@ const CalendarHub: React.FC = () => {
                       <h3 className="text-xs sm:text-sm font-semibold text-slate-400 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
                         <FileText className="w-4 h-4 shrink-0" /> Additional Notes
                       </h3>
-                      <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full" dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      <div
+                        className="bg-white/[0.02] border border-white/5 rounded-xl p-3 sm:p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere shadow-inner w-full"
+                        dir="auto"
+                        style={{
+                          unicodeBidi: 'plaintext',
+                          textAlign: 'start',
+                          wordBreak: 'break-word',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
                         {detailItem.notes}
                       </div>
                     </div>
@@ -1512,7 +1704,9 @@ const CalendarHub: React.FC = () => {
                               <ExternalLink className="w-4 h-4" />
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
-                              <div className="text-sm font-medium text-white truncate">{link.title || 'Reference Link'}</div>
+                              <div className="text-sm font-medium text-white truncate">
+                                {link.title || 'Reference Link'}
+                              </div>
                               <div className="text-xs text-slate-500 truncate">{link.url}</div>
                             </div>
                           </a>
@@ -1548,7 +1742,6 @@ const CalendarHub: React.FC = () => {
                       </div>
                     </div>
                   )}
-
                 </div>
               </div>
             </div>
@@ -1559,7 +1752,10 @@ const CalendarHub: React.FC = () => {
                 {/* Revision History Button */}
                 {getRevisionsForItem(detailItem.id).length > 0 && (
                   <button
-                    onClick={() => { setRevisionHistoryItem(detailItem); setShowRevisionHistory(true); }}
+                    onClick={() => {
+                      setRevisionHistoryItem(detailItem);
+                      setShowRevisionHistory(true);
+                    }}
                     className="px-4 py-2 bg-white/5 text-slate-300 rounded-xl hover:bg-white/10 transition-all font-medium text-sm flex items-center gap-2"
                   >
                     <History className="w-4 h-4" />
@@ -1576,33 +1772,36 @@ const CalendarHub: React.FC = () => {
                 </button>
 
                 {/* Request Revision Button - only for items synced from creative */}
-                {canRequestRevision(detailItem) && (checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) || checkPermission(PERMISSIONS.CALENDAR.MANAGE)) && (
-                  <button
-                    onClick={() => {
-                      setDetailItem(null);
-                      openRevisionRequest(detailItem);
-                    }}
-                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-xl hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 font-medium text-sm sm:text-base w-full sm:w-auto"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Request Revision
-                  </button>
-                )}
+                {canRequestRevision(detailItem) &&
+                  (checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) ||
+                    checkPermission(PERMISSIONS.CALENDAR.MANAGE)) && (
+                    <button
+                      onClick={() => {
+                        setDetailItem(null);
+                        openRevisionRequest(detailItem);
+                      }}
+                      className="px-4 sm:px-5 py-2 sm:py-2.5 bg-amber-500/20 text-amber-300 border border-amber-400/30 rounded-xl hover:bg-amber-500/30 transition-all flex items-center justify-center gap-2 font-medium text-sm sm:text-base w-full sm:w-auto"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      Request Revision
+                    </button>
+                  )}
 
                 {/* Sync Approved Revision Button */}
-                {detailItem.revisionStatus === 'APPROVED_BY_CREATIVE' && checkPermission(PERMISSIONS.CALENDAR.MANAGE) && (
-                  <button
-                    onClick={() => {
-                      handleSyncApprovedRevision(detailItem);
-                      setDetailItem(null);
-                    }}
-                    disabled={isLoading}
-                    className="px-4 sm:px-5 py-2 sm:py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-emerald-500/20 text-sm sm:text-base w-full sm:w-auto disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    {isLoading ? 'Syncing...' : 'Sync Revision'}
-                  </button>
-                )}
+                {detailItem.revisionStatus === 'APPROVED_BY_CREATIVE' &&
+                  checkPermission(PERMISSIONS.CALENDAR.MANAGE) && (
+                    <button
+                      onClick={() => {
+                        handleSyncApprovedRevision(detailItem);
+                        setDetailItem(null);
+                      }}
+                      disabled={isLoading}
+                      className="px-4 sm:px-5 py-2 sm:py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2 font-medium shadow-lg shadow-emerald-500/20 text-sm sm:text-base w-full sm:w-auto disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      {isLoading ? 'Syncing...' : 'Sync Revision'}
+                    </button>
+                  )}
 
                 <PermissionGate permission={PERMISSIONS.CALENDAR_ITEMS.EDIT}>
                   <button
@@ -1637,7 +1836,10 @@ const CalendarHub: React.FC = () => {
                   <p className="text-xs text-slate-400 mt-0.5">{revisionTargetItem.autoName}</p>
                 </div>
               </div>
-              <button onClick={() => setShowRevisionModal(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+              <button
+                onClick={() => setShowRevisionModal(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1648,7 +1850,7 @@ const CalendarHub: React.FC = () => {
                 <label className="block text-sm font-semibold text-slate-300 mb-2">What needs to change? *</label>
                 <textarea
                   value={revisionNote}
-                  onChange={e => setRevisionNote(e.target.value)}
+                  onChange={(e) => setRevisionNote(e.target.value)}
                   placeholder="Describe what needs to be revised..."
                   rows={4}
                   className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/30 resize-none"
@@ -1664,7 +1866,7 @@ const CalendarHub: React.FC = () => {
                       type="text"
                       placeholder="Title"
                       value={link.title}
-                      onChange={e => {
+                      onChange={(e) => {
                         const updated = [...revisionRefLinks];
                         updated[idx].title = e.target.value;
                         setRevisionRefLinks(updated);
@@ -1675,7 +1877,7 @@ const CalendarHub: React.FC = () => {
                       type="url"
                       placeholder="https://..."
                       value={link.url}
-                      onChange={e => {
+                      onChange={(e) => {
                         const updated = [...revisionRefLinks];
                         updated[idx].url = e.target.value;
                         setRevisionRefLinks(updated);
@@ -1723,7 +1925,10 @@ const CalendarHub: React.FC = () => {
       {/* REVISION HISTORY MODAL */}
       {showRevisionHistory && revisionHistoryItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowRevisionHistory(false)} />
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowRevisionHistory(false)}
+          />
           <div className="relative w-full max-w-2xl max-h-[80vh] bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-white/10 bg-white/[0.02]">
@@ -1736,7 +1941,10 @@ const CalendarHub: React.FC = () => {
                   <p className="text-xs text-slate-400 mt-0.5">{revisionHistoryItem.autoName}</p>
                 </div>
               </div>
-              <button onClick={() => setShowRevisionHistory(false)} className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+              <button
+                onClick={() => setShowRevisionHistory(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1744,17 +1952,21 @@ const CalendarHub: React.FC = () => {
             {/* Body */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
               {getRevisionsForItem(revisionHistoryItem.id).map((rev, idx) => {
-                const requester = users.find(u => u.id === rev.requestedBy);
-                const reviser = rev.revisedBy ? users.find(u => u.id === rev.revisedBy) : null;
-                const reviewer = rev.reviewedBy ? users.find(u => u.id === rev.reviewedBy) : null;
+                const requester = users.find((u) => u.id === rev.requestedBy);
+                const reviser = rev.revisedBy ? users.find((u) => u.id === rev.revisedBy) : null;
+                const reviewer = rev.reviewedBy ? users.find((u) => u.id === rev.reviewedBy) : null;
                 return (
                   <div key={rev.id} className="bg-white/[0.02] border border-white/10 rounded-xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${getRevisionStatusColor(rev.status)}`}>
+                        <span
+                          className={`text-xs font-semibold px-2 py-0.5 rounded-md border ${getRevisionStatusColor(rev.status)}`}
+                        >
                           {getRevisionStatusLabel(rev.status)}
                         </span>
-                        <span className="text-xs text-slate-500">#{getRevisionsForItem(revisionHistoryItem.id).length - idx}</span>
+                        <span className="text-xs text-slate-500">
+                          #{getRevisionsForItem(revisionHistoryItem.id).length - idx}
+                        </span>
                       </div>
                       <span className="text-xs text-slate-500">{new Date(rev.createdAt).toLocaleDateString()}</span>
                     </div>
@@ -1764,23 +1976,40 @@ const CalendarHub: React.FC = () => {
                       <div className="text-xs font-semibold text-slate-400 flex items-center gap-1">
                         <MessageSquare className="w-3 h-3" /> Requested by {requester?.name || 'Unknown'}
                       </div>
-                      <p className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                      <p
+                        className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap"
+                        dir="auto"
+                      >
+                        {rev.revisionNote}
+                      </p>
                     </div>
 
                     {/* Revised content */}
                     {rev.revisedBy && (
                       <div className="space-y-1 border-t border-white/5 pt-3">
                         <div className="text-xs font-semibold text-slate-400">
-                          Revised by {reviser?.name || 'Unknown'} on {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
+                          Revised by {reviser?.name || 'Unknown'} on{' '}
+                          {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
                         </div>
                         {rev.revisedBrief && (
-                          <p className="text-sm text-slate-300 bg-emerald-500/5 rounded-lg p-3 border border-emerald-500/10 whitespace-pre-wrap" dir="auto">{rev.revisedBrief}</p>
+                          <p
+                            className="text-sm text-slate-300 bg-emerald-500/5 rounded-lg p-3 border border-emerald-500/10 whitespace-pre-wrap"
+                            dir="auto"
+                          >
+                            {rev.revisedBrief}
+                          </p>
                         )}
                         {rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0 && (
                           <div className="space-y-1 mt-2">
                             <div className="text-xs font-semibold text-slate-500">Reference Links:</div>
                             {rev.revisedReferenceLinks.map((link, idx) => (
-                              <a key={idx} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-blue-400 hover:underline">
+                              <a
+                                key={idx}
+                                href={link.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 text-xs text-blue-400 hover:underline"
+                              >
                                 <ExternalLink className="w-3 h-3 shrink-0" /> {link.title || link.url}
                               </a>
                             ))}
@@ -1790,7 +2019,13 @@ const CalendarHub: React.FC = () => {
                           <div className="space-y-1 mt-2">
                             <div className="text-xs font-semibold text-slate-500">Reference Files:</div>
                             {rev.revisedReferenceFiles.map((f, idx) => (
-                              <a key={idx} href={f.downloadURL} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline">
+                              <a
+                                key={idx}
+                                href={f.downloadURL}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline"
+                              >
                                 <FileText className="w-3 h-3 shrink-0" /> {f.fileName}
                               </a>
                             ))}
@@ -1803,10 +2038,18 @@ const CalendarHub: React.FC = () => {
                     {rev.reviewedBy && (
                       <div className="space-y-1 border-t border-white/5 pt-3">
                         <div className="text-xs font-semibold text-slate-400">
-                          {rev.status === 'APPROVED_BY_CREATIVE' || rev.status === 'SYNCED_TO_CALENDAR' ? '✅ Approved' : '❌ Rejected'} by {reviewer?.name || 'Unknown'}
+                          {rev.status === 'APPROVED_BY_CREATIVE' || rev.status === 'SYNCED_TO_CALENDAR'
+                            ? '✅ Approved'
+                            : '❌ Rejected'}{' '}
+                          by {reviewer?.name || 'Unknown'}
                         </div>
                         {rev.reviewNote && (
-                          <p className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap" dir="auto">{rev.reviewNote}</p>
+                          <p
+                            className="text-sm text-slate-300 bg-white/[0.03] rounded-lg p-3 whitespace-pre-wrap"
+                            dir="auto"
+                          >
+                            {rev.reviewNote}
+                          </p>
                         )}
                       </div>
                     )}
@@ -1828,6 +2071,19 @@ const CalendarHub: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* Excel Import Modal */}
+      {selectedMonthId && selectedClientId && (
+        <CalendarImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          clientId={selectedClientId}
+          clientCode={getClientCode(selectedClientId)}
+          monthId={selectedMonthId}
+          monthKey={calendarMonths.find((m) => m.id === selectedMonthId)?.monthKey || ''}
+          existingItems={calendarItems.filter((i) => i.calendarMonthId === selectedMonthId)}
+          currentUserId={currentUser.id}
+        />
       )}
     </div>
   );
