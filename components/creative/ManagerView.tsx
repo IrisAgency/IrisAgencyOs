@@ -1,22 +1,60 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
-import type { CreativeProject, CreativeCalendar, CreativeCalendarItem, CalendarItemRevision, Client, User, CalendarMonth, CalendarItem, AgencyFile, ClientMarketingStrategy, NotificationType, CreativeRejectionReference } from '../../types';
+import type {
+  CreativeProject,
+  CreativeCalendar,
+  CreativeCalendarItem,
+  CalendarItemRevision,
+  Client,
+  User,
+  CalendarMonth,
+  CalendarItem,
+  AgencyFile,
+  ClientMarketingStrategy,
+  NotificationType,
+  CreativeRejectionReference,
+} from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import SwipeReviewCard from './SwipeReviewCard';
 import { activateCreativeCalendar } from './CalendarActivation';
 import {
-  DarkMediaThumb, DrivePreviewModal,
-  collectRevisionRefMedia, collectRevisionResponseMedia,
+  DarkMediaThumb,
+  DrivePreviewModal,
+  collectRevisionRefMedia,
+  collectRevisionResponseMedia,
   type MediaEntry,
 } from '../../utils/presentationHelpers';
 import {
-  Plus, Upload, FileText, Link as LinkIcon, ExternalLink, Eye, Search, 
-  ChevronDown, ChevronRight, ChevronUp, Users, Calendar, Check, AlertTriangle, 
-  Archive, ArchiveRestore, X, Sparkles, Clock, RotateCcw, CheckCircle2,
-  MessageSquare, Send, Inbox, Layers
+  Plus,
+  Upload,
+  FileText,
+  Link as LinkIcon,
+  ExternalLink,
+  Eye,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Users,
+  Calendar,
+  Check,
+  AlertTriangle,
+  Archive,
+  ArchiveRestore,
+  X,
+  Sparkles,
+  Clock,
+  RotateCcw,
+  CheckCircle2,
+  MessageSquare,
+  Send,
+  Inbox,
+  Layers,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 interface ManagerViewProps {
@@ -31,7 +69,14 @@ interface ManagerViewProps {
   files: AgencyFile[];
   currentUser: User | null;
   checkPermission: (permission: string) => boolean;
-  onNotify: (type: NotificationType, title: string, message: string, recipientIds: string[], entityId?: string, actionUrl?: string) => void;
+  onNotify: (
+    type: NotificationType,
+    title: string,
+    message: string,
+    recipientIds: string[],
+    entityId?: string,
+    actionUrl?: string,
+  ) => void;
   onUploadFile?: (file: AgencyFile) => Promise<void>;
 }
 
@@ -62,13 +107,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
 }) => {
   const surface = 'bg-[#0a0a0a] backdrop-blur-sm border border-white/10 text-white';
   const elevated = 'bg-[#0f0f0f] backdrop-blur-sm border border-white/10 text-white';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
-  const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
+  const inputClass =
+    'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
+  const pill =
+    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
 
   // State — auto-select Cal Revisions tab if there are active revisions
-  const hasActiveRevisions = calendarItemRevisions.some(r => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE');
+  const hasActiveRevisions = calendarItemRevisions.some(
+    (r) => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE',
+  );
   const [activeTab, setActiveTab] = useState<'projects' | 'review' | 'cal-revisions'>(
-    hasActiveRevisions ? 'cal-revisions' : 'projects'
+    hasActiveRevisions ? 'cal-revisions' : 'projects',
   );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showStrategyModal, setShowStrategyModal] = useState(false);
@@ -80,6 +129,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [saving, setSaving] = useState(false);
   const [savingStrategy, setSavingStrategy] = useState(false);
+  const [editingProject, setEditingProject] = useState<CreativeProject | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   // Create Project Form
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -104,11 +155,13 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const strategyFileRef = useRef<HTMLInputElement>(null);
 
   // Review results tracking
-  const [reviewResults, setReviewResults] = useState<Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }>>({});
+  const [reviewResults, setReviewResults] = useState<
+    Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }>
+  >({});
 
   // Copywriter users (Copywriter role first, then other active users as fallback)
   const copywriters = users
-    .filter(u => u.status === 'active')
+    .filter((u) => u.status === 'active')
     .sort((a, b) => {
       const aIsCW = a.role === 'Copywriter' ? 0 : 1;
       const bIsCW = b.role === 'Copywriter' ? 0 : 1;
@@ -127,12 +180,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const fetchStrategies = async (clientId: string) => {
     setLoadingStrategies(true);
     try {
-      const q = query(
-        collection(db, 'client_strategies'),
-        where('clientId', '==', clientId)
-      );
+      const q = query(collection(db, 'client_strategies'), where('clientId', '==', clientId));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ClientMarketingStrategy));
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as ClientMarketingStrategy);
       data.sort((a, b) => b.year - a.year || b.month - a.month);
       setStrategies(data);
     } catch (error) {
@@ -143,19 +193,19 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   // Active vs archived projects
-  const activeProjects = creativeProjects.filter(p => !p.isArchived);
-  const archivedProjects = creativeProjects.filter(p => p.isArchived);
+  const activeProjects = creativeProjects.filter((p) => !p.isArchived);
+  const archivedProjects = creativeProjects.filter((p) => p.isArchived);
 
   // Projects needing review
-  const projectsWithPendingReview = activeProjects.filter(p => {
-    const cals = creativeCalendars.filter(c => c.creativeProjectId === p.id);
-    return cals.some(c => c.status === 'UNDER_REVIEW' || c.status === 'UPDATED');
+  const projectsWithPendingReview = activeProjects.filter((p) => {
+    const cals = creativeCalendars.filter((c) => c.creativeProjectId === p.id);
+    return cals.some((c) => c.status === 'UNDER_REVIEW' || c.status === 'UPDATED');
   });
 
-  const filteredProjects = activeProjects.filter(p => {
+  const filteredProjects = activeProjects.filter((p) => {
     if (!searchTerm) return true;
-    const client = clients.find(c => c.id === p.clientId);
-    const copywriter = users.find(u => u.id === p.assignedCopywriterId);
+    const client = clients.find((c) => c.id === p.clientId);
+    const copywriter = users.find((u) => u.id === p.assignedCopywriterId);
     const search = searchTerm.toLowerCase();
     return (
       client?.name?.toLowerCase().includes(search) ||
@@ -222,7 +272,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       });
 
       // Notify copywriter (non-blocking — don't let notification failures block project creation)
-      const client = clients.find(c => c.id === selectedClientId);
+      const client = clients.find((c) => c.id === selectedClientId);
       notifyUsers({
         type: 'CREATIVE_ASSIGNED',
         title: 'New Creative Assignment',
@@ -231,8 +281,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         entityId: docRef.id,
         sendPush: true,
         createdBy: currentUser.id,
-      }).catch(err => console.warn('Notification failed (non-critical):', err));
-      onNotify('CREATIVE_ASSIGNED', 'Creative Project Created', `Assigned to copywriter for ${client?.name || 'client'}`, [selectedCopywriterId], docRef.id);
+      }).catch((err) => console.warn('Notification failed (non-critical):', err));
+      onNotify(
+        'CREATIVE_ASSIGNED',
+        'Creative Project Created',
+        `Assigned to copywriter for ${client?.name || 'client'}`,
+        [selectedCopywriterId],
+        docRef.id,
+      );
 
       // Reset form
       setShowCreateModal(false);
@@ -274,7 +330,21 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       }
 
       console.log('[Creative] Writing to client_strategies collection...');
-      const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      const months = [
+        '',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ];
       const monthLabel = months[strategyForm.month] + ' ' + strategyForm.year;
 
       await addDoc(collection(db, 'client_strategies'), {
@@ -297,7 +367,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       // Refresh strategies
       await fetchStrategies(selectedClientId);
       setShowStrategyModal(false);
-      setStrategyForm({ title: '', type: 'file', url: '', notes: '', year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
+      setStrategyForm({
+        title: '',
+        type: 'file',
+        url: '',
+        notes: '',
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1,
+      });
       setStrategyFile(null);
     } catch (error) {
       console.error('[Creative] Error creating strategy:', error);
@@ -311,7 +388,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // REVIEW LOGIC
   // ============================================
   const handleItemApprove = async (itemId: string) => {
-    setReviewResults(prev => ({ ...prev, [itemId]: { status: 'APPROVED' } }));
+    setReviewResults((prev) => ({ ...prev, [itemId]: { status: 'APPROVED' } }));
     // Persist immediately so progress survives exit
     try {
       await updateDoc(doc(db, 'creative_calendar_items', itemId), {
@@ -326,7 +403,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   const handleItemReject = async (itemId: string, note: string, references: CreativeRejectionReference[]) => {
-    setReviewResults(prev => ({ ...prev, [itemId]: { status: 'REJECTED', note, references } }));
+    setReviewResults((prev) => ({ ...prev, [itemId]: { status: 'REJECTED', note, references } }));
     // Persist immediately so progress survives exit
     try {
       await updateDoc(doc(db, 'creative_calendar_items', itemId), {
@@ -353,7 +430,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       // Items are already saved to Firestore as they were reviewed — no need to batch-update them again
 
       const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
-      const project = creativeProjects.find(p => p.id === reviewingCalendar.creativeProjectId);
+      const project = creativeProjects.find((p) => p.id === reviewingCalendar.creativeProjectId);
 
       if (hasRejected) {
         // Needs revision
@@ -379,8 +456,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             entityId: reviewingCalendar.creativeProjectId,
             sendPush: true,
             createdBy: currentUser.id,
-          }).catch(err => console.warn('Notification failed (non-critical):', err));
-          onNotify('CREATIVE_REVISION_REQUESTED', 'Revision Requested', 'Creative calendar needs revision', [project.assignedCopywriterId], reviewingCalendar.creativeProjectId);
+          }).catch((err) => console.warn('Notification failed (non-critical):', err));
+          onNotify(
+            'CREATIVE_REVISION_REQUESTED',
+            'Revision Requested',
+            'Creative calendar needs revision',
+            [project.assignedCopywriterId],
+            reviewingCalendar.creativeProjectId,
+          );
         }
       }
 
@@ -399,12 +482,10 @@ const ManagerView: React.FC<ManagerViewProps> = ({
     setSaving(true);
 
     try {
-      const client = clients.find(c => c.id === reviewingCalendar.clientId);
+      const client = clients.find((c) => c.id === reviewingCalendar.clientId);
       if (!client) throw new Error('Client not found');
 
-      const approvedItems = creativeCalendarItems.filter(
-        i => i.creativeCalendarId === reviewingCalendar.id
-      );
+      const approvedItems = creativeCalendarItems.filter((i) => i.creativeCalendarId === reviewingCalendar.id);
 
       await activateCreativeCalendar({
         creativeCalendar: reviewingCalendar,
@@ -415,7 +496,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       });
 
       // Notify copywriter (non-blocking)
-      const project = creativeProjects.find(p => p.id === reviewingCalendar.creativeProjectId);
+      const project = creativeProjects.find((p) => p.id === reviewingCalendar.creativeProjectId);
       if (project?.assignedCopywriterId) {
         notifyUsers({
           type: 'CREATIVE_APPROVED',
@@ -425,8 +506,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
           entityId: reviewingCalendar.creativeProjectId,
           sendPush: true,
           createdBy: currentUser.id,
-        }).catch(err => console.warn('Notification failed (non-critical):', err));
-        onNotify('CREATIVE_APPROVED', 'Calendar Approved', `Creative calendar for ${client.name} activated`, [project.assignedCopywriterId], reviewingCalendar.creativeProjectId);
+        }).catch((err) => console.warn('Notification failed (non-critical):', err));
+        onNotify(
+          'CREATIVE_APPROVED',
+          'Calendar Approved',
+          `Creative calendar for ${client.name} activated`,
+          [project.assignedCopywriterId],
+          reviewingCalendar.creativeProjectId,
+        );
       }
 
       setReviewingCalendar(null);
@@ -436,6 +523,128 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       console.error('Error activating calendar:', error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ============================================
+  // EDIT PROJECT
+  // ============================================
+  const openEditModal = (project: CreativeProject) => {
+    setSelectedClientId(project.clientId);
+    setSelectedCopywriterId(project.assignedCopywriterId);
+    setSelectedStrategyId(project.strategyId || '');
+    const calendars = creativeCalendars.filter((c) => c.creativeProjectId === project.id);
+    const latestCal = calendars[calendars.length - 1];
+    setMonthKey(latestCal?.monthKey || new Date().toISOString().slice(0, 7));
+    setBriefFile(null);
+    setEditingProject(project);
+  };
+
+  const handleEditProject = async () => {
+    if (!currentUser || !editingProject || !selectedClientId || !selectedCopywriterId) return;
+    setSaving(true);
+    try {
+      const now = new Date().toISOString();
+      let briefFileData = editingProject.briefFile;
+
+      // Upload new brief file if selected
+      if (briefFile) {
+        const timestamp = Date.now();
+        const storagePath = `clients/${selectedClientId}/creative/${editingProject.id}/brief/${timestamp}_${briefFile.name}`;
+        const storageRef = ref(storage, storagePath);
+        await uploadBytes(storageRef, briefFile);
+        const downloadURL = await getDownloadURL(storageRef);
+        briefFileData = {
+          name: briefFile.name,
+          url: downloadURL,
+          uploadedBy: currentUser.id,
+          createdAt: now,
+        };
+      }
+
+      await updateDoc(doc(db, 'creative_projects', editingProject.id), {
+        clientId: selectedClientId,
+        strategyId: selectedStrategyId || null,
+        briefFile: briefFileData,
+        assignedCopywriterId: selectedCopywriterId,
+        updatedAt: now,
+      });
+
+      // Update the associated calendar's clientId and monthKey if changed
+      const calendars = creativeCalendars.filter((c) => c.creativeProjectId === editingProject.id);
+      const latestCal = calendars[calendars.length - 1];
+      if (latestCal && (latestCal.clientId !== selectedClientId || latestCal.monthKey !== monthKey)) {
+        await updateDoc(doc(db, 'creative_calendars', latestCal.id), {
+          clientId: selectedClientId,
+          monthKey,
+          updatedAt: now,
+          updatedBy: currentUser.id,
+        });
+      }
+
+      // Notify new copywriter if changed
+      if (selectedCopywriterId !== editingProject.assignedCopywriterId) {
+        const client = clients.find((c) => c.id === selectedClientId);
+        notifyUsers({
+          type: 'CREATIVE_ASSIGNED',
+          title: 'Creative Assignment Updated',
+          message: `You've been assigned a creative project for ${client?.name || 'a client'}.`,
+          recipientIds: [selectedCopywriterId],
+          entityId: editingProject.id,
+          sendPush: true,
+          createdBy: currentUser.id,
+        }).catch((err) => console.warn('Notification failed (non-critical):', err));
+      }
+
+      setEditingProject(null);
+      setSelectedClientId('');
+      setSelectedStrategyId('');
+      setSelectedCopywriterId('');
+      setBriefFile(null);
+      setMonthKey(new Date().toISOString().slice(0, 7));
+    } catch (error) {
+      console.error('Error updating project:', error);
+      alert('Error updating project. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ============================================
+  // DELETE PROJECT
+  // ============================================
+  const handleDeleteProject = async (projectId: string) => {
+    if (!currentUser) return;
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this project? This will also delete all associated calendars and calendar items. This action cannot be undone.',
+    );
+    if (!confirmed) return;
+    setDeletingProjectId(projectId);
+    try {
+      const batch = writeBatch(db);
+
+      // Delete all calendar items for this project
+      const calendars = creativeCalendars.filter((c) => c.creativeProjectId === projectId);
+      const calendarIds = calendars.map((c) => c.id);
+      const items = creativeCalendarItems.filter((i) => calendarIds.includes(i.creativeCalendarId));
+      for (const item of items) {
+        batch.delete(doc(db, 'creative_calendar_items', item.id));
+      }
+
+      // Delete all calendars for this project
+      for (const cal of calendars) {
+        batch.delete(doc(db, 'creative_calendars', cal.id));
+      }
+
+      // Delete the project itself
+      batch.delete(doc(db, 'creative_projects', projectId));
+
+      await batch.commit();
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('Error deleting project. Please try again.');
+    } finally {
+      setDeletingProjectId(null);
     }
   };
 
@@ -473,28 +682,26 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // RENDER: REVIEW MODE
   // ============================================
   if (reviewingCalendar) {
-    const allCalendarItems = creativeCalendarItems.filter(
-      i => i.creativeCalendarId === reviewingCalendar.id
-    );
+    const allCalendarItems = creativeCalendarItems.filter((i) => i.creativeCalendarId === reviewingCalendar.id);
     const isRevisionReview = reviewingCalendar.status === 'UPDATED';
 
     // For revision reviews: only show items that need re-review (not already approved from previous session)
     // For first reviews: show everything
     const calendarItemsForReview = isRevisionReview
-      ? allCalendarItems.filter(i => i.reviewStatus !== 'APPROVED')
+      ? allCalendarItems.filter((i) => i.reviewStatus !== 'APPROVED')
       : allCalendarItems;
 
     const alreadyApprovedCount = isRevisionReview
-      ? allCalendarItems.filter(i => i.reviewStatus === 'APPROVED').length
+      ? allCalendarItems.filter((i) => i.reviewStatus === 'APPROVED').length
       : 0;
 
     // Items still needing review (not yet in reviewResults)
-    const unreviewedItems = calendarItemsForReview.filter(item => !reviewResults[item.id]);
+    const unreviewedItems = calendarItemsForReview.filter((item) => !reviewResults[item.id]);
 
-    const client = clients.find(c => c.id === reviewingCalendar.clientId);
+    const client = clients.find((c) => c.id === reviewingCalendar.clientId);
     const hasRejected = Object.values(reviewResults).some((r: { status: string }) => r.status === 'REJECTED');
-    const allReviewed = calendarItemsForReview.length > 0 && 
-      calendarItemsForReview.every(item => reviewResults[item.id]);
+    const allReviewed =
+      calendarItemsForReview.length > 0 && calendarItemsForReview.every((item) => reviewResults[item.id]);
 
     return (
       <div className="space-y-4">
@@ -529,7 +736,10 @@ const ManagerView: React.FC<ManagerViewProps> = ({
               )}
             </div>
             <button
-              onClick={() => { setReviewingCalendar(null); setReviewComplete(false); }}
+              onClick={() => {
+                setReviewingCalendar(null);
+                setReviewComplete(false);
+              }}
               className="p-2 text-iris-white/60 hover:text-iris-white rounded-lg hover:bg-iris-white/10 transition-colors"
             >
               <X className="w-5 h-5" />
@@ -598,7 +808,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
           <div className={`${surface} rounded-xl p-4`}>
             <h4 className="text-sm font-semibold text-iris-white/70 mb-3">Review Summary</h4>
             <div className="space-y-2">
-              {calendarItemsForReview.map(item => {
+              {calendarItemsForReview.map((item) => {
                 const result = reviewResults[item.id];
                 return (
                   <div key={item.id} className="flex items-center gap-3 py-1.5">
@@ -614,11 +824,17 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     <span className={`text-sm ${result ? 'text-iris-white/80' : 'text-iris-white/40'}`}>
                       {item.title}
                     </span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded ${
-                      item.type === 'VIDEO' ? 'bg-purple-500/20 text-purple-400' :
-                      item.type === 'PHOTO' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-amber-500/20 text-amber-400'
-                    }`}>{item.type}</span>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${
+                        item.type === 'VIDEO'
+                          ? 'bg-purple-500/20 text-purple-400'
+                          : item.type === 'PHOTO'
+                            ? 'bg-blue-500/20 text-blue-400'
+                            : 'bg-amber-500/20 text-amber-400'
+                      }`}
+                    >
+                      {item.type}
+                    </span>
                     {item.isCarousel && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400 flex items-center gap-0.5">
                         <Layers className="w-3 h-3" />
@@ -645,7 +861,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <button
           onClick={() => setActiveTab('projects')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
-            activeTab === 'projects' ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
+            activeTab === 'projects'
+              ? 'bg-iris-red text-white'
+              : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
           }`}
         >
           Projects ({activeProjects.length})
@@ -653,7 +871,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <button
           onClick={() => setActiveTab('review')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
-            activeTab === 'review' ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
+            activeTab === 'review'
+              ? 'bg-iris-red text-white'
+              : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
           }`}
         >
           Pending Review ({projectsWithPendingReview.length})
@@ -664,13 +884,24 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <button
           onClick={() => setActiveTab('cal-revisions')}
           className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all relative ${
-            activeTab === 'cal-revisions' ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
+            activeTab === 'cal-revisions'
+              ? 'bg-iris-red text-white'
+              : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
           }`}
         >
-          Cal Revisions ({calendarItemRevisions.filter(r => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE').length})
-          {calendarItemRevisions.filter(r => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE').length > 0 && activeTab !== 'cal-revisions' && (
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-400 rounded-full" />
-          )}
+          Cal Revisions (
+          {
+            calendarItemRevisions.filter(
+              (r) => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE',
+            ).length
+          }
+          )
+          {calendarItemRevisions.filter(
+            (r) => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE',
+          ).length > 0 &&
+            activeTab !== 'cal-revisions' && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-purple-400 rounded-full" />
+            )}
         </button>
       </div>
 
@@ -685,7 +916,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 type="text"
                 placeholder="Search projects..."
                 value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
+                onChange={(e) => setSearchTerm(e.target.value)}
                 className={`${inputClass} pl-10`}
               />
             </div>
@@ -709,13 +940,13 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             </div>
           ) : (
             <div className="grid gap-4">
-              {filteredProjects.map(project => {
-                const client = clients.find(c => c.id === project.clientId);
-                const copywriter = users.find(u => u.id === project.assignedCopywriterId);
-                const calendars = creativeCalendars.filter(c => c.creativeProjectId === project.id);
+              {filteredProjects.map((project) => {
+                const client = clients.find((c) => c.id === project.clientId);
+                const copywriter = users.find((u) => u.id === project.assignedCopywriterId);
+                const calendars = creativeCalendars.filter((c) => c.creativeProjectId === project.id);
                 const latestCalendar = calendars[calendars.length - 1];
-                const totalItems = creativeCalendarItems.filter(i => 
-                  calendars.some(c => c.id === i.creativeCalendarId)
+                const totalItems = creativeCalendarItems.filter((i) =>
+                  calendars.some((c) => c.id === i.creativeCalendarId),
                 ).length;
 
                 return (
@@ -760,12 +991,34 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           </a>
                         )}
                         {/* Review button */}
-                        {latestCalendar && (latestCalendar.status === 'UNDER_REVIEW' || latestCalendar.status === 'UPDATED') && (
+                        {latestCalendar &&
+                          (latestCalendar.status === 'UNDER_REVIEW' || latestCalendar.status === 'UPDATED') && (
+                            <button
+                              onClick={() => setReviewingCalendar(latestCalendar)}
+                              className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/30 transition-colors"
+                            >
+                              Review
+                            </button>
+                          )}
+                        {/* Edit — only for IN_PROGRESS */}
+                        {project.status === 'IN_PROGRESS' && checkPermission(PERMISSIONS.CREATIVE.MANAGE) && (
                           <button
-                            onClick={() => setReviewingCalendar(latestCalendar)}
-                            className="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/30 transition-colors"
+                            onClick={() => openEditModal(project)}
+                            className="p-2 text-iris-white/50 hover:text-blue-400 rounded-lg hover:bg-iris-white/5 transition-colors"
+                            title="Edit Project"
                           >
-                            Review
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {/* Delete — only for IN_PROGRESS */}
+                        {project.status === 'IN_PROGRESS' && checkPermission(PERMISSIONS.CREATIVE.MANAGE) && (
+                          <button
+                            onClick={() => handleDeleteProject(project.id)}
+                            disabled={deletingProjectId === project.id}
+                            className="p-2 text-iris-white/50 hover:text-rose-400 rounded-lg hover:bg-iris-white/5 transition-colors disabled:opacity-40"
+                            title="Delete Project"
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                         {/* Archive */}
@@ -799,14 +1052,16 @@ const ManagerView: React.FC<ManagerViewProps> = ({
               </button>
               {showArchived && (
                 <div className="grid gap-3 mt-3">
-                  {archivedProjects.map(project => {
-                    const client = clients.find(c => c.id === project.clientId);
+                  {archivedProjects.map((project) => {
+                    const client = clients.find((c) => c.id === project.clientId);
                     return (
                       <div key={project.id} className={`${surface} rounded-xl p-4 opacity-60`}>
                         <div className="flex items-center justify-between">
                           <div>
                             <span className="font-medium text-iris-white/70">{client?.name || 'Unknown'}</span>
-                            <span className="text-xs text-iris-white/40 ml-2">Archived {project.archivedAt ? new Date(project.archivedAt).toLocaleDateString() : ''}</span>
+                            <span className="text-xs text-iris-white/40 ml-2">
+                              Archived {project.archivedAt ? new Date(project.archivedAt).toLocaleDateString() : ''}
+                            </span>
                           </div>
                           <button
                             onClick={() => handleUnarchive(project.id)}
@@ -835,15 +1090,15 @@ const ManagerView: React.FC<ManagerViewProps> = ({
               <p>No calendars pending review.</p>
             </div>
           ) : (
-            projectsWithPendingReview.map(project => {
-              const client = clients.find(c => c.id === project.clientId);
-              const copywriter = users.find(u => u.id === project.assignedCopywriterId);
+            projectsWithPendingReview.map((project) => {
+              const client = clients.find((c) => c.id === project.clientId);
+              const copywriter = users.find((u) => u.id === project.assignedCopywriterId);
               const pendingCalendars = creativeCalendars.filter(
-                c => c.creativeProjectId === project.id && (c.status === 'UNDER_REVIEW' || c.status === 'UPDATED')
+                (c) => c.creativeProjectId === project.id && (c.status === 'UNDER_REVIEW' || c.status === 'UPDATED'),
               );
 
-              return pendingCalendars.map(cal => {
-                const itemCount = creativeCalendarItems.filter(i => i.creativeCalendarId === cal.id).length;
+              return pendingCalendars.map((cal) => {
+                const itemCount = creativeCalendarItems.filter((i) => i.creativeCalendarId === cal.id).length;
                 return (
                   <div key={cal.id} className={`${surface} rounded-xl p-5`}>
                     <div className="flex items-center justify-between">
@@ -866,13 +1121,24 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       <button
                         onClick={() => {
                           // Pre-populate reviewResults from items already reviewed in this session
-                          const calItems = creativeCalendarItems.filter(i => i.creativeCalendarId === cal.id);
-                          const existing: Record<string, { status: 'APPROVED' | 'REJECTED'; note?: string; references?: CreativeRejectionReference[] }> = {};
+                          const calItems = creativeCalendarItems.filter((i) => i.creativeCalendarId === cal.id);
+                          const existing: Record<
+                            string,
+                            {
+                              status: 'APPROVED' | 'REJECTED';
+                              note?: string;
+                              references?: CreativeRejectionReference[];
+                            }
+                          > = {};
                           for (const item of calItems) {
                             if (item.reviewStatus === 'APPROVED') {
                               existing[item.id] = { status: 'APPROVED' };
                             } else if (item.reviewStatus === 'REJECTED') {
-                              existing[item.id] = { status: 'REJECTED', note: item.rejectionNote || '', references: item.rejectionReferences || [] };
+                              existing[item.id] = {
+                                status: 'REJECTED',
+                                note: item.rejectionNote || '',
+                                references: item.rejectionReferences || [],
+                              };
                             }
                           }
                           setReviewResults(existing);
@@ -881,7 +1147,11 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         }}
                         className="px-4 py-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg text-sm font-medium hover:brightness-110 transition-all"
                       >
-                        {creativeCalendarItems.filter(i => i.creativeCalendarId === cal.id).some(i => i.reviewStatus === 'APPROVED' || i.reviewStatus === 'REJECTED') ? 'Continue Review' : 'Start Review'}
+                        {creativeCalendarItems
+                          .filter((i) => i.creativeCalendarId === cal.id)
+                          .some((i) => i.reviewStatus === 'APPROVED' || i.reviewStatus === 'REJECTED')
+                          ? 'Continue Review'
+                          : 'Start Review'}
                       </button>
                     </div>
                   </div>
@@ -897,9 +1167,13 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         <div className="space-y-4">
           {/* Filter tabs */}
           {(() => {
-            const activeCount = calendarItemRevisions.filter(r => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE').length;
-            const completedCount = calendarItemRevisions.filter(r => !r.isArchived && (r.status === 'APPROVED_BY_CREATIVE' || r.status === 'SYNCED_TO_CALENDAR')).length;
-            const archivedCount = calendarItemRevisions.filter(r => r.isArchived).length;
+            const activeCount = calendarItemRevisions.filter(
+              (r) => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE',
+            ).length;
+            const completedCount = calendarItemRevisions.filter(
+              (r) => !r.isArchived && (r.status === 'APPROVED_BY_CREATIVE' || r.status === 'SYNCED_TO_CALENDAR'),
+            ).length;
+            const archivedCount = calendarItemRevisions.filter((r) => r.isArchived).length;
 
             return (
               <div className="flex items-center gap-2 flex-wrap">
@@ -931,7 +1205,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       : 'text-iris-white/50 hover:text-iris-white/70 border border-white/5 hover:border-white/10'
                   }`}
                 >
-                  <Archive className="w-3 h-3 inline mr-1" />Archived ({archivedCount})
+                  <Archive className="w-3 h-3 inline mr-1" />
+                  Archived ({archivedCount})
                 </button>
               </div>
             );
@@ -941,23 +1216,53 @@ const ManagerView: React.FC<ManagerViewProps> = ({
             // Status display helper
             const getStatusBadge = (status: string) => {
               switch (status) {
-                case 'REVISION_REQUESTED': return { label: 'Requested', color: 'bg-amber-500/20 text-amber-400 border-amber-400/30', icon: <MessageSquare className="w-3 h-3" /> };
-                case 'IN_CREATIVE_REVISION': return { label: 'In Progress', color: 'bg-blue-500/20 text-blue-400 border-blue-400/30', icon: <Clock className="w-3 h-3" /> };
-                case 'AWAITING_CREATIVE_APPROVAL': return { label: 'Awaiting Approval', color: 'bg-purple-500/20 text-purple-400 border-purple-400/30', icon: <Eye className="w-3 h-3" /> };
-                case 'APPROVED_BY_CREATIVE': return { label: 'Approved', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30', icon: <CheckCircle2 className="w-3 h-3" /> };
-                case 'SYNCED_TO_CALENDAR': return { label: 'Synced', color: 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30', icon: <Check className="w-3 h-3" /> };
-                default: return { label: status, color: 'bg-white/10 text-white/60 border-white/10', icon: null };
+                case 'REVISION_REQUESTED':
+                  return {
+                    label: 'Requested',
+                    color: 'bg-amber-500/20 text-amber-400 border-amber-400/30',
+                    icon: <MessageSquare className="w-3 h-3" />,
+                  };
+                case 'IN_CREATIVE_REVISION':
+                  return {
+                    label: 'In Progress',
+                    color: 'bg-blue-500/20 text-blue-400 border-blue-400/30',
+                    icon: <Clock className="w-3 h-3" />,
+                  };
+                case 'AWAITING_CREATIVE_APPROVAL':
+                  return {
+                    label: 'Awaiting Approval',
+                    color: 'bg-purple-500/20 text-purple-400 border-purple-400/30',
+                    icon: <Eye className="w-3 h-3" />,
+                  };
+                case 'APPROVED_BY_CREATIVE':
+                  return {
+                    label: 'Approved',
+                    color: 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30',
+                    icon: <CheckCircle2 className="w-3 h-3" />,
+                  };
+                case 'SYNCED_TO_CALENDAR':
+                  return {
+                    label: 'Synced',
+                    color: 'bg-cyan-500/20 text-cyan-400 border-cyan-400/30',
+                    icon: <Check className="w-3 h-3" />,
+                  };
+                default:
+                  return { label: status, color: 'bg-white/10 text-white/60 border-white/10', icon: null };
               }
             };
 
             // Filter revisions based on selected filter
             let filteredRevisions = calendarItemRevisions;
             if (revisionFilter === 'active') {
-              filteredRevisions = calendarItemRevisions.filter(r => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE');
+              filteredRevisions = calendarItemRevisions.filter(
+                (r) => !r.isArchived && r.status !== 'SYNCED_TO_CALENDAR' && r.status !== 'APPROVED_BY_CREATIVE',
+              );
             } else if (revisionFilter === 'completed') {
-              filteredRevisions = calendarItemRevisions.filter(r => !r.isArchived && (r.status === 'APPROVED_BY_CREATIVE' || r.status === 'SYNCED_TO_CALENDAR'));
+              filteredRevisions = calendarItemRevisions.filter(
+                (r) => !r.isArchived && (r.status === 'APPROVED_BY_CREATIVE' || r.status === 'SYNCED_TO_CALENDAR'),
+              );
             } else {
-              filteredRevisions = calendarItemRevisions.filter(r => r.isArchived);
+              filteredRevisions = calendarItemRevisions.filter((r) => r.isArchived);
             }
 
             if (filteredRevisions.length === 0) {
@@ -985,30 +1290,45 @@ const ManagerView: React.FC<ManagerViewProps> = ({
 
             // Sort: awaiting approval first, then requested, then in progress, then rest
             const sorted = filteredRevisions.sort((a, b) => {
-              const order: Record<string, number> = { 'AWAITING_CREATIVE_APPROVAL': 0, 'REVISION_REQUESTED': 1, 'IN_CREATIVE_REVISION': 2, 'APPROVED_BY_CREATIVE': 3, 'SYNCED_TO_CALENDAR': 4 };
+              const order: Record<string, number> = {
+                AWAITING_CREATIVE_APPROVAL: 0,
+                REVISION_REQUESTED: 1,
+                IN_CREATIVE_REVISION: 2,
+                APPROVED_BY_CREATIVE: 3,
+                SYNCED_TO_CALENDAR: 4,
+              };
               return (order[a.status] ?? 9) - (order[b.status] ?? 9);
             });
 
-            return sorted.map(rev => {
-              const calItem = calendarItems.find(ci => ci.id === rev.calendarItemId);
-              const client = clients.find(c => c.id === rev.clientId);
-              const copywriter = rev.revisedBy ? users.find(u => u.id === rev.revisedBy) : null;
-              const requester = users.find(u => u.id === rev.requestedBy);
-              const reviewer = rev.reviewedBy ? users.find(u => u.id === rev.reviewedBy) : null;
+            return sorted.map((rev) => {
+              const calItem = calendarItems.find((ci) => ci.id === rev.calendarItemId);
+              const client = clients.find((c) => c.id === rev.clientId);
+              const copywriter = rev.revisedBy ? users.find((u) => u.id === rev.revisedBy) : null;
+              const requester = users.find((u) => u.id === rev.requestedBy);
+              const reviewer = rev.reviewedBy ? users.find((u) => u.id === rev.reviewedBy) : null;
               const statusBadge = getStatusBadge(rev.status);
               const isCompleted = rev.status === 'APPROVED_BY_CREATIVE' || rev.status === 'SYNCED_TO_CALENDAR';
 
               return (
-                <div key={rev.id} className={`${surface} rounded-xl overflow-hidden ${rev.isArchived ? 'opacity-70' : ''}`}>
+                <div
+                  key={rev.id}
+                  className={`${surface} rounded-xl overflow-hidden ${rev.isArchived ? 'opacity-70' : ''}`}
+                >
                   {/* Header */}
-                  <div className={`px-5 py-3 flex items-center justify-between flex-wrap gap-2 ${
-                    rev.status === 'AWAITING_CREATIVE_APPROVAL' ? 'bg-purple-500/5 border-b border-purple-500/10' :
-                    isCompleted ? 'bg-emerald-500/5 border-b border-emerald-500/10' :
-                    'border-b border-white/5'
-                  }`}>
+                  <div
+                    className={`px-5 py-3 flex items-center justify-between flex-wrap gap-2 ${
+                      rev.status === 'AWAITING_CREATIVE_APPROVAL'
+                        ? 'bg-purple-500/5 border-b border-purple-500/10'
+                        : isCompleted
+                          ? 'bg-emerald-500/5 border-b border-emerald-500/10'
+                          : 'border-b border-white/5'
+                    }`}
+                  >
                     <div className="flex items-center gap-2 min-w-0">
                       <h3 className="font-bold text-iris-white truncate">{calItem?.autoName || 'Calendar Item'}</h3>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${statusBadge.color}`}>
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${statusBadge.color}`}
+                      >
                         {statusBadge.icon} {statusBadge.label}
                       </span>
                     </div>
@@ -1028,19 +1348,27 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         <span>Revision Request</span>
                         <span className="text-amber-400/50 font-normal">by {requester?.name || 'Calendar Dept'}</span>
                       </div>
-                      <p className="text-sm text-iris-white/70 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
-                      
+                      <p className="text-sm text-iris-white/70 whitespace-pre-wrap" dir="auto">
+                        {rev.revisionNote}
+                      </p>
+
                       {/* Request references — rich media thumbnails */}
-                      {rev.revisionReferences && rev.revisionReferences.length > 0 && (() => {
-                        const media = collectRevisionRefMedia(rev.revisionReferences);
-                        return (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                            {media.map((m, idx) => (
-                              <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
-                            ))}
-                          </div>
-                        );
-                      })()}
+                      {rev.revisionReferences &&
+                        rev.revisionReferences.length > 0 &&
+                        (() => {
+                          const media = collectRevisionRefMedia(rev.revisionReferences);
+                          return (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                              {media.map((m, idx) => (
+                                <DarkMediaThumb
+                                  key={idx}
+                                  media={m}
+                                  onDriveClick={(url, title) => setDrivePreview({ url, title })}
+                                />
+                              ))}
+                            </div>
+                          );
+                        })()}
                     </div>
 
                     {/* STEP 2: Creative Response (from Copywriter) */}
@@ -1050,49 +1378,64 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           <Send className="w-3.5 h-3.5" />
                           <span>Creative Response</span>
                           <span className="text-emerald-400/50 font-normal">
-                            by {copywriter?.name || 'Copywriter'} · {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
+                            by {copywriter?.name || 'Copywriter'} ·{' '}
+                            {rev.revisedAt ? new Date(rev.revisedAt).toLocaleDateString() : 'N/A'}
                           </span>
                         </div>
 
                         {/* Revised Brief */}
                         <div>
-                          <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-0.5">Revised Brief</div>
-                          <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisedBrief}</p>
+                          <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-0.5">
+                            Revised Brief
+                          </div>
+                          <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">
+                            {rev.revisedBrief}
+                          </p>
                         </div>
 
                         {/* Revised Notes */}
                         {rev.revisedNotes && (
                           <div className="pt-1 border-t border-emerald-500/10">
-                            <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-0.5">Copywriter Notes</div>
-                            <p className="text-sm text-iris-white/60 whitespace-pre-wrap" dir="auto">{rev.revisedNotes}</p>
+                            <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-0.5">
+                              Copywriter Notes
+                            </div>
+                            <p className="text-sm text-iris-white/60 whitespace-pre-wrap" dir="auto">
+                              {rev.revisedNotes}
+                            </p>
                           </div>
                         )}
 
                         {/* Revised media — rich thumbnails for links + files combined */}
-                        {((rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0) || (rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0)) && (() => {
-                          const media = collectRevisionResponseMedia(
-                            rev.revisedReferenceLinks || [],
-                            rev.revisedReferenceFiles || []
-                          );
-                          return (
-                            <div className="pt-1 border-t border-emerald-500/10">
-                              <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-1.5">Updated Media & References</div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {media.map((m, idx) => (
-                                  <DarkMediaThumb key={idx} media={m} onDriveClick={(url, title) => setDrivePreview({ url, title })} />
-                                ))}
+                        {((rev.revisedReferenceLinks && rev.revisedReferenceLinks.length > 0) ||
+                          (rev.revisedReferenceFiles && rev.revisedReferenceFiles.length > 0)) &&
+                          (() => {
+                            const media = collectRevisionResponseMedia(
+                              rev.revisedReferenceLinks || [],
+                              rev.revisedReferenceFiles || [],
+                            );
+                            return (
+                              <div className="pt-1 border-t border-emerald-500/10">
+                                <div className="text-[10px] uppercase tracking-wider text-emerald-400/40 font-bold mb-1.5">
+                                  Updated Media & References
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {media.map((m, idx) => (
+                                    <DarkMediaThumb
+                                      key={idx}
+                                      media={m}
+                                      onDriveClick={(url, title) => setDrivePreview({ url, title })}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })()}
+                            );
+                          })()}
                       </div>
-                    ) : (
-                      // No creative response yet
-                      rev.status !== 'REVISION_REQUESTED' ? null : (
-                        <div className="border border-dashed border-white/10 rounded-lg p-3 text-center">
-                          <p className="text-xs text-iris-white/30 italic">Awaiting creative response…</p>
-                        </div>
-                      )
+                    ) : // No creative response yet
+                    rev.status !== 'REVISION_REQUESTED' ? null : (
+                      <div className="border border-dashed border-white/10 rounded-lg p-3 text-center">
+                        <p className="text-xs text-iris-white/30 italic">Awaiting creative response…</p>
+                      </div>
                     )}
 
                     {/* STEP 3: Manager Review info (if reviewed) */}
@@ -1102,11 +1445,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           <Eye className="w-3.5 h-3.5" />
                           <span>Manager Review</span>
                           <span className="text-purple-400/50 font-normal">
-                            by {reviewer?.name || 'Manager'} · {rev.reviewedAt ? new Date(rev.reviewedAt).toLocaleDateString() : ''}
+                            by {reviewer?.name || 'Manager'} ·{' '}
+                            {rev.reviewedAt ? new Date(rev.reviewedAt).toLocaleDateString() : ''}
                           </span>
                         </div>
                         {rev.reviewNote && (
-                          <p className="text-sm text-iris-white/60 whitespace-pre-wrap mt-1" dir="auto">{rev.reviewNote}</p>
+                          <p className="text-sm text-iris-white/60 whitespace-pre-wrap mt-1" dir="auto">
+                            {rev.reviewNote}
+                          </p>
                         )}
                       </div>
                     )}
@@ -1119,7 +1465,9 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                           View Original Calendar Brief
                         </summary>
                         <div className="mt-2 bg-white/[0.02] border border-white/5 rounded-lg p-3">
-                          <p className="text-sm text-iris-white/50 whitespace-pre-wrap" dir="auto">{calItem.primaryBrief}</p>
+                          <p className="text-sm text-iris-white/50 whitespace-pre-wrap" dir="auto">
+                            {calItem.primaryBrief}
+                          </p>
                         </div>
                       </details>
                     )}
@@ -1154,8 +1502,12 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                                     updatedAt: now,
                                   });
                                 }
-                                const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
-                                const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+                                const creativeCalendar = creativeCalendars.find(
+                                  (cc) => cc.id === rev.creativeCalendarId,
+                                );
+                                const project = creativeCalendar
+                                  ? creativeProjects.find((p) => p.id === creativeCalendar.creativeProjectId)
+                                  : null;
                                 if (project?.assignedCopywriterId) {
                                   await notifyUsers({
                                     type: 'CALENDAR_REVISION_REJECTED',
@@ -1280,7 +1632,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     )}
                     {rev.status === 'SYNCED_TO_CALENDAR' && !rev.isArchived && (
                       <div className="text-xs text-cyan-400/70 italic flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Synced to calendar on {rev.syncedAt ? new Date(rev.syncedAt).toLocaleDateString() : 'N/A'}
+                        <Check className="w-3 h-3" /> Synced to calendar on{' '}
+                        {rev.syncedAt ? new Date(rev.syncedAt).toLocaleDateString() : 'N/A'}
                       </div>
                     )}
                   </div>
@@ -1294,10 +1647,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       {/* CREATE PROJECT MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
-          <div className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}>
+          <div
+            className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}
+          >
             <div className="p-5 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
               <h2 className="text-lg font-bold text-iris-white">New Creative Project</h2>
-              <button onClick={() => setShowCreateModal(false)} className="text-iris-white/70 hover:text-iris-white"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowCreateModal(false)} className="text-iris-white/70 hover:text-iris-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -1306,14 +1663,21 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <label className="block text-sm font-semibold text-iris-white/70 mb-1">Client *</label>
                 <select
                   value={selectedClientId}
-                  onChange={e => { setSelectedClientId(e.target.value); setSelectedStrategyId(''); }}
+                  onChange={(e) => {
+                    setSelectedClientId(e.target.value);
+                    setSelectedStrategyId('');
+                  }}
                   className={inputClass}
                   required
                 >
                   <option value="">Select Client</option>
-                  {clients.filter(c => !c.isArchived).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
+                  {clients
+                    .filter((c) => !c.isArchived)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -1323,7 +1687,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <input
                   type="month"
                   value={monthKey}
-                  onChange={e => setMonthKey(e.target.value)}
+                  onChange={(e) => setMonthKey(e.target.value)}
                   className={inputClass}
                   style={{ colorScheme: 'dark' }}
                 />
@@ -1339,12 +1703,14 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     <div className="space-y-2">
                       <select
                         value={selectedStrategyId}
-                        onChange={e => setSelectedStrategyId(e.target.value)}
+                        onChange={(e) => setSelectedStrategyId(e.target.value)}
                         className={inputClass}
                       >
                         <option value="">No strategy linked</option>
-                        {strategies.map(s => (
-                          <option key={s.id} value={s.id}>{s.monthLabel} — {s.title}</option>
+                        {strategies.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.monthLabel} — {s.title}
+                          </option>
                         ))}
                       </select>
                       <button
@@ -1378,7 +1744,12 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                       <span className="text-sm">Upload creative brief</span>
                     </div>
                   )}
-                  <input ref={briefInputRef} type="file" className="hidden" onChange={e => e.target.files && setBriefFile(e.target.files[0])} />
+                  <input
+                    ref={briefInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => e.target.files && setBriefFile(e.target.files[0])}
+                  />
                 </div>
               </div>
 
@@ -1387,13 +1758,16 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <label className="block text-sm font-semibold text-iris-white/70 mb-1">Assign Copywriter *</label>
                 <select
                   value={selectedCopywriterId}
-                  onChange={e => setSelectedCopywriterId(e.target.value)}
+                  onChange={(e) => setSelectedCopywriterId(e.target.value)}
                   className={inputClass}
                   required
                 >
                   <option value="">Select Copywriter</option>
-                  {copywriters.map(u => (
-                    <option key={u.id} value={u.id}>{u.name} — {u.role}{u.role !== 'Copywriter' ? ' ⚠️' : ''}</option>
+                  {copywriters.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} — {u.role}
+                      {u.role !== 'Copywriter' ? ' ⚠️' : ''}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1421,26 +1795,60 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       {/* INLINE STRATEGY CREATION MODAL */}
       {showStrategyModal && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
-          <div className={`${elevated} rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200`}>
+          <div
+            className={`${elevated} rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200`}
+          >
             <div className="p-5 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
               <h2 className="text-lg font-bold text-iris-white">Add Strategy</h2>
-              <button onClick={() => setShowStrategyModal(false)} className="text-iris-white/70 hover:text-iris-white"><X className="w-5 h-5" /></button>
+              <button onClick={() => setShowStrategyModal(false)} className="text-iris-white/70 hover:text-iris-white">
+                <X className="w-5 h-5" />
+              </button>
             </div>
             <form onSubmit={handleCreateStrategy} className="p-5 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-iris-white/70 mb-1">Month</label>
-                  <select value={strategyForm.month} onChange={e => setStrategyForm({ ...strategyForm, month: Number(e.target.value) })} className={inputClass}>
-                    {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m, i) => (
-                      <option key={i+1} value={i+1}>{m}</option>
+                  <select
+                    value={strategyForm.month}
+                    onChange={(e) => setStrategyForm({ ...strategyForm, month: Number(e.target.value) })}
+                    className={inputClass}
+                  >
+                    {[
+                      'January',
+                      'February',
+                      'March',
+                      'April',
+                      'May',
+                      'June',
+                      'July',
+                      'August',
+                      'September',
+                      'October',
+                      'November',
+                      'December',
+                    ].map((m, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {m}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-iris-white/70 mb-1">Year</label>
-                  <select value={strategyForm.year} onChange={e => setStrategyForm({ ...strategyForm, year: Number(e.target.value) })} className={inputClass}>
-                    {[new Date().getFullYear()-1, new Date().getFullYear(), new Date().getFullYear()+1, new Date().getFullYear()+2].map(y => (
-                      <option key={y} value={y}>{y}</option>
+                  <select
+                    value={strategyForm.year}
+                    onChange={(e) => setStrategyForm({ ...strategyForm, year: Number(e.target.value) })}
+                    className={inputClass}
+                  >
+                    {[
+                      new Date().getFullYear() - 1,
+                      new Date().getFullYear(),
+                      new Date().getFullYear() + 1,
+                      new Date().getFullYear() + 2,
+                    ].map((y) => (
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1452,7 +1860,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                   required
                   type="text"
                   value={strategyForm.title}
-                  onChange={e => setStrategyForm({ ...strategyForm, title: e.target.value })}
+                  onChange={(e) => setStrategyForm({ ...strategyForm, title: e.target.value })}
                   placeholder="e.g. Q1 Content Strategy"
                   className={inputClass}
                 />
@@ -1462,11 +1870,23 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <label className="block text-sm font-semibold text-iris-white/70 mb-2">Type</label>
                 <div className="flex gap-4">
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" value="file" checked={strategyForm.type === 'file'} onChange={() => setStrategyForm({ ...strategyForm, type: 'file' })} className="text-iris-red" />
+                    <input
+                      type="radio"
+                      value="file"
+                      checked={strategyForm.type === 'file'}
+                      onChange={() => setStrategyForm({ ...strategyForm, type: 'file' })}
+                      className="text-iris-red"
+                    />
                     <span className="text-sm text-iris-white">File Upload</span>
                   </label>
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="radio" value="link" checked={strategyForm.type === 'link'} onChange={() => setStrategyForm({ ...strategyForm, type: 'link' })} className="text-iris-red" />
+                    <input
+                      type="radio"
+                      value="link"
+                      checked={strategyForm.type === 'link'}
+                      onChange={() => setStrategyForm({ ...strategyForm, type: 'link' })}
+                      className="text-iris-red"
+                    />
                     <span className="text-sm text-iris-white">External Link</span>
                   </label>
                 </div>
@@ -1490,7 +1910,12 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         <span className="text-sm">Click to upload file</span>
                       </div>
                     )}
-                    <input ref={strategyFileRef} type="file" className="hidden" onChange={e => e.target.files && setStrategyFile(e.target.files[0])} />
+                    <input
+                      ref={strategyFileRef}
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => e.target.files && setStrategyFile(e.target.files[0])}
+                    />
                   </div>
                 </div>
               ) : (
@@ -1500,7 +1925,7 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     required
                     type="url"
                     value={strategyForm.url}
-                    onChange={e => setStrategyForm({ ...strategyForm, url: e.target.value })}
+                    onChange={(e) => setStrategyForm({ ...strategyForm, url: e.target.value })}
                     placeholder="https://"
                     className={inputClass}
                   />
@@ -1512,16 +1937,24 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 <textarea
                   rows={3}
                   value={strategyForm.notes}
-                  onChange={e => setStrategyForm({ ...strategyForm, notes: e.target.value })}
+                  onChange={(e) => setStrategyForm({ ...strategyForm, notes: e.target.value })}
                   className={`${inputClass} min-h-[80px]`}
                 />
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowStrategyModal(false)} className="flex-1 px-4 py-2 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setShowStrategyModal(false)}
+                  className="flex-1 px-4 py-2 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={savingStrategy} className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg font-medium hover:brightness-110 disabled:opacity-50 transition-all">
+                <button
+                  type="submit"
+                  disabled={savingStrategy}
+                  className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2 rounded-lg font-medium hover:brightness-110 disabled:opacity-50 transition-all"
+                >
                   {savingStrategy ? 'Saving...' : 'Save Strategy'}
                 </button>
               </div>
@@ -1530,13 +1963,167 @@ const ManagerView: React.FC<ManagerViewProps> = ({
         </div>
       )}
 
+      {/* EDIT PROJECT MODAL */}
+      {editingProject && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
+          <div
+            className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}
+          >
+            <div className="p-5 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
+              <h2 className="text-lg font-bold text-iris-white">Edit Creative Project</h2>
+              <button
+                onClick={() => {
+                  setEditingProject(null);
+                  setSelectedClientId('');
+                  setSelectedStrategyId('');
+                  setSelectedCopywriterId('');
+                  setBriefFile(null);
+                }}
+                className="text-iris-white/70 hover:text-iris-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Client Select */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Client *</label>
+                <select
+                  value={selectedClientId}
+                  onChange={(e) => {
+                    setSelectedClientId(e.target.value);
+                    setSelectedStrategyId('');
+                  }}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Select Client</option>
+                  {clients
+                    .filter((c) => !c.isArchived)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Month Key */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Calendar Month *</label>
+                <input
+                  type="month"
+                  value={monthKey}
+                  onChange={(e) => setMonthKey(e.target.value)}
+                  className={inputClass}
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+
+              {/* Strategy Selection */}
+              {selectedClientId && (
+                <div>
+                  <label className="block text-sm font-semibold text-iris-white/70 mb-1">Marketing Strategy</label>
+                  {loadingStrategies ? (
+                    <p className="text-sm text-iris-white/50">Loading strategies...</p>
+                  ) : (
+                    <select
+                      value={selectedStrategyId}
+                      onChange={(e) => setSelectedStrategyId(e.target.value)}
+                      className={inputClass}
+                    >
+                      <option value="">No strategy linked</option>
+                      {strategies.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.monthLabel} — {s.title}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {/* Brief Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Creative Brief</label>
+                {editingProject.briefFile && !briefFile && (
+                  <p className="text-xs text-iris-white/50 mb-2">Current: {editingProject.briefFile.name}</p>
+                )}
+                <div
+                  onClick={() => briefInputRef.current?.click()}
+                  className="border-2 border-dashed border-iris-white/20 rounded-lg p-4 text-center cursor-pointer hover:bg-iris-white/5 transition-colors"
+                >
+                  {briefFile ? (
+                    <div className="flex items-center justify-center gap-2 text-iris-red">
+                      <FileText className="w-5 h-5" />
+                      <span className="text-sm font-medium">{briefFile.name}</span>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center text-iris-white/50">
+                      <Upload className="w-6 h-6 mb-1" />
+                      <span className="text-sm">
+                        {editingProject.briefFile ? 'Upload new brief (optional)' : 'Upload creative brief'}
+                      </span>
+                    </div>
+                  )}
+                  <input
+                    ref={briefInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => e.target.files && setBriefFile(e.target.files[0])}
+                  />
+                </div>
+              </div>
+
+              {/* Assign Copywriter */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Assign Copywriter *</label>
+                <select
+                  value={selectedCopywriterId}
+                  onChange={(e) => setSelectedCopywriterId(e.target.value)}
+                  className={inputClass}
+                  required
+                >
+                  <option value="">Select Copywriter</option>
+                  {copywriters.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} — {u.role}
+                      {u.role !== 'Copywriter' ? ' ⚠️' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-iris-white/10 flex gap-3">
+              <button
+                onClick={() => {
+                  setEditingProject(null);
+                  setSelectedClientId('');
+                  setSelectedStrategyId('');
+                  setSelectedCopywriterId('');
+                  setBriefFile(null);
+                }}
+                className="flex-1 px-4 py-2.5 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditProject}
+                disabled={saving || !selectedClientId || !selectedCopywriterId}
+                className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2.5 rounded-lg font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Drive Preview Modal */}
       {drivePreview && (
-        <DrivePreviewModal
-          url={drivePreview.url}
-          title={drivePreview.title}
-          onClose={() => setDrivePreview(null)}
-        />
+        <DrivePreviewModal url={drivePreview.url} title={drivePreview.title} onClose={() => setDrivePreview(null)} />
       )}
     </div>
   );
