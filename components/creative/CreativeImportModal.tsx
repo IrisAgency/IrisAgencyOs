@@ -152,7 +152,11 @@ const CreativeImportModal: React.FC<CreativeImportModalProps> = ({
             <p className="text-sm text-slate-400">
               Upload an Excel file (<code>.xlsx</code>, <code>.xls</code>) or <code>.csv</code> with columns:
               <span className="font-medium text-white ml-1">
-                Type, Title, Main Idea, Brief Description, Notes, Publish Date, Reference Links, Is Carousel
+                Type, Title (optional), Main Idea, Brief Description, Notes, Publish Date, Reference Links, Is Carousel
+              </span>
+              <br />
+              <span className="text-slate-500">
+                If Title is empty, it will be auto-generated (e.g. Video 1, Photo 2, Motion 3).
               </span>
             </p>
 

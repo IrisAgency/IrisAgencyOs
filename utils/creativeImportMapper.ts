@@ -80,7 +80,8 @@ export function mapCreativeImportRows(headers: string[], rows: ExcelRawRow[]): C
   const linksCol = findHeader(headers, LINKS_ALIASES);
   const carouselCol = findHeader(headers, CAROUSEL_ALIASES);
 
-  return rows.map((raw) => ({
+  // First pass: map raw values
+  const mapped = rows.map((raw) => ({
     type: normaliseType(typeCol ? raw[typeCol] : null),
     title: String(titleCol ? (raw[titleCol] ?? '') : '').trim(),
     mainIdea: String(mainIdeaCol ? (raw[mainIdeaCol] ?? '') : '').trim(),
@@ -90,4 +91,19 @@ export function mapCreativeImportRows(headers: string[], rows: ExcelRawRow[]): C
     referenceLinks: parseLinks(linksCol ? raw[linksCol] : null),
     isCarousel: parseBool(carouselCol ? raw[carouselCol] : null),
   }));
+
+  // Second pass: auto-generate titles for rows without one, using per-type sequence numbers
+  const typeCounters: Record<string, number> = {};
+  const TYPE_LABELS: Record<string, string> = { VIDEO: 'Video', PHOTO: 'Photo', MOTION: 'Motion' };
+
+  for (const row of mapped) {
+    const key = row.type || 'UNKNOWN';
+    typeCounters[key] = (typeCounters[key] || 0) + 1;
+    if (!row.title) {
+      const label = TYPE_LABELS[key] || key;
+      row.title = `${label} ${typeCounters[key]}`;
+    }
+  }
+
+  return mapped;
 }

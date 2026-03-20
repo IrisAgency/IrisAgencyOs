@@ -36,16 +36,6 @@ export function validateCreativeImportRows(rows: CreativeImportRow[]): CreativeI
       });
     }
 
-    // Title
-    if (!row.title) {
-      issues.push({
-        row: idx,
-        field: 'title',
-        message: 'Title is required',
-        severity: 'error',
-      });
-    }
-
     // Publish Date
     if (!row.publishAt) {
       issues.push({
