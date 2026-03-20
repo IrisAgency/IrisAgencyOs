@@ -16,6 +16,9 @@ import type {
   ClientMarketingStrategy,
   NotificationType,
   CreativeRejectionReference,
+  CalendarContentType,
+  CalendarReferenceLink,
+  CalendarReferenceFile,
 } from '../../types';
 import { PERMISSIONS } from '../../lib/permissions';
 import SwipeReviewCard from './SwipeReviewCard';
@@ -55,6 +58,11 @@ import {
   Layers,
   Pencil,
   Trash2,
+  Video,
+  Image,
+  Clapperboard,
+  Edit2,
+  Save,
 } from 'lucide-react';
 
 interface ManagerViewProps {
@@ -79,6 +87,12 @@ interface ManagerViewProps {
   ) => void;
   onUploadFile?: (file: AgencyFile) => Promise<void>;
 }
+
+const TYPE_OPTIONS: { value: CalendarContentType; label: string; icon: React.ElementType; color: string }[] = [
+  { value: 'VIDEO', label: 'Video', icon: Video, color: 'bg-purple-500/20 text-purple-400 border-purple-400/30' },
+  { value: 'PHOTO', label: 'Photo', icon: Image, color: 'bg-blue-500/20 text-blue-400 border-blue-400/30' },
+  { value: 'MOTION', label: 'Motion', icon: Clapperboard, color: 'bg-amber-500/20 text-amber-400 border-amber-400/30' },
+];
 
 const STATUS_COLORS: Record<string, string> = {
   DRAFT: 'bg-slate-500/20 text-slate-400 border-slate-400/30',
@@ -131,6 +145,29 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   const [savingStrategy, setSavingStrategy] = useState(false);
   const [editingProject, setEditingProject] = useState<CreativeProject | null>(null);
   const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
+
+  // Calendar item CRUD state
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [showItemModal, setShowItemModal] = useState(false);
+  const [editingCalItem, setEditingCalItem] = useState<CreativeCalendarItem | null>(null);
+  const [itemTargetCalendarId, setItemTargetCalendarId] = useState<string | null>(null);
+  const [itemTargetProjectId, setItemTargetProjectId] = useState<string | null>(null);
+  const [savingItem, setSavingItem] = useState(false);
+  const [itemForm, setItemForm] = useState({
+    type: 'VIDEO' as CalendarContentType,
+    title: '',
+    mainIdea: '',
+    briefDescription: '',
+    notes: '',
+    publishAt: '',
+    isCarousel: false,
+    referenceLinks: [] as CalendarReferenceLink[],
+    referenceFiles: [] as CalendarReferenceFile[],
+  });
+  const [linkTitle, setLinkTitle] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [uploadingRef, setUploadingRef] = useState(false);
+  const refFileInputRef = useRef<HTMLInputElement>(null);
 
   // Create Project Form
   const [selectedClientId, setSelectedClientId] = useState('');
@@ -649,6 +686,156 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   };
 
   // ============================================
+  // CALENDAR ITEM CRUD
+  // ============================================
+  const openItemModal = (calendarId: string, projectId: string, item?: CreativeCalendarItem) => {
+    setItemTargetCalendarId(calendarId);
+    setItemTargetProjectId(projectId);
+    if (item) {
+      setEditingCalItem(item);
+      setItemForm({
+        type: item.type,
+        title: item.title,
+        mainIdea: item.mainIdea,
+        briefDescription: item.briefDescription,
+        notes: item.notes,
+        publishAt: item.publishAt || '',
+        isCarousel: item.isCarousel || false,
+        referenceLinks: item.referenceLinks || [],
+        referenceFiles: item.referenceFiles || [],
+      });
+    } else {
+      setEditingCalItem(null);
+      setItemForm({
+        type: 'VIDEO',
+        title: '',
+        mainIdea: '',
+        briefDescription: '',
+        notes: '',
+        publishAt: '',
+        isCarousel: false,
+        referenceLinks: [],
+        referenceFiles: [],
+      });
+    }
+    setLinkTitle('');
+    setLinkUrl('');
+    setShowItemModal(true);
+  };
+
+  const handleSaveItem = async () => {
+    if (!itemTargetCalendarId || !currentUser || !itemForm.title.trim()) return;
+    setSavingItem(true);
+    try {
+      const now = new Date().toISOString();
+      if (editingCalItem) {
+        await updateDoc(doc(db, 'creative_calendar_items', editingCalItem.id), {
+          type: itemForm.type,
+          title: itemForm.title.trim(),
+          mainIdea: itemForm.mainIdea.trim(),
+          briefDescription: itemForm.briefDescription.trim(),
+          notes: itemForm.notes.trim(),
+          publishAt: itemForm.publishAt,
+          isCarousel: itemForm.isCarousel,
+          referenceLinks: itemForm.referenceLinks,
+          referenceFiles: itemForm.referenceFiles,
+          updatedAt: now,
+        });
+      } else {
+        await addDoc(collection(db, 'creative_calendar_items'), {
+          creativeCalendarId: itemTargetCalendarId,
+          type: itemForm.type,
+          title: itemForm.title.trim(),
+          mainIdea: itemForm.mainIdea.trim(),
+          briefDescription: itemForm.briefDescription.trim(),
+          notes: itemForm.notes.trim(),
+          publishAt: itemForm.publishAt,
+          isCarousel: itemForm.isCarousel,
+          referenceLinks: itemForm.referenceLinks,
+          referenceFiles: itemForm.referenceFiles,
+          reviewStatus: 'PENDING',
+          rejectionNote: null,
+          rejectionReferences: [],
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+      setShowItemModal(false);
+      setEditingCalItem(null);
+    } catch (error) {
+      console.error('Error saving item:', error);
+      alert('Error saving item. Please try again.');
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Delete this calendar item?')) return;
+    try {
+      await deleteDoc(doc(db, 'creative_calendar_items', itemId));
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
+  const addReferenceLink = () => {
+    if (!linkUrl.trim()) return;
+    setItemForm((prev) => ({
+      ...prev,
+      referenceLinks: [...prev.referenceLinks, { title: linkTitle.trim() || linkUrl.trim(), url: linkUrl.trim() }],
+    }));
+    setLinkTitle('');
+    setLinkUrl('');
+  };
+
+  const removeReferenceLink = (index: number) => {
+    setItemForm((prev) => ({
+      ...prev,
+      referenceLinks: prev.referenceLinks.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleRefFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !itemTargetProjectId || !currentUser) return;
+    setUploadingRef(true);
+    try {
+      const project = creativeProjects.find((p) => p.id === itemTargetProjectId);
+      const timestamp = Date.now();
+      const storagePath = `clients/${project?.clientId}/creative/${itemTargetProjectId}/references/${timestamp}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+      setItemForm((prev) => ({
+        ...prev,
+        referenceFiles: [
+          ...prev.referenceFiles,
+          {
+            fileName: file.name,
+            storagePath,
+            downloadURL,
+            uploadedBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }));
+    } catch (error) {
+      console.error('Error uploading reference file:', error);
+    } finally {
+      setUploadingRef(false);
+      if (refFileInputRef.current) refFileInputRef.current.value = '';
+    }
+  };
+
+  const removeReferenceFile = (index: number) => {
+    setItemForm((prev) => ({
+      ...prev,
+      referenceFiles: prev.referenceFiles.filter((_, i) => i !== index),
+    }));
+  };
+
+  // ============================================
   // ARCHIVE
   // ============================================
   const handleArchive = async (projectId: string) => {
@@ -954,7 +1141,19 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-iris-white">{client?.name || 'Unknown Client'}</h3>
+                          <button
+                            onClick={() => setExpandedProjectId(expandedProjectId === project.id ? null : project.id)}
+                            className="flex items-center gap-1.5 group"
+                          >
+                            {expandedProjectId === project.id ? (
+                              <ChevronDown className="w-4 h-4 text-iris-white/50" />
+                            ) : (
+                              <ChevronRight className="w-4 h-4 text-iris-white/50" />
+                            )}
+                            <h3 className="font-bold text-iris-white group-hover:text-iris-red transition-colors">
+                              {client?.name || 'Unknown Client'}
+                            </h3>
+                          </button>
                           <span className={`${pill} ${STATUS_COLORS[project.status] || ''}`}>
                             {project.status.replace(/_/g, ' ')}
                           </span>
@@ -1033,6 +1232,118 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         )}
                       </div>
                     </div>
+
+                    {/* Expanded: Calendar Items */}
+                    {expandedProjectId === project.id &&
+                      latestCalendar &&
+                      (() => {
+                        const projectItems = creativeCalendarItems.filter(
+                          (i) => i.creativeCalendarId === latestCalendar.id,
+                        );
+                        const calNotApproved = latestCalendar.status !== 'APPROVED';
+                        return (
+                          <div className="mt-3 pt-3 border-t border-iris-white/10 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-semibold text-iris-white/70">
+                                Calendar Items ({projectItems.length})
+                              </span>
+                              {calNotApproved && checkPermission(PERMISSIONS.CREATIVE.MANAGE) && (
+                                <button
+                                  onClick={() => openItemModal(latestCalendar.id, project.id)}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg text-xs font-medium hover:brightness-110 transition-all"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  Add Item
+                                </button>
+                              )}
+                            </div>
+                            {projectItems.length === 0 ? (
+                              <p className="text-sm text-iris-white/40 text-center py-4">No items yet.</p>
+                            ) : (
+                              <div className="grid gap-2">
+                                {projectItems.map((item) => {
+                                  const typeOpt = TYPE_OPTIONS.find((t) => t.value === item.type);
+                                  const TypeIcon = typeOpt?.icon || FileText;
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      className={`${elevated} rounded-lg p-3 space-y-1.5 ${
+                                        item.reviewStatus === 'REJECTED'
+                                          ? 'border-rose-500/30 bg-rose-500/5'
+                                          : item.reviewStatus === 'APPROVED'
+                                            ? 'border-emerald-500/30'
+                                            : ''
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium text-sm text-iris-white">{item.title}</span>
+                                            <span className={`${pill} text-[10px] ${typeOpt?.color || ''}`}>
+                                              <TypeIcon className="w-3 h-3" />
+                                              {item.type}
+                                            </span>
+                                            {item.isCarousel && (
+                                              <span
+                                                className={`${pill} text-[10px] bg-indigo-500/20 text-indigo-400 border-indigo-400/30`}
+                                              >
+                                                <Layers className="w-3 h-3" />
+                                                Carousel
+                                              </span>
+                                            )}
+                                            {item.reviewStatus !== 'PENDING' && (
+                                              <span
+                                                className={`${pill} text-[10px] ${
+                                                  item.reviewStatus === 'APPROVED'
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-400/30'
+                                                    : item.reviewStatus === 'REJECTED'
+                                                      ? 'bg-rose-500/20 text-rose-400 border-rose-400/30'
+                                                      : 'bg-slate-500/20 text-slate-400 border-slate-400/30'
+                                                }`}
+                                              >
+                                                {item.reviewStatus}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {item.publishAt && (
+                                            <span className="text-[11px] text-iris-white/40 flex items-center gap-1 mt-0.5">
+                                              <Calendar className="w-3 h-3" />
+                                              {new Date(item.publishAt).toLocaleDateString()}
+                                            </span>
+                                          )}
+                                          {item.mainIdea && (
+                                            <p className="text-xs text-iris-white/50 mt-1 line-clamp-1">
+                                              {item.mainIdea}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {calNotApproved && checkPermission(PERMISSIONS.CREATIVE.MANAGE) && (
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              onClick={() => openItemModal(latestCalendar.id, project.id, item)}
+                                              className="p-1.5 text-iris-white/50 hover:text-blue-400 rounded-lg hover:bg-iris-white/5 transition-colors"
+                                              title="Edit Item"
+                                            >
+                                              <Edit2 className="w-3.5 h-3.5" />
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteItem(item.id)}
+                                              className="p-1.5 text-iris-white/50 hover:text-rose-400 rounded-lg hover:bg-iris-white/5 transition-colors"
+                                              title="Delete Item"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
                   </div>
                 );
               })}
@@ -2115,6 +2426,230 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                 className="flex-1 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2.5 rounded-lg font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CALENDAR ITEM MODAL */}
+      {showItemModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
+          <div
+            className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}
+          >
+            <div className="p-5 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
+              <h2 className="text-lg font-bold text-iris-white">
+                {editingCalItem ? 'Edit Item' : 'Add Calendar Item'}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowItemModal(false);
+                  setEditingCalItem(null);
+                }}
+                className="text-iris-white/70 hover:text-iris-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Type */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-2">Type *</label>
+                <div className="flex gap-2">
+                  {TYPE_OPTIONS.map((t) => (
+                    <button
+                      key={t.value}
+                      onClick={() => setItemForm((prev) => ({ ...prev, type: t.value }))}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                        itemForm.type === t.value
+                          ? t.color + ' ring-1'
+                          : 'border-iris-white/10 text-iris-white/50 hover:bg-iris-white/5'
+                      }`}
+                    >
+                      <t.icon className="w-4 h-4" />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Carousel Toggle */}
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={itemForm.isCarousel}
+                    onChange={(e) => setItemForm((prev) => ({ ...prev, isCarousel: e.target.checked }))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 rounded-full bg-iris-white/10 border border-iris-white/10 peer-checked:bg-indigo-500 peer-checked:border-indigo-400 transition-all" />
+                  <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-iris-white/50 peer-checked:bg-white peer-checked:translate-x-4 transition-all" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <span className="text-sm font-medium text-iris-white/70 group-hover:text-iris-white transition-colors">
+                    Carousel Post
+                  </span>
+                </div>
+              </label>
+
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={itemForm.title}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, title: e.target.value }))}
+                  placeholder="Content title"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Publish Date */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Publish Date *</label>
+                <input
+                  type="date"
+                  value={itemForm.publishAt}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, publishAt: e.target.value }))}
+                  className={inputClass}
+                  style={{ colorScheme: 'dark' }}
+                />
+              </div>
+
+              {/* Main Idea */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Main Idea</label>
+                <textarea
+                  rows={2}
+                  value={itemForm.mainIdea}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, mainIdea: e.target.value }))}
+                  placeholder="The core idea behind this content..."
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Brief Description */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Brief Description</label>
+                <textarea
+                  rows={3}
+                  value={itemForm.briefDescription}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, briefDescription: e.target.value }))}
+                  placeholder="Detailed description..."
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Notes</label>
+                <textarea
+                  rows={2}
+                  value={itemForm.notes}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Additional notes..."
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Reference Links */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Reference Links</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={linkTitle}
+                    onChange={(e) => setLinkTitle(e.target.value)}
+                    placeholder="Title (optional)"
+                    className={`${inputClass} flex-[0.4]`}
+                  />
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    placeholder="https://..."
+                    className={`${inputClass} flex-[0.6]`}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addReferenceLink())}
+                  />
+                  <button
+                    type="button"
+                    onClick={addReferenceLink}
+                    disabled={!linkUrl.trim()}
+                    className="px-3 py-2 bg-iris-white/10 rounded-lg hover:bg-iris-white/20 disabled:opacity-30 transition-colors"
+                  >
+                    <Plus className="w-4 h-4 text-iris-white" />
+                  </button>
+                </div>
+                {itemForm.referenceLinks.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {itemForm.referenceLinks.map((link, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-iris-black/60 rounded-lg px-3 py-1.5 text-sm">
+                        <LinkIcon className="w-3 h-3 text-blue-400 shrink-0" />
+                        <span className="flex-1 truncate text-iris-white/70">{link.title || link.url}</span>
+                        <button
+                          onClick={() => removeReferenceLink(i)}
+                          className="text-iris-white/40 hover:text-rose-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Reference Files */}
+              <div>
+                <label className="block text-sm font-semibold text-iris-white/70 mb-1">Reference Files</label>
+                <button
+                  type="button"
+                  onClick={() => refFileInputRef.current?.click()}
+                  disabled={uploadingRef}
+                  className="flex items-center gap-2 px-3 py-2 border border-dashed border-iris-white/20 rounded-lg text-sm text-iris-white/50 hover:bg-iris-white/5 transition-colors w-full justify-center"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploadingRef ? 'Uploading...' : 'Upload reference'}
+                </button>
+                <input ref={refFileInputRef} type="file" className="hidden" onChange={handleRefFileUpload} />
+                {itemForm.referenceFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {itemForm.referenceFiles.map((f, i) => (
+                      <div key={i} className="flex items-center gap-2 bg-iris-black/60 rounded-lg px-3 py-1.5 text-sm">
+                        <FileText className="w-3 h-3 text-iris-red shrink-0" />
+                        <span className="flex-1 truncate text-iris-white/70">{f.fileName}</span>
+                        <button
+                          onClick={() => removeReferenceFile(i)}
+                          className="text-iris-white/40 hover:text-rose-400"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5 border-t border-iris-white/10 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowItemModal(false);
+                  setEditingCalItem(null);
+                }}
+                className="flex-1 px-4 py-2.5 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveItem}
+                disabled={savingItem || !itemForm.title.trim()}
+                className="flex-1 flex items-center justify-center gap-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-4 py-2.5 rounded-lg font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+              >
+                <Save className="w-4 h-4" />
+                {savingItem ? 'Saving...' : editingCalItem ? 'Update Item' : 'Add Item'}
               </button>
             </div>
           </div>
