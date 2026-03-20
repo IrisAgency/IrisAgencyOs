@@ -420,8 +420,15 @@ const CalendarHub: React.FC = () => {
     setIsLoading(true);
     try {
       const file = item.referenceFiles[fileIndex];
-      const storageRef = ref(storage, file.storagePath);
-      await deleteObject(storageRef);
+
+      // Try to delete from Storage, but don't block if the object is already gone
+      try {
+        const storageRef = ref(storage, file.storagePath);
+        await deleteObject(storageRef);
+      } catch (storageErr: unknown) {
+        const code = (storageErr as { code?: string })?.code;
+        if (code !== 'storage/object-not-found') throw storageErr;
+      }
 
       const updatedFiles = item.referenceFiles.filter((_, i) => i !== fileIndex);
       await updateDoc(doc(db, 'calendar_items', item.id), {
@@ -576,12 +583,17 @@ const CalendarHub: React.FC = () => {
 
   const openEditItem = (item: CalendarItem) => {
     setEditingItem(item);
+    // Ensure publishAt has datetime-local format (YYYY-MM-DDThh:mm)
+    let publishAt = item.publishAt || '';
+    if (publishAt && !publishAt.includes('T')) {
+      publishAt = publishAt + 'T00:00';
+    }
     setItemForm({
       type: item.type,
       primaryBrief: item.primaryBrief,
       notes: item.notes,
       referenceLinks: item.referenceLinks,
-      publishAt: item.publishAt,
+      publishAt,
       isCarousel: item.isCarousel || false,
     });
     setUploadingFiles([]);
