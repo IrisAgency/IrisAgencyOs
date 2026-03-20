@@ -4,18 +4,50 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../lib/firebase';
 import { notifyUsers } from '../../services/notificationService';
 import type {
-  CreativeProject, CreativeCalendar, CreativeCalendarItem,
-  CalendarItem, CalendarItemRevision, CalendarRevisionStatus,
-  Client, User, AgencyFile, ClientMarketingStrategy,
-  CalendarContentType, CalendarReferenceLink, CalendarReferenceFile,
-  NotificationType, CreativeRejectionReference,
+  CreativeProject,
+  CreativeCalendar,
+  CreativeCalendarItem,
+  CalendarItem,
+  CalendarItemRevision,
+  CalendarRevisionStatus,
+  Client,
+  User,
+  AgencyFile,
+  ClientMarketingStrategy,
+  CalendarContentType,
+  CalendarReferenceLink,
+  CalendarReferenceFile,
+  NotificationType,
+  CreativeRejectionReference,
 } from '../../types';
 import {
-  FileText, Upload, Plus, Trash2, Edit2, Save, Send, ExternalLink,
-  Link as LinkIcon, Video, Image, Clapperboard, Calendar, Eye,
-  AlertTriangle, CheckCircle2, Clock, RotateCcw, X, ChevronDown, ChevronRight,
-  Info, MessageSquare, Layers
+  FileText,
+  Upload,
+  Plus,
+  Trash2,
+  Edit2,
+  Save,
+  Send,
+  ExternalLink,
+  Link as LinkIcon,
+  Video,
+  Image,
+  Clapperboard,
+  Calendar,
+  Eye,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  RotateCcw,
+  X,
+  ChevronDown,
+  ChevronRight,
+  Info,
+  MessageSquare,
+  Layers,
+  FileSpreadsheet,
 } from 'lucide-react';
+import CreativeImportModal from './CreativeImportModal';
 
 interface CopywriterViewProps {
   creativeProjects: CreativeProject[];
@@ -28,7 +60,14 @@ interface CopywriterViewProps {
   files: AgencyFile[];
   currentUser: User | null;
   checkPermission: (permission: string) => boolean;
-  onNotify: (type: NotificationType, title: string, message: string, recipientIds: string[], entityId?: string, actionUrl?: string) => void;
+  onNotify: (
+    type: NotificationType,
+    title: string,
+    message: string,
+    recipientIds: string[],
+    entityId?: string,
+    actionUrl?: string,
+  ) => void;
 }
 
 const TYPE_OPTIONS: { value: CalendarContentType; label: string; icon: React.ElementType; color: string }[] = [
@@ -63,11 +102,14 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
 }) => {
   const surface = 'bg-[#0a0a0a] backdrop-blur-sm border border-white/10 text-white';
   const elevated = 'bg-[#0f0f0f] backdrop-blur-sm border border-white/10 text-white';
-  const inputClass = 'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
-  const pill = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
+  const inputClass =
+    'w-full px-3 py-2 rounded-lg bg-[#0a0a0a] border border-white/10 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-iris-red focus:border-iris-red/50';
+  const pill =
+    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold uppercase tracking-wide border';
 
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showItemModal, setShowItemModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingItem, setEditingItem] = useState<CreativeCalendarItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -93,16 +135,14 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   const refFileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter to assigned projects
-  const myProjects = creativeProjects.filter(
-    p => p.assignedCopywriterId === currentUser?.id && !p.isArchived
-  );
+  const myProjects = creativeProjects.filter((p) => p.assignedCopywriterId === currentUser?.id && !p.isArchived);
 
-  const selectedProject = myProjects.find(p => p.id === selectedProjectId);
+  const selectedProject = myProjects.find((p) => p.id === selectedProjectId);
   const selectedCalendar = selectedProject
-    ? creativeCalendars.find(c => c.creativeProjectId === selectedProject.id)
+    ? creativeCalendars.find((c) => c.creativeProjectId === selectedProject.id)
     : null;
   const calendarItems = selectedCalendar
-    ? creativeCalendarItems.filter(i => i.creativeCalendarId === selectedCalendar.id)
+    ? creativeCalendarItems.filter((i) => i.creativeCalendarId === selectedCalendar.id)
     : [];
 
   // Auto-select first project
@@ -242,7 +282,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   // ============================================
   const addReferenceLink = () => {
     if (!linkUrl.trim()) return;
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
       referenceLinks: [...prev.referenceLinks, { title: linkTitle.trim() || linkUrl.trim(), url: linkUrl.trim() }],
     }));
@@ -251,7 +291,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   };
 
   const removeReferenceLink = (index: number) => {
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
       referenceLinks: prev.referenceLinks.filter((_, i) => i !== index),
     }));
@@ -269,15 +309,18 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
-      setItemForm(prev => ({
+      setItemForm((prev) => ({
         ...prev,
-        referenceFiles: [...prev.referenceFiles, {
-          fileName: file.name,
-          storagePath,
-          downloadURL,
-          uploadedBy: currentUser.id,
-          createdAt: new Date().toISOString(),
-        }],
+        referenceFiles: [
+          ...prev.referenceFiles,
+          {
+            fileName: file.name,
+            storagePath,
+            downloadURL,
+            uploadedBy: currentUser.id,
+            createdAt: new Date().toISOString(),
+          },
+        ],
       }));
     } catch (error) {
       console.error('Error uploading reference file:', error);
@@ -288,7 +331,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
   };
 
   const removeReferenceFile = (index: number) => {
-    setItemForm(prev => ({
+    setItemForm((prev) => ({
       ...prev,
       referenceFiles: prev.referenceFiles.filter((_, i) => i !== index),
     }));
@@ -326,8 +369,14 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         entityId: selectedProject.id,
         sendPush: true,
         createdBy: currentUser.id,
-      }).catch(err => console.warn('Notification failed (non-critical):', err));
-      onNotify('CREATIVE_SUBMITTED_FOR_REVIEW', 'Calendar Submitted', 'A creative calendar was submitted for review', [selectedProject.createdBy], selectedProject.id);
+      }).catch((err) => console.warn('Notification failed (non-critical):', err));
+      onNotify(
+        'CREATIVE_SUBMITTED_FOR_REVIEW',
+        'Calendar Submitted',
+        'A creative calendar was submitted for review',
+        [selectedProject.createdBy],
+        selectedProject.id,
+      );
     } catch (error) {
       console.error('Error submitting for review:', error);
     } finally {
@@ -359,8 +408,14 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
         entityId: selectedProject.id,
         sendPush: true,
         createdBy: currentUser.id,
-      }).catch(err => console.warn('Notification failed (non-critical):', err));
-      onNotify('CREATIVE_SUBMITTED_FOR_REVIEW', 'Calendar Resubmitted', 'A revised creative calendar was resubmitted', [selectedProject.createdBy], selectedProject.id);
+      }).catch((err) => console.warn('Notification failed (non-critical):', err));
+      onNotify(
+        'CREATIVE_SUBMITTED_FOR_REVIEW',
+        'Calendar Resubmitted',
+        'A revised creative calendar was resubmitted',
+        [selectedProject.createdBy],
+        selectedProject.id,
+      );
     } catch (error) {
       console.error('Error resubmitting:', error);
     } finally {
@@ -374,7 +429,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
 
   // Pre-compute ALL pending revisions in the Creative department (visible to any team member)
   const allPendingRevisions = calendarItemRevisions.filter(
-    r => r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION'
+    (r) => r.status === 'REVISION_REQUESTED' || r.status === 'IN_CREATIVE_REVISION',
   );
 
   if (myProjects.length === 0) {
@@ -409,7 +464,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
     );
   }
 
-  const client = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
+  const client = selectedProject ? clients.find((c) => c.id === selectedProject.clientId) : null;
 
   return (
     <div className="space-y-4">
@@ -417,19 +472,23 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
       {myProjects.length > 1 && (
         <div className={`${surface} rounded-xl p-3`}>
           <div className="flex gap-2 overflow-x-auto">
-            {myProjects.map(p => {
-              const cl = clients.find(c => c.id === p.clientId);
+            {myProjects.map((p) => {
+              const cl = clients.find((c) => c.id === p.clientId);
               const isActive = p.id === selectedProjectId;
               return (
                 <button
                   key={p.id}
                   onClick={() => setSelectedProjectId(p.id)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
-                    isActive ? 'bg-iris-red text-white' : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
+                    isActive
+                      ? 'bg-iris-red text-white'
+                      : 'text-iris-white/60 hover:text-iris-white hover:bg-iris-white/5'
                   }`}
                 >
                   {cl?.name || 'Client'}
-                  <span className={`ml-2 ${pill} text-[10px] ${STATUS_COLORS[p.status]}`}>{p.status.replace(/_/g, ' ')}</span>
+                  <span className={`ml-2 ${pill} text-[10px] ${STATUS_COLORS[p.status]}`}>
+                    {p.status.replace(/_/g, ' ')}
+                  </span>
                 </button>
               );
             })}
@@ -488,7 +547,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
             <div className="flex flex-wrap gap-3">
               {strategy && (
                 <a
-                  href={strategy.type === 'link' ? (strategy.url || '#') : '#'}
+                  href={strategy.type === 'link' ? strategy.url || '#' : '#'}
                   target={strategy.type === 'link' ? '_blank' : undefined}
                   rel="noreferrer"
                   className="flex items-center gap-2 px-3 py-2 bg-iris-white/5 rounded-lg text-sm text-iris-white/80 hover:bg-iris-white/10 transition-colors"
@@ -520,16 +579,27 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-iris-white">Calendar Items</h3>
-              <span className="text-sm text-iris-white/50">({calendarItems.length} items) • {selectedCalendar.monthKey}</span>
+              <span className="text-sm text-iris-white/50">
+                ({calendarItems.length} items) • {selectedCalendar.monthKey}
+              </span>
             </div>
             {!isReadOnly && !isUnderReview && (
-              <button
-                onClick={() => openItemModal()}
-                className="flex items-center gap-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-3 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                Add Item
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowImportModal(true)}
+                  className="flex items-center gap-2 bg-iris-blue/20 text-iris-blue border border-iris-blue/30 px-3 py-2 rounded-lg text-sm font-medium hover:bg-iris-blue/30 transition-all"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  Import Excel
+                </button>
+                <button
+                  onClick={() => openItemModal()}
+                  className="flex items-center gap-2 bg-gradient-to-br from-iris-red to-iris-red/80 text-white px-3 py-2 rounded-lg text-sm font-medium hover:brightness-110 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </button>
+              </div>
             )}
           </div>
 
@@ -541,8 +611,8 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
             </div>
           ) : (
             <div className="grid gap-3">
-              {calendarItems.map(item => {
-                const typeOpt = TYPE_OPTIONS.find(t => t.value === item.type);
+              {calendarItems.map((item) => {
+                const typeOpt = TYPE_OPTIONS.find((t) => t.value === item.type);
                 const TypeIcon = typeOpt?.icon || FileText;
                 const isRejected = item.reviewStatus === 'REJECTED';
                 const isItemApproved = item.reviewStatus === 'APPROVED';
@@ -563,7 +633,9 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                             {item.type}
                           </span>
                           {item.isCarousel && (
-                            <span className={`${pill} text-[10px] bg-indigo-500/20 text-indigo-400 border-indigo-400/30`}>
+                            <span
+                              className={`${pill} text-[10px] bg-indigo-500/20 text-indigo-400 border-indigo-400/30`}
+                            >
                               <Layers className="w-3 h-3" />
                               Carousel
                             </span>
@@ -602,7 +674,9 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
 
                     {/* Content preview */}
                     {item.mainIdea && (
-                      <p className="text-sm text-iris-white/70"><span className="text-iris-white/50 font-medium">Idea:</span> {item.mainIdea}</p>
+                      <p className="text-sm text-iris-white/70">
+                        <span className="text-iris-white/50 font-medium">Idea:</span> {item.mainIdea}
+                      </p>
                     )}
                     {item.briefDescription && (
                       <p className="text-sm text-iris-white/60 line-clamp-2">{item.briefDescription}</p>
@@ -626,7 +700,11 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                                 rel="noreferrer"
                                 className="flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
                               >
-                                {r.type === 'link' ? <LinkIcon className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                                {r.type === 'link' ? (
+                                  <LinkIcon className="w-3 h-3" />
+                                ) : (
+                                  <FileText className="w-3 h-3" />
+                                )}
                                 <span className="truncate">{r.fileName || r.value}</span>
                               </a>
                             ))}
@@ -639,15 +717,27 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                     {(item.referenceLinks?.length > 0 || item.referenceFiles?.length > 0) && (
                       <div className="flex flex-wrap gap-2 mt-1">
                         {item.referenceLinks?.map((link, i) => (
-                          <a key={`l${i}`} href={link.url} target="_blank" rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
-                            <ExternalLink className="w-3 h-3" />{link.title || 'Link'}
+                          <a
+                            key={`l${i}`}
+                            href={link.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            {link.title || 'Link'}
                           </a>
                         ))}
                         {item.referenceFiles?.map((f, i) => (
-                          <a key={`f${i}`} href={f.downloadURL} target="_blank" rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-iris-red hover:text-iris-red/80">
-                            <FileText className="w-3 h-3" />{f.fileName}
+                          <a
+                            key={`f${i}`}
+                            href={f.downloadURL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-iris-red hover:text-iris-red/80"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {f.fileName}
                           </a>
                         ))}
                       </div>
@@ -683,17 +773,26 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
               )}
             </div>
           )}
-
         </>
       )}
 
       {/* ADD / EDIT ITEM MODAL */}
       {showItemModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-iris-black/70 backdrop-blur-sm p-4">
-          <div className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}>
+          <div
+            className={`${elevated} rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200`}
+          >
             <div className="p-5 border-b border-iris-white/10 flex justify-between items-center bg-iris-black">
               <h2 className="text-lg font-bold text-iris-white">{editingItem ? 'Edit Item' : 'Add Calendar Item'}</h2>
-              <button onClick={() => { setShowItemModal(false); setEditingItem(null); }} className="text-iris-white/70 hover:text-iris-white"><X className="w-5 h-5" /></button>
+              <button
+                onClick={() => {
+                  setShowItemModal(false);
+                  setEditingItem(null);
+                }}
+                className="text-iris-white/70 hover:text-iris-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
             <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -701,10 +800,10 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
               <div>
                 <label className="block text-sm font-semibold text-iris-white/70 mb-2">Type *</label>
                 <div className="flex gap-2">
-                  {TYPE_OPTIONS.map(t => (
+                  {TYPE_OPTIONS.map((t) => (
                     <button
                       key={t.value}
-                      onClick={() => setItemForm(prev => ({ ...prev, type: t.value }))}
+                      onClick={() => setItemForm((prev) => ({ ...prev, type: t.value }))}
                       className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium border transition-all ${
                         itemForm.type === t.value
                           ? t.color + ' ring-1'
@@ -724,7 +823,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                   <input
                     type="checkbox"
                     checked={itemForm.isCarousel}
-                    onChange={e => setItemForm(prev => ({ ...prev, isCarousel: e.target.checked }))}
+                    onChange={(e) => setItemForm((prev) => ({ ...prev, isCarousel: e.target.checked }))}
                     className="sr-only peer"
                   />
                   <div className="w-9 h-5 rounded-full bg-iris-white/10 border border-iris-white/10 peer-checked:bg-indigo-500 peer-checked:border-indigo-400 transition-all" />
@@ -732,7 +831,9 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Layers className="w-4 h-4 text-indigo-400" />
-                  <span className="text-sm font-medium text-iris-white/70 group-hover:text-iris-white transition-colors">Carousel Post</span>
+                  <span className="text-sm font-medium text-iris-white/70 group-hover:text-iris-white transition-colors">
+                    Carousel Post
+                  </span>
                 </div>
               </label>
 
@@ -742,7 +843,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 <input
                   type="text"
                   value={itemForm.title}
-                  onChange={e => setItemForm(prev => ({ ...prev, title: e.target.value }))}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, title: e.target.value }))}
                   placeholder="Content title"
                   className={inputClass}
                 />
@@ -754,7 +855,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 <input
                   type="date"
                   value={itemForm.publishAt}
-                  onChange={e => setItemForm(prev => ({ ...prev, publishAt: e.target.value }))}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, publishAt: e.target.value }))}
                   className={inputClass}
                   style={{ colorScheme: 'dark' }}
                 />
@@ -766,7 +867,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 <textarea
                   rows={2}
                   value={itemForm.mainIdea}
-                  onChange={e => setItemForm(prev => ({ ...prev, mainIdea: e.target.value }))}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, mainIdea: e.target.value }))}
                   placeholder="The core idea behind this content..."
                   className={`${inputClass} resize-none`}
                 />
@@ -778,7 +879,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 <textarea
                   rows={3}
                   value={itemForm.briefDescription}
-                  onChange={e => setItemForm(prev => ({ ...prev, briefDescription: e.target.value }))}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, briefDescription: e.target.value }))}
                   placeholder="Detailed description..."
                   className={`${inputClass} resize-none`}
                 />
@@ -790,7 +891,7 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                 <textarea
                   rows={2}
                   value={itemForm.notes}
-                  onChange={e => setItemForm(prev => ({ ...prev, notes: e.target.value }))}
+                  onChange={(e) => setItemForm((prev) => ({ ...prev, notes: e.target.value }))}
                   placeholder="Additional notes..."
                   className={`${inputClass} resize-none`}
                 />
@@ -803,17 +904,17 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                   <input
                     type="text"
                     value={linkTitle}
-                    onChange={e => setLinkTitle(e.target.value)}
+                    onChange={(e) => setLinkTitle(e.target.value)}
                     placeholder="Title (optional)"
                     className={`${inputClass} flex-[0.4]`}
                   />
                   <input
                     type="url"
                     value={linkUrl}
-                    onChange={e => setLinkUrl(e.target.value)}
+                    onChange={(e) => setLinkUrl(e.target.value)}
                     placeholder="https://..."
                     className={`${inputClass} flex-[0.6]`}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addReferenceLink())}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addReferenceLink())}
                   />
                   <button
                     type="button"
@@ -830,7 +931,10 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                       <div key={i} className="flex items-center gap-2 bg-iris-black/60 rounded-lg px-3 py-1.5 text-sm">
                         <LinkIcon className="w-3 h-3 text-blue-400 shrink-0" />
                         <span className="flex-1 truncate text-iris-white/70">{link.title || link.url}</span>
-                        <button onClick={() => removeReferenceLink(i)} className="text-iris-white/40 hover:text-rose-400">
+                        <button
+                          onClick={() => removeReferenceLink(i)}
+                          className="text-iris-white/40 hover:text-rose-400"
+                        >
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -858,7 +962,10 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
                       <div key={i} className="flex items-center gap-2 bg-iris-black/60 rounded-lg px-3 py-1.5 text-sm">
                         <FileText className="w-3 h-3 text-iris-red shrink-0" />
                         <span className="flex-1 truncate text-iris-white/70">{f.fileName}</span>
-                        <button onClick={() => removeReferenceFile(i)} className="text-iris-white/40 hover:text-rose-400">
+                        <button
+                          onClick={() => removeReferenceFile(i)}
+                          className="text-iris-white/40 hover:text-rose-400"
+                        >
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </div>
@@ -870,7 +977,10 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
 
             <div className="p-5 border-t border-iris-white/10 flex gap-3">
               <button
-                onClick={() => { setShowItemModal(false); setEditingItem(null); }}
+                onClick={() => {
+                  setShowItemModal(false);
+                  setEditingItem(null);
+                }}
                 className="flex-1 px-4 py-2.5 border border-iris-white/10 text-iris-white/70 bg-iris-black rounded-lg font-medium hover:bg-iris-white/5 transition-colors"
               >
                 Cancel
@@ -887,6 +997,16 @@ const CopywriterView: React.FC<CopywriterViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Excel Import Modal */}
+      {showImportModal && selectedCalendar && (
+        <CreativeImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          creativeCalendarId={selectedCalendar.id}
+          currentUserId={currentUser?.id || ''}
+        />
+      )}
     </div>
   );
 };
@@ -902,7 +1022,17 @@ const RevisionRequestsSection: React.FC<{
   creativeProjects: CreativeProject[];
   surface: string;
   elevated: string;
-}> = ({ pendingRevisions, deptCalendarItems, clients, users, currentUser, creativeCalendars, creativeProjects, surface, elevated }) => {
+}> = ({
+  pendingRevisions,
+  deptCalendarItems,
+  clients,
+  users,
+  currentUser,
+  creativeCalendars,
+  creativeProjects,
+  surface,
+  elevated,
+}) => {
   return (
     <div className={`${surface} rounded-xl p-5`}>
       <div className="flex items-center gap-3 mb-4">
@@ -911,25 +1041,31 @@ const RevisionRequestsSection: React.FC<{
         </div>
         <div>
           <h3 className="font-bold text-iris-white">Calendar Revision Requests</h3>
-          <p className="text-xs text-iris-white/50">{pendingRevisions.length} item{pendingRevisions.length !== 1 ? 's' : ''} need{pendingRevisions.length === 1 ? 's' : ''} revision from Calendar Department</p>
+          <p className="text-xs text-iris-white/50">
+            {pendingRevisions.length} item{pendingRevisions.length !== 1 ? 's' : ''} need
+            {pendingRevisions.length === 1 ? 's' : ''} revision from Calendar Department
+          </p>
         </div>
       </div>
 
       <div className="space-y-3">
-        {pendingRevisions.map(rev => {
-          const calItem = deptCalendarItems.find(ci => ci.id === rev.calendarItemId);
-          const client = clients.find(c => c.id === rev.clientId);
-          const requester = users.find(u => u.id === rev.requestedBy);
-          
+        {pendingRevisions.map((rev) => {
+          const calItem = deptCalendarItems.find((ci) => ci.id === rev.calendarItemId);
+          const client = clients.find((c) => c.id === rev.clientId);
+          const requester = users.find((u) => u.id === rev.requestedBy);
+
           return (
             <div key={rev.id} className={`${elevated} rounded-xl p-4 space-y-3`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-iris-white text-sm">{calItem?.autoName || 'Calendar Item'}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                    rev.status === 'REVISION_REQUESTED' ? 'bg-amber-500/20 text-amber-400 border-amber-400/30' :
-                    'bg-blue-500/20 text-blue-400 border-blue-400/30'
-                  }`}>
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                      rev.status === 'REVISION_REQUESTED'
+                        ? 'bg-amber-500/20 text-amber-400 border-amber-400/30'
+                        : 'bg-blue-500/20 text-blue-400 border-blue-400/30'
+                    }`}
+                  >
                     {rev.status === 'REVISION_REQUESTED' ? 'Needs Revision' : 'In Progress'}
                   </span>
                 </div>
@@ -942,11 +1078,19 @@ const RevisionRequestsSection: React.FC<{
                   <MessageSquare className="w-3 h-3" />
                   {requester?.name || 'Calendar Dept'} requested:
                 </div>
-                <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">{rev.revisionNote}</p>
+                <p className="text-sm text-iris-white/80 whitespace-pre-wrap" dir="auto">
+                  {rev.revisionNote}
+                </p>
                 {rev.revisionReferences && rev.revisionReferences.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {rev.revisionReferences.map((refItem, idx) => (
-                      <a key={idx} href={refItem.value} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-1">
+                      <a
+                        key={idx}
+                        href={refItem.value}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-blue-400 hover:underline flex items-center gap-1"
+                      >
                         <ExternalLink className="w-3 h-3" /> {refItem.fileName || refItem.value}
                       </a>
                     ))}
@@ -958,7 +1102,9 @@ const RevisionRequestsSection: React.FC<{
               {calItem && (
                 <div className="bg-white/[0.02] rounded-lg p-3 text-xs space-y-1">
                   <div className="font-semibold text-iris-white/50">Current Brief:</div>
-                  <p className="text-iris-white/60 line-clamp-3" dir="auto">{calItem.primaryBrief}</p>
+                  <p className="text-iris-white/60 line-clamp-3" dir="auto">
+                    {calItem.primaryBrief}
+                  </p>
                 </div>
               )}
 
@@ -1014,11 +1160,15 @@ const RevisionRequestsSection: React.FC<{
                         });
                       }
                       // Notify creative manager
-                      const creativeCalendar = creativeCalendars.find(cc => cc.id === rev.creativeCalendarId);
-                      const project = creativeCalendar ? creativeProjects.find(p => p.id === creativeCalendar.creativeProjectId) : null;
+                      const creativeCalendar = creativeCalendars.find((cc) => cc.id === rev.creativeCalendarId);
+                      const project = creativeCalendar
+                        ? creativeProjects.find((p) => p.id === creativeCalendar.creativeProjectId)
+                        : null;
                       const managerIds = users
-                        .filter(u => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser?.id)
-                        .map(u => u.id);
+                        .filter(
+                          (u) => u.department === 'Creative' && u.role !== 'Copywriter' && u.id !== currentUser?.id,
+                        )
+                        .map((u) => u.id);
                       if (managerIds.length > 0) {
                         await notifyUsers({
                           type: 'CALENDAR_REVISION_SUBMITTED',
@@ -1052,7 +1202,12 @@ const CalendarRevisionEditor: React.FC<{
   calendarItem: CalendarItem | undefined;
   currentUser: User | null;
   users: User[];
-  onSubmit: (revisedBrief: string, revisedNotes: string, refLinks: CalendarReferenceLink[], refFiles: CalendarReferenceFile[]) => Promise<void>;
+  onSubmit: (
+    revisedBrief: string,
+    revisedNotes: string,
+    refLinks: CalendarReferenceLink[],
+    refFiles: CalendarReferenceFile[],
+  ) => Promise<void>;
 }> = ({ revision, calendarItem, currentUser, users, onSubmit }) => {
   const [brief, setBrief] = useState(calendarItem?.primaryBrief || '');
   const [notes, setNotes] = useState(calendarItem?.notes || '');
@@ -1070,13 +1225,13 @@ const CalendarRevisionEditor: React.FC<{
 
   const addLink = () => {
     if (!linkUrl.trim()) return;
-    setRefLinks(prev => [...prev, { title: linkTitle.trim() || linkUrl.trim(), url: linkUrl.trim() }]);
+    setRefLinks((prev) => [...prev, { title: linkTitle.trim() || linkUrl.trim(), url: linkUrl.trim() }]);
     setLinkTitle('');
     setLinkUrl('');
   };
 
   const removeLink = (idx: number) => {
-    setRefLinks(prev => prev.filter((_, i) => i !== idx));
+    setRefLinks((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1088,13 +1243,16 @@ const CalendarRevisionEditor: React.FC<{
       const storageRef = ref(storage, storagePath);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
-      setRefFiles(prev => [...prev, {
-        fileName: file.name,
-        storagePath,
-        downloadURL,
-        uploadedBy: currentUser.id,
-        createdAt: new Date().toISOString(),
-      }]);
+      setRefFiles((prev) => [
+        ...prev,
+        {
+          fileName: file.name,
+          storagePath,
+          downloadURL,
+          uploadedBy: currentUser.id,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('Failed to upload file');
@@ -1105,7 +1263,7 @@ const CalendarRevisionEditor: React.FC<{
   };
 
   const removeFile = (idx: number) => {
-    setRefFiles(prev => prev.filter((_, i) => i !== idx));
+    setRefFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleSubmit = async () => {
@@ -1127,7 +1285,7 @@ const CalendarRevisionEditor: React.FC<{
         <label className="block text-xs font-semibold text-iris-white/60 mb-1">Revised Brief *</label>
         <textarea
           value={brief}
-          onChange={e => setBrief(e.target.value)}
+          onChange={(e) => setBrief(e.target.value)}
           rows={4}
           className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
           dir="auto"
@@ -1137,7 +1295,7 @@ const CalendarRevisionEditor: React.FC<{
         <label className="block text-xs font-semibold text-iris-white/60 mb-1">Revised Notes</label>
         <textarea
           value={notes}
-          onChange={e => setNotes(e.target.value)}
+          onChange={(e) => setNotes(e.target.value)}
           rows={2}
           className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
           dir="auto"
@@ -1150,10 +1308,23 @@ const CalendarRevisionEditor: React.FC<{
         {refLinks.length > 0 && (
           <div className="space-y-1.5 mb-2">
             {refLinks.map((link, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5">
+              <div
+                key={idx}
+                className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5"
+              >
                 <LinkIcon className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <a href={link.url} target="_blank" rel="noreferrer" className="text-xs text-blue-400 hover:underline truncate flex-1">{link.title || link.url}</a>
-                <button onClick={() => removeLink(idx)} className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0">
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-blue-400 hover:underline truncate flex-1"
+                >
+                  {link.title || link.url}
+                </a>
+                <button
+                  onClick={() => removeLink(idx)}
+                  className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -1165,15 +1336,15 @@ const CalendarRevisionEditor: React.FC<{
             type="text"
             placeholder="Title (optional)"
             value={linkTitle}
-            onChange={e => setLinkTitle(e.target.value)}
+            onChange={(e) => setLinkTitle(e.target.value)}
             className="flex-1 px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-xs focus:outline-none focus:border-blue-400/50"
           />
           <input
             type="url"
             placeholder="https://..."
             value={linkUrl}
-            onChange={e => setLinkUrl(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && addLink()}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addLink()}
             className="flex-[2] px-2.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white placeholder-white/30 text-xs focus:outline-none focus:border-blue-400/50"
           />
           <button
@@ -1192,10 +1363,23 @@ const CalendarRevisionEditor: React.FC<{
         {refFiles.length > 0 && (
           <div className="space-y-1.5 mb-2">
             {refFiles.map((f, idx) => (
-              <div key={idx} className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5">
+              <div
+                key={idx}
+                className="flex items-center gap-2 bg-white/[0.03] border border-white/10 rounded-lg px-3 py-1.5"
+              >
                 <FileText className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <a href={f.downloadURL} target="_blank" rel="noreferrer" className="text-xs text-emerald-400 hover:underline truncate flex-1">{f.fileName}</a>
-                <button onClick={() => removeFile(idx)} className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0">
+                <a
+                  href={f.downloadURL}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-emerald-400 hover:underline truncate flex-1"
+                >
+                  {f.fileName}
+                </a>
+                <button
+                  onClick={() => removeFile(idx)}
+                  className="text-iris-white/30 hover:text-rose-400 transition-colors shrink-0"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>

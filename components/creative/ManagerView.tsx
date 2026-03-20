@@ -63,7 +63,9 @@ import {
   Clapperboard,
   Edit2,
   Save,
+  FileSpreadsheet,
 } from 'lucide-react';
+import CreativeImportModal from './CreativeImportModal';
 
 interface ManagerViewProps {
   creativeProjects: CreativeProject[];
@@ -149,6 +151,8 @@ const ManagerView: React.FC<ManagerViewProps> = ({
   // Calendar item CRUD state
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [showItemModal, setShowItemModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importCalendarId, setImportCalendarId] = useState<string | null>(null);
   const [editingCalItem, setEditingCalItem] = useState<CreativeCalendarItem | null>(null);
   const [itemTargetCalendarId, setItemTargetCalendarId] = useState<string | null>(null);
   const [itemTargetProjectId, setItemTargetProjectId] = useState<string | null>(null);
@@ -1248,13 +1252,25 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                                 Calendar Items ({projectItems.length})
                               </span>
                               {calNotApproved && checkPermission(PERMISSIONS.CREATIVE.MANAGE) && (
-                                <button
-                                  onClick={() => openItemModal(latestCalendar.id, project.id)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg text-xs font-medium hover:brightness-110 transition-all"
-                                >
-                                  <Plus className="w-3.5 h-3.5" />
-                                  Add Item
-                                </button>
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setImportCalendarId(latestCalendar.id);
+                                      setShowImportModal(true);
+                                    }}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-iris-blue/20 text-iris-blue border border-iris-blue/30 rounded-lg text-xs font-medium hover:bg-iris-blue/30 transition-all"
+                                  >
+                                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                                    Import
+                                  </button>
+                                  <button
+                                    onClick={() => openItemModal(latestCalendar.id, project.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-br from-iris-red to-iris-red/80 text-white rounded-lg text-xs font-medium hover:brightness-110 transition-all"
+                                  >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    Add Item
+                                  </button>
+                                </div>
                               )}
                             </div>
                             {projectItems.length === 0 ? (
@@ -2659,6 +2675,19 @@ const ManagerView: React.FC<ManagerViewProps> = ({
       {/* Drive Preview Modal */}
       {drivePreview && (
         <DrivePreviewModal url={drivePreview.url} title={drivePreview.title} onClose={() => setDrivePreview(null)} />
+      )}
+
+      {/* Excel Import Modal */}
+      {showImportModal && importCalendarId && (
+        <CreativeImportModal
+          isOpen={showImportModal}
+          onClose={() => {
+            setShowImportModal(false);
+            setImportCalendarId(null);
+          }}
+          creativeCalendarId={importCalendarId}
+          currentUserId={currentUser?.id || ''}
+        />
       )}
     </div>
   );
