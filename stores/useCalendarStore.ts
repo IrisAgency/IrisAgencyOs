@@ -31,6 +31,7 @@ interface CalendarState {
 
   // Calendar item revisions
   addCalendarItemRevision: (rev: CalendarItemRevision) => Promise<void>;
+  deleteCalendarItemRevision: (id: string) => Promise<void>;
 
   // Bulk import
   bulkAddCalendarItems: (items: Omit<CalendarItem, 'id'>[]) => Promise<void>;
@@ -106,6 +107,9 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
 
   addCalendarItemRevision: async (rev) => {
     await setDoc(doc(db, 'calendar_item_revisions', rev.id), rev);
+  },
+  deleteCalendarItemRevision: async (id) => {
+    await deleteDoc(doc(db, 'calendar_item_revisions', id));
   },
 
   bulkAddCalendarItems: async (items) => {

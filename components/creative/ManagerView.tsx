@@ -1894,6 +1894,32 @@ const ManagerView: React.FC<ManagerViewProps> = ({
                         </>
                       )}
 
+                      {/* Delete button for REVISION_REQUESTED revisions (not yet worked on) */}
+                      {rev.status === 'REVISION_REQUESTED' && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm('Delete this revision request? This cannot be undone.')) return;
+                            try {
+                              const now = new Date().toISOString();
+                              await deleteDoc(doc(db, 'calendar_item_revisions', rev.id));
+                              if (calItem) {
+                                await updateDoc(doc(db, 'calendar_items', calItem.id), {
+                                  revisionStatus: 'NONE',
+                                  activeRevisionId: null,
+                                  updatedAt: now,
+                                });
+                              }
+                            } catch (error) {
+                              console.error('Error deleting revision:', error);
+                              alert('Failed to delete revision');
+                            }
+                          }}
+                          className="px-3 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-400/20 rounded-lg text-xs font-medium hover:bg-rose-500/20 transition-colors flex items-center gap-1.5"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      )}
+
                       {/* Archive button for completed revisions */}
                       {isCompleted && !rev.isArchived && (
                         <button
