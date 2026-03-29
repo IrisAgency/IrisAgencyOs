@@ -707,9 +707,7 @@ const CalendarHub: React.FC = () => {
   };
 
   const canRequestRevision = (item: CalendarItem): boolean => {
-    // Can request revision if linked (or auto-linkable) to creative and not already in active revision workflow
-    const link = resolveCreativeLink(item);
-    if (!link) return false;
+    // Can request revision if not already in active revision workflow
     const status = item.revisionStatus || 'NONE';
     return status === 'NONE' || status === 'SYNCED_TO_CALENDAR';
   };
@@ -1783,7 +1781,7 @@ const CalendarHub: React.FC = () => {
                   Close
                 </button>
 
-                {/* Request Revision Button - only for items synced from creative */}
+                {/* Request Revision Button - for any calendar item */}
                 {canRequestRevision(detailItem) &&
                   (checkPermission(PERMISSIONS.CALENDAR.REQUEST_REVISION) ||
                     checkPermission(PERMISSIONS.CALENDAR.MANAGE)) && (
