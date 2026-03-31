@@ -1,19 +1,40 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../lib/firebase';
-import {
-  collection, query, where, getDocs, doc, getDoc, updateDoc, increment, serverTimestamp,
-} from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import type {
-  CalendarMonth, CalendarItem, CreativeCalendar, CreativeCalendarItem,
-  Client, CalendarContentType, CalendarReferenceLink, CalendarReferenceFile,
+  CalendarMonth,
+  CalendarItem,
+  CreativeCalendar,
+  CreativeCalendarItem,
+  Client,
+  CalendarContentType,
+  CalendarReferenceLink,
+  CalendarReferenceFile,
   PresentationShare,
 } from '../../types';
 
 import {
-  Video, Image, Clapperboard, Calendar, ExternalLink, FileText,
-  Search, X, Link as LinkIcon, Play, Loader2, ShieldX, Clock,
-  AlertTriangle, Layers,
+  Video,
+  Image,
+  Clapperboard,
+  ExternalLink,
+  FileText,
+  Search,
+  X,
+  Link as LinkIcon,
+  Play,
+  Loader2,
+  ShieldX,
+  Clock,
+  AlertTriangle,
+  Layers,
+  LayoutGrid,
+  StickyNote,
 } from 'lucide-react';
+
+import InstagramGridView from '../common/InstagramGridView';
+import GridItemDetailModal from '../common/GridItemDetailModal';
+import type { PresentationItem as SharedPresentationItem } from '../../utils/presentationHelpers';
 
 // ============================================================================
 // HELPERS  (copied from CalendarPresentationView — keeping standalone)
@@ -97,7 +118,11 @@ function formatPublishDay(isoDate: string): string {
 function BidiText({ text, className = '' }: { text: string; className?: string }) {
   if (!text) return null;
   return (
-    <div dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className={`whitespace-pre-wrap break-words ${className}`}>
+    <div
+      dir="auto"
+      style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+      className={`whitespace-pre-wrap break-words ${className}`}
+    >
       {text}
     </div>
   );
@@ -108,7 +133,11 @@ function BidiText({ text, className = '' }: { text: string; className?: string }
 // ============================================================================
 
 const TYPE_ICONS: Record<string, React.ElementType> = { VIDEO: Video, PHOTO: Image, MOTION: Clapperboard };
-const TYPE_DOT_COLORS: Record<string, string> = { VIDEO: 'bg-purple-500', PHOTO: 'bg-blue-500', MOTION: 'bg-amber-500' };
+const TYPE_DOT_COLORS: Record<string, string> = {
+  VIDEO: 'bg-purple-500',
+  PHOTO: 'bg-blue-500',
+  MOTION: 'bg-amber-500',
+};
 const TYPE_BADGE_COLORS: Record<string, string> = {
   VIDEO: 'bg-purple-50 text-purple-700 border-purple-200',
   PHOTO: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -136,6 +165,7 @@ interface PresentationItem {
   referenceLinks: CalendarReferenceLink[];
   referenceFiles: CalendarReferenceFile[];
   seqLabel: string;
+  pinnedInGrid?: number | null;
   presentationNotes?: string;
   isCarousel?: boolean;
 }
@@ -152,6 +182,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     referenceLinks: item.referenceLinks || [],
     referenceFiles: item.referenceFiles || [],
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
+    pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
     isCarousel: item.isCarousel || false,
   };
@@ -169,6 +200,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     referenceLinks: item.referenceLinks || [],
     referenceFiles: item.referenceFiles || [],
     seqLabel: `#${idx + 1}`,
+    pinnedInGrid: ((item as Record<string, unknown>).pinnedInGrid as number | null) || null,
     presentationNotes: item.presentationNotes || '',
     isCarousel: item.isCarousel || false,
   };
@@ -183,12 +215,23 @@ function DrivePreviewModal({ url, title, onClose }: { url: string; title?: strin
   const embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
           <span className="text-sm font-medium text-gray-800 truncate">{title || 'Drive Preview'}</span>
           <div className="flex items-center gap-2">
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
               Open in Drive <ExternalLink className="w-3 h-3" />
             </a>
             <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800">
@@ -197,7 +240,13 @@ function DrivePreviewModal({ url, title, onClose }: { url: string; title?: strin
           </div>
         </div>
         <div className="w-full aspect-video bg-gray-100">
-          <iframe src={embedUrl} className="w-full h-full border-0" allow="autoplay; encrypted-media" allowFullScreen title={title || 'Drive preview'} />
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title={title || 'Drive preview'}
+          />
         </div>
       </div>
     </div>
@@ -219,7 +268,13 @@ interface MediaEntry {
   driveId: string | null;
 }
 
-function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveClick: (url: string, title: string) => void }) {
+function MediaPreview({
+  item,
+  onDriveClick,
+}: {
+  item: PresentationItem;
+  onDriveClick: (url: string, title: string) => void;
+}) {
   const allMedia: MediaEntry[] = [];
 
   for (const link of item.referenceLinks) {
@@ -230,7 +285,12 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     const isImg = isDirectImageUrl(norm) || (isFirebase && isImageFile(link.title || ''));
     const isVid = isFirebase && isVideoFile(link.title || '');
     allMedia.push({
-      url: norm, name: link.title || 'Link', isDrive, isFirebase, isImg, isVid,
+      url: norm,
+      name: link.title || 'Link',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
       isWebsite: !isDrive && !isFirebase && !isImg && !isVid,
       driveId: isDrive ? extractDriveFileId(norm) : null,
     });
@@ -244,8 +304,14 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
     const isImg = isImageFile(file.fileName) || isDirectImageUrl(url);
     const isVid = isVideoFile(file.fileName);
     allMedia.push({
-      url, name: file.fileName || 'File', isDrive, isFirebase, isImg, isVid,
-      isWebsite: false, driveId: isDrive ? extractDriveFileId(url) : null,
+      url,
+      name: file.fileName || 'File',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
+      isWebsite: false,
+      driveId: isDrive ? extractDriveFileId(url) : null,
     });
   }
 
@@ -253,12 +319,17 @@ function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveC
 
   return (
     <div className="flex flex-col gap-2 w-full">
-      {allMedia.map((m, i) => <MediaThumb key={i} media={m} onDriveClick={onDriveClick} />)}
+      {allMedia.map((m, i) => (
+        <MediaThumb key={i} media={m} onDriveClick={onDriveClick} />
+      ))}
     </div>
   );
 }
 
-const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, title: string) => void }> = ({ media, onDriveClick }) => {
+const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, title: string) => void }> = ({
+  media,
+  onDriveClick,
+}) => {
   const [imgErr, setImgErr] = useState(false);
   const [vidErr, setVidErr] = useState(false);
 
@@ -272,23 +343,38 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 
   if (thumbSrc && !imgErr) {
     return (
-      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50" title={media.name}>
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.name}
+      >
         <div className="w-full aspect-[16/10] bg-gray-100 overflow-hidden">
-          <img src={thumbSrc} alt={media.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+          <img
+            src={thumbSrc}
+            alt={media.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+            loading="lazy"
+          />
         </div>
         {(media.isVid || (media.isDrive && !media.isImg)) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-            <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm"><Play className="w-4 h-4 text-gray-700 ml-0.5" /></div>
+            <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+              <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+            </div>
           </div>
         )}
         {media.isImg && !media.isDrive && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
-            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"><ExternalLink className="w-3.5 h-3.5 text-gray-600" /></div>
+            <div className="w-7 h-7 rounded-full bg-white/80 flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+              <ExternalLink className="w-3.5 h-3.5 text-gray-600" />
+            </div>
           </div>
         )}
         {media.isDrive && (
           <div className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded bg-white/90 shadow-sm flex items-center gap-1">
-            <ExternalLink className="w-2.5 h-2.5 text-gray-500" /><span className="text-[9px] font-semibold text-gray-500">Drive</span>
+            <ExternalLink className="w-2.5 h-2.5 text-gray-500" />
+            <span className="text-[9px] font-semibold text-gray-500">Drive</span>
           </div>
         )}
       </button>
@@ -297,12 +383,24 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 
   if (canVideoPreview) {
     return (
-      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50" title={media.name}>
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.name}
+      >
         <div className="w-full aspect-[16/10] bg-black overflow-hidden">
-          <video src={media.url} className="w-full h-full object-cover" muted preload="metadata" onError={() => setVidErr(true)} />
+          <video
+            src={media.url}
+            className="w-full h-full object-cover"
+            muted
+            preload="metadata"
+            onError={() => setVidErr(true)}
+          />
         </div>
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-          <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm"><Play className="w-4 h-4 text-gray-700 ml-0.5" /></div>
+          <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
+            <Play className="w-4 h-4 text-gray-700 ml-0.5" />
+          </div>
         </div>
       </button>
     );
@@ -312,12 +410,22 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
     const favicon = getWebsiteFavicon(media.url);
     const domain = getDomainFromUrl(media.url);
     return (
-      <button onClick={handleClick} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group" title={media.url}>
+      <button
+        onClick={handleClick}
+        className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group"
+        title={media.url}
+      >
         <div className="shrink-0 w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
-          {favicon ? <img src={favicon} alt="" className="w-6 h-6" loading="lazy" /> : <LinkIcon className="w-4 h-4 text-gray-400" />}
+          {favicon ? (
+            <img src={favicon} alt="" className="w-6 h-6" loading="lazy" />
+          ) : (
+            <LinkIcon className="w-4 h-4 text-gray-400" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
-          <span className="block text-xs font-medium text-gray-700 truncate">{media.name !== 'Link' ? media.name : domain}</span>
+          <span className="block text-xs font-medium text-gray-700 truncate">
+            {media.name !== 'Link' ? media.name : domain}
+          </span>
           <span className="block text-[10px] text-gray-400 truncate">{domain}</span>
         </div>
         <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
@@ -326,13 +434,25 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
   }
 
   return (
-    <button onClick={handleClick} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group" title={media.name}>
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group"
+      title={media.name}
+    >
       <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-        {media.isVid ? <Video className="w-4 h-4 text-purple-500" /> : media.isImg ? <Image className="w-4 h-4 text-blue-400" /> : <FileText className="w-4 h-4 text-gray-400" />}
+        {media.isVid ? (
+          <Video className="w-4 h-4 text-purple-500" />
+        ) : media.isImg ? (
+          <Image className="w-4 h-4 text-blue-400" />
+        ) : (
+          <FileText className="w-4 h-4 text-gray-400" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <span className="block text-xs font-medium text-gray-700 truncate">{media.name}</span>
-        <span className="block text-[10px] text-gray-400 truncate">{media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}</span>
+        <span className="block text-[10px] text-gray-400 truncate">
+          {media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}
+        </span>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
     </button>
@@ -343,7 +463,10 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 // EDITORIAL ROW
 // ============================================================================
 
-const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: string, title: string) => void }> = ({ item, onDriveClick }) => {
+const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: string, title: string) => void }> = ({
+  item,
+  onDriveClick,
+}) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
@@ -354,16 +477,25 @@ const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: strin
         <div className="flex sm:flex-col items-baseline sm:items-start gap-1.5 sm:gap-0">
           {item.publishAt ? (
             <>
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{formatPublishDay(item.publishAt).split(',')[0]}</span>
-              <span className="text-lg font-bold text-gray-800 leading-tight">{new Date(item.publishAt).getDate()}</span>
-              <span className="text-[11px] text-gray-400">{new Date(item.publishAt).toLocaleDateString('en-US', { month: 'short' })}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">
+                {formatPublishDay(item.publishAt).split(',')[0]}
+              </span>
+              <span className="text-lg font-bold text-gray-800 leading-tight">
+                {new Date(item.publishAt).getDate()}
+              </span>
+              <span className="text-[11px] text-gray-400">
+                {new Date(item.publishAt).toLocaleDateString('en-US', { month: 'short' })}
+              </span>
             </>
           ) : (
             <span className="text-xs text-gray-300 italic">No date</span>
           )}
         </div>
-        <span className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
-          <TypeIcon className="w-3 h-3" />{item.type}
+        <span
+          className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}
+        >
+          <TypeIcon className="w-3 h-3" />
+          {item.type}
         </span>
         {item.isCarousel && (
           <span className="sm:mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border bg-indigo-50 text-indigo-600 border-indigo-200">
@@ -377,10 +509,27 @@ const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: strin
         <div className="flex items-start gap-2.5">
           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           <div className="flex-1 min-w-0">
-            <h3 dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className="text-sm font-semibold text-gray-900 leading-snug break-words">{item.title}</h3>
+            <h3
+              dir="auto"
+              style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+              className="text-sm font-semibold text-gray-900 leading-snug break-words"
+            >
+              {item.title}
+            </h3>
             {item.mainIdea && <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />}
             {item.brief && <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />}
             {item.notes && <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />}
+            {item.presentationNotes && (
+              <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <StickyNote className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
+                    Presentation Notes
+                  </span>
+                </div>
+                <BidiText text={item.presentationNotes} className="text-[11px] text-amber-700 leading-relaxed" />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -408,7 +557,17 @@ const PRINT_STYLES = `
 // STATUS PAGES
 // ============================================================================
 
-function StatusPage({ icon: Icon, title, message, color = 'gray' }: { icon: React.ElementType; title: string; message: string; color?: string }) {
+function StatusPage({
+  icon: Icon,
+  title,
+  message,
+  color = 'gray',
+}: {
+  icon: React.ElementType;
+  title: string;
+  message: string;
+  color?: string;
+}) {
   const iconColors: Record<string, string> = {
     gray: 'text-gray-300',
     red: 'text-red-300',
@@ -533,7 +692,9 @@ const PublicPresentationPage: React.FC = () => {
           if (clientDoc.exists()) {
             clientName = (clientDoc.data() as Client).name || 'Client';
           }
-        } catch {}
+        } catch (_e) {
+          /* ignore */
+        }
 
         // 6. Load calendar items — prefer activated CalendarItems, fallback to CreativeCalendarItems
         let items: PresentationItem[] = [];
@@ -547,18 +708,17 @@ const PublicPresentationPage: React.FC = () => {
               const month = { id: monthDoc.id, ...monthDoc.data() } as CalendarMonth;
               monthKey = month.monthKey;
 
-              const itemsQuery = query(
-                collection(db, 'calendar_items'),
-                where('calendarMonthId', '==', month.id)
-              );
+              const itemsQuery = query(collection(db, 'calendar_items'), where('calendarMonthId', '==', month.id));
               const itemsSnap = await getDocs(itemsQuery);
-              const calItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as CalendarItem));
+              const calItems = itemsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as CalendarItem);
               calItems.sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
               if (calItems.length > 0) {
                 items = calItems.map(calItemToPres);
               }
             }
-          } catch {}
+          } catch (_e) {
+            /* ignore */
+          }
         }
 
         // Fallback to creative calendar items
@@ -571,14 +731,16 @@ const PublicPresentationPage: React.FC = () => {
 
               const itemsQuery = query(
                 collection(db, 'creative_calendar_items'),
-                where('creativeCalendarId', '==', cal.id)
+                where('creativeCalendarId', '==', cal.id),
               );
               const itemsSnap = await getDocs(itemsQuery);
-              const creativeItems = itemsSnap.docs.map(d => ({ id: d.id, ...d.data() } as CreativeCalendarItem));
+              const creativeItems = itemsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as CreativeCalendarItem);
               creativeItems.sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
               items = creativeItems.map((item, idx) => creativeItemToPres(item, idx));
             }
-          } catch {}
+          } catch (_e) {
+            /* ignore */
+          }
         }
 
         if (!cancelled) {
@@ -590,7 +752,7 @@ const PublicPresentationPage: React.FC = () => {
             items,
           });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to load shared presentation:', err);
         if (!cancelled) {
           setState({ status: 'error', message: 'Something went wrong. Please try again later.' });
@@ -599,15 +761,42 @@ const PublicPresentationPage: React.FC = () => {
     }
 
     loadPresentation();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
   // ── Render status pages ──
   if (state.status === 'loading') return <LoadingPage />;
-  if (state.status === 'not-found') return <StatusPage icon={AlertTriangle} title="Presentation Not Found" message="This link is invalid or has been removed." color="gray" />;
-  if (state.status === 'disabled') return <StatusPage icon={ShieldX} title="Link Disabled" message="This presentation link has been disabled by the team." color="red" />;
-  if (state.status === 'expired') return <StatusPage icon={Clock} title="Link Expired" message="This presentation link has expired. Contact the team for a new link." color="amber" />;
-  if (state.status === 'error') return <StatusPage icon={AlertTriangle} title="Error" message={state.message} color="red" />;
+  if (state.status === 'not-found')
+    return (
+      <StatusPage
+        icon={AlertTriangle}
+        title="Presentation Not Found"
+        message="This link is invalid or has been removed."
+        color="gray"
+      />
+    );
+  if (state.status === 'disabled')
+    return (
+      <StatusPage
+        icon={ShieldX}
+        title="Link Disabled"
+        message="This presentation link has been disabled by the team."
+        color="red"
+      />
+    );
+  if (state.status === 'expired')
+    return (
+      <StatusPage
+        icon={Clock}
+        title="Link Expired"
+        message="This presentation link has expired. Contact the team for a new link."
+        color="amber"
+      />
+    );
+  if (state.status === 'error')
+    return <StatusPage icon={AlertTriangle} title="Error" message={state.message} color="red" />;
 
   // ── Ready — render the editorial layout ──
   const { clientName, monthKey, items } = state;
@@ -644,18 +833,34 @@ interface ReadOnlyPresentationProps {
 }
 
 const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
-  clientName, monthKey, items, filterType, setFilterType, searchQuery, setSearchQuery, driveModal, setDriveModal,
+  clientName,
+  monthKey,
+  items,
+  filterType,
+  setFilterType,
+  searchQuery,
+  setSearchQuery,
+  driveModal,
+  setDriveModal,
 }) => {
+  // View mode: editorial (default) or grid (Instagram)
+  const [viewMode, setViewMode] = useState<'editorial' | 'grid'>('editorial');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Grid item detail modal (read-only, no save notes on public page)
+  const [gridDetailItem, setGridDetailItem] = useState<PresentationItem | null>(null);
+
   const filteredItems = useMemo(() => {
     let out = items;
-    if (filterType !== 'ALL') out = out.filter(i => i.type === filterType);
+    if (filterType !== 'ALL') out = out.filter((i) => i.type === filterType);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      out = out.filter(i =>
-        i.title?.toLowerCase().includes(q) ||
-        i.mainIdea?.toLowerCase().includes(q) ||
-        i.brief?.toLowerCase().includes(q) ||
-        i.notes?.toLowerCase().includes(q)
+      out = out.filter(
+        (i) =>
+          i.title?.toLowerCase().includes(q) ||
+          i.mainIdea?.toLowerCase().includes(q) ||
+          i.brief?.toLowerCase().includes(q) ||
+          i.notes?.toLowerCase().includes(q),
       );
     }
     return out;
@@ -671,15 +876,49 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
-      {driveModal && <DrivePreviewModal url={driveModal.url} title={driveModal.title} onClose={() => setDriveModal(null)} />}
+      {driveModal && (
+        <DrivePreviewModal url={driveModal.url} title={driveModal.title} onClose={() => setDriveModal(null)} />
+      )}
+
+      {gridDetailItem && (
+        <GridItemDetailModal
+          item={gridDetailItem as unknown as SharedPresentationItem}
+          onClose={() => setGridDetailItem(null)}
+          onDriveClick={handleDriveClick}
+        />
+      )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        {/* VIEW MODE TOGGLE */}
+        <div className="no-print flex items-center justify-end mb-4">
+          <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
+            <button
+              onClick={() => setViewMode('editorial')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'editorial'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" /> Editorial
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white text-gray-900 shadow-sm border border-gray-200'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" /> Grid
+            </button>
+          </div>
+        </div>
+
         {/* MASTHEAD */}
         <header className="mb-10 border-b-2 border-gray-900 pb-6">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 uppercase">
-              {clientName}
-            </h1>
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-gray-900 uppercase">{clientName}</h1>
             <p className="text-sm text-gray-400 mt-1 font-medium tracking-wide uppercase">
               Content Calendar · {monthKey}
             </p>
@@ -695,7 +934,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
         {/* FILTERS */}
         <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
           <div className="flex flex-wrap gap-1.5">
-            {TYPE_OPTIONS.map(opt => (
+            {TYPE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilterType(opt.value)}
@@ -706,7 +945,9 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
                 }`}
               >
                 {opt.label}
-                {typeCounts[opt.value] !== undefined && <span className="ml-1 opacity-60">({typeCounts[opt.value]})</span>}
+                {typeCounts[opt.value] !== undefined && (
+                  <span className="ml-1 opacity-60">({typeCounts[opt.value]})</span>
+                )}
               </button>
             ))}
           </div>
@@ -717,11 +958,14 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 rounded-lg border border-gray-200 text-gray-800 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-300 hover:text-gray-600">
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-300 hover:text-gray-600"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -729,7 +973,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
           </div>
         </div>
 
-        {/* EDITORIAL TABLE */}
+        {/* CONTENT AREA — EDITORIAL or GRID */}
         {filteredItems.length === 0 ? (
           <div className="py-20 text-center">
             <Search className="w-8 h-8 mx-auto text-gray-200 mb-3" />
@@ -737,23 +981,34 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
               {searchQuery || filterType !== 'ALL' ? 'No items match your filters.' : 'No items in this calendar.'}
             </p>
           </div>
-        ) : (
+        ) : viewMode === 'editorial' ? (
           <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
             <div className="hidden sm:grid sm:grid-cols-[120px_1fr_300px] gap-0 bg-gray-50 border-b border-gray-200 text-[11px] font-bold uppercase tracking-widest text-gray-400">
               <div className="py-3 px-4">Date</div>
               <div className="py-3 px-5">Content</div>
               <div className="py-3 px-4 border-l border-gray-200">Media</div>
             </div>
-            {filteredItems.map(item => (
+            {filteredItems.map((item) => (
               <EditorialRow key={item.id} item={item} onDriveClick={handleDriveClick} />
             ))}
           </div>
+        ) : (
+          <InstagramGridView
+            items={filteredItems as unknown as SharedPresentationItem[]}
+            sortDirection={sortDirection}
+            onSortToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
+            onItemClick={(item) => setGridDetailItem(item as unknown as PresentationItem)}
+          />
         )}
 
         {/* FOOTER */}
         <footer className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] text-gray-300 uppercase tracking-wider">
-          <span>Editorial Schedule · {clientName}</span>
-          <span>{monthKey} · {items.length} Items</span>
+          <span>
+            {viewMode === 'editorial' ? 'Editorial Schedule' : 'Instagram Grid'} · {clientName}
+          </span>
+          <span>
+            {monthKey} · {items.length} Items
+          </span>
         </footer>
 
         {/* Powered by */}
