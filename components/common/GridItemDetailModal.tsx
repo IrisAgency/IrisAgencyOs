@@ -13,6 +13,8 @@ import {
   StickyNote,
   Layers,
   MessageSquare,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 import {
@@ -30,6 +32,8 @@ import {
   getDomainFromUrl,
 } from '../../utils/presentationHelpers';
 
+import type { ContentComment } from '../../types';
+
 // ============================================================================
 // GRID ITEM DETAIL MODAL
 // ============================================================================
@@ -39,7 +43,10 @@ interface GridItemDetailModalProps {
   onClose: () => void;
   onDriveClick: (url: string, title: string) => void;
   onSaveNotes?: (itemId: string, notes: string) => Promise<void>;
-  onSaveComment?: (itemId: string, comment: string) => Promise<void>;
+  viewerId?: string;
+  onAddComment?: (itemId: string, text: string, authorName: string) => Promise<void>;
+  onEditComment?: (itemId: string, commentId: string, newText: string) => Promise<void>;
+  onDeleteComment?: (itemId: string, commentId: string) => Promise<void>;
 }
 
 const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
@@ -47,7 +54,10 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
   onClose,
   onDriveClick,
   onSaveNotes,
-  onSaveComment,
+  viewerId,
+  onAddComment,
+  onEditComment,
+  onDeleteComment,
 }) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
@@ -70,10 +80,17 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
   const [saving, setSaving] = useState(false);
   const hasChanged = notesText !== (item.presentationNotes || '');
 
-  // Comment state
-  const [commentText, setCommentText] = useState(item.contentComments || '');
+  // Comment state (multi-comment)
+  const comments: ContentComment[] = item.contentComments || [];
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [authorName, setAuthorName] = useState(
+    typeof window !== 'undefined' ? localStorage.getItem('iris_viewer_name') || '' : '',
+  );
   const [savingComment, setSavingComment] = useState(false);
-  const commentChanged = commentText !== (item.contentComments || '');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleSaveNotes = async () => {
     if (!onSaveNotes || !hasChanged) return;
@@ -87,15 +104,42 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
     }
   };
 
-  const handleSaveComment = async () => {
-    if (!onSaveComment || !commentChanged) return;
+  const handleAddComment = async () => {
+    if (!onAddComment || !newCommentText.trim() || !authorName.trim()) return;
     setSavingComment(true);
     try {
-      await onSaveComment(item.id, commentText);
+      await onAddComment(item.id, newCommentText.trim(), authorName.trim());
+      setNewCommentText('');
+      setShowAddForm(false);
     } catch (err) {
-      console.error('Error saving comment:', err);
+      console.error('Error adding comment:', err);
     } finally {
       setSavingComment(false);
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!onEditComment || !editText.trim()) return;
+    setSavingComment(true);
+    try {
+      await onEditComment(item.id, commentId, editText.trim());
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error editing comment:', err);
+    } finally {
+      setSavingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!onDeleteComment) return;
+    setDeletingId(commentId);
+    try {
+      await onDeleteComment(item.id, commentId);
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -317,49 +361,144 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
               </div>
             )}
 
-            {/* ── CONTENT COMMENTS (editable by external viewers) ── */}
-            {onSaveComment ? (
+            {/* ── CONTENT COMMENTS (multi-comment, editable by external viewers) ── */}
+            {(onAddComment || comments.length > 0) && (
               <div>
                 <h3 className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <MessageSquare className="w-3.5 h-3.5" />
-                  Content Comments
+                  Content Comments {comments.length > 0 && `(${comments.length})`}
                 </h3>
-                <div className="relative">
-                  <textarea
-                    dir="auto"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Add your comment on this content…"
-                    className="w-full min-h-[80px] px-3.5 py-2.5 text-sm text-gray-700 bg-emerald-50 border border-emerald-200 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 placeholder:text-emerald-300 transition-all"
-                    rows={3}
-                  />
-                  {commentChanged && (
-                    <button
-                      onClick={handleSaveComment}
-                      disabled={savingComment}
-                      className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
-                    >
-                      {savingComment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                      Save
-                    </button>
-                  )}
-                </div>
+                {/* Existing comments */}
+                {comments.map((c) => (
+                  <div key={c.id} className="mb-2 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-emerald-700">{c.authorName}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] text-emerald-400">
+                          {new Date(c.updatedAt || c.createdAt).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        {viewerId && c.authorId === viewerId && (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditingId(c.id);
+                                setEditText(c.text);
+                              }}
+                              className="p-0.5 text-emerald-400 hover:text-emerald-700 transition-colors"
+                              title="Edit"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteComment(c.id)}
+                              disabled={deletingId === c.id}
+                              className="p-0.5 text-emerald-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                              title="Delete"
+                            >
+                              {deletingId === c.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3 h-3" />
+                              )}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    {editingId === c.id ? (
+                      <div className="space-y-2">
+                        <textarea
+                          dir="auto"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full min-h-[60px] px-3 py-2 text-sm text-emerald-800 bg-white border border-emerald-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
+                          rows={2}
+                        />
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={() => handleEditComment(c.id)}
+                            disabled={savingComment}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50"
+                          >
+                            {savingComment ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Save className="w-3 h-3" />
+                            )}
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <BidiText text={c.text} className="text-sm text-emerald-800 leading-relaxed" />
+                    )}
+                  </div>
+                ))}
+                {/* Add new comment form */}
+                {onAddComment && (
+                  <>
+                    {!showAddForm ? (
+                      <button
+                        onClick={() => setShowAddForm(true)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-gray-200 hover:border-emerald-200 rounded-lg transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        Add Comment
+                      </button>
+                    ) : (
+                      <div className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+                        <input
+                          type="text"
+                          value={authorName}
+                          onChange={(e) => setAuthorName(e.target.value)}
+                          placeholder="Your name"
+                          className="w-full px-3 py-2 text-sm text-gray-800 bg-white border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-400/30 placeholder:text-emerald-300"
+                        />
+                        <textarea
+                          dir="auto"
+                          value={newCommentText}
+                          onChange={(e) => setNewCommentText(e.target.value)}
+                          placeholder="Add your comment on this content…"
+                          className="w-full min-h-[80px] px-3 py-2.5 text-sm text-emerald-800 bg-white border border-emerald-200 rounded-lg resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 placeholder:text-emerald-300 transition-all"
+                          rows={3}
+                        />
+                        <div className="flex gap-1.5">
+                          <button
+                            onClick={handleAddComment}
+                            disabled={savingComment || !newCommentText.trim() || !authorName.trim()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
+                          >
+                            {savingComment ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Save className="w-3 h-3" />
+                            )}
+                            Add Comment
+                          </button>
+                          <button
+                            onClick={() => setShowAddForm(false)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            ) : item.contentComments ? (
-              <div>
-                <h3 className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5" />
-                  Content Comments
-                </h3>
-                <div
-                  dir="auto"
-                  style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
-                  className="px-3.5 py-2.5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl whitespace-pre-wrap break-words"
-                >
-                  {item.contentComments}
-                </div>
-              </div>
-            ) : null}
+            )}
           </div>
         </div>
 

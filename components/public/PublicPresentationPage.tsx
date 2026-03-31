@@ -11,6 +11,7 @@ import type {
   CalendarReferenceLink,
   CalendarReferenceFile,
   PresentationShare,
+  ContentComment,
 } from '../../types';
 
 import {
@@ -32,6 +33,8 @@ import {
   StickyNote,
   Save,
   MessageSquare,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 
 import InstagramGridView from '../common/InstagramGridView';
@@ -169,7 +172,7 @@ interface PresentationItem {
   seqLabel: string;
   pinnedInGrid?: number | null;
   presentationNotes?: string;
-  contentComments?: string;
+  contentComments?: ContentComment[];
   isCarousel?: boolean;
 }
 
@@ -187,7 +190,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
-    contentComments: item.contentComments || '',
+    contentComments: item.contentComments || [],
     isCarousel: item.isCarousel || false,
   };
 }
@@ -206,9 +209,31 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     seqLabel: `#${idx + 1}`,
     pinnedInGrid: ((item as Record<string, unknown>).pinnedInGrid as number | null) || null,
     presentationNotes: item.presentationNotes || '',
-    contentComments: item.contentComments || '',
+    contentComments: item.contentComments || [],
     isCarousel: item.isCarousel || false,
   };
+}
+
+// ============================================================================
+// VIEWER IDENTITY (localStorage-based)
+// ============================================================================
+
+function getViewerId(): string {
+  const KEY = 'iris_viewer_id';
+  let id = localStorage.getItem(KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
+function getViewerName(): string {
+  return localStorage.getItem('iris_viewer_name') || '';
+}
+
+function setViewerName(name: string) {
+  localStorage.setItem('iris_viewer_name', name);
 }
 
 // ============================================================================
@@ -471,27 +496,59 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 const EditorialRow: React.FC<{
   item: PresentationItem;
   onDriveClick: (url: string, title: string) => void;
-  onSaveComment: (itemId: string, comment: string) => Promise<void>;
-}> = ({ item, onDriveClick, onSaveComment }) => {
+  viewerId: string;
+  onAddComment: (itemId: string, text: string, authorName: string) => Promise<void>;
+  onEditComment: (itemId: string, commentId: string, newText: string) => Promise<void>;
+  onDeleteComment: (itemId: string, commentId: string) => Promise<void>;
+}> = ({ item, onDriveClick, viewerId, onAddComment, onEditComment, onDeleteComment }) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
 
-  const [commentText, setCommentText] = useState(item.contentComments || '');
+  const comments = item.contentComments || [];
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [authorName, setAuthorName] = useState(getViewerName());
   const [saving, setSaving] = useState(false);
-  const [showComments, setShowComments] = useState(!!item.contentComments);
-  const hasChanged = commentText !== (item.contentComments || '');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const handleSave = async () => {
-    if (!hasChanged) return;
+  const handleAdd = async () => {
+    if (!newCommentText.trim() || !authorName.trim()) return;
     setSaving(true);
     try {
-      await onSaveComment(item.id, commentText);
-      item.contentComments = commentText;
+      await onAddComment(item.id, newCommentText.trim(), authorName.trim());
+      setNewCommentText('');
+      setShowAddForm(false);
     } catch (err) {
-      console.error('Error saving comment:', err);
+      console.error('Error adding comment:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleEdit = async (commentId: string) => {
+    if (!editText.trim()) return;
+    setSaving(true);
+    try {
+      await onEditComment(item.id, commentId, editText.trim());
+      setEditingId(null);
+    } catch (err) {
+      console.error('Error editing comment:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    setDeletingId(commentId);
+    try {
+      await onDeleteComment(item.id, commentId);
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -555,44 +612,129 @@ const EditorialRow: React.FC<{
                 <BidiText text={item.presentationNotes} className="text-[11px] text-amber-700 leading-relaxed" />
               </div>
             )}
-            {/* Content Comments — editable by external viewers */}
+            {/* Content Comments — multi-comment by external viewers */}
             <div className="mt-2">
-              {!showComments ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                <MessageSquare className="w-3 h-3 text-emerald-500" />
+                <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
+                  Comments {comments.length > 0 && `(${comments.length})`}
+                </span>
+              </div>
+              {/* Existing comments */}
+              {comments.map((c) => (
+                <div key={c.id} className="mb-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold text-emerald-700">{c.authorName}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] text-emerald-400">
+                        {new Date(c.updatedAt || c.createdAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {c.authorId === viewerId && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingId(c.id);
+                              setEditText(c.text);
+                            }}
+                            className="p-0.5 text-emerald-400 hover:text-emerald-700 transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(c.id)}
+                            disabled={deletingId === c.id}
+                            className="p-0.5 text-emerald-400 hover:text-red-500 transition-colors disabled:opacity-50"
+                            title="Delete"
+                          >
+                            {deletingId === c.id ? (
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-2.5 h-2.5" />
+                            )}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  {editingId === c.id ? (
+                    <div className="space-y-1.5">
+                      <textarea
+                        dir="auto"
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="w-full min-h-[40px] px-2 py-1.5 text-[11px] text-emerald-800 bg-white border border-emerald-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
+                        rows={2}
+                      />
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => handleEdit(c.id)}
+                          disabled={saving}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-medium hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {saving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-2 py-1 rounded-md text-[10px] font-medium text-gray-500 hover:bg-gray-100"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <BidiText text={c.text} className="text-[11px] text-emerald-800 leading-relaxed" />
+                  )}
+                </div>
+              ))}
+              {/* Add new comment */}
+              {!showAddForm ? (
                 <button
-                  onClick={() => setShowComments(true)}
+                  onClick={() => setShowAddForm(true)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-gray-200 hover:border-emerald-200 rounded-lg transition-colors"
                 >
                   <MessageSquare className="w-3 h-3" />
                   Add Comment
                 </button>
               ) : (
-                <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <MessageSquare className="w-3 h-3 text-emerald-500" />
-                      <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
-                        Content Comments
-                      </span>
-                    </div>
-                    {hasChanged && (
-                      <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
-                      >
-                        {saving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
-                        Save
-                      </button>
-                    )}
-                  </div>
+                <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+                  <input
+                    type="text"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full px-2.5 py-1.5 text-[11px] text-gray-800 bg-white border border-emerald-200 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-400/30 placeholder:text-emerald-300"
+                  />
                   <textarea
                     dir="auto"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
                     placeholder="Add your comment on this content…"
                     className="w-full min-h-[60px] px-2.5 py-2 text-[11px] text-emerald-800 bg-white border border-emerald-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-300 placeholder:text-emerald-300 transition-all"
                     rows={2}
                   />
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={handleAdd}
+                      disabled={saving || !newCommentText.trim() || !authorName.trim()}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-emerald-600 text-white text-[10px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {saving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
+                      Add Comment
+                    </button>
+                    <button
+                      onClick={() => setShowAddForm(false)}
+                      className="px-2.5 py-1.5 rounded-md text-[10px] font-medium text-gray-500 hover:bg-gray-100"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -923,12 +1065,51 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
   // Grid item detail modal
   const [gridDetailItem, setGridDetailItem] = useState<PresentationItem | null>(null);
 
-  // Save content comments to Firestore
-  const handleSaveComment = useCallback(
-    async (itemId: string, comment: string) => {
-      await updateDoc(doc(db, sourceCollection, itemId), { contentComments: comment });
+  // Viewer identity
+  const viewerId = useMemo(() => getViewerId(), []);
+
+  // Comment handlers — add, edit, delete
+  const handleAddComment = useCallback(
+    async (itemId: string, text: string, authorName: string) => {
+      setViewerName(authorName);
+      const item = items.find((i) => i.id === itemId);
+      const existing = item?.contentComments || [];
+      const newComment: ContentComment = {
+        id: crypto.randomUUID(),
+        authorId: viewerId,
+        authorName,
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [...existing, newComment];
+      await updateDoc(doc(db, sourceCollection, itemId), { contentComments: updated });
+      if (item) item.contentComments = updated;
     },
-    [sourceCollection],
+    [sourceCollection, items, viewerId],
+  );
+
+  const handleEditComment = useCallback(
+    async (itemId: string, commentId: string, newText: string) => {
+      const item = items.find((i) => i.id === itemId);
+      const existing = item?.contentComments || [];
+      const updated = existing.map((c) =>
+        c.id === commentId ? { ...c, text: newText, updatedAt: new Date().toISOString() } : c,
+      );
+      await updateDoc(doc(db, sourceCollection, itemId), { contentComments: updated });
+      if (item) item.contentComments = updated;
+    },
+    [sourceCollection, items],
+  );
+
+  const handleDeleteComment = useCallback(
+    async (itemId: string, commentId: string) => {
+      const item = items.find((i) => i.id === itemId);
+      const existing = item?.contentComments || [];
+      const updated = existing.filter((c) => c.id !== commentId);
+      await updateDoc(doc(db, sourceCollection, itemId), { contentComments: updated });
+      if (item) item.contentComments = updated;
+    },
+    [sourceCollection, items],
   );
 
   const filteredItems = useMemo(() => {
@@ -966,7 +1147,10 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
           item={gridDetailItem as unknown as SharedPresentationItem}
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
-          onSaveComment={handleSaveComment}
+          viewerId={viewerId}
+          onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
         />
       )}
 
@@ -1075,7 +1259,10 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
                 key={item.id}
                 item={item}
                 onDriveClick={handleDriveClick}
-                onSaveComment={handleSaveComment}
+                viewerId={viewerId}
+                onAddComment={handleAddComment}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
               />
             ))}
           </div>

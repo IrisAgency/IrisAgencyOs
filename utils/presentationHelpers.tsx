@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { CalendarContentType, CalendarReferenceLink, CalendarReferenceFile } from '../types';
+import type { CalendarContentType, CalendarReferenceLink, CalendarReferenceFile, ContentComment } from '../types';
 
 import { Video, Image, Clapperboard, ExternalLink, FileText, Link as LinkIcon, Play, X, Layers } from 'lucide-react';
 
@@ -194,7 +194,7 @@ export interface PresentationItem {
   source?: 'activated' | 'creative';
   pinnedInGrid?: number | null;
   presentationNotes?: string;
-  contentComments?: string;
+  contentComments?: ContentComment[];
   isCarousel?: boolean;
 }
 

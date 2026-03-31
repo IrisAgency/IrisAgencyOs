@@ -58,7 +58,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     source: 'activated',
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
-    contentComments: item.contentComments || '',
+    contentComments: item.contentComments || [],
     isCarousel: item.isCarousel || false,
   };
 }
@@ -77,7 +77,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     seqLabel: `#${idx + 1}`,
     source: 'creative',
     presentationNotes: item.presentationNotes || '',
-    contentComments: item.contentComments || '',
+    contentComments: item.contentComments || [],
     isCarousel: item.isCarousel || false,
   };
 }

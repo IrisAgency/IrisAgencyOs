@@ -1791,7 +1791,7 @@ export interface CalendarItem {
   presentationNotes?: string;
 
   // Content comments (added by external viewers via shared presentation link)
-  contentComments?: string;
+  contentComments?: ContentComment[];
 
   // Carousel post flag
   isCarousel?: boolean;
@@ -1924,10 +1924,21 @@ export interface CreativeCalendarItem {
   rejectionNote: string | null;
   rejectionReferences: CreativeRejectionReference[];
   presentationNotes?: string;
-  contentComments?: string;
+  contentComments?: ContentComment[];
   isCarousel?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// ========== Content Comments ==========
+
+export interface ContentComment {
+  id: string;
+  authorId: string; // Unique viewer ID from localStorage
+  authorName: string;
+  text: string;
+  createdAt: string; // ISO date
+  updatedAt?: string; // ISO date
 }
 
 // ========== Presentation Sharing ==========
