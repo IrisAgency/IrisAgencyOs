@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import type {
@@ -30,6 +30,7 @@ import {
   Layers,
   LayoutGrid,
   StickyNote,
+  Save,
 } from 'lucide-react';
 
 import InstagramGridView from '../common/InstagramGridView';
@@ -463,13 +464,32 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 // EDITORIAL ROW
 // ============================================================================
 
-const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: string, title: string) => void }> = ({
-  item,
-  onDriveClick,
-}) => {
+const EditorialRow: React.FC<{
+  item: PresentationItem;
+  onDriveClick: (url: string, title: string) => void;
+  onSaveNotes: (itemId: string, notes: string) => Promise<void>;
+}> = ({ item, onDriveClick, onSaveNotes }) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
+
+  const [notesText, setNotesText] = useState(item.presentationNotes || '');
+  const [saving, setSaving] = useState(false);
+  const [showNotes, setShowNotes] = useState(!!item.presentationNotes);
+  const hasChanged = notesText !== (item.presentationNotes || '');
+
+  const handleSave = async () => {
+    if (!hasChanged) return;
+    setSaving(true);
+    try {
+      await onSaveNotes(item.id, notesText);
+      item.presentationNotes = notesText;
+    } catch (err) {
+      console.error('Error saving notes:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="group flex flex-col sm:grid sm:grid-cols-[120px_1fr_300px] gap-0 border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors print:break-inside-avoid">
@@ -519,17 +539,47 @@ const EditorialRow: React.FC<{ item: PresentationItem; onDriveClick: (url: strin
             {item.mainIdea && <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />}
             {item.brief && <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />}
             {item.notes && <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />}
-            {item.presentationNotes && (
-              <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <StickyNote className="w-3 h-3 text-amber-500" />
-                  <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
-                    Presentation Notes
-                  </span>
+            {/* Presentation Notes — editable */}
+            <div className="mt-2">
+              {!showNotes ? (
+                <button
+                  onClick={() => setShowNotes(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 rounded-lg transition-colors"
+                >
+                  <StickyNote className="w-3 h-3" />
+                  Add Note
+                </button>
+              ) : (
+                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <StickyNote className="w-3 h-3 text-amber-500" />
+                      <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
+                        Presentation Notes
+                      </span>
+                    </div>
+                    {hasChanged && (
+                      <button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 disabled:opacity-50 transition-all shadow-sm"
+                      >
+                        {saving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
+                        Save
+                      </button>
+                    )}
+                  </div>
+                  <textarea
+                    dir="auto"
+                    value={notesText}
+                    onChange={(e) => setNotesText(e.target.value)}
+                    placeholder="Add notes for this content…"
+                    className="w-full min-h-[60px] px-2.5 py-2 text-[11px] text-amber-800 bg-white border border-amber-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300 placeholder:text-amber-300 transition-all"
+                    rows={2}
+                  />
                 </div>
-                <BidiText text={item.presentationNotes} className="text-[11px] text-amber-700 leading-relaxed" />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -611,6 +661,7 @@ type PageState =
       clientName: string;
       monthKey: string;
       items: PresentationItem[];
+      sourceCollection: 'calendar_items' | 'creative_calendar_items';
     };
 
 const PublicPresentationPage: React.FC = () => {
@@ -699,6 +750,7 @@ const PublicPresentationPage: React.FC = () => {
         // 6. Load calendar items — prefer activated CalendarItems, fallback to CreativeCalendarItems
         let items: PresentationItem[] = [];
         let monthKey = '';
+        let sourceCollection: 'calendar_items' | 'creative_calendar_items' = 'calendar_items';
 
         // Try activated calendar month first
         if (share.calendarMonthId) {
@@ -723,6 +775,7 @@ const PublicPresentationPage: React.FC = () => {
 
         // Fallback to creative calendar items
         if (items.length === 0 && share.creativeCalendarId) {
+          sourceCollection = 'creative_calendar_items';
           try {
             const calDoc = await getDoc(doc(db, 'creative_calendars', share.creativeCalendarId));
             if (calDoc.exists()) {
@@ -750,6 +803,7 @@ const PublicPresentationPage: React.FC = () => {
             clientName,
             monthKey,
             items,
+            sourceCollection,
           });
         }
       } catch (err: unknown) {
@@ -799,13 +853,14 @@ const PublicPresentationPage: React.FC = () => {
     return <StatusPage icon={AlertTriangle} title="Error" message={state.message} color="red" />;
 
   // ── Ready — render the editorial layout ──
-  const { clientName, monthKey, items } = state;
+  const { clientName, monthKey, items, sourceCollection } = state;
 
   return (
     <ReadOnlyPresentation
       clientName={clientName}
       monthKey={monthKey}
       items={items}
+      sourceCollection={sourceCollection}
       filterType={filterType}
       setFilterType={setFilterType}
       searchQuery={searchQuery}
@@ -824,6 +879,7 @@ interface ReadOnlyPresentationProps {
   clientName: string;
   monthKey: string;
   items: PresentationItem[];
+  sourceCollection: 'calendar_items' | 'creative_calendar_items';
   filterType: CalendarContentType | 'ALL';
   setFilterType: (v: CalendarContentType | 'ALL') => void;
   searchQuery: string;
@@ -836,6 +892,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
   clientName,
   monthKey,
   items,
+  sourceCollection,
   filterType,
   setFilterType,
   searchQuery,
@@ -847,8 +904,16 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
   const [viewMode, setViewMode] = useState<'editorial' | 'grid'>('editorial');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Grid item detail modal (read-only, no save notes on public page)
+  // Grid item detail modal
   const [gridDetailItem, setGridDetailItem] = useState<PresentationItem | null>(null);
+
+  // Save presentation notes to Firestore
+  const handleSaveNotes = useCallback(
+    async (itemId: string, notes: string) => {
+      await updateDoc(doc(db, sourceCollection, itemId), { presentationNotes: notes });
+    },
+    [sourceCollection],
+  );
 
   const filteredItems = useMemo(() => {
     let out = items;
@@ -885,6 +950,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
           item={gridDetailItem as unknown as SharedPresentationItem}
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
+          onSaveNotes={handleSaveNotes}
         />
       )}
 
@@ -989,7 +1055,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
               <div className="py-3 px-4 border-l border-gray-200">Media</div>
             </div>
             {filteredItems.map((item) => (
-              <EditorialRow key={item.id} item={item} onDriveClick={handleDriveClick} />
+              <EditorialRow key={item.id} item={item} onDriveClick={handleDriveClick} onSaveNotes={handleSaveNotes} />
             ))}
           </div>
         ) : (
