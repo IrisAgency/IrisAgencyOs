@@ -31,6 +31,7 @@ import {
   LayoutGrid,
   StickyNote,
   Save,
+  MessageSquare,
 } from 'lucide-react';
 
 import InstagramGridView from '../common/InstagramGridView';
@@ -168,6 +169,7 @@ interface PresentationItem {
   seqLabel: string;
   pinnedInGrid?: number | null;
   presentationNotes?: string;
+  contentComments?: string;
   isCarousel?: boolean;
 }
 
@@ -185,6 +187,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
+    contentComments: item.contentComments || '',
     isCarousel: item.isCarousel || false,
   };
 }
@@ -203,6 +206,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     seqLabel: `#${idx + 1}`,
     pinnedInGrid: ((item as Record<string, unknown>).pinnedInGrid as number | null) || null,
     presentationNotes: item.presentationNotes || '',
+    contentComments: item.contentComments || '',
     isCarousel: item.isCarousel || false,
   };
 }
@@ -467,25 +471,25 @@ const MediaThumb: React.FC<{ media: MediaEntry; onDriveClick: (url: string, titl
 const EditorialRow: React.FC<{
   item: PresentationItem;
   onDriveClick: (url: string, title: string) => void;
-  onSaveNotes: (itemId: string, notes: string) => Promise<void>;
-}> = ({ item, onDriveClick, onSaveNotes }) => {
+  onSaveComment: (itemId: string, comment: string) => Promise<void>;
+}> = ({ item, onDriveClick, onSaveComment }) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const dotColor = TYPE_DOT_COLORS[item.type] || 'bg-gray-400';
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
 
-  const [notesText, setNotesText] = useState(item.presentationNotes || '');
+  const [commentText, setCommentText] = useState(item.contentComments || '');
   const [saving, setSaving] = useState(false);
-  const [showNotes, setShowNotes] = useState(!!item.presentationNotes);
-  const hasChanged = notesText !== (item.presentationNotes || '');
+  const [showComments, setShowComments] = useState(!!item.contentComments);
+  const hasChanged = commentText !== (item.contentComments || '');
 
   const handleSave = async () => {
     if (!hasChanged) return;
     setSaving(true);
     try {
-      await onSaveNotes(item.id, notesText);
-      item.presentationNotes = notesText;
+      await onSaveComment(item.id, commentText);
+      item.contentComments = commentText;
     } catch (err) {
-      console.error('Error saving notes:', err);
+      console.error('Error saving comment:', err);
     } finally {
       setSaving(false);
     }
@@ -539,30 +543,42 @@ const EditorialRow: React.FC<{
             {item.mainIdea && <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />}
             {item.brief && <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />}
             {item.notes && <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />}
-            {/* Presentation Notes — editable */}
+            {/* Presentation Notes — read-only display */}
+            {item.presentationNotes && (
+              <div className="mt-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <StickyNote className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
+                    Presentation Notes
+                  </span>
+                </div>
+                <BidiText text={item.presentationNotes} className="text-[11px] text-amber-700 leading-relaxed" />
+              </div>
+            )}
+            {/* Content Comments — editable by external viewers */}
             <div className="mt-2">
-              {!showNotes ? (
+              {!showComments ? (
                 <button
-                  onClick={() => setShowNotes(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-400 hover:text-amber-600 hover:bg-amber-50 border border-gray-200 hover:border-amber-200 rounded-lg transition-colors"
+                  onClick={() => setShowComments(true)}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-medium text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 border border-gray-200 hover:border-emerald-200 rounded-lg transition-colors"
                 >
-                  <StickyNote className="w-3 h-3" />
-                  Add Note
+                  <MessageSquare className="w-3 h-3" />
+                  Add Comment
                 </button>
               ) : (
-                <div className="px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
                   <div className="flex items-center justify-between gap-1.5 mb-1.5">
                     <div className="flex items-center gap-1.5">
-                      <StickyNote className="w-3 h-3 text-amber-500" />
-                      <span className="text-[10px] font-semibold text-amber-600 uppercase tracking-wider">
-                        Presentation Notes
+                      <MessageSquare className="w-3 h-3 text-emerald-500" />
+                      <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
+                        Content Comments
                       </span>
                     </div>
                     {hasChanged && (
                       <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-600 text-white text-[10px] font-medium hover:bg-amber-700 disabled:opacity-50 transition-all shadow-sm"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-600 text-white text-[10px] font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
                       >
                         {saving ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : <Save className="w-2.5 h-2.5" />}
                         Save
@@ -571,10 +587,10 @@ const EditorialRow: React.FC<{
                   </div>
                   <textarea
                     dir="auto"
-                    value={notesText}
-                    onChange={(e) => setNotesText(e.target.value)}
-                    placeholder="Add notes for this content…"
-                    className="w-full min-h-[60px] px-2.5 py-2 text-[11px] text-amber-800 bg-white border border-amber-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-amber-400/30 focus:border-amber-300 placeholder:text-amber-300 transition-all"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add your comment on this content…"
+                    className="w-full min-h-[60px] px-2.5 py-2 text-[11px] text-emerald-800 bg-white border border-emerald-200 rounded-md resize-y focus:outline-none focus:ring-2 focus:ring-emerald-400/30 focus:border-emerald-300 placeholder:text-emerald-300 transition-all"
                     rows={2}
                   />
                 </div>
@@ -907,10 +923,10 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
   // Grid item detail modal
   const [gridDetailItem, setGridDetailItem] = useState<PresentationItem | null>(null);
 
-  // Save presentation notes to Firestore
-  const handleSaveNotes = useCallback(
-    async (itemId: string, notes: string) => {
-      await updateDoc(doc(db, sourceCollection, itemId), { presentationNotes: notes });
+  // Save content comments to Firestore
+  const handleSaveComment = useCallback(
+    async (itemId: string, comment: string) => {
+      await updateDoc(doc(db, sourceCollection, itemId), { contentComments: comment });
     },
     [sourceCollection],
   );
@@ -950,7 +966,7 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
           item={gridDetailItem as unknown as SharedPresentationItem}
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
-          onSaveNotes={handleSaveNotes}
+          onSaveComment={handleSaveComment}
         />
       )}
 
@@ -1055,7 +1071,12 @@ const ReadOnlyPresentation: React.FC<ReadOnlyPresentationProps> = ({
               <div className="py-3 px-4 border-l border-gray-200">Media</div>
             </div>
             {filteredItems.map((item) => (
-              <EditorialRow key={item.id} item={item} onDriveClick={handleDriveClick} onSaveNotes={handleSaveNotes} />
+              <EditorialRow
+                key={item.id}
+                item={item}
+                onDriveClick={handleDriveClick}
+                onSaveComment={handleSaveComment}
+              />
             ))}
           </div>
         ) : (

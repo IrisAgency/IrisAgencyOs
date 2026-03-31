@@ -1,14 +1,7 @@
 import React, { useState } from 'react';
-import type {
-  CalendarContentType,
-  CalendarReferenceLink,
-  CalendarReferenceFile,
-} from '../types';
+import type { CalendarContentType, CalendarReferenceLink, CalendarReferenceFile } from '../types';
 
-import {
-  Video, Image, Clapperboard, ExternalLink, FileText,
-  Link as LinkIcon, Play, X, Layers,
-} from 'lucide-react';
+import { Video, Image, Clapperboard, ExternalLink, FileText, Link as LinkIcon, Play, X, Layers } from 'lucide-react';
 
 // ============================================================================
 // PURE HELPERS
@@ -139,7 +132,11 @@ export function formatPublishDay(isoDate: string): string {
 export function BidiText({ text, className = '' }: { text: string; className?: string }) {
   if (!text) return null;
   return (
-    <div dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className={`whitespace-pre-wrap break-words ${className}`}>
+    <div
+      dir="auto"
+      style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+      className={`whitespace-pre-wrap break-words ${className}`}
+    >
       {text}
     </div>
   );
@@ -150,7 +147,11 @@ export function BidiText({ text, className = '' }: { text: string; className?: s
 // ============================================================================
 
 export const TYPE_ICONS: Record<string, React.ElementType> = { VIDEO: Video, PHOTO: Image, MOTION: Clapperboard };
-export const TYPE_DOT_COLORS: Record<string, string> = { VIDEO: 'bg-purple-500', PHOTO: 'bg-blue-500', MOTION: 'bg-amber-500' };
+export const TYPE_DOT_COLORS: Record<string, string> = {
+  VIDEO: 'bg-purple-500',
+  PHOTO: 'bg-blue-500',
+  MOTION: 'bg-amber-500',
+};
 export const TYPE_BADGE_COLORS: Record<string, string> = {
   VIDEO: 'bg-purple-50 text-purple-700 border-purple-200',
   PHOTO: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -193,6 +194,7 @@ export interface PresentationItem {
   source?: 'activated' | 'creative';
   pinnedInGrid?: number | null;
   presentationNotes?: string;
+  contentComments?: string;
   isCarousel?: boolean;
 }
 
@@ -224,7 +226,12 @@ export function collectMediaEntries(item: PresentationItem): MediaEntry[] {
     const isVid = isFirebase && isVideoFile(link.title || '');
     const isWeb = !isDrive && !isFirebase && !isImg && !isVid;
     allMedia.push({
-      url: norm, name: link.title || 'Link', isDrive, isFirebase, isImg, isVid,
+      url: norm,
+      name: link.title || 'Link',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
       isWebsite: isWeb,
       driveId: isDrive ? extractDriveFileId(norm) : null,
       previewUrl: isWeb ? getWebsitePreviewUrl(norm) : null,
@@ -239,8 +246,14 @@ export function collectMediaEntries(item: PresentationItem): MediaEntry[] {
     const isImg = isImageFile(file.fileName) || isDirectImageUrl(url);
     const isVid = isVideoFile(file.fileName);
     allMedia.push({
-      url, name: file.fileName || 'File', isDrive, isFirebase, isImg, isVid,
-      isWebsite: false, driveId: isDrive ? extractDriveFileId(url) : null,
+      url,
+      name: file.fileName || 'File',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
+      isWebsite: false,
+      driveId: isDrive ? extractDriveFileId(url) : null,
     });
   }
 
@@ -312,12 +325,23 @@ export function DrivePreviewModal({ url, title, onClose }: { url: string; title?
   const embedUrl = fileId ? `https://drive.google.com/file/d/${fileId}/preview` : url;
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-4xl bg-white rounded-xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
           <span className="text-sm font-medium text-gray-800 truncate">{title || 'Drive Preview'}</span>
           <div className="flex items-center gap-2">
-            <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+            >
               Open in Drive <ExternalLink className="w-3 h-3" />
             </a>
             <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-800">
@@ -326,7 +350,13 @@ export function DrivePreviewModal({ url, title, onClose }: { url: string; title?
           </div>
         </div>
         <div className="w-full aspect-video bg-gray-100">
-          <iframe src={embedUrl} className="w-full h-full border-0" allow="autoplay; encrypted-media" allowFullScreen title={title || 'Drive preview'} />
+          <iframe
+            src={embedUrl}
+            className="w-full h-full border-0"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            title={title || 'Drive preview'}
+          />
         </div>
       </div>
     </div>
@@ -337,7 +367,13 @@ export function DrivePreviewModal({ url, title, onClose }: { url: string; title?
 // MEDIA PREVIEW (EDITORIAL TABLE — full list)
 // ============================================================================
 
-export function MediaPreview({ item, onDriveClick }: { item: PresentationItem; onDriveClick: (url: string, title: string) => void }) {
+export function MediaPreview({
+  item,
+  onDriveClick,
+}: {
+  item: PresentationItem;
+  onDriveClick: (url: string, title: string) => void;
+}) {
   const allMedia = collectMediaEntries(item);
 
   if (allMedia.length === 0) {
@@ -365,9 +401,7 @@ export const MediaThumb: React.FC<{
   const [vidErr, setVidErr] = useState(false);
   const [previewErr, setPreviewErr] = useState(false);
 
-  const thumbSrc = media.driveId
-    ? getDriveThumbnailUrl(media.driveId)
-    : media.isImg ? media.url : null;
+  const thumbSrc = media.driveId ? getDriveThumbnailUrl(media.driveId) : media.isImg ? media.url : null;
 
   const canVideoPreview = media.isVid && !media.isDrive && !vidErr;
 
@@ -382,9 +416,19 @@ export const MediaThumb: React.FC<{
   // 1. Image thumbnail (Drive, direct images, Firebase images)
   if (thumbSrc && !imgErr) {
     return (
-      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50" title={media.name}>
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.name}
+      >
         <div className="w-full aspect-[16/10] bg-gray-100 overflow-hidden">
-          <img src={thumbSrc} alt={media.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+          <img
+            src={thumbSrc}
+            alt={media.name}
+            className="w-full h-full object-cover"
+            onError={() => setImgErr(true)}
+            loading="lazy"
+          />
         </div>
         {(media.isVid || (media.isDrive && !media.isImg)) && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
@@ -413,9 +457,19 @@ export const MediaThumb: React.FC<{
   // 2. Video preview (Firebase/direct video files)
   if (canVideoPreview) {
     return (
-      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50" title={media.name}>
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.name}
+      >
         <div className="w-full aspect-[16/10] bg-black overflow-hidden">
-          <video src={media.url} className="w-full h-full object-cover" muted preload="metadata" onError={() => setVidErr(true)} />
+          <video
+            src={media.url}
+            className="w-full h-full object-cover"
+            muted
+            preload="metadata"
+            onError={() => setVidErr(true)}
+          />
         </div>
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
           <div className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shadow-sm">
@@ -437,19 +491,35 @@ export const MediaThumb: React.FC<{
     const domain = getDomainFromUrl(media.url);
     const preview = media.previewUrl;
     return (
-      <button onClick={handleClick} className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50" title={media.url}>
+      <button
+        onClick={handleClick}
+        className="relative w-full rounded-lg overflow-hidden border border-gray-200 hover:border-gray-400 hover:shadow-md transition-all group bg-gray-50"
+        title={media.url}
+      >
         <div className="w-full aspect-[16/10] bg-gray-100 overflow-hidden relative">
           {preview && !previewErr ? (
-            <img src={preview} alt={media.name} className="w-full h-full object-cover" onError={() => setPreviewErr(true)} loading="lazy" />
+            <img
+              src={preview}
+              alt={media.name}
+              className="w-full h-full object-cover"
+              onError={() => setPreviewErr(true)}
+              loading="lazy"
+            />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
-              {favicon ? <img src={favicon} alt="" className="w-10 h-10 opacity-30" loading="lazy" /> : <LinkIcon className="w-8 h-8 text-gray-300" />}
+              {favicon ? (
+                <img src={favicon} alt="" className="w-10 h-10 opacity-30" loading="lazy" />
+              ) : (
+                <LinkIcon className="w-8 h-8 text-gray-300" />
+              )}
             </div>
           )}
           <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-2.5 pb-2 pt-5">
             <div className="flex items-center gap-1.5">
               {favicon && <img src={favicon} alt="" className="w-3.5 h-3.5 shrink-0" loading="lazy" />}
-              <span className="text-[10px] font-medium text-white/90 truncate">{media.name !== 'Link' ? media.name : domain}</span>
+              <span className="text-[10px] font-medium text-white/90 truncate">
+                {media.name !== 'Link' ? media.name : domain}
+              </span>
             </div>
             <span className="text-[9px] text-white/50 truncate block">{domain}</span>
           </div>
@@ -465,15 +535,25 @@ export const MediaThumb: React.FC<{
 
   // 4. Generic fallback
   return (
-    <button onClick={handleClick} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group" title={media.name}>
+    <button
+      onClick={handleClick}
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg border border-gray-200 hover:border-gray-400 bg-gray-50 hover:bg-gray-100 hover:shadow-sm transition-all text-left group"
+      title={media.name}
+    >
       <div className="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center">
-        {media.isVid ? <Video className="w-4 h-4 text-purple-500" /> :
-         media.isImg ? <Image className="w-4 h-4 text-blue-400" /> :
-         <FileText className="w-4 h-4 text-gray-400" />}
+        {media.isVid ? (
+          <Video className="w-4 h-4 text-purple-500" />
+        ) : media.isImg ? (
+          <Image className="w-4 h-4 text-blue-400" />
+        ) : (
+          <FileText className="w-4 h-4 text-gray-400" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <span className="block text-xs font-medium text-gray-700 truncate">{media.name}</span>
-        <span className="block text-[10px] text-gray-400 truncate">{media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}</span>
+        <span className="block text-[10px] text-gray-400 truncate">
+          {media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}
+        </span>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
     </button>
@@ -498,16 +578,20 @@ export const DarkMediaThumb: React.FC<{
   const [imgErr, setImgErr] = useState(false);
   const [vidErr, setVidErr] = useState(false);
 
-  const thumbSrc = media.driveId
-    ? getDriveThumbnailUrl(media.driveId)
-    : media.isImg ? media.url : null;
+  const thumbSrc = media.driveId ? getDriveThumbnailUrl(media.driveId) : media.isImg ? media.url : null;
 
   const canVideoPreview = media.isVid && !media.isDrive && !vidErr;
 
   const imgThumbContent = (
     <>
       <div className="w-full aspect-[16/10] bg-black/30 overflow-hidden">
-        <img src={thumbSrc || ''} alt={media.name} className="w-full h-full object-cover" onError={() => setImgErr(true)} loading="lazy" />
+        <img
+          src={thumbSrc || ''}
+          alt={media.name}
+          className="w-full h-full object-cover"
+          onError={() => setImgErr(true)}
+          loading="lazy"
+        />
       </div>
       {(media.isVid || (media.isDrive && !media.isImg)) && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -527,19 +611,40 @@ export const DarkMediaThumb: React.FC<{
 
   // ── 1. Image thumbnail ──
   if (thumbSrc && !imgErr) {
-    const cls = "relative w-full block rounded-lg overflow-hidden border border-white/10 hover:border-white/25 transition-all group bg-white/5";
+    const cls =
+      'relative w-full block rounded-lg overflow-hidden border border-white/10 hover:border-white/25 transition-all group bg-white/5';
     if (media.isDrive) {
-      return <button type="button" onClick={() => onDriveClick(media.url, media.name)} className={cls} title={media.name}>{imgThumbContent}</button>;
+      return (
+        <button type="button" onClick={() => onDriveClick(media.url, media.name)} className={cls} title={media.name}>
+          {imgThumbContent}
+        </button>
+      );
     }
-    return <a href={media.url} target="_blank" rel="noopener noreferrer" className={cls} title={media.name}>{imgThumbContent}</a>;
+    return (
+      <a href={media.url} target="_blank" rel="noopener noreferrer" className={cls} title={media.name}>
+        {imgThumbContent}
+      </a>
+    );
   }
 
   // ── 2. Video preview ──
   if (canVideoPreview) {
     return (
-      <a href={media.url} target="_blank" rel="noopener noreferrer" className="relative w-full block rounded-lg overflow-hidden border border-white/10 hover:border-white/25 transition-all group bg-white/5" title={media.name}>
+      <a
+        href={media.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative w-full block rounded-lg overflow-hidden border border-white/10 hover:border-white/25 transition-all group bg-white/5"
+        title={media.name}
+      >
         <div className="w-full aspect-[16/10] bg-black overflow-hidden">
-          <video src={media.url} className="w-full h-full object-cover" muted preload="metadata" onError={() => setVidErr(true)} />
+          <video
+            src={media.url}
+            className="w-full h-full object-cover"
+            muted
+            preload="metadata"
+            onError={() => setVidErr(true)}
+          />
         </div>
         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
           <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
@@ -555,17 +660,24 @@ export const DarkMediaThumb: React.FC<{
     const favicon = getWebsiteFavicon(media.url);
     const domain = getDomainFromUrl(media.url);
     return (
-      <a href={media.url} target="_blank" rel="noopener noreferrer"
+      <a
+        href={media.url}
+        target="_blank"
+        rel="noopener noreferrer"
         className="relative w-full block rounded-lg overflow-hidden border border-white/10 hover:border-white/25 transition-all group bg-white/5 no-underline"
         title={media.url}
       >
         <div className="w-full aspect-[16/10] bg-gradient-to-br from-white/[0.06] to-white/[0.02] flex items-center justify-center">
-          {favicon
-            ? <img src={favicon} alt="" className="w-12 h-12 opacity-60" loading="lazy" />
-            : <LinkIcon className="w-10 h-10 text-white/20" />}
+          {favicon ? (
+            <img src={favicon} alt="" className="w-12 h-12 opacity-60" loading="lazy" />
+          ) : (
+            <LinkIcon className="w-10 h-10 text-white/20" />
+          )}
         </div>
         <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent px-2.5 pb-2 pt-6">
-          <span className="block text-[11px] font-medium text-white/90 truncate">{media.name !== 'Link' ? media.name : domain}</span>
+          <span className="block text-[11px] font-medium text-white/90 truncate">
+            {media.name !== 'Link' ? media.name : domain}
+          </span>
           <span className="block text-[9px] text-white/40 truncate">{domain}</span>
         </div>
       </a>
@@ -573,32 +685,54 @@ export const DarkMediaThumb: React.FC<{
   }
 
   // ── 4. Generic fallback ──
-  const fallbackCls = "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all text-left group no-underline";
+  const fallbackCls =
+    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10 transition-all text-left group no-underline';
   const fallbackContent = (
     <>
       <div className="shrink-0 w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">
-        {media.isVid ? <Video className="w-4 h-4 text-purple-400" /> :
-         media.isImg ? <Image className="w-4 h-4 text-blue-400" /> :
-         <FileText className="w-4 h-4 text-white/40" />}
+        {media.isVid ? (
+          <Video className="w-4 h-4 text-purple-400" />
+        ) : media.isImg ? (
+          <Image className="w-4 h-4 text-blue-400" />
+        ) : (
+          <FileText className="w-4 h-4 text-white/40" />
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <span className="block text-xs font-medium text-white/80 truncate">{media.name}</span>
-        <span className="block text-[10px] text-white/40 truncate">{media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}</span>
+        <span className="block text-[10px] text-white/40 truncate">
+          {media.isVid ? 'Video file' : media.isImg ? 'Image file' : 'File'}
+        </span>
       </div>
       <ExternalLink className="w-3.5 h-3.5 text-white/20 shrink-0" />
     </>
   );
   if (media.isDrive) {
-    return <button type="button" onClick={() => onDriveClick(media.url, media.name)} className={fallbackCls} title={media.name}>{fallbackContent}</button>;
+    return (
+      <button
+        type="button"
+        onClick={() => onDriveClick(media.url, media.name)}
+        className={fallbackCls}
+        title={media.name}
+      >
+        {fallbackContent}
+      </button>
+    );
   }
-  return <a href={media.url} target="_blank" rel="noopener noreferrer" className={fallbackCls} title={media.name}>{fallbackContent}</a>;
+  return (
+    <a href={media.url} target="_blank" rel="noopener noreferrer" className={fallbackCls} title={media.name}>
+      {fallbackContent}
+    </a>
+  );
 };
 
 /**
  * Build MediaEntry[] from CalendarRevisionReference[] (the request attachments).
  * Adapts the simpler { type, value, fileName } shape to MediaEntry.
  */
-export function collectRevisionRefMedia(refs: Array<{ type: 'link' | 'file'; value: string; fileName?: string }>): MediaEntry[] {
+export function collectRevisionRefMedia(
+  refs: Array<{ type: 'link' | 'file'; value: string; fileName?: string }>,
+): MediaEntry[] {
   const entries: MediaEntry[] = [];
   for (const r of refs) {
     const url = r.value;
@@ -606,11 +740,17 @@ export function collectRevisionRefMedia(refs: Array<{ type: 'link' | 'file'; val
     const isDrive = isGoogleDriveUrl(url);
     const isFirebase = isFirebaseStorageUrl(url);
     const name = r.fileName || (r.type === 'file' ? 'File' : 'Link');
-    const isImg = isDirectImageUrl(url) || (isFirebase && isImageFile(name)) || (r.type === 'file' && isImageFile(name));
+    const isImg =
+      isDirectImageUrl(url) || (isFirebase && isImageFile(name)) || (r.type === 'file' && isImageFile(name));
     const isVid = (isFirebase && isVideoFile(name)) || (r.type === 'file' && isVideoFile(name));
     const isWeb = !isDrive && !isFirebase && !isImg && !isVid && r.type === 'link';
     entries.push({
-      url, name, isDrive, isFirebase, isImg, isVid,
+      url,
+      name,
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
       isWebsite: isWeb,
       driveId: isDrive ? extractDriveFileId(url) : null,
       previewUrl: isWeb ? getWebsitePreviewUrl(url) : null,
@@ -625,7 +765,7 @@ export function collectRevisionRefMedia(refs: Array<{ type: 'link' | 'file'; val
  */
 export function collectRevisionResponseMedia(
   links: Array<{ title: string; url: string }>,
-  files: Array<{ fileName: string; downloadURL: string; [k: string]: any }>
+  files: Array<{ fileName: string; downloadURL: string; [k: string]: any }>,
 ): MediaEntry[] {
   const entries: MediaEntry[] = [];
   for (const link of links) {
@@ -637,7 +777,12 @@ export function collectRevisionResponseMedia(
     const isVid = isFirebase && isVideoFile(link.title || '');
     const isWeb = !isDrive && !isFirebase && !isImg && !isVid;
     entries.push({
-      url: norm, name: link.title || 'Link', isDrive, isFirebase, isImg, isVid,
+      url: norm,
+      name: link.title || 'Link',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
       isWebsite: isWeb,
       driveId: isDrive ? extractDriveFileId(norm) : null,
       previewUrl: isWeb ? getWebsitePreviewUrl(norm) : null,
@@ -651,8 +796,14 @@ export function collectRevisionResponseMedia(
     const isImg = isImageFile(file.fileName) || isDirectImageUrl(url);
     const isVid = isVideoFile(file.fileName);
     entries.push({
-      url, name: file.fileName || 'File', isDrive, isFirebase, isImg, isVid,
-      isWebsite: false, driveId: isDrive ? extractDriveFileId(url) : null,
+      url,
+      name: file.fileName || 'File',
+      isDrive,
+      isFirebase,
+      isImg,
+      isVid,
+      isWebsite: false,
+      driveId: isDrive ? extractDriveFileId(url) : null,
     });
   }
   return entries;
@@ -688,7 +839,9 @@ export const EditorialRow: React.FC<{
             <span className="text-xs text-gray-300 italic">No date</span>
           )}
         </div>
-        <span className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}>
+        <span
+          className={`sm:mt-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${badgeColor}`}
+        >
           <TypeIcon className="w-3 h-3" />
           {item.type}
         </span>
@@ -705,12 +858,14 @@ export const EditorialRow: React.FC<{
         <div className="flex items-start gap-2.5">
           <div className={`mt-1.5 w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
           <div className="flex-1 min-w-0">
-            <h3 dir="auto" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }} className="text-sm font-semibold text-gray-900 leading-snug break-words">
+            <h3
+              dir="auto"
+              style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+              className="text-sm font-semibold text-gray-900 leading-snug break-words"
+            >
               {item.title}
             </h3>
-            {item.mainIdea && (
-              <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />
-            )}
+            {item.mainIdea && <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />}
             {item.brief && <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />}
             {item.notes && <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />}
           </div>

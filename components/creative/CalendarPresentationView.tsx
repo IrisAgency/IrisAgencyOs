@@ -1,15 +1,28 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type {
-  CreativeProject, CreativeCalendar, CreativeCalendarItem,
-  CalendarMonth, CalendarItem,
-  Client, User, CalendarContentType,
+  CreativeProject,
+  CreativeCalendar,
+  CreativeCalendarItem,
+  CalendarMonth,
+  CalendarItem,
+  Client,
+  User,
+  CalendarContentType,
 } from '../../types';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 import {
-  Calendar, Presentation, Search, X, ArrowLeft,
-  Printer, ChevronDown, Share2, LayoutGrid, FileText as FileTextIcon,
+  Calendar,
+  Presentation,
+  Search,
+  X,
+  ArrowLeft,
+  Printer,
+  ChevronDown,
+  Share2,
+  LayoutGrid,
+  FileText as FileTextIcon,
 } from 'lucide-react';
 import ShareLinkManager from './ShareLinkManager';
 import { useAuth } from '../../contexts/AuthContext';
@@ -45,6 +58,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     source: 'activated',
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
+    contentComments: item.contentComments || '',
     isCarousel: item.isCarousel || false,
   };
 }
@@ -63,6 +77,7 @@ function creativeItemToPres(item: CreativeCalendarItem, idx: number): Presentati
     seqLabel: `#${idx + 1}`,
     source: 'creative',
     presentationNotes: item.presentationNotes || '',
+    contentComments: item.contentComments || '',
     isCarousel: item.isCarousel || false,
   };
 }
@@ -90,7 +105,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   calendarMonths,
   calendarItems,
   clients,
-  users,
+  users: _users,
   onBack,
 }) => {
   const { currentUser } = useAuth();
@@ -119,9 +134,18 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   }, []);
 
   // Derive approved projects & calendars
-  const approvedCalendars = useMemo(() => creativeCalendars.filter(c => c.status === 'APPROVED'), [creativeCalendars]);
-  const approvedProjectIds = useMemo(() => new Set(approvedCalendars.map(c => c.creativeProjectId)), [approvedCalendars]);
-  const approvedProjects = useMemo(() => creativeProjects.filter(p => approvedProjectIds.has(p.id) && !p.isArchived), [creativeProjects, approvedProjectIds]);
+  const approvedCalendars = useMemo(
+    () => creativeCalendars.filter((c) => c.status === 'APPROVED'),
+    [creativeCalendars],
+  );
+  const approvedProjectIds = useMemo(
+    () => new Set(approvedCalendars.map((c) => c.creativeProjectId)),
+    [approvedCalendars],
+  );
+  const approvedProjects = useMemo(
+    () => creativeProjects.filter((p) => approvedProjectIds.has(p.id) && !p.isArchived),
+    [creativeProjects, approvedProjectIds],
+  );
 
   // Auto-select first
   useMemo(() => {
@@ -133,29 +157,29 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   // Selected calendar + items
   const selectedCalendar = useMemo(() => {
     if (!selectedProjectId) return null;
-    return approvedCalendars.find(c => c.creativeProjectId === selectedProjectId) ?? null;
+    return approvedCalendars.find((c) => c.creativeProjectId === selectedProjectId) ?? null;
   }, [selectedProjectId, approvedCalendars]);
 
-  const selectedProject = approvedProjects.find(p => p.id === selectedProjectId);
-  const selectedClient = selectedProject ? clients.find(c => c.id === selectedProject.clientId) : null;
+  const selectedProject = approvedProjects.find((p) => p.id === selectedProjectId);
+  const selectedClient = selectedProject ? clients.find((c) => c.id === selectedProject.clientId) : null;
 
   // Build presentation items: prefer activated CalendarItems, fallback to CreativeCalendarItems
   const presentationItems = useMemo((): PresentationItem[] => {
     if (!selectedCalendar || !selectedProject) return [];
 
     const activatedMonth = calendarMonths.find(
-      m => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey
+      (m) => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey,
     );
 
     if (activatedMonth) {
       const items = calendarItems
-        .filter(i => i.calendarMonthId === activatedMonth.id)
+        .filter((i) => i.calendarMonthId === activatedMonth.id)
         .sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
       if (items.length > 0) return items.map(calItemToPres);
     }
 
     const items = creativeCalendarItems
-      .filter(i => i.creativeCalendarId === selectedCalendar.id)
+      .filter((i) => i.creativeCalendarId === selectedCalendar.id)
       .sort((a, b) => (a.publishAt || a.createdAt).localeCompare(b.publishAt || b.createdAt));
     return items.map((item, idx) => creativeItemToPres(item, idx));
   }, [selectedCalendar, selectedProject, calendarMonths, calendarItems, creativeCalendarItems]);
@@ -163,14 +187,15 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   // Filtered items
   const filteredItems = useMemo(() => {
     let items = presentationItems;
-    if (filterType !== 'ALL') items = items.filter(i => i.type === filterType);
+    if (filterType !== 'ALL') items = items.filter((i) => i.type === filterType);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      items = items.filter(i =>
-        i.title?.toLowerCase().includes(q) ||
-        i.mainIdea?.toLowerCase().includes(q) ||
-        i.brief?.toLowerCase().includes(q) ||
-        i.notes?.toLowerCase().includes(q)
+      items = items.filter(
+        (i) =>
+          i.title?.toLowerCase().includes(q) ||
+          i.mainIdea?.toLowerCase().includes(q) ||
+          i.brief?.toLowerCase().includes(q) ||
+          i.notes?.toLowerCase().includes(q),
       );
     }
     return items;
@@ -184,7 +209,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
   }, [presentationItems]);
 
   // Group by date
-  const dateGroups = useMemo(() => {
+  const _dateGroups = useMemo(() => {
     const groups: { dateKey: string; label: string; items: PresentationItem[] }[] = [];
     const map = new Map<string, PresentationItem[]>();
     for (const item of filteredItems) {
@@ -204,12 +229,25 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
 
   const handleDriveClick = (url: string, title: string) => setDriveModal({ url, title });
 
+  // Save presentation notes to Firestore
+  const handleSaveNotes = useCallback(
+    async (itemId: string, notes: string) => {
+      const isCalendarItem = calendarItems.some((i) => i.id === itemId);
+      const collection = isCalendarItem ? 'calendar_items' : 'creative_calendar_items';
+      await updateDoc(doc(db, collection, itemId), { presentationNotes: notes });
+    },
+    [calendarItems],
+  );
+
   // Empty State
   if (approvedProjects.length === 0) {
     return (
       <div className="min-h-screen bg-white">
         <div className="max-w-6xl mx-auto px-6 py-12">
-          <button onClick={onBack} className="no-print inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-8">
+          <button
+            onClick={onBack}
+            className="no-print inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors mb-8"
+          >
             <ArrowLeft className="w-4 h-4" /> Back to Creative Direction
           </button>
           <div className="text-center py-20">
@@ -223,14 +261,6 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
       </div>
     );
   }
-
-  // Save presentation notes to Firestore
-  const handleSaveNotes = useCallback(async (itemId: string, notes: string) => {
-    // Determine if it's a calendar_items or creative_calendar_items doc
-    const isCalendarItem = calendarItems.some(i => i.id === itemId);
-    const collection = isCalendarItem ? 'calendar_items' : 'creative_calendar_items';
-    await updateDoc(doc(db, collection, itemId), { presentationNotes: notes });
-  }, [calendarItems]);
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -250,7 +280,10 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         {/* HEADER BAR */}
         <div className="no-print flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
-          <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors self-start">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-gray-700 transition-colors self-start"
+          >
             <ArrowLeft className="w-4 h-4" /> Back
           </button>
           <div className="flex items-center gap-2">
@@ -299,7 +332,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
             creativeCalendarId={selectedCalendar.id}
             calendarMonthId={
               calendarMonths.find(
-                m => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey
+                (m) => m.clientId === selectedCalendar.clientId && m.monthKey === selectedCalendar.monthKey,
               )?.id || null
             }
             clientId={selectedProject.clientId}
@@ -330,18 +363,23 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
                   <span className="truncate">{selectedClient?.name || 'Client'}</span>
                   <span className="text-gray-300 shrink-0">·</span>
                   <span className="shrink-0">{selectedCalendar?.monthKey || 'Select'}</span>
-                  <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${selectorOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown
+                    className={`w-4 h-4 shrink-0 transition-transform ${selectorOpen ? 'rotate-180' : ''}`}
+                  />
                 </button>
                 {selectorOpen && (
                   <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 w-full sm:w-72 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 max-h-64 overflow-y-auto">
-                    {approvedProjects.map(proj => {
-                      const client = clients.find(c => c.id === proj.clientId);
-                      const cal = approvedCalendars.find(c => c.creativeProjectId === proj.id);
+                    {approvedProjects.map((proj) => {
+                      const client = clients.find((c) => c.id === proj.clientId);
+                      const cal = approvedCalendars.find((c) => c.creativeProjectId === proj.id);
                       const isActive = proj.id === selectedProjectId;
                       return (
                         <button
                           key={proj.id}
-                          onClick={() => { setSelectedProjectId(proj.id); setSelectorOpen(false); }}
+                          onClick={() => {
+                            setSelectedProjectId(proj.id);
+                            setSelectorOpen(false);
+                          }}
                           className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${isActive ? 'bg-gray-100 font-medium text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}
                         >
                           {client?.name || 'Client'} · {cal?.monthKey || ''}
@@ -366,7 +404,7 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
         {/* FILTERS */}
         <div className="no-print flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
           <div className="flex flex-wrap gap-1.5">
-            {TYPE_OPTIONS.map(opt => (
+            {TYPE_OPTIONS.map((opt) => (
               <button
                 key={opt.value}
                 onClick={() => setFilterType(opt.value)}
@@ -377,7 +415,9 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
                 }`}
               >
                 {opt.label}
-                {typeCounts[opt.value] !== undefined && <span className="ml-1 opacity-60">({typeCounts[opt.value]})</span>}
+                {typeCounts[opt.value] !== undefined && (
+                  <span className="ml-1 opacity-60">({typeCounts[opt.value]})</span>
+                )}
               </button>
             ))}
           </div>
@@ -388,11 +428,14 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
                 type="text"
                 placeholder="Search..."
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-8 py-2 rounded-lg border border-gray-200 text-gray-800 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400"
               />
               {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-300 hover:text-gray-600">
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-gray-300 hover:text-gray-600"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -423,15 +466,19 @@ const CalendarPresentationView: React.FC<CalendarPresentationViewProps> = ({
           <InstagramGridView
             items={filteredItems}
             sortDirection={sortDirection}
-            onSortToggle={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
+            onSortToggle={() => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))}
             onItemClick={(item) => setGridDetailItem(item)}
           />
         )}
 
         {/* FOOTER */}
         <footer className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] text-gray-300 uppercase tracking-wider">
-          <span>{viewMode === 'editorial' ? 'Editorial Schedule' : 'Instagram Grid'} · {selectedClient?.name}</span>
-          <span>{selectedCalendar?.monthKey} · {presentationItems.length} Items</span>
+          <span>
+            {viewMode === 'editorial' ? 'Editorial Schedule' : 'Instagram Grid'} · {selectedClient?.name}
+          </span>
+          <span>
+            {selectedCalendar?.monthKey} · {presentationItems.length} Items
+          </span>
         </footer>
       </div>
     </div>

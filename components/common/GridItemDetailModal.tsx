@@ -1,7 +1,18 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  X, Calendar, ExternalLink, FileText, ChevronLeft, ChevronRight,
-  Play, Link as LinkIcon, Save, Loader2, StickyNote, Layers,
+  X,
+  Calendar,
+  ExternalLink,
+  FileText,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Link as LinkIcon,
+  Save,
+  Loader2,
+  StickyNote,
+  Layers,
+  MessageSquare,
 } from 'lucide-react';
 
 import {
@@ -28,6 +39,7 @@ interface GridItemDetailModalProps {
   onClose: () => void;
   onDriveClick: (url: string, title: string) => void;
   onSaveNotes?: (itemId: string, notes: string) => Promise<void>;
+  onSaveComment?: (itemId: string, comment: string) => Promise<void>;
 }
 
 const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
@@ -35,6 +47,7 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
   onClose,
   onDriveClick,
   onSaveNotes,
+  onSaveComment,
 }) => {
   const TypeIcon = TYPE_ICONS[item.type] || FileText;
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
@@ -42,20 +55,25 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
 
   // Collect all visual media (images + videos + drive) for the slider
   const allMedia = useMemo(() => collectMediaEntries(item), [item]);
-  const visualMedia = useMemo(() => allMedia.filter(m => m.isImg || m.isVid || m.driveId), [allMedia]);
-  const websiteLinks = useMemo(() => allMedia.filter(m => m.isWebsite), [allMedia]);
+  const visualMedia = useMemo(() => allMedia.filter((m) => m.isImg || m.isVid || m.driveId), [allMedia]);
+  const websiteLinks = useMemo(() => allMedia.filter((m) => m.isWebsite), [allMedia]);
 
   // Slider state
   const [slideIndex, setSlideIndex] = useState(0);
   const slideCount = visualMedia.length;
 
-  const goNext = useCallback(() => setSlideIndex(i => (i + 1) % slideCount), [slideCount]);
-  const goPrev = useCallback(() => setSlideIndex(i => (i - 1 + slideCount) % slideCount), [slideCount]);
+  const goNext = useCallback(() => setSlideIndex((i) => (i + 1) % slideCount), [slideCount]);
+  const goPrev = useCallback(() => setSlideIndex((i) => (i - 1 + slideCount) % slideCount), [slideCount]);
 
   // Notes state
   const [notesText, setNotesText] = useState(item.presentationNotes || '');
   const [saving, setSaving] = useState(false);
   const hasChanged = notesText !== (item.presentationNotes || '');
+
+  // Comment state
+  const [commentText, setCommentText] = useState(item.contentComments || '');
+  const [savingComment, setSavingComment] = useState(false);
+  const commentChanged = commentText !== (item.contentComments || '');
 
   const handleSaveNotes = async () => {
     if (!onSaveNotes || !hasChanged) return;
@@ -66,6 +84,18 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
       console.error('Error saving notes:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSaveComment = async () => {
+    if (!onSaveComment || !commentChanged) return;
+    setSavingComment(true);
+    try {
+      await onSaveComment(item.id, commentText);
+    } catch (err) {
+      console.error('Error saving comment:', err);
+    } finally {
+      setSavingComment(false);
     }
   };
 
@@ -85,7 +115,9 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100 bg-gray-50/50 shrink-0">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shrink-0 ${badgeColor}`}>
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border shrink-0 ${badgeColor}`}
+            >
               <TypeIcon className="w-3 h-3" />
               {item.type}
             </span>
@@ -113,16 +145,11 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto">
-
           {/* ── MEDIA SLIDER ────────────────────────────── */}
           {slideCount > 0 && (
             <div className="relative bg-gray-100">
               <div className="w-full aspect-[4/3] sm:aspect-video relative overflow-hidden">
-                <SliderSlide
-                  media={visualMedia[slideIndex]}
-                  title={item.title}
-                  onDriveClick={onDriveClick}
-                />
+                <SliderSlide media={visualMedia[slideIndex]} title={item.title} onDriveClick={onDriveClick} />
               </div>
 
               {/* Arrows */}
@@ -151,9 +178,7 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
                       key={i}
                       onClick={() => setSlideIndex(i)}
                       className={`rounded-full transition-all ${
-                        i === slideIndex
-                          ? 'w-5 h-1.5 bg-white shadow-md'
-                          : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/70'
+                        i === slideIndex ? 'w-5 h-1.5 bg-white shadow-md' : 'w-1.5 h-1.5 bg-white/50 hover:bg-white/70'
                       }`}
                     />
                   ))}
@@ -171,16 +196,13 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
 
           {/* ── CONTENT AREA ────────────────────────────── */}
           <div className="p-5 space-y-5">
-
             {/* Date + Seq Label */}
             <div className="flex flex-wrap items-center gap-2">
               {item.publishAt && (
                 <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-50 border border-gray-200 rounded-lg">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
                   <span className="text-xs font-medium text-gray-600">{formatDate(item.publishAt)}</span>
-                  <span className="text-[10px] text-gray-400 ml-0.5">
-                    ({formatPublishDay(item.publishAt)})
-                  </span>
+                  <span className="text-[10px] text-gray-400 ml-0.5">({formatPublishDay(item.publishAt)})</span>
                 </div>
               )}
               {item.seqLabel && (
@@ -220,9 +242,7 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
             {/* Original Notes */}
             {item.notes && (
               <div>
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                  Notes
-                </h3>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Notes</h3>
                 <BidiText text={item.notes} className="text-sm text-gray-500 leading-relaxed italic" />
               </div>
             )}
@@ -289,17 +309,57 @@ const GridItemDetailModal: React.FC<GridItemDetailModalProps> = ({
                       disabled={saving}
                       className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 disabled:opacity-50 transition-all shadow-sm"
                     >
-                      {saving ? (
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                      ) : (
-                        <Save className="w-3 h-3" />
-                      )}
+                      {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
                       Save
                     </button>
                   )}
                 </div>
               </div>
             )}
+
+            {/* ── CONTENT COMMENTS (editable by external viewers) ── */}
+            {onSaveComment ? (
+              <div>
+                <h3 className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Content Comments
+                </h3>
+                <div className="relative">
+                  <textarea
+                    dir="auto"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Add your comment on this content…"
+                    className="w-full min-h-[80px] px-3.5 py-2.5 text-sm text-gray-700 bg-emerald-50 border border-emerald-200 rounded-xl resize-y focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-300 placeholder:text-emerald-300 transition-all"
+                    rows={3}
+                  />
+                  {commentChanged && (
+                    <button
+                      onClick={handleSaveComment}
+                      disabled={savingComment}
+                      className="absolute bottom-2.5 right-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {savingComment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                      Save
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : item.contentComments ? (
+              <div>
+                <h3 className="text-xs font-semibold text-emerald-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Content Comments
+                </h3>
+                <div
+                  dir="auto"
+                  style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
+                  className="px-3.5 py-2.5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl whitespace-pre-wrap break-words"
+                >
+                  {item.contentComments}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -332,10 +392,7 @@ const SliderSlide: React.FC<{
   if (media.driveId) {
     const thumbUrl = getDriveThumbnailUrl(media.driveId);
     return (
-      <button
-        onClick={() => onDriveClick(media.url, media.name)}
-        className="w-full h-full relative group"
-      >
+      <button onClick={() => onDriveClick(media.url, media.name)} className="w-full h-full relative group">
         {!imgErr ? (
           <img
             src={thumbUrl}

@@ -7,7 +7,7 @@ export enum UserRole {
   DESIGNER = 'Designer',
   COPYWRITER = 'Copywriter',
   SOCIAL_MANAGER = 'Social Manager',
-  CLIENT = 'Client'
+  CLIENT = 'Client',
 }
 
 export enum Department {
@@ -15,7 +15,7 @@ export enum Department {
   CREATIVE = 'Creative',
   MARKETING = 'Marketing',
   PRODUCTION = 'Production',
-  ACCOUNTS = 'Accounts'
+  ACCOUNTS = 'Accounts',
 }
 
 export type UserStatus = 'active' | 'inactive' | 'on_leave';
@@ -36,21 +36,21 @@ export interface EmergencyContact {
 }
 
 export interface EmployeeProfile {
-  id: string;             // Document ID (e.g. 'emp_xxx')
-  userId: string;         // Links to users/{userId} — Firebase Auth UID
+  id: string; // Document ID (e.g. 'emp_xxx')
+  userId: string; // Links to users/{userId} — Firebase Auth UID
   fullName: string;
   preferredName?: string;
   email: string;
   phone?: string;
   profilePhoto?: string;
-  departmentId: string;   // Links to departments/{deptId}
-  teamId?: string;        // Links to teams/{teamId}
-  roleId?: string;        // Links to roles/{roleId}
+  departmentId: string; // Links to departments/{deptId}
+  teamId?: string; // Links to teams/{teamId}
+  roleId?: string; // Links to roles/{roleId}
   jobTitle: string;
   directManagerId?: string; // userId of direct manager
   employmentType: EmploymentType;
   employmentStatus: EmploymentStatus;
-  joinDate: string;         // ISO date
+  joinDate: string; // ISO date
   probationEndDate?: string;
   contractStartDate?: string;
   contractEndDate?: string;
@@ -69,9 +69,9 @@ export interface EmployeeProfile {
 export interface Team {
   id: string;
   name: string;
-  departmentId: string;  // Links to departments/{deptId}
-  leadId?: string;       // userId of team lead
-  memberIds: string[];   // userId[]
+  departmentId: string; // Links to departments/{deptId}
+  leadId?: string; // userId of team lead
+  memberIds: string[]; // userId[]
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -80,7 +80,7 @@ export interface Team {
 export interface User {
   id: string;
   name: string;
-  role: string;  // Role name — supports both UserRole enum values and custom role names
+  role: string; // Role name — supports both UserRole enum values and custom role names
   roleId?: string; // Firestore role document ID — used by security rules for permission lookups
   department: Department;
   avatar: string;
@@ -99,7 +99,15 @@ export interface User {
   location?: string;
 }
 
-export type LeaveType = 'annual' | 'sick' | 'unpaid' | 'emergency' | 'maternity' | 'paternity' | 'compensatory' | 'other';
+export type LeaveType =
+  | 'annual'
+  | 'sick'
+  | 'unpaid'
+  | 'emergency'
+  | 'maternity'
+  | 'paternity'
+  | 'compensatory'
+  | 'other';
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 export interface LeaveRequest {
@@ -125,12 +133,12 @@ export interface LeaveRequest {
 export interface LeavePolicy {
   id: string;
   leaveType: LeaveType;
-  name: string;               // e.g. "Annual Leave"
+  name: string; // e.g. "Annual Leave"
   defaultDaysPerYear: number;
-  maxDaysPerYear?: number;    // alias for defaultDaysPerYear used in some components
-  accrualRate?: number;       // days accrued per month (optional)
-  carryOverLimit: number;     // max days that carry to next year
-  carryForward?: boolean;     // whether carry forward is allowed
+  maxDaysPerYear?: number; // alias for defaultDaysPerYear used in some components
+  accrualRate?: number; // days accrued per month (optional)
+  carryOverLimit: number; // max days that carry to next year
+  carryForward?: boolean; // whether carry forward is allowed
   maxCarryForwardDays?: number; // max days that can carry forward
   requiresAttachment: boolean;
   requiresApproval: boolean;
@@ -141,17 +149,17 @@ export interface LeavePolicy {
 
 export interface LeaveBalance {
   id: string;
-  employeeId: string;   // userId
-  userId?: string;      // alias for employeeId used in UI components
+  employeeId: string; // userId
+  userId?: string; // alias for employeeId used in UI components
   leaveType: LeaveType;
   year: number;
   entitled: number;
   totalAllowed?: number; // alias for entitled used in some components
   used: number;
-  pending?: number;      // pending leave days count
+  pending?: number; // pending leave days count
   remaining: number;
-  carried: number;       // carried from previous year
-  carriedOver?: number;  // alias for carried used in some components
+  carried: number; // carried from previous year
+  carriedOver?: number; // alias for carried used in some components
   updatedAt: string;
 }
 
@@ -164,9 +172,9 @@ export interface AttendanceRecord {
   date: string;
   status: AttendanceStatus;
   checkInTime?: string;
-  checkIn?: string;       // alias for checkInTime used in UI components
+  checkIn?: string; // alias for checkInTime used in UI components
   checkOutTime?: string;
-  checkOut?: string;      // alias for checkOutTime used in UI components
+  checkOut?: string; // alias for checkOutTime used in UI components
   totalHours?: number;
   overtimeHours?: number;
   workMode?: WorkMode;
@@ -181,17 +189,17 @@ export interface AttendanceRecord {
 export interface AttendanceCorrection {
   id: string;
   attendanceRecordId: string;
-  originalRecordId?: string;  // alias for attendanceRecordId used in UI forms
-  employeeId: string;      // userId
-  userId?: string;         // alias for employeeId used in UI components
-  field: string;           // which field is being corrected
+  originalRecordId?: string; // alias for attendanceRecordId used in UI forms
+  employeeId: string; // userId
+  userId?: string; // alias for employeeId used in UI components
+  field: string; // which field is being corrected
   oldValue: string;
   newValue: string;
-  correctedCheckIn?: string;   // ISO time string
-  requestedCheckIn?: string;   // alias for correctedCheckIn
-  correctedCheckOut?: string;  // ISO time string
-  requestedCheckOut?: string;  // alias for correctedCheckOut
-  date?: string;               // date of the attendance record
+  correctedCheckIn?: string; // ISO time string
+  requestedCheckIn?: string; // alias for correctedCheckIn
+  correctedCheckOut?: string; // ISO time string
+  requestedCheckOut?: string; // alias for correctedCheckOut
+  date?: string; // date of the attendance record
   reason: string;
   status: CorrectionStatus;
   correctionStatus?: 'pending' | 'approved' | 'rejected';
@@ -211,9 +219,9 @@ export interface ChecklistStep {
   id: string;
   title: string;
   description?: string;
-  assigneeId?: string;   // userId responsible for this step
-  assignedTo?: string;   // alias for assigneeId used in UI components
-  category?: string;     // step category (paperwork, it, orientation, etc.)
+  assigneeId?: string; // userId responsible for this step
+  assignedTo?: string; // alias for assigneeId used in UI components
+  category?: string; // step category (paperwork, it, orientation, etc.)
   isRequired?: boolean;
   isCompleted?: boolean; // convenience flag: true if status === 'completed'
   status: 'pending' | 'completed' | 'skipped';
@@ -229,13 +237,13 @@ export type OffboardingStep = ChecklistStep;
 
 export interface OnboardingChecklist {
   id: string;
-  employeeId: string;    // userId of the new hire
-  userId?: string;       // alias for employeeId used in some components
+  employeeId: string; // userId of the new hire
+  userId?: string; // alias for employeeId used in some components
   steps: ChecklistStep[];
   status: ChecklistStatus;
   startedBy: string;
   startedAt: string;
-  startDate?: string;    // alias for startedAt used in some components
+  startDate?: string; // alias for startedAt used in some components
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -243,15 +251,15 @@ export interface OnboardingChecklist {
 
 export interface OffboardingChecklist {
   id: string;
-  employeeId: string;    // userId of the departing employee
-  userId?: string;       // alias for employeeId used in some components
+  employeeId: string; // userId of the departing employee
+  userId?: string; // alias for employeeId used in some components
   steps: ChecklistStep[];
   status: ChecklistStatus;
   finalWorkingDate?: string;
   reason?: 'resignation' | 'termination' | 'contract_end' | 'other';
   startedBy: string;
   startedAt: string;
-  startDate?: string;    // alias for startedAt used in some components
+  startDate?: string; // alias for startedAt used in some components
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -265,16 +273,16 @@ export type EmployeeAssetStatus = 'assigned' | 'returned' | 'lost' | 'damaged';
 
 export interface EmployeeAsset {
   id: string;
-  employeeId: string;     // userId
-  userId?: string;        // alias for employeeId used in UI components
-  assetId?: string;       // links to agency_equipment/{id} if applicable
-  assetType: string;      // 'laptop' | 'phone' | 'camera' | 'access_card' | 'other'
+  employeeId: string; // userId
+  userId?: string; // alias for employeeId used in UI components
+  assetId?: string; // links to agency_equipment/{id} if applicable
+  assetType: string; // 'laptop' | 'phone' | 'camera' | 'access_card' | 'other'
   assetCategory?: string; // alias for assetType used in some components
-  assetName: string;      // descriptive name
+  assetName: string; // descriptive name
   serialNumber?: string;
   assignedAt: string;
-  assignedDate?: string;  // alias for assignedAt used in some components
-  assignedBy: string;     // userId
+  assignedDate?: string; // alias for assignedAt used in some components
+  assignedBy: string; // userId
   returnedAt?: string;
   expectedReturnDate?: string; // optional expected return date
   conditionOnAssign?: string;
@@ -291,23 +299,23 @@ export type ReviewStatus = 'draft' | 'submitted' | 'acknowledged' | 'in-review' 
 export type PerformanceReviewStatus = ReviewStatus;
 
 export interface PerformanceScore {
-  category: string;       // e.g. 'Communication', 'Technical Skills', 'Teamwork'
-  score: number;          // 1-5
-  weight?: number;        // optional weighting
-  comments?: string;      // per-category comments
+  category: string; // e.g. 'Communication', 'Technical Skills', 'Teamwork'
+  score: number; // 1-5
+  weight?: number; // optional weighting
+  comments?: string; // per-category comments
 }
 
 export interface PerformanceReview {
   id: string;
-  employeeId: string;     // userId of the employee being reviewed
-  userId?: string;        // alias for employeeId used in some components
-  reviewerId: string;     // userId of the reviewer (usually manager)
-  reviewCycle: string;    // e.g. 'Q1-2026', 'H1-2026', '2026'
-  period?: string;        // alias for reviewCycle used in some components
+  employeeId: string; // userId of the employee being reviewed
+  userId?: string; // alias for employeeId used in some components
+  reviewerId: string; // userId of the reviewer (usually manager)
+  reviewCycle: string; // e.g. 'Q1-2026', 'H1-2026', '2026'
+  period?: string; // alias for reviewCycle used in some components
   reviewPeriodStart: string;
   reviewPeriodEnd: string;
   scores: PerformanceScore[];
-  selfAssessment?: PerformanceScore[];    // employee self-assessment scores
+  selfAssessment?: PerformanceScore[]; // employee self-assessment scores
   managerAssessment?: PerformanceScore[]; // manager assessment scores
   goals?: string | string[]; // goals for next period (string or array)
   strengths: string;
@@ -315,7 +323,7 @@ export interface PerformanceReview {
   managerComments: string;
   overallComments?: string; // alias for managerComments used in some components
   employeeComments?: string;
-  overallRating: number;  // 1-5
+  overallRating: number; // 1-5
   status: ReviewStatus;
   createdAt: string;
   updatedAt: string;
@@ -327,12 +335,12 @@ export interface PerformanceReview {
 
 export interface EmployeeStatusChange {
   id: string;
-  employeeId: string;     // userId
+  employeeId: string; // userId
   fromStatus: EmploymentStatus;
   toStatus: EmploymentStatus;
   reason: string;
   effectiveDate: string;
-  changedBy: string;      // userId of the person making the change
+  changedBy: string; // userId of the person making the change
   createdAt: string;
 }
 
@@ -346,14 +354,14 @@ export enum TaskStatus {
   CLIENT_REVIEW = 'client_review',
   CLIENT_APPROVED = 'client_approved',
   COMPLETED = 'completed',
-  ARCHIVED = 'archived'
+  ARCHIVED = 'archived',
 }
 
 export enum Priority {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
-  CRITICAL = 'critical'
+  CRITICAL = 'critical',
 }
 
 export enum ArchiveReason {
@@ -361,21 +369,32 @@ export enum ArchiveReason {
   MANUAL_APPROVED = 'manual_approved',
   MANUAL_REJECTED = 'manual_rejected',
   USER_ARCHIVED = 'user_archived',
-  PROJECT_ARCHIVED = 'project_archived'
+  PROJECT_ARCHIVED = 'project_archived',
 }
 
 export enum ClosureMode {
   WORKFLOW = 'workflow',
-  MANUAL = 'manual'
+  MANUAL = 'manual',
 }
 
 export enum FinalOutcome {
   APPROVED = 'approved',
   REJECTED = 'rejected',
-  COMPLETED = 'completed'
+  COMPLETED = 'completed',
 }
 
-export type TaskType = 'design' | 'video' | 'photo' | 'motion' | 'post_production' | 'copywriting' | 'meeting' | 'production' | 'social_content' | 'social_publishing' | 'other';
+export type TaskType =
+  | 'design'
+  | 'video'
+  | 'photo'
+  | 'motion'
+  | 'post_production'
+  | 'copywriting'
+  | 'meeting'
+  | 'production'
+  | 'social_content'
+  | 'social_publishing'
+  | 'other';
 
 export interface ClientContact {
   id: string;
@@ -387,15 +406,23 @@ export interface ClientContact {
   isPrimary: boolean;
 }
 
-export type SocialPlatform = 'instagram' | 'facebook' | 'linkedin' | 'tiktok' | 'youtube' | 'website' | 'twitter' | 'other';
+export type SocialPlatform =
+  | 'instagram'
+  | 'facebook'
+  | 'linkedin'
+  | 'tiktok'
+  | 'youtube'
+  | 'website'
+  | 'twitter'
+  | 'other';
 
 export interface ClientSocialLink {
   id: string;
   clientId: string;
   platform: SocialPlatform;
   url: string;
-  label: string | null;      // for "other", user-defined name
-  username: string | null;   // optional extracted handle
+  label: string | null; // for "other", user-defined name
+  username: string | null; // optional extracted handle
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -416,13 +443,13 @@ export interface ClientMeeting {
   clientId: string;
   title: string;
   description: string | null;
-  date: string;                // ISO Date string
+  date: string; // ISO Date string
   durationMinutes: number | null;
-  status: "scheduled" | "completed" | "cancelled";
-  locationType: "online" | "office" | "client_office" | "other";
+  status: 'scheduled' | 'completed' | 'cancelled';
+  locationType: 'online' | 'office' | 'client_office' | 'other';
   locationDetails: string | null;
   organizerId: string;
-  participantIds: string[];    // internal team members
+  participantIds: string[]; // internal team members
   clientParticipants: string[]; // optional client-side attendees (names/emails)
   meetingFolderId: string | null;
   summary: string | null;
@@ -436,7 +463,7 @@ export interface ClientBrandAsset {
   clientId: string;
   category: string; // "logo" | "brand_book" | "colors" | "typography" | "templates" | "packaging" | "other"
   name: string;
-  type: "file" | "link" | "text";
+  type: 'file' | 'link' | 'text';
   fileId?: string | null;
   url?: string | null;
   value?: string; // For color hex values or text content
@@ -467,7 +494,7 @@ export interface ClientMonthlyReport {
 export interface Client {
   id: string;
   name: string;
-  code?: string;         // short code for client identification (e.g. 'LBN')
+  code?: string; // short code for client identification (e.g. 'LBN')
   industry: string;
   email: string;
   phone: string;
@@ -476,7 +503,7 @@ export interface Client {
   logo?: string; // URL or Base64
   notes: string;
   status: 'active' | 'inactive' | 'lead';
-  isArchived?: boolean;   // soft archive flag
+  isArchived?: boolean; // soft archive flag
   createdAt: string;
   updatedAt: string;
   accountManagerId: string; // Links to User
@@ -488,25 +515,25 @@ export type ProjectType = 'campaign' | 'retainer' | 'one_time' | 'internal';
 
 export interface Project {
   id: string;
-  clientId: string;        // reference to Client
-  name: string;            // e.g. "Le Bon – Ramadan Campaign 2026"
-  client: string;          // Denormalized name for display/compatibility
-  code?: string;            // optional, e.g. "LB-RAM-26"
+  clientId: string; // reference to Client
+  name: string; // e.g. "Le Bon – Ramadan Campaign 2026"
+  client: string; // Denormalized name for display/compatibility
+  code?: string; // optional, e.g. "LB-RAM-26"
   type: ProjectType;
   status: ProjectStatus | 'Active' | 'Completed' | 'On Hold';
 
-  brief: string;           // main description / objectives
-  description?: string;    // alias for brief used in some components
-  objectives: string;      // bullet-style text
-  notes: string;           // internal notes
+  brief: string; // main description / objectives
+  description?: string; // alias for brief used in some components
+  objectives: string; // bullet-style text
+  notes: string; // internal notes
 
   startDate: string;
-  endDate: string;    // planned end
+  endDate: string; // planned end
   actualEndDate?: string;
 
-  budget: number;   // planned budget
-  spent: number;    // Calculated/Tracked
-  currency: string;        // "USD", "IQD", etc.
+  budget: number; // planned budget
+  spent: number; // Calculated/Tracked
+  currency: string; // "USD", "IQD", etc.
   deadline: string; // Legacy field for dashboard compatibility
 
   accountManagerId: string; // User id
@@ -526,7 +553,7 @@ export interface Project {
 
   // Archive Fields
   isArchived?: boolean;
-  archived?: boolean;      // alias for isArchived used in some components
+  archived?: boolean; // alias for isArchived used in some components
   archivedAt?: string | null;
   archivedBy?: string | null;
 
@@ -539,10 +566,10 @@ export interface Project {
 export interface ProjectMember {
   id: string;
   projectId: string;
-  userId: string;        // User in the system
+  userId: string; // User in the system
   roleInProject: string; // e.g. "Account Manager", "Creative Lead", "Producer"
-  isExternal?: boolean;   // true if freelancer
-  addedAt?: string;      // ISO date string when member was added
+  isExternal?: boolean; // true if freelancer
+  addedAt?: string; // ISO date string when member was added
 }
 
 // Smart Project Creation - Dynamic Milestones
@@ -565,7 +592,7 @@ export interface ProjectMilestone {
   name: string;
   description?: string;
   ownerId?: string;
-  status: "not_started" | "in_progress" | "completed" | "on_hold" | "blocked";
+  status: 'not_started' | 'in_progress' | 'completed' | 'on_hold' | 'blocked';
   startDate?: string;
   endDate?: string;
   dueDate: string; // Keeping for legacy, but endDate is preferred for ranges
@@ -574,17 +601,17 @@ export interface ProjectMilestone {
   order: number;
 
   // Target-based Progress
-  targetTaskCount?: number | null;   // e.g. 5; null = no target
-  autoCompleteOnTarget?: boolean;    // if true, mark completed when target reached
+  targetTaskCount?: number | null; // e.g. 5; null = no target
+  autoCompleteOnTarget?: boolean; // if true, mark completed when target reached
   isDeleted?: boolean;
 }
 
 export interface ProjectActivityLog {
   id: string;
   projectId: string;
-  userId: string;          // who did this
-  type: string;            // "status_change" | "new_task" | "file_uploaded" | "comment" | "milestone_completed"
-  message: string;         // human-readable summary
+  userId: string; // who did this
+  type: string; // "status_change" | "new_task" | "file_uploaded" | "comment" | "milestone_completed"
+  message: string; // human-readable summary
   createdAt: string;
 }
 
@@ -592,15 +619,15 @@ export interface ProjectActivityLog {
 
 export interface Task {
   id: string;
-  projectId: string;       // reference to Project
-  milestoneId?: string;    // reference to ProjectMilestone
+  projectId: string; // reference to Project
+  milestoneId?: string; // reference to ProjectMilestone
   title: string;
-  description: string | null;      // Detailed task description (supports Arabic/English)
-  voiceOver: string | null;        // Voice over script (supports Arabic/English)
+  description: string | null; // Detailed task description (supports Arabic/English)
+  voiceOver: string | null; // Voice over script (supports Arabic/English)
   textDirHint?: 'auto' | 'rtl' | 'ltr'; // Text direction hint for description/voiceOver
   department: Department;
   priority: Priority;
-  taskType: TaskType;      // New field
+  taskType: TaskType; // New field
 
   status: TaskStatus;
 
@@ -649,11 +676,11 @@ export interface Task {
     message: string;
     cycle: number;
   } | null;
-  
+
   // Legacy Revision Fields (Deprecated but kept for compatibility if needed)
   revisionAssignedTo?: string | null;
   revisionComment?: string | null;
-  
+
   revisionHistory?: {
     cycle: number;
     stepLevel: number;
@@ -682,7 +709,7 @@ export interface Task {
   deletedBy?: string | null;
 
   attachments: AgencyFile[]; // Legacy attachments
-  
+
   // References
   referenceLinks?: ReferenceLink[];
   referenceImages?: ReferenceImage[];
@@ -724,7 +751,15 @@ export interface TaskTimeLog {
   logDate: string;
   note: string;
   // Automatic tracking fields
-  eventType?: 'manual' | 'task_accepted' | 'task_started' | 'task_submitted' | 'task_approved' | 'task_rejected' | 'status_change' | 'assignment_changed';
+  eventType?:
+    | 'manual'
+    | 'task_accepted'
+    | 'task_started'
+    | 'task_submitted'
+    | 'task_approved'
+    | 'task_rejected'
+    | 'status_change'
+    | 'assignment_changed';
   fromStatus?: TaskStatus;
   toStatus?: TaskStatus;
   isAutomatic?: boolean;
@@ -735,7 +770,14 @@ export interface TaskActivityLog {
   id: string;
   taskId: string;
   userId: string;
-  type: 'status_change' | 'assignment_change' | 'approval_action' | 'comment' | 'file_upload' | 'time_log' | 'dependency_added';
+  type:
+    | 'status_change'
+    | 'assignment_change'
+    | 'approval_action'
+    | 'comment'
+    | 'file_upload'
+    | 'time_log'
+    | 'dependency_added';
   message: string;
   createdAt: string;
 }
@@ -745,23 +787,23 @@ export interface TaskActivityLog {
 export interface WorkflowStepTemplate {
   id: string;
   workflowTemplateId: string;
-  order: number;               // 0, 1, 2...
-  label: string;               // e.g. "Art Director Review"
+  order: number; // 0, 1, 2...
+  label: string; // e.g. "Art Director Review"
 
   // Approver Logic (One must be set)
-  roleId: string | null;       // System Role ID (e.g. 'r3' for Creative Director)
+  roleId: string | null; // System Role ID (e.g. 'r3' for Creative Director)
   projectRoleKey: string | null; // Project Role String (e.g. "Account Manager")
   specificUserId: string | null; // Specific User ID (e.g. 'u123')
-  useDepartmentHead: boolean;  // Not fully implemented yet
+  useDepartmentHead: boolean; // Not fully implemented yet
 }
 
 export interface WorkflowTemplate {
   id: string;
-  name: string;                 // e.g. "Standard Creative Flow"
+  name: string; // e.g. "Standard Creative Flow"
   description: string;
 
   // Auto-assignment rules
-  departmentId: string | null;  // Matches Department enum values (as string)
+  departmentId: string | null; // Matches Department enum values (as string)
   taskType: TaskType | null;
 
   status: 'active' | 'available' | 'system_protected';
@@ -777,17 +819,23 @@ export interface WorkflowTemplate {
 
 // --- APPROVAL WORKFLOW ENTITIES ---
 
-export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'revision_requested' | 'revision_submitted' | 'waiting';
+export type ApprovalStatus =
+  | 'pending'
+  | 'approved'
+  | 'rejected'
+  | 'revision_requested'
+  | 'revision_submitted'
+  | 'waiting';
 
 export interface ApprovalStep {
   id: string;
   taskId: string;
   milestoneId: string | null; // Linked to milestone
-  approverId: string;        // which user must approve
-  level: number;             // sequence index
+  approverId: string; // which user must approve
+  level: number; // sequence index
   status: ApprovalStatus;
   reviewedAt?: string;
-  comment?: string;          // optional review comment
+  comment?: string; // optional review comment
   createdAt: string;
 }
 
@@ -835,8 +883,8 @@ export interface QCReview {
 
 export interface TaskQCBlock {
   enabled: boolean;
-  reviewers: string[];           // list of userIds allowed to review
-  requiredApprovals: string[];   // must include GM + CD by default
+  reviewers: string[]; // list of userIds allowed to review
+  requiredApprovals: string[]; // must include GM + CD by default
   status: QCStatus;
   lastUpdatedAt: string;
 }
@@ -911,29 +959,38 @@ export interface ProductionTask extends Task {
   originalPublishAt: string | null;
 }
 
-
 // --- FILE & ASSET MANAGEMENT ENTITIES ---
 
-export type FileCategory = 'video' | 'image' | 'document' | 'design' | 'presentation' | 'spreadsheet' | 'archive' | 'link' | 'strategy' | 'other';
+export type FileCategory =
+  | 'video'
+  | 'image'
+  | 'document'
+  | 'design'
+  | 'presentation'
+  | 'spreadsheet'
+  | 'archive'
+  | 'link'
+  | 'strategy'
+  | 'other';
 
 export interface AgencyFile {
   id: string;
-  projectId: string;          // required
-  clientId?: string | null;   // client association
-  taskId?: string | null;     // optional
-  folderId?: string | null;   // optional
-  uploaderId: string;         // User who uploaded
+  projectId: string; // required
+  clientId?: string | null; // client association
+  taskId?: string | null; // optional
+  folderId?: string | null; // optional
+  uploaderId: string; // User who uploaded
   name: string;
-  type: string;               // MIME type: image/jpeg, video/mp4, etc.
-  size: number;               // in bytes
-  url: string;                // storage path URL (mocked)
-  thumbnailUrl?: string;      // optional thumbnail
-  version: number;            // file version
-  isDeliverable: boolean;     // true if final to client
+  type: string; // MIME type: image/jpeg, video/mp4, etc.
+  size: number; // in bytes
+  url: string; // storage path URL (mocked)
+  thumbnailUrl?: string; // optional thumbnail
+  version: number; // file version
+  isDeliverable: boolean; // true if final to client
 
   // Enhanced Categorization
-  category?: FileCategory;    // computed category based on type
-  originalName?: string;      // preserve original upload name
+  category?: FileCategory; // computed category based on type
+  originalName?: string; // preserve original upload name
 
   // Archival Fields
   isArchived: boolean;
@@ -991,7 +1048,7 @@ export interface FileActivityLog {
   id: string;
   fileId: string;
   userId: string;
-  action: "uploaded" | "updated" | "deleted" | "approved" | "downloaded" | "moved";
+  action: 'uploaded' | 'updated' | 'deleted' | 'approved' | 'downloaded' | 'moved';
   message: string;
   createdAt: string;
 }
@@ -1092,8 +1149,8 @@ export interface Vendor {
   address: string;
   taxNumber?: string;
   paymentTerms?: string; // e.g. "Net 30"
-  rating?: number;      // 0-5 vendor rating
-  active?: boolean;     // whether vendor is active
+  rating?: number; // 0-5 vendor rating
+  active?: boolean; // whether vendor is active
   notes: string;
   createdAt: string;
   updatedAt: string;
@@ -1110,7 +1167,7 @@ export interface Freelancer {
   location: string;
   portfolioUrl?: string;
   socialLinks?: string[];
-  skills?: string[];    // skill tags
+  skills?: string[]; // skill tags
   rateType: RateType;
   defaultRate: number;
   notes: string;
@@ -1152,37 +1209,37 @@ export interface VendorServiceOrder {
 
 export interface ClientMarketingStrategy {
   id: string;
-  clientId: string;          // link to Client
+  clientId: string; // link to Client
 
-  year: number;              // 2025
-  month: number;             // 1–12
-  monthLabel: string;        // "January 2025" (for UI)
+  year: number; // 2025
+  month: number; // 1–12
+  monthLabel: string; // "January 2025" (for UI)
 
-  title: string;             // "Q1 Content Strategy", "Ramadan Campaign Plan"
+  title: string; // "Q1 Content Strategy", "Ramadan Campaign Plan"
 
-  type: "file" | "link";
+  type: 'file' | 'link';
 
   // if type = "file"
-  fileId: string | null;     // reference to Files/Assets module
+  fileId: string | null; // reference to Files/Assets module
 
   // if type = "link"
-  url: string | null;        // Notion, Google Doc, Figma, etc.
+  url: string | null; // Notion, Google Doc, Figma, etc.
 
-  notes: string | null;      // optional short description
+  notes: string | null; // optional short description
 
   createdBy: string;
-  createdAt: string;         // ISO Date string
-  updatedAt: string;         // ISO Date string
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
 }
 
 export interface ProjectMarketingAsset {
   id: string;
-  projectId: string;        // linked project
-  category: string;         // "strategy_doc", "media_plan", "content_calendar", "presentation", "other"
-  name: string;             // "Main Strategy Deck", "Media Plan V1", "Content Calendar"
-  type: "file" | "link";
-  fileId: string | null;    // if type = "file", link to Files module
-  url: string | null;       // if type = "link", e.g. Notion, Google Drive, Figma
+  projectId: string; // linked project
+  category: string; // "strategy_doc", "media_plan", "content_calendar", "presentation", "other"
+  name: string; // "Main Strategy Deck", "Media Plan V1", "Content Calendar"
+  type: 'file' | 'link';
+  fileId: string | null; // if type = "file", link to Files module
+  url: string | null; // if type = "link", e.g. Notion, Google Drive, Figma
   description: string | null;
   createdBy: string;
   createdAt: string;
@@ -1211,7 +1268,7 @@ export interface Quotation {
   tax: number;
   total: number;
   notes: string;
-  status: "draft" | "sent" | "approved" | "rejected" | "expired";
+  status: 'draft' | 'sent' | 'approved' | 'rejected' | 'expired';
   createdBy: string;
   createdAt: string;
 }
@@ -1236,9 +1293,9 @@ export interface Invoice {
   discount: number;
   tax: number;
   total: number;
-  paid: number;    // sum of payments
+  paid: number; // sum of payments
   balance: number; // total - paid
-  status: "draft" | "sent" | "partially_paid" | "paid" | "overdue" | "cancelled";
+  status: 'draft' | 'sent' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
   notes: string;
   createdBy: string;
   createdAt: string;
@@ -1253,13 +1310,13 @@ export interface Payment {
   clientId?: string;
   projectId?: string;
   invoiceId?: string;
-  type?: "client" | "vendor" | "freelancer"; // extended type
+  type?: 'client' | 'vendor' | 'freelancer'; // extended type
   vendorId?: string;
   freelancerId?: string;
   paymentNumber: string; // PAY-2025-xxxx
   amount: number;
   date: string;
-  method: "cash" | "bank_transfer" | "credit_card" | "cheque";
+  method: 'cash' | 'bank_transfer' | 'credit_card' | 'cheque';
   reference: string;
   note: string;
   createdBy: string;
@@ -1365,8 +1422,32 @@ export type NotificationType =
   | 'ASSET_RETURN_OVERDUE';
 
 export type NotificationSeverity = 'info' | 'warning' | 'urgent';
-export type NotificationCategory = 'tasks' | 'approvals' | 'posting' | 'meetings' | 'finance' | 'projects' | 'creative' | 'calendar' | 'qc' | 'hr' | 'system';
-export type NotificationEntityType = 'task' | 'project' | 'client' | 'post' | 'meeting' | 'invoice' | 'milestone' | 'creative_project' | 'calendar_item' | 'employee_profile' | 'leave_request' | 'attendance' | 'performance_review';
+export type NotificationCategory =
+  | 'tasks'
+  | 'approvals'
+  | 'posting'
+  | 'meetings'
+  | 'finance'
+  | 'projects'
+  | 'creative'
+  | 'calendar'
+  | 'qc'
+  | 'hr'
+  | 'system';
+export type NotificationEntityType =
+  | 'task'
+  | 'project'
+  | 'client'
+  | 'post'
+  | 'meeting'
+  | 'invoice'
+  | 'milestone'
+  | 'creative_project'
+  | 'calendar_item'
+  | 'employee_profile'
+  | 'leave_request'
+  | 'attendance'
+  | 'performance_review';
 
 export interface NotificationAction {
   label: string;
@@ -1380,48 +1461,48 @@ export interface Notification {
   type: NotificationType;
   title: string;
   message: string;
-  
+
   severity: NotificationSeverity;
   category: NotificationCategory;
-  
+
   entityType?: NotificationEntityType;
   entityId?: string;
-  
+
   actionUrl?: string;
   actions?: NotificationAction[];
-  
+
   isRead: boolean;
   readAt?: string;
   createdAt: string;
-  
+
   // Grouping & deduplication
   groupKey?: string;
   dedupeKey?: string;
-  
+
   // Legacy support
   link?: string;
 }
 
 export interface NotificationPreference {
   userId: string;
-  
+
   // Muting options
   mutedCategories: NotificationCategory[];
   mutedProjects: string[];
   severityThreshold: NotificationSeverity;
-  
+
   // Delivery channels (direct fields)
   inAppEnabled: boolean;
   emailEnabled: boolean;
   pushEnabled: boolean;
-  
+
   // Delivery channels (nested object - for UI compatibility)
   delivery?: {
     inApp: boolean;
     email: boolean;
     push: boolean;
   };
-  
+
   // Legacy fields
   taskAssigned?: boolean;
   taskStatusChanged?: boolean;
@@ -1467,7 +1548,7 @@ export interface AppBranding {
   // Legacy fields (for backward compatibility)
   logoLightUrl?: string | null;
   logoDarkUrl?: string | null;
-  
+
   // Timestamps
   createdAt: string;
   updatedAt: string;
@@ -1477,9 +1558,9 @@ export interface AppBranding {
 }
 
 export interface Permission {
-  code: string;       // e.g. "projects.view"
-  module: string;     // e.g. "Projects"
-  name: string;       // e.g. "View Projects"
+  code: string; // e.g. "projects.view"
+  module: string; // e.g. "Projects"
+  name: string; // e.g. "View Projects"
   description: string;
 }
 
@@ -1487,17 +1568,17 @@ export type RiskLevel = 'low' | 'medium' | 'high' | 'critical';
 
 export interface RoleDefinition {
   id: string;
-  name: string;        // matches UserRole enum values for system roles, free-form for custom
-  slug?: string;       // URL-safe identifier (auto-generated from name)
+  name: string; // matches UserRole enum values for system roles, free-form for custom
+  slug?: string; // URL-safe identifier (auto-generated from name)
   description: string;
   permissions: string[]; // list of permission codes
   isAdmin: boolean;
-  isSystem?: boolean;   // true for built-in roles — protected from deletion
-  isActive?: boolean;   // false to disable role without deleting (defaults to true)
+  isSystem?: boolean; // true for built-in roles — protected from deletion
+  isActive?: boolean; // false to disable role without deleting (defaults to true)
   riskLevel?: RiskLevel; // visual indicator in admin UI
-  createdAt?: string;   // ISO timestamp
-  updatedAt?: string;   // ISO timestamp
-  updatedBy?: string;   // User ID who last modified
+  createdAt?: string; // ISO timestamp
+  updatedAt?: string; // ISO timestamp
+  updatedBy?: string; // User ID who last modified
 }
 
 export interface AppSettings {
@@ -1529,7 +1610,7 @@ export interface DashboardBanner {
 export interface AuditLog {
   id: string;
   userId: string;
-  userName?: string;        // Denormalized for readability in audit viewer
+  userName?: string; // Denormalized for readability in audit viewer
   action: string;
   entityType: string;
   entityId: string | null;
@@ -1540,18 +1621,18 @@ export interface AuditLog {
 
 export interface SocialPost {
   id: string;
-  sourceTaskId: string;        // the original creative task id
+  sourceTaskId: string; // the original creative task id
   projectId: string;
   clientId: string;
-  title: string;               // derived from task title
-  status: "PENDING" | "READY" | "SCHEDULED" | "PUBLISHED" | "REVISION_REQUESTED" | "pending";
-  platforms: SocialPlatform[];         // ["instagram", "facebook", "tiktok", etc.]
+  title: string; // derived from task title
+  status: 'PENDING' | 'READY' | 'SCHEDULED' | 'PUBLISHED' | 'REVISION_REQUESTED' | 'pending';
+  platforms: SocialPlatform[]; // ["instagram", "facebook", "tiktok", etc.]
   caption: string | null;
-  publishAt: string | null;    // ISO Date string
+  publishAt: string | null; // ISO Date string
   timezone: string | null;
-  socialManagerId: string | null;      // Social Manager / Copywriter
+  socialManagerId: string | null; // Social Manager / Copywriter
   notesFromTask: string | null; // Notes passed from the task
-  
+
   // Revision System
   revisionContext?: {
     active: boolean;
@@ -1620,7 +1701,7 @@ export interface ReferenceImage {
   fileName: string;
   fileType: string;
   fileSize: number;
-  storageProvider: "firebase";
+  storageProvider: 'firebase';
   storagePath: string;
   downloadUrl: string;
   uploadedBy: string;
@@ -1672,12 +1753,12 @@ export interface CalendarMonth {
 
 // Calendar → Creative Revision Workflow Status
 export type CalendarRevisionStatus =
-  | 'NONE'                            // No revision requested
-  | 'REVISION_REQUESTED'              // Calendar dept requested revision
-  | 'IN_CREATIVE_REVISION'            // Copywriter is working on revision
-  | 'AWAITING_CREATIVE_APPROVAL'      // Submitted back, awaiting manager approval
-  | 'APPROVED_BY_CREATIVE'            // Manager approved, ready to sync
-  | 'SYNCED_TO_CALENDAR';             // Synced back to calendar item
+  | 'NONE' // No revision requested
+  | 'REVISION_REQUESTED' // Calendar dept requested revision
+  | 'IN_CREATIVE_REVISION' // Copywriter is working on revision
+  | 'AWAITING_CREATIVE_APPROVAL' // Submitted back, awaiting manager approval
+  | 'APPROVED_BY_CREATIVE' // Manager approved, ready to sync
+  | 'SYNCED_TO_CALENDAR'; // Synced back to calendar item
 
 export interface CalendarItem {
   id: string;
@@ -1692,16 +1773,16 @@ export interface CalendarItem {
   referenceLinks: CalendarReferenceLink[];
   referenceFiles: CalendarReferenceFile[];
   publishAt: string;
-  
+
   // Smart Project Creation - Task Link
   taskId?: string | null; // Link to generated delivery task
-  
+
   // Calendar → Creative Revision Workflow
   revisionStatus?: CalendarRevisionStatus;
-  linkedCreativeCalendarId?: string | null;   // Creative calendar this item was synced from
-  linkedCreativeItemId?: string | null;       // Specific creative item this was synced from
-  activeRevisionId?: string | null;           // Current active revision request
-  revisionCount?: number;                     // How many times revision was requested
+  linkedCreativeCalendarId?: string | null; // Creative calendar this item was synced from
+  linkedCreativeItemId?: string | null; // Specific creative item this was synced from
+  activeRevisionId?: string | null; // Current active revision request
+  revisionCount?: number; // How many times revision was requested
 
   // Instagram Grid Pinning (1-3 = pinned position, null/undefined = not pinned)
   pinnedInGrid?: number | null;
@@ -1709,9 +1790,12 @@ export interface CalendarItem {
   // Presentation notes (added via presentation view detail modal)
   presentationNotes?: string;
 
+  // Content comments (added by external viewers via shared presentation link)
+  contentComments?: string;
+
   // Carousel post flag
   isCarousel?: boolean;
-  
+
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -1723,21 +1807,21 @@ export type PresentationItem = CalendarItem;
 // Calendar Item Revision — tracks each revision request & lifecycle
 export interface CalendarItemRevision {
   id: string;
-  calendarItemId: string;            // Which calendar item is being revised
+  calendarItemId: string; // Which calendar item is being revised
   calendarMonthId: string;
   clientId: string;
-  
+
   // Linked creative entities
-  creativeCalendarId: string | null;  // null if not from creative sync
+  creativeCalendarId: string | null; // null if not from creative sync
   creativeItemId: string | null;
   creativeProjectId: string | null;
-  
+
   // Revision request details (from Calendar dept)
-  revisionNote: string;               // What needs to change
+  revisionNote: string; // What needs to change
   revisionReferences: CalendarRevisionReference[];
-  requestedBy: string;                // Calendar user who requested
+  requestedBy: string; // Calendar user who requested
   requestedAt: string;
-  
+
   // Creative response (from Copywriter)
   revisedBrief?: string;
   revisedNotes?: string;
@@ -1745,35 +1829,41 @@ export interface CalendarItemRevision {
   revisedReferenceFiles?: CalendarReferenceFile[];
   revisedBy?: string;
   revisedAt?: string;
-  
+
   // Manager review
   reviewedBy?: string;
   reviewedAt?: string;
   reviewNote?: string;
-  
+
   // Status & lifecycle
   status: CalendarRevisionStatus;
-  syncedAt?: string;                  // When synced back to calendar item
+  syncedAt?: string; // When synced back to calendar item
   syncedBy?: string;
-  
+
   // Archive
   isArchived?: boolean;
   archivedAt?: string;
   archivedBy?: string;
-  
+
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CalendarRevisionReference {
   type: 'link' | 'file';
-  value: string;                      // URL for link, downloadURL for file
-  fileName?: string;                  // For file type
+  value: string; // URL for link, downloadURL for file
+  fileName?: string; // For file type
 }
 
 // --- CREATIVE DIRECTION & QUALITY CONTROL ---
 
-export type CreativeProjectStatus = 'DRAFT' | 'IN_PROGRESS' | 'UNDER_REVIEW' | 'NEEDS_REVISION' | 'APPROVED' | 'ARCHIVED';
+export type CreativeProjectStatus =
+  | 'DRAFT'
+  | 'IN_PROGRESS'
+  | 'UNDER_REVIEW'
+  | 'NEEDS_REVISION'
+  | 'APPROVED'
+  | 'ARCHIVED';
 export type CreativeCalendarStatus = 'DRAFT' | 'UNDER_REVIEW' | 'NEEDS_REVISION' | 'UPDATED' | 'APPROVED';
 export type CreativeItemReviewStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -1834,6 +1924,7 @@ export interface CreativeCalendarItem {
   rejectionNote: string | null;
   rejectionReferences: CreativeRejectionReference[];
   presentationNotes?: string;
+  contentComments?: string;
   isCarousel?: boolean;
   createdAt: string;
   updatedAt: string;
