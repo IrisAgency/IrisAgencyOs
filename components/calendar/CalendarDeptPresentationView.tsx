@@ -255,33 +255,10 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
             const matchingProject = matchingCalendar
               ? creativeProjects.find((p) => p.id === matchingCalendar.creativeProjectId)
               : null;
-            if (!matchingCalendar || !matchingProject)
-              return (
-                <div
-                  className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-                  onClick={() => setShowShareManager(false)}
-                >
-                  <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-                  <div
-                    className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-sm text-center"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <p className="text-sm text-gray-600 mb-4">
-                      No linked creative project found for this calendar month. Share links require a creative project.
-                    </p>
-                    <button
-                      onClick={() => setShowShareManager(false)}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              );
             return (
               <ShareLinkManager
-                creativeProjectId={matchingProject.id}
-                creativeCalendarId={matchingCalendar.id}
+                creativeProjectId={matchingProject?.id || null}
+                creativeCalendarId={matchingCalendar?.id || null}
                 calendarMonthId={selectedMonth.id}
                 clientId={selectedMonth.clientId}
                 currentUserId={currentUser.id}

@@ -1946,8 +1946,8 @@ export interface ContentComment {
 export interface PresentationShare {
   id: string;
   token: string;
-  creativeProjectId: string;
-  creativeCalendarId: string;
+  creativeProjectId: string | null;
+  creativeCalendarId: string | null;
   calendarMonthId: string | null; // null = use creative items directly
   clientId: string;
   isActive: boolean;
