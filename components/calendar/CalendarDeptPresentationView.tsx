@@ -7,8 +7,9 @@ import type {
   CreativeProject,
   CreativeCalendar,
   User,
+  TeamNote,
 } from '../../types';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 import {
@@ -53,6 +54,7 @@ function calItemToPres(item: CalendarItem): PresentationItem {
     seqLabel: `${item.type}-${String(item.seqNumber).padStart(2, '0')}`,
     pinnedInGrid: item.pinnedInGrid || null,
     presentationNotes: item.presentationNotes || '',
+    teamNotes: item.teamNotes || [],
     contentComments: item.contentComments || [],
     isCarousel: item.isCarousel || false,
   };
@@ -159,6 +161,45 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
     await updateDoc(doc(db, 'calendar_items', itemId), { presentationNotes: notes });
   }, []);
 
+  // Add a team note (internal only)
+  const handleAddTeamNote = useCallback(
+    async (itemId: string, text: string) => {
+      const newNote: TeamNote = {
+        id: crypto.randomUUID(),
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        text,
+        createdAt: new Date().toISOString(),
+      };
+      await updateDoc(doc(db, 'calendar_items', itemId), { teamNotes: arrayUnion(newNote) });
+    },
+    [currentUser],
+  );
+
+  // Edit an existing team note
+  const handleEditTeamNote = useCallback(
+    async (itemId: string, noteId: string, newText: string) => {
+      const sourceItem = calendarItems.find((i) => i.id === itemId);
+      const current: TeamNote[] = (sourceItem?.teamNotes as TeamNote[] | undefined) || [];
+      const updated = current.map((n) =>
+        n.id === noteId ? { ...n, text: newText, updatedAt: new Date().toISOString() } : n,
+      );
+      await updateDoc(doc(db, 'calendar_items', itemId), { teamNotes: updated });
+    },
+    [calendarItems],
+  );
+
+  // Delete a team note
+  const handleDeleteTeamNote = useCallback(
+    async (itemId: string, noteId: string) => {
+      const sourceItem = calendarItems.find((i) => i.id === itemId);
+      const current: TeamNote[] = (sourceItem?.teamNotes as TeamNote[] | undefined) || [];
+      const updated = current.filter((n) => n.id !== noteId);
+      await updateDoc(doc(db, 'calendar_items', itemId), { teamNotes: updated });
+    },
+    [calendarItems],
+  );
+
   // Empty
   if (activeMonths.length === 0) {
     return (
@@ -194,6 +235,10 @@ const CalendarDeptPresentationView: React.FC<CalendarDeptPresentationViewProps> 
           onClose={() => setGridDetailItem(null)}
           onDriveClick={handleDriveClick}
           onSaveNotes={handleSaveNotes}
+          onAddTeamNote={handleAddTeamNote}
+          onEditTeamNote={handleEditTeamNote}
+          onDeleteTeamNote={handleDeleteTeamNote}
+          currentUserId={currentUser.id}
         />
       )}
 

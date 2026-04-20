@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import type { CalendarContentType, CalendarReferenceLink, CalendarReferenceFile, ContentComment } from '../types';
+import type {
+  CalendarContentType,
+  CalendarReferenceLink,
+  CalendarReferenceFile,
+  ContentComment,
+  TeamNote,
+} from '../types';
 
 import { Video, Image, Clapperboard, ExternalLink, FileText, Link as LinkIcon, Play, X, Layers } from 'lucide-react';
 
@@ -194,6 +200,8 @@ export interface PresentationItem {
   source?: 'activated' | 'creative';
   pinnedInGrid?: number | null;
   presentationNotes?: string;
+  /** Internal team notes — never shown on shared links */
+  teamNotes?: TeamNote[];
   contentComments?: ContentComment[];
   isCarousel?: boolean;
 }
@@ -868,6 +876,23 @@ export const EditorialRow: React.FC<{
             {item.mainIdea && <BidiText text={item.mainIdea} className="mt-1 text-xs text-gray-600 leading-relaxed" />}
             {item.brief && <BidiText text={item.brief} className="mt-1 text-xs text-gray-500 leading-relaxed" />}
             {item.notes && <BidiText text={item.notes} className="mt-1 text-[11px] text-gray-400 italic" />}
+            {/* Team Notes — internal only, never shown on shared links */}
+            {item.teamNotes && item.teamNotes.length > 0 && (
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[9px] font-bold text-purple-500 uppercase tracking-wider">Team Notes</span>
+                  <span className="px-1 py-0.5 rounded text-[8px] font-semibold bg-purple-100 text-purple-600 border border-purple-200">
+                    Internal
+                  </span>
+                </div>
+                {item.teamNotes.map((n) => (
+                  <div key={n.id} className="px-2.5 py-1.5 bg-purple-50 border border-purple-200 rounded-lg">
+                    <span className="text-[9px] font-bold text-purple-600 mr-1.5">{n.authorName}</span>
+                    <BidiText text={n.text} className="text-[11px] text-purple-800 leading-relaxed inline" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1787,8 +1787,11 @@ export interface CalendarItem {
   // Instagram Grid Pinning (1-3 = pinned position, null/undefined = not pinned)
   pinnedInGrid?: number | null;
 
-  // Presentation notes (added via presentation view detail modal)
+  // Presentation notes (added via presentation view detail modal, visible on shared links)
   presentationNotes?: string;
+
+  // Team notes (internal only, never shown on shared links)
+  teamNotes?: TeamNote[];
 
   // Content comments (added by external viewers via shared presentation link)
   contentComments?: ContentComment[];
@@ -1924,6 +1927,8 @@ export interface CreativeCalendarItem {
   rejectionNote: string | null;
   rejectionReferences: CreativeRejectionReference[];
   presentationNotes?: string;
+  // Team notes (internal only, never shown on shared links)
+  teamNotes?: TeamNote[];
   contentComments?: ContentComment[];
   isCarousel?: boolean;
   createdAt: string;
@@ -1935,6 +1940,16 @@ export interface CreativeCalendarItem {
 export interface ContentComment {
   id: string;
   authorId: string; // Unique viewer ID from localStorage
+  authorName: string;
+  text: string;
+  createdAt: string; // ISO date
+  updatedAt?: string; // ISO date
+}
+
+/** Internal team note — visible only in team view, never on shared links */
+export interface TeamNote {
+  id: string;
+  authorId: string; // Firebase user ID
   authorName: string;
   text: string;
   createdAt: string; // ISO date

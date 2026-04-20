@@ -1,7 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ArrowUp, ArrowDown, Calendar, Play, Pin, Layers,
-} from 'lucide-react';
+import { ArrowUp, ArrowDown, Calendar, Play, Pin, Layers, Users } from 'lucide-react';
 
 import {
   PresentationItem,
@@ -24,17 +22,13 @@ interface InstagramGridViewProps {
   onItemClick: (item: PresentationItem) => void;
 }
 
-const InstagramGridView: React.FC<InstagramGridViewProps> = ({
-  items,
-  sortDirection,
-  onSortToggle,
-  onItemClick,
-}) => {
+const InstagramGridView: React.FC<InstagramGridViewProps> = ({ items, sortDirection, onSortToggle, onItemClick }) => {
   const sortedItems = useMemo(() => {
     // Separate pinned items from the rest
-    const pinned = items.filter(i => i.pinnedInGrid && i.pinnedInGrid > 0)
+    const pinned = items
+      .filter((i) => i.pinnedInGrid && i.pinnedInGrid > 0)
       .sort((a, b) => (a.pinnedInGrid || 0) - (b.pinnedInGrid || 0));
-    const unpinned = items.filter(i => !i.pinnedInGrid || i.pinnedInGrid <= 0);
+    const unpinned = items.filter((i) => !i.pinnedInGrid || i.pinnedInGrid <= 0);
 
     // Sort unpinned by date
     unpinned.sort((a, b) => {
@@ -74,7 +68,7 @@ const InstagramGridView: React.FC<InstagramGridViewProps> = ({
           gap: '2px',
         }}
       >
-        {sortedItems.map(item => (
+        {sortedItems.map((item) => (
           <GridCard key={item.id} item={item} onClick={() => onItemClick(item)} />
         ))}
       </div>
@@ -92,7 +86,7 @@ const GridCard: React.FC<{
 }> = ({ item, onClick }) => {
   const [imgErr, setImgErr] = useState(false);
   const thumbnailUrl = useMemo(() => resolveItemThumbnail(item), [item]);
-  const linkPreviewUrl = useMemo(() => !thumbnailUrl ? resolveItemLinkPreviewUrl(item) : null, [item, thumbnailUrl]);
+  const linkPreviewUrl = useMemo(() => (!thumbnailUrl ? resolveItemLinkPreviewUrl(item) : null), [item, thumbnailUrl]);
 
   const TypeIcon = TYPE_ICONS[item.type] || Calendar;
   const badgeColor = TYPE_BADGE_COLORS[item.type] || 'bg-gray-50 text-gray-600 border-gray-200';
@@ -115,7 +109,9 @@ const GridCard: React.FC<{
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') onClick();
+      }}
       className="relative w-full overflow-hidden bg-gray-100 cursor-pointer group"
       style={{ paddingBottom: '100%' }}
     >
@@ -141,11 +137,7 @@ const GridCard: React.FC<{
       ) : linkPreviewUrl ? (
         /* Fallback: OG image from link preview */
         <div className="absolute inset-0 w-full h-full">
-          <LinkPreviewThumbnail
-            url={linkPreviewUrl}
-            alt={item.title}
-            className="w-full h-full object-cover"
-          />
+          <LinkPreviewThumbnail url={linkPreviewUrl} alt={item.title} className="w-full h-full object-cover" />
         </div>
       ) : (
         /* Placeholder when no image */
@@ -161,7 +153,9 @@ const GridCard: React.FC<{
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity pointer-events-none" />
 
       {/* Type badge — top-left, tiny on mobile */}
-      <div className={`absolute top-1 left-1 sm:top-1.5 sm:left-1.5 inline-flex items-center gap-0.5 px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded text-[7px] sm:text-[9px] font-bold uppercase tracking-wider border backdrop-blur-sm ${badgeColor}`}>
+      <div
+        className={`absolute top-1 left-1 sm:top-1.5 sm:left-1.5 inline-flex items-center gap-0.5 px-1 py-0.5 sm:px-1.5 sm:py-0.5 rounded text-[7px] sm:text-[9px] font-bold uppercase tracking-wider border backdrop-blur-sm ${badgeColor}`}
+      >
         <TypeIcon className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
       </div>
 
@@ -174,8 +168,18 @@ const GridCard: React.FC<{
 
       {/* Carousel badge */}
       {item.isCarousel && (
-        <div className={`absolute ${item.pinnedInGrid && item.pinnedInGrid > 0 ? 'top-7 sm:top-8' : 'top-1 sm:top-1.5'} right-1 sm:right-1.5 z-10 flex items-center gap-0.5 px-1 py-0.5 rounded bg-indigo-600/90 backdrop-blur-sm shadow-md`}>
+        <div
+          className={`absolute ${item.pinnedInGrid && item.pinnedInGrid > 0 ? 'top-7 sm:top-8' : 'top-1 sm:top-1.5'} right-1 sm:right-1.5 z-10 flex items-center gap-0.5 px-1 py-0.5 rounded bg-indigo-600/90 backdrop-blur-sm shadow-md`}
+        >
           <Layers className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+        </div>
+      )}
+
+      {/* Team notes indicator */}
+      {item.teamNotes && item.teamNotes.length > 0 && (
+        <div className="absolute bottom-5 sm:bottom-6 right-1 sm:right-1.5 z-10 flex items-center gap-0.5 px-1 py-0.5 rounded bg-purple-600/90 backdrop-blur-sm shadow-md">
+          <Users className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" />
+          <span className="text-[7px] sm:text-[9px] font-bold text-white">{item.teamNotes.length}</span>
         </div>
       )}
 
